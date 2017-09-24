@@ -12,12 +12,6 @@ services:
       - type: bind
         source: /tmp/.X11-unix
         target: /tmp/.X11-unix
-      # - type: bind
-      #   source: ${VISION_TEST_PATH}
-      #   target: /home/software/cuauv/videos
-      # - type: bind
-      #   source: ${CUAUV_LOG}
-      #   target: /var/log/auv
 
     environment:
       - DISPLAY=${DISPLAY}
