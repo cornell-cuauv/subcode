@@ -1,6 +1,8 @@
 #!/bin/bash
 SCRIPT_NAME=`basename "$0"`
 
+CUAUV_DOCKER_TMP_FILE="/tmp/cuauv-docker.config"
+
 read -r -d '' HELP << EOM
  SYNOPSIS
     ${SCRIPT_NAME} command
@@ -68,12 +70,16 @@ dockerRun() {
         --device "/dev/dri:/dev/dri" \
         --ipc=host \
         lezed1/cuauv \
-        /bin/bash -c "echo '==================' && hostname -i  && echo '==================' && sudo /sbin/my_init"
-        # /bin/bash -c "echo === This container\'s IP Address is: $(hostname -i)" -c "sudo /sbin/my_init" -c "bash"
+        /bin/bash -c "echo '==================' && hostname -i  && echo '==================' && sudo /sbin/my_init" \
+    | tee $CUAUV_DOCKER_TMP_FILE
+    rm -f $CUAUV_DOCKER_TMP_FILE
 }
 
 dockerSsh() {
-    IP=${1}
+    IP=$(cat $CUAUV_DOCKER_TMP_FILE 2> /dev/null | head -2 | tail -1)
+    if [ ! -z "$IP" ]; then
+        echo "Using IP address of most recently started container: ${IP}"
+    fi
     while [ -z "$IP" ]; do
         echo    "What is the IP address of the container"
         echo -n "(first line the container prints out when run): "
