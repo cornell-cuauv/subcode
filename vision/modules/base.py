@@ -153,7 +153,7 @@ class ModuleBase:
 
         try:
             coord = iter(coord)
-            return norm(c,0), norm(c,1)
+            return norm(coord[0],0), norm(coord[1],1)
         except TypeError:
             return norm(coord, axis)
 
@@ -173,7 +173,7 @@ class ModuleBase:
 
         try:
             coord = iter(coord)
-            return denorm(c,0), denorm(c,1)
+            return denorm(coord[0],0), denorm(coord[1],1)
         except TypeError:
             return denorm(coord, axis)
 
