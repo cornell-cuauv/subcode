@@ -108,6 +108,10 @@ class Pipes(ModuleBase):
         old_pipe_center = (int(best.center[0]), int(best.center[1]))
 
         pipe_center = self.normalized((best.center[0], best.center[1]))
+        #pipe_x = self.normalized(best.center[0], 0)
+        #pipe_y = self.normalized(best.center[1], 1)
+
+        pipe_x, pipe_y = self.normalized((best.center[0], best.center[1]))
 
         shm_angle = get_angle_from_rotated_rect(best.rect)
 

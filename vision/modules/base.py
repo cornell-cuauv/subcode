@@ -151,10 +151,9 @@ class ModuleBase:
         def norm(compon, axis):
             return (compon - mat.shape[1-axis]/2)/mat.shape[1]
 
-        try:
-            coord = iter(coord)
+        if isinstance(coord, tuple):
             return norm(coord[0],0), norm(coord[1],1)
-        except TypeError:
+        else:
             return norm(coord, axis)
 
     # Converts coord to exact coordinates
@@ -171,10 +170,9 @@ class ModuleBase:
                 denormed = int(denormed)
             return denormed
 
-        try:
-            coord = iter(coord)
+        if isinstance(coord, tuple):
             return denorm(coord[0],0), denorm(coord[1],1)
-        except TypeError:
+        else:
             return denorm(coord, axis)
 
     def normalized_size(self, size, mat=None):
