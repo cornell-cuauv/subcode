@@ -1,0 +1,26 @@
+version: '3.3'
+services:
+  cuauv:
+    image: lezed1/cuauv:${BRANCH:-master}
+    volumes:
+      - type: bind
+        source: ~/cuauv/worktrees/${BRANCH}
+        target: /home/software/cuauv/software
+      - type: bind
+        source: ../software.git/
+        target: /home/software/cuauv/software.git
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+      # - type: bind
+      #   source: ${VISION_TEST_PATH}
+      #   target: /home/software/cuauv/videos
+      # - type: bind
+      #   source: ${CUAUV_LOG}
+      #   target: /var/log/auv
+
+    environment:
+      - DISPLAY=${DISPLAY}
+    devices:
+      - "/dev/dri:/dev/dri"
+    # ipc: host
