@@ -85,7 +85,7 @@ dockerSsh() {
         echo -n "(first line the container prints out when run): "
         read IP
     done
-    ssh software@$IP -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
+    ssh -X -A software@$IP -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
 }
 
 case ${1} in
