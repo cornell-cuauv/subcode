@@ -42,10 +42,15 @@ threshed = cv2.erode(threshed, (5, 5))
 cv2.imshow('threshed', threshed)
 _ = cv2.waitKey()
 
-edges = cv2.Canny(threshed, 100, 200)
+blurred = cv2.GaussianBlur(threshed, (3, 3), 0)
+cv2.imshow('blurred', blurred)
+_ = cv2.waitKey()
+
+edges = cv2.Canny(blurred, 100, 200)
 cv2.imshow('edges', edges)
 _ = cv2.waitKey()
 lines = cv2.HoughLines(edges, 1, np.pi / 180, 70)
+
 line_equations = []
 for (i, (rho,theta)) in enumerate(lines[0][:2]):
     a = np.cos(theta)
