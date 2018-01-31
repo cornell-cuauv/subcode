@@ -67,6 +67,7 @@ dockerRun() {
         -e 'DISPLAY=${DISPLAY}' \
         -v "$CUAUV_DIR:/home/software/cuauv/software" \
         -v "/tmp/.X11-unix:/tmp/.X11-unix" \
+        -v /usr/share/icons:/usr/share/icons:ro \
         --device "/dev/dri:/dev/dri" \
         --ipc=host \
         lezed1/cuauv \
