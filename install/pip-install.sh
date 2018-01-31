@@ -25,6 +25,7 @@ packages=(
     pygobject
 
     nanomsg
+    pylint
 )
 
 packages2=(
