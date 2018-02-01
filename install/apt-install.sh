@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 packages=(
     # general
     autossh
@@ -20,6 +22,7 @@ packages=(
     bc
     tmux
     silversearcher-ag
+    shellcheck
 
     # mission
 

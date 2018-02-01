@@ -25,7 +25,6 @@ packages=(
     pygobject
 
     nanomsg
-    pylint
 )
 
 packages2=(
@@ -37,6 +36,9 @@ packages3=(
     flask
     flask-socketio
     posix_ipc
+
+    pylint
+    rope # Refactoring
 )
 
 pip2 install "${packages[@]}" "${packages2[@]}"

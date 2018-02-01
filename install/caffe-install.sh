@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # based on https://github.com/BVLC/caffe/wiki/Ubuntu-16.04-or-15.10-Installation-Guide
 
 apt-get install -y unzip
