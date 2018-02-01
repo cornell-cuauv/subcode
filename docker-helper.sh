@@ -1,5 +1,5 @@
 #!/bin/bash
-SCRIPT_NAME=`basename "$0"`
+SCRIPT_NAME=$(basename "$0")
 
 CUAUV_DOCKER_TMP_FILE="/tmp/cuauv-docker.config"
 
@@ -47,20 +47,18 @@ dockerBuild() {
 
 promptToBuild() {
     # check with the user if they want to build the docker container now
-     if [[ 1 ]]; then
-         echo -n "Do you wish to build docker now? [Yn]"
-         read yn
-         case $yn in
-             [Yy]* ) dockerBuild;;
-             ""    ) dockerBuild;;
-             [Nn]* ) echo "skipping" ;;
-             *     ) echo "assuming no, skipping";;
-         esac
-     fi
+     echo -n "Do you wish to build docker now? [Yn]"
+     read -r yn
+     case $yn in
+         [Yy]* ) dockerBuild;;
+         ""    ) dockerBuild;;
+         [Nn]* ) echo "skipping" ;;
+         *     ) echo "assuming no, skipping";;
+     esac
  }
 
 dockerRun() {
-    CUAUV_DIR=$(dirname `realpath $0`)
+    CUAUV_DIR=$(dirname "$(realpath "$0")")
 
     docker run \
         -it \
@@ -77,22 +75,22 @@ dockerRun() {
 }
 
 dockerSsh() {
-    IP=$(cat $CUAUV_DOCKER_TMP_FILE 2> /dev/null | head -2 | tail -1)
+    IP=$(head -2 $CUAUV_DOCKER_TMP_FILE | tail -1)
     if [ ! -z "$IP" ]; then
         echo "Using IP address of most recently started container: ${IP}"
     fi
     while [ -z "$IP" ]; do
         echo    "What is the IP address of the container"
         echo -n "(first line the container prints out when run): "
-        read IP
+        read -r IP
     done
-    ssh -X -A software@$IP -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
+    ssh -X -A software@"$IP" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
 }
 
 case ${1} in
-    [build]* ) dockerBuild;;
-    [run]* ) dockerRun;;
-    [ssh]* ) dockerSsh ${2};;
-    *     ) scriptHelp;;
+    build) dockerBuild;;
+    run  ) dockerRun;;
+    ssh  ) dockerSsh "${2}";;
+    *    ) scriptHelp;;
 esac
 
