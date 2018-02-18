@@ -1,0 +1,13 @@
+<html>
+    <body>
+        <ul id="modules">
+            {% if len(modules) == 0 %}
+            <span>No modules are running!</span>
+            {% else %}
+                {% for module in modules %}
+                <li><a href="{{ path_prefix }}/{{ module }}">{{ module }}</a></li>
+                {% end %}
+            {% end %}
+        </ul>
+    </body>
+</html>
