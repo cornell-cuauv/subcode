@@ -36,7 +36,6 @@ def send_image(module_name, image_name, image, receivers=websocket_listeners):
             idx = module_frameworks[module_name].ordered_image_names.index(image_name)
 
         #print("Sending image {}(data-index={})".format(image_name, idx))
-        # TODO make this asynchronous
         image = vision_common.resize_keep_ratio(image, MAX_IMAGE_DIMENSION)
         _, jpeg = cv2.imencode('.jpg', image, (cv2.IMWRITE_JPEG_QUALITY, 60))
         jpeg_bytes = base64.encodestring(jpeg.tobytes()).decode('ascii')
@@ -77,19 +76,17 @@ class VisionGuiSocketHandler(tornado.websocket.WebSocketHandler):
         self.module_name = module_name
         module_listeners[module_name] += 1
 
-        # TODO: open() is not coroutine-able, so it is infeasible to block tornado's main thread
-        # while waiting for the module's cmf accessor to start up
-        #while module_name not in module_frameworks:
-        #    time.sleep(0.1)
+        if module_name not in module_frameworks:
+            self.close(code=404)
 
         websocket_listeners.append(self)
 
         all_option_values = module_frameworks[module_name].get_option_values()
         for option_name, option_value in all_option_values.items():
-            send_option(module_name, option_name, option_value, receivers=self)
+            send_option(module_name, option_name, option_value, receivers=[self])
         images = module_frameworks[module_name].get_images()
         for image_name, image in images.items():
-            send_image(module_name, image_name, image, receivers=self)
+            send_image(module_name, image_name, image, receivers=[self])
 
     def on_message(self, message):
         data = json.loads(message)
