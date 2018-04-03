@@ -63,9 +63,9 @@ def send_option(module_name, option_name, value, receivers=websocket_listeners):
         print(e)
 
 
-class VisionGuiSocketHandler(tornado.websocket.WebSocketHandler):
+class VisionSocketHandler(tornado.websocket.WebSocketHandler):
     def __init__(self, *args, **kwargs):
-        super(VisionGuiSocketHandler, self).__init__(*args, **kwargs)
+        super(VisionSocketHandler, self).__init__(*args, **kwargs)
         self.module_name = None
 
     def open(self, module_name):
@@ -106,13 +106,13 @@ class VisionGuiSocketHandler(tornado.websocket.WebSocketHandler):
         module_listeners[self.module_name] -= 1
 
 
-class VisionGuiIndexHandler(BaseHandler):
+class VisionIndexHandler(BaseHandler):
 
     def get(self):
-        self.write(self.render_template("vision_gui_index.html"))
+        self.write(self.render_template("vision_index.html"))
 
 
-class VisionGuiModuleHandler(BaseHandler):
+class VisionModuleHandler(BaseHandler):
 
     def get_image_observer(self, module_name):
         def observe(name, value):
@@ -174,7 +174,7 @@ class VisionGuiModuleHandler(BaseHandler):
             print(e)
             traceback.print_exc()
             raise HTTPError(500)
-        return self.write(self.render_template('vision_gui_module.html',
+        return self.write(self.render_template('vision_module.html',
                                                template_values={"title": module_name,
                                                                 "module_name": module_name}))
 
@@ -185,9 +185,9 @@ class VisionGuiModuleHandler(BaseHandler):
             self.finish("That module is not currently running"
                         " i.e. It's controlled by a shm variable and that variable is 0")
         else:
-            super(VisionGuiModuleHandler, self).write_error(status_code, **kwargs)
+            super(VisionModuleHandler, self).write_error(status_code, **kwargs)
 
 
-class VisionGuiActiveModulesHandler(BaseHandler):
+class VisionActiveModulesHandler(BaseHandler):
     def get(self):
         return self.write(json.dumps(get_active_modules()))

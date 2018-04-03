@@ -184,7 +184,7 @@ class OptionItem extends React.Component {
     }
 }
 
-export class VisionGuiModule extends React.Component {
+export class VisionModule extends React.Component {
     constructor(props) {
         super(props);
         this.state = {

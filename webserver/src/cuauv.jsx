@@ -9,8 +9,8 @@ import {Drive} from './modules/drive.jsx'
 import {Test} from './modules/test.jsx'
 import {SHM} from './modules/shm.jsx'
 import {Admin} from './modules/admin.jsx'
-import {VisionGuiIndex} from './modules/vision_gui_index.jsx'
-import {VisionGuiModule} from './modules/vision_gui_module.jsx'
+import {VisionIndex} from './modules/vision_index.jsx'
+import {VisionModule} from './modules/vision_module.jsx'
 
 const blueprint = [
     {
@@ -44,15 +44,15 @@ const blueprint = [
         headerInclude: true,
     },
     {
-        name: "Vision GUI",
-        path: "/vision-gui",
-        component: VisionGuiIndex,
+        name: "Vision",
+        path: "/vision",
+        component: VisionIndex,
         headerInclude: true,
     },
     {
-        name: "Vision GUI Module",
-        path: "/vision-gui/:module",
-        component: VisionGuiModule,
+        name: "Vision Module",
+        path: "/vision/:module",
+        component: VisionModule,
         headerInclude: false,
     },
 ];
