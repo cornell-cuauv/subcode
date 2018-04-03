@@ -35,7 +35,7 @@ class OptionItem extends React.Component {
     }
 
     handleOptionUpdate(evt) {
-        if (this.type == 'int' || this.type == 'double') {
+        if (this.type === 'int' || this.type === 'double') {
             // Update slider when value is changed
             if ('min_value' in this.option && 'max_value' in this.option) {
                 $(this.sliderId).slider('value', evt.target.value);
@@ -46,7 +46,7 @@ class OptionItem extends React.Component {
     }
 
     componentDidMount() {
-        if (this.type == 'int' || this.type == 'double') {
+        if (this.type === 'int' || this.type === 'double') {
             // Initialize JQuery-UI slider
             if ('min_value' in this.option && 'max_value' in this.option) {
                 $(this.sliderId).slider({
@@ -57,7 +57,7 @@ class OptionItem extends React.Component {
                         $(this.valueId).val(ui.value);
                     }.bind(this)
                 });
-                if (this.type == 'double') {
+                if (this.type === 'double') {
                     $(this.sliderId).slider("option", "step", 0.001);
                 }
             }
@@ -65,7 +65,7 @@ class OptionItem extends React.Component {
     }
 
     render() {
-        if (this.type == 'int' || this.type == 'double') {
+        if (this.type === 'int' || this.type === 'double') {
             // Display input box and slider for number option
             return (
                 <li className="list-group-item col-xs-12" data-index={this.option.option_index}>
@@ -76,7 +76,7 @@ class OptionItem extends React.Component {
                 </li>
             );
         }
-        else if (this.type == 'bool') {
+        else if (this.type === 'bool') {
             // Display checkbox for boolean option
             return (
                 <li className="list-group-item col-xs-12" data-index={this.option.option_index}>
@@ -85,7 +85,7 @@ class OptionItem extends React.Component {
                 </li>
             );
         }
-        else if (this.type == 'str') {
+        else if (this.type === 'str') {
             // Display input box for string option
             return (
                 <li className="list-group-item col-xs-12" data-index={this.option.option_index}>
