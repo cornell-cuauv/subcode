@@ -251,6 +251,10 @@ export class VisionModule extends React.Component {
         $(window).resize(resizeGrid);
     }
 
+    componentWillUnmount() {
+        this.socket.close();
+    }
+
     render() {
         return (
             <div>
