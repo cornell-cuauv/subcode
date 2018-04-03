@@ -3,11 +3,6 @@ img.posted {
     max-height: 100%;
 }
 
-body {
-  padding-top: 70px;
-  padding-bottom: 30px;
-}
-
 .slider_value {
     color: #F8931F;
     font-weight: bold;

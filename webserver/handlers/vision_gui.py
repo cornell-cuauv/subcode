@@ -20,9 +20,6 @@ module_listeners = collections.defaultdict(int)
 
 websocket_listeners = []
 
-VISION_GUI_PATH_PREFIX = '/vision-gui'
-
-
 def get_active_modules():
     prefix = "auv_visiond-module-"
     return [block[len(prefix):] for block in os.listdir('/dev/shm') if block.startswith(prefix)]
@@ -112,7 +109,7 @@ class VisionGuiSocketHandler(tornado.websocket.WebSocketHandler):
 class VisionGuiIndexHandler(BaseHandler):
 
     def get(self):
-        self.render("vision_gui_index.html", path_prefix=VISION_GUI_PATH_PREFIX, modules=get_active_modules())
+        self.write(self.render_template("vision_gui_index.html"))
 
 
 class VisionGuiModuleHandler(BaseHandler):
@@ -177,8 +174,8 @@ class VisionGuiModuleHandler(BaseHandler):
             print(e)
             traceback.print_exc()
             raise HTTPError(500)
-        return self.render('vision_gui_module.html', path_prefix=VISION_GUI_PATH_PREFIX, module_name=module_name,
-                           modules=get_active_modules())
+        return self.write(self.render_template('vision_gui_module.html',
+                                               template_values={"title": module_name}))
 
     def write_error(self, status_code, **kwargs):
         if status_code == 404:
@@ -188,3 +185,8 @@ class VisionGuiModuleHandler(BaseHandler):
                         " i.e. It's controlled by a shm variable and that variable is 0")
         else:
             super(VisionGuiModuleHandler, self).write_error(status_code, **kwargs)
+
+
+class VisionGuiActiveModulesHandler(BaseHandler):
+    def get(self):
+        return self.write(json.dumps(get_active_modules()))
