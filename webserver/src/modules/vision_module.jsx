@@ -29,13 +29,14 @@ function resizeGrid() {
     });
 }
 
-function togglePreprocessorItems(show) {
+function togglePreprocessorItems() {
     const preprocessorItems = $("li.list-group-item").filter(function(k, v) {
         return v.innerHTML.indexOf("PPX_") !== -1;
     });
     preprocessorItems.each(function(k, v) {
         v.style.backgroundColor = "#cccccc";
     });
+    const show = $('#preprocessor-toggle').prop('checked');
     if (show) {
         preprocessorItems.slideDown();
     }
@@ -57,6 +58,7 @@ class ImageContainer extends React.Component {
 
     componentDidMount() {
         window.requestAnimationFrame(resizeGrid);
+        window.requestAnimationFrame(togglePreprocessorItems);
     }
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -148,7 +150,7 @@ class OptionItem extends React.Component {
                 }
             }
         }
-        window.requestAnimationFrame(_ => togglePreprocessorItems($('#preprocessor-toggle').prop('checked')));
+        window.requestAnimationFrame(togglePreprocessorItems);
     }
 
     render() {
@@ -226,10 +228,6 @@ export class VisionModule extends React.Component {
         }));
     }
 
-    handlePreprocessorToggle(evt) {
-        togglePreprocessorItems(evt.target.checked);
-    }
-
     componentDidMount() {
         let webSocketPath = location.pathname.split('/');
         // Construct path to websocket handler
@@ -258,7 +256,7 @@ export class VisionModule extends React.Component {
             <div>
                 {/* <span>{JSON.stringify(this.state)}</span> */}
                 <div id="body" class="container-fluid" role="main">
-                    <input type="checkbox" id="preprocessor-toggle" onChange={this.handlePreprocessorToggle}/>
+                    <input type="checkbox" id="preprocessor-toggle" onChange={togglePreprocessorItems}/>
                     <label for="preprocessor-toggle">Toggle Preprocessor Options</label>
                     <button id="clear-images" onClick={this.clearImages}>Clear Images</button>
                     <div class="row">
