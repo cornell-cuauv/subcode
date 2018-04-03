@@ -175,7 +175,8 @@ class VisionGuiModuleHandler(BaseHandler):
             traceback.print_exc()
             raise HTTPError(500)
         return self.write(self.render_template('vision_gui_module.html',
-                                               template_values={"title": module_name}))
+                                               template_values={"title": module_name,
+                                                                "module_name": module_name}))
 
     def write_error(self, status_code, **kwargs):
         if status_code == 404:

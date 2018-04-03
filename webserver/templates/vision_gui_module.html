@@ -10,4 +10,7 @@
 {% block scripts %}
 <script type="text/javascript" src="{{ static_url('js/jquery-ui.min.js') }}"></script>
 <script src="{{ static_url('bundle.js') }}"></script>
+<script>
+window.MODULE_NAME = "{{ module_name }}";
+</script>
 {% endblock %}
