@@ -219,7 +219,6 @@ export class VisionGuiModule extends React.Component {
     }
 
     handleOptionUpdate(option, value) {
-        console.log(option, value);
         this.socket.send(JSON.stringify({
             module: window.MODULE_NAME,
             option: option.option_name,
@@ -257,7 +256,7 @@ export class VisionGuiModule extends React.Component {
     render() {
         return (
             <div>
-                <span>{JSON.stringify(this.state)}</span>
+                {/* <span>{JSON.stringify(this.state)}</span> */}
                 <div id="body" class="container-fluid" role="main">
                     <input type="checkbox" id="preprocessor-toggle" onChange={this.handlePreprocessorToggle}/>
                     <label for="preprocessor-toggle">Toggle Preprocessor Options</label>
