@@ -229,8 +229,10 @@ export class VisionModule extends React.Component {
     }
 
     componentDidMount() {
-        let webSocketPath = location.pathname.split('/');
+        // Change container to full-width
+        $('#body').parent().removeClass('container').addClass('container-fluid');
         // Construct path to websocket handler
+        let webSocketPath = location.pathname.split('/');
         webSocketPath.splice(2, 0, 'ws');
         webSocketPath = webSocketPath.join('/');
         this.socket = new WebSocket('ws://' + document.domain + ':' + location.port + webSocketPath);
@@ -257,23 +259,34 @@ export class VisionModule extends React.Component {
 
     render() {
         return (
-            <div>
+            <div id="body" class="container-fluid" role="main">
                 {/* <span>{JSON.stringify(this.state)}</span> */}
-                <div id="body" class="container-fluid" role="main">
-                    <input type="checkbox" id="preprocessor-toggle" onChange={togglePreprocessorItems}/>
-                    <label for="preprocessor-toggle">Toggle Preprocessor Options</label>
-                    <button id="clear-images" onClick={this.clearImages}>Clear Images</button>
-                    <div class="row">
-                        <div class="col-xs-10">
-                        <ul class="list-group row" id="images">
-                            {this.getOrderedImages().map(img => <ImageContainer image={img} key={img.image_name}/>)}
-                        </ul>
-                        </div>
-                        <div class="col-xs-2">
-                        <ul class="list-group row" id="options">
-                            {this.getOrderedOptions().map(option => <OptionItem option={option} onChange={this.handleOptionUpdate} key={option.option_name}/>)}
-                        </ul>
-                        </div>
+                <input
+                    type="checkbox"
+                    id="preprocessor-toggle"
+                    onChange={togglePreprocessorItems}
+                />
+                <label for="preprocessor-toggle">Toggle Preprocessor Options</label>
+                <button id="clear-images" onClick={this.clearImages}>Clear Images</button>
+                <div class="row">
+                    <div class="col-xs-10">
+                    <ul class="list-group row" id="images">
+                        {this.getOrderedImages().map(img =>
+                            <ImageContainer
+                                image={img}
+                                key={img.image_name}/>
+                        )}
+                    </ul>
+                    </div>
+                    <div class="col-xs-2">
+                    <ul class="list-group row" id="options">
+                        {this.getOrderedOptions().map(option =>
+                            <OptionItem
+                                option={option}
+                                onChange={this.handleOptionUpdate}
+                                key={option.option_name}/>
+                        )}
+                    </ul>
                     </div>
                 </div>
             </div>
