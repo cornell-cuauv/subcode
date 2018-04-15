@@ -7,5 +7,4 @@ includes = [
 	"powerDistribution.toml",
 	"artemisThruster1.toml",
 	"artemisThruster2.toml",
-	"led.toml"
 ]
