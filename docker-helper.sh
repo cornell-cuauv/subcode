@@ -88,6 +88,7 @@ dockerMacRun() {
         -v "$CUAUV_DIR:/home/software/cuauv/software" \
         -v "/tmp/.X11-unix:/tmp/.X11-unix" \
         -p 2222:22 \
+        -p 5000:5000 \
         --ipc=host \
         lezed1/cuauv \
         /bin/bash -c "echo '==================' && hostname -i  && echo '==================' && sudo /sbin/my_init" \
