@@ -70,6 +70,11 @@ EOF
 find . -type f -exec sed -i -e 's^"hdf5.h"^"hdf5/serial/hdf5.h"^g' -e 's^"hdf5_hl.h"^"hdf5/serial/hdf5_hl.h"^g' '{}' \;
 
 pushd python
+patch requirements.txt <<'EOF'
+3d2
+< scipy>=0.13.2
+EOF
+
 for req in $(cat requirements.txt); do pip3 install --upgrade $req; done
 popd
 
