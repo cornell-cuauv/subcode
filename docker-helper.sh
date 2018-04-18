@@ -58,6 +58,11 @@ promptToBuild() {
  }
 
 dockerRun() {
+    if [ "$(uname)" == "Darwin" ]; then
+        dockerMacRun
+        return
+    fi
+
     CUAUV_DIR=$(dirname "$(realpath "$0")")
 
     docker run \
@@ -74,7 +79,28 @@ dockerRun() {
     rm -f $CUAUV_DOCKER_TMP_FILE
 }
 
+dockerMacRun() {
+    CUAUV_DIR=$(dirname "$(realpath "$0")")
+
+    docker run \
+        -it \
+        -e 'DISPLAY=${DISPLAY}' \
+        -v "$CUAUV_DIR:/home/software/cuauv/software" \
+        -v "/tmp/.X11-unix:/tmp/.X11-unix" \
+        -p 2222:22 \
+        --ipc=host \
+        lezed1/cuauv \
+        /bin/bash -c "echo '==================' && hostname -i  && echo '==================' && sudo /sbin/my_init" \
+    | tee $CUAUV_DOCKER_TMP_FILE
+    rm -f $CUAUV_DOCKER_TMP_FILE
+}
+
 dockerSsh() {
+    if [ "$(uname)" == "Darwin" ]; then
+        dockerMacSsh
+        return
+    fi
+
     IP=$(head -2 $CUAUV_DOCKER_TMP_FILE | tail -1)
     if [ ! -z "$IP" ]; then
         echo "Using IP address of most recently started container: ${IP}"
@@ -87,10 +113,13 @@ dockerSsh() {
     ssh -X -A software@"$IP" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
 }
 
+dockerMacSsh() {
+    ssh -X -A software@localhost -p 2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
+}
+
 case ${1} in
     build) dockerBuild;;
     run  ) dockerRun;;
     ssh  ) dockerSsh "${2}";;
     *    ) scriptHelp;;
 esac
-
