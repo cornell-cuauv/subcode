@@ -85,8 +85,9 @@ class ModuleBase:
 
         shm_group.camera = bytes(self.directions[0], encoding='utf-8')
 
-    def post(self, tag, image):
-        image = np.ascontiguousarray(image)
+    def post(self, tag, orig_image):
+        image = np.array(orig_image, None, copy=True, order='C', ndmin=1)
+
         if self.order_post_by_time:
             self.posted_images.append((tag, image))
         else:
