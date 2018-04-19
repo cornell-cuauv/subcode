@@ -13,8 +13,7 @@ class Video(CaptureSource):
     def __init__(self, direction, filename, loop=True, shmlog=False):
         super().__init__(direction)
         self.filename = filename
-        if os.environ.get('VISION_TEST_PATH'):
-            self.filename = os.path.join(os.environ.get('VISION_TEST_PATH'), filename)
+
         if not os.path.exists(self.filename):
             raise OSError('Could not find video file {}'.format(self.filename))
         self.loop = loop
