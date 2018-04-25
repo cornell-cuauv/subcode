@@ -55,7 +55,8 @@ class align(Task):
     def on_first_run(self):
         self.update_data()
 
-        self.align = Heading(lambda: self.path_results.angle -180 + shm.kalman.heading.get(), deadband=0.1)
+        self.align = Heading(lambda: self.path_results.angle + shm.kalman.heading.get() + 90, deadband=0.1)
+        #self.align = RelativeToCurrentHeading(1)
 
         self.alignment_checker = ConsistencyCheck(49, 50)
 
@@ -71,14 +72,13 @@ class align(Task):
 
         self.align()
         print("kal")
-        print(shm.kalman.heading.get())
-        print(self.path_results.angle -180 + shm.kalman.heading.get())
+        print(self.path_results.angle)
         # self.center()
 
         if not check_seen():
             self.finish(success=False)
 
-        if self.alignment_checker.check(self.align.finished):
+        if self.alignment_checker.check(False):
             self.finish()
 
 search_task_behind = lambda: SearchFor(VelocityTSearch(forward=2,stride = 3, rightFirst=PATH_RIGHT_FIRST, checkBehind=True),
@@ -176,11 +176,9 @@ def test_path(grp):
             center(),
             Depth(PATH_FOLLOW_DEPTH),
             Log('Aligning with path'),
-            Concurrent(
-                align(),
-                center(),
-                finite=False
-            ),
+            Heading(shm.path_results_1.angle.get() + shm.kalman.heading.get() + 90, deadband=0.1),
+            Zero(),
+            Log('Aligned, I hope')
             ), float("inf")),
 
         Zero(),

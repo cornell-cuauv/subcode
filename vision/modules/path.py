@@ -54,7 +54,7 @@ class Pipes(ModuleBase):
     path_group_2= get_zero_path_group()
 
     def angle(self, x1, y1, x2, y2):
-        return atan2(y2-y1, x2-x1) % 2*np.pi
+        return atan2(y2-y1, x2-x1)
 
     def angle_diff(self, a1, a2):
         a=min((2*np.pi) - abs(a1-a2), abs(a1-a2))
@@ -197,7 +197,9 @@ class Pipes(ModuleBase):
         shm.path_results_1.set(self.path_group_1)
 
         t = self.tracked_lines[1]
-        self.path_group_2.angle = t.angle / (2*np.pi) * 360 - 180
+        ang = self.angle(t.x1, t.y1, t.x2, t.y2)
+        ang = ang / (np.pi) * 180
+        self.path_group_1.angle = ang
         x = (t.x1 + t.x2) / 2
         y = (t.y1 + t.y2) / 2
         center = self.normalized((int(x), int(y)))
