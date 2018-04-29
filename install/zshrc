@@ -29,6 +29,9 @@ export CUAUV_CONTEXT="development" # Optionally set to reduce build dependencies
 export VISION_TEST_PATH="/home/software/videos/"
 export CUAUV_LOG="/var/log/auv/"
 
+# Allow applications to forward X11 display to host system
+export DISPLAY=:0
+
 # Configure OCaml env with opam
 . /home/software/.opam/opam-init/init.zsh > /dev/null 2> /dev/null || true
 

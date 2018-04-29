@@ -1,4 +1,4 @@
-FROM phusion/baseimage:0.9.22
+FROM cuauv/phusion-baseimage:0.10.0
 CMD ["/sbin/my_init"]
 RUN rm -f /etc/service/sshd/down && \
     sed -i'' 's/http:\/\/archive.ubuntu.com/http:\/\/us.archive.ubuntu.com/' /etc/apt/sources.list
@@ -33,6 +33,9 @@ COPY install/dot-spacemacs /dependencies/
 RUN setuser software cp /dependencies/dot-spacemacs /home/software/.spacemacs
 RUN setuser software emacs --batch -u software --kill
 
+COPY install/ripgrep-install.sh /dependencies
+RUN /dependencies/ripgrep-install.sh
+
 COPY install/apt-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/apt-install.sh
 
@@ -44,6 +47,6 @@ RUN bash /dependencies/aptstrap.sh /dependencies/misc-install.sh
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/.cache/ /dependencies/
 
-# USER software
-# WORKDIR /home/software/cuauv/software
+USER software
+WORKDIR /home/software/cuauv/software
 # CMD ip a && sudo service ssh start && echo "CUAUV Docker container running! C-c to stop the container" && cat

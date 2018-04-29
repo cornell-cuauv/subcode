@@ -85,8 +85,9 @@ class ModuleBase:
 
         shm_group.camera = bytes(self.directions[0], encoding='utf-8')
 
-    def post(self, tag, image):
-        image = np.ascontiguousarray(image)
+    def post(self, tag, orig_image):
+        image = np.array(orig_image, None, copy=True, order='C', ndmin=1)
+
         if self.order_post_by_time:
             self.posted_images.append((tag, image))
         else:
@@ -151,10 +152,9 @@ class ModuleBase:
         def norm(compon, axis):
             return (compon - mat.shape[1-axis]/2)/mat.shape[1]
 
-        try:
-            coord = iter(coord)
-            return norm(c,0), norm(c,1)
-        except TypeError:
+        if isinstance(coord, tuple):
+            return norm(coord[0],0), norm(coord[1],1)
+        else:
             return norm(coord, axis)
 
     # Converts coord to exact coordinates
@@ -171,10 +171,9 @@ class ModuleBase:
                 denormed = int(denormed)
             return denormed
 
-        try:
-            coord = iter(coord)
-            return denorm(c,0), denorm(c,1)
-        except TypeError:
+        if isinstance(coord, tuple):
+            return denorm(coord[0],0), denorm(coord[1],1)
+        else:
             return denorm(coord, axis)
 
     def normalized_size(self, size, mat=None):

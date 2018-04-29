@@ -9,32 +9,51 @@ import {Drive} from './modules/drive.jsx'
 import {Test} from './modules/test.jsx'
 import {SHM} from './modules/shm.jsx'
 import {Admin} from './modules/admin.jsx'
+import {VisionIndex} from './modules/vision_index.jsx'
+import {VisionModule} from './modules/vision_module.jsx'
 
 const blueprint = [
     {
         name: "Index",
         path: "/",
         component: Index,
+        headerInclude: true,
     },
     {
         name: "Drive",
         path: "/drive",
-        component: Drive
+        component: Drive,
+        headerInclude: true,
     },
     {
         name: "Test",
         path: "/test",
-        component: Test
+        component: Test,
+        headerInclude: true,
     },
     {
         name: "SHM",
         path: "/shm",
-        component: SHM
+        component: SHM,
+        headerInclude: true,
     },
     {
         name: "Admin",
         path: "/admin",
-        component: Admin
+        component: Admin,
+        headerInclude: true,
+    },
+    {
+        name: "Vision",
+        path: "/vision",
+        component: VisionIndex,
+        headerInclude: true,
+    },
+    {
+        name: "Vision Module",
+        path: "/vision/:module",
+        component: VisionModule,
+        headerInclude: false,
     },
 ];
 
@@ -51,7 +70,7 @@ class Layout extends React.Component {
     render() {
         return (
             <div>
-                <Header links={blueprint} />
+                <Header links={blueprint.filter(component => component.headerInclude)} />
                 <div class="container">
                     {generateRoutes()}
                 </div>

@@ -56,7 +56,7 @@ dirs = [
         #'misc/3dcontrol',
         'mission',
         'mission/opt',
-        'object-recognition',
+        #'object-recognition',
         'positiontracker3',
         'self_test',
         'sensors',
