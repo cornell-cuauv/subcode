@@ -9,7 +9,6 @@ import shm
 
 from vision.modules.base import ModuleBase
 from vision import options
-
 options = [options.IntOption('red_lab_a_min', 200, 0, 255),
            options.IntOption('red_lab_a_max', 255, 0, 255),
            options.IntOption('black_lab_l_min', 0, 0, 255),
@@ -26,52 +25,93 @@ options = [options.IntOption('red_lab_a_min', 200, 0, 255),
            options.IntOption('hough_lines_thresh', 70, 0, 1000),
           ]
 
+ROTATION_PREDICTION_ANGLE = 20
+DOWNWARD_CAM_WIDTH = shm.camera.downward_width.get()
+DOWNWARD_CAM_HEIGHT = shm.camera.downward_height.get()
+
+
+def within_camera(x, y):
+    return 0 <= x < DOWNWARD_CAM_WIDTH and 0 <= y < DOWNWARD_CAM_HEIGHT
+
+
+def predict_xy(board_center_x, board_center_y, x, y):
+    translated_x = x - board_center_x
+    translated_y = y - board_center_y
+    predicted_x = translated_x * np.cos(np.radians(ROTATION_PREDICTION_ANGLE)) - translated_y * np.sin(np.radians(ROTATION_PREDICTION_ANGLE))
+    predicted_y = translated_x * np.sin(np.radians(ROTATION_PREDICTION_ANGLE)) + translated_y * np.cos(np.radians(ROTATION_PREDICTION_ANGLE))
+    predicted_x = int(predicted_x + board_center_x)
+    predicted_y = int(predicted_y + board_center_y)
+    return predicted_x, predicted_y
+
+
+def calculate_centroid(contour):
+    moments = cv2.moments(contour)
+    centroid_x = int(moments['m10'] / max(1e-10, moments['m00']))
+    centroid_y = int(moments['m01'] / max(1e-10, moments['m00']))
+    return centroid_x, centroid_y
+
+
+class RouletteBoardData:
+    def __init__(self, shm_group):
+        self.shm_group = shm_group
+        self.reset()
+
+    def reset(self):
+        self.board_visible = False
+        self.center_x = 0
+        self.center_y = 0
+
+    def commit(self):
+        results = self.shm_group.get()
+        results.board_visible = self.board_visible
+        results.center_x = self.center_x
+        results.center_y = self.center_y
+        self.shm_group.set(results)
+
+
+class BinsData:
+    def __init__(self, shm_group):
+        self.shm_group = shm_group
+        self.reset()
+
+    def reset(self):
+        self.visible = False
+        self.centroid_x = 0
+        self.centroid_y = 0
+        self.predicted_location = False
+        self.predicted_x = 0
+        self.predicted_y = 0
+
+    def commit(self):
+        results = self.shm_group.get()
+        results.visible = self.visible
+        results.centroid_x = self.centroid_x
+        results.centroid_y = self.centroid_y
+        results.predicted_location = self.predicted_location
+        results.predicted_x = self.predicted_x
+        results.predicted_y = self.predicted_y
+        self.shm_group.set(results)
+
+
+ROULETTE_BOARD = RouletteBoardData(shm.bins_vision)
+GREEN_BINS = [BinsData(shm.bins_green0), BinsData(shm.bins_green1)]
+RED_BINS = [BinsData(shm.bins_red0), BinsData(shm.bins_red1)]
+BLACK_BINS = [BinsData(shm.bins_black0), BinsData(shm.bins_black1)]
+ALL_BINS = GREEN_BINS + RED_BINS + BLACK_BINS
+ALL_SHM = [ROULETTE_BOARD] + ALL_BINS
+
+
 class Roulette(ModuleBase):
 
     def process(self, mat):
         try:
+            # Reset SHM output
+            for s in ALL_SHM:
+                s.reset()
+
             lab = cv2.cvtColor(mat, cv2.COLOR_BGR2LAB)
             lab_split = cv2.split(lab)
             self.post('lab_a_split', lab_split[1])
-
-            # detect red section
-            threshed = cv2.inRange(lab_split[1],
-                    self.options['red_lab_a_min'],
-                    self.options['red_lab_a_max'])
-            threshed = cv2.erode(threshed,
-                    (2 * self.options['erode_kernel'] + 1,
-                    2 * self.options['erode_kernel'] + 1))
-            self.post('red_threshed', threshed)
-
-            # draw centroids for red sections
-            _, contours, _ = cv2.findContours(threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            for contour in contours:
-                moments = cv2.moments(contour)
-                cX = int(moments['m10'] / moments['m00'])
-                cY = int(moments['m01'] / moments['m00'])
-                cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
-                cv2.circle(mat, (cX, cY), 7, (255, 255, 255), -1)
-            self.post('centroids', mat)
-
-            # detect black section
-            threshed = cv2.inRange(lab_split[0],
-                    self.options['black_lab_l_min'],
-                    self.options['black_lab_l_max'])
-            threshed = cv2.erode(threshed,
-                    (2 * self.options['erode_kernel'] + 1,
-                    2 * self.options['erode_kernel'] + 1),
-                    iterations=self.options['black_erode_iters'])
-            self.post('black_threshed', threshed)
-
-            # draw centroids for black sections
-            _, contours, _ = cv2.findContours(threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            for contour in contours:
-                moments = cv2.moments(contour)
-                cX = int(moments['m10'] / moments['m00'])
-                cY = int(moments['m01'] / moments['m00'])
-                cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
-                cv2.circle(mat, (cX, cY), 7, (255, 255, 255), -1)
-            self.post('centroids', mat)
 
             # detect green section
             threshed = cv2.inRange(lab_split[1],
@@ -102,7 +142,7 @@ class Roulette(ModuleBase):
             lines = [(idx, line[0]) for (idx, line) in enumerate(lines[:2])]
             line_equations = []
             lines_mat = mat.copy()
-            for (i, (rho,theta)) in lines:
+            for (i, (rho, theta)) in lines:
                 a = np.cos(theta)
                 b = np.sin(theta)
                 x0 = a*rho
@@ -111,41 +151,113 @@ class Roulette(ModuleBase):
                 y1 = int(y0 + 1000*(a))
                 x2 = int(x0 - 1000*(-b))
                 y2 = int(y0 - 1000*(a))
-                cv2.line(lines_mat,(x1,y1),(x2,y2),(0,0,255),2)
+                cv2.line(lines_mat, (x1, y1), (x2, y2), (0, 0, 255), 2)
                 line_equations.append((float(x1), float(x2), float(y1), float(y2)))
 
             self.post('lines', lines_mat)
 
-            # calculate intersection of diameters of green section
-            [x01, x02, y01, y02] = line_equations[0]
-            [x11, x12, y11, y12] = line_equations[1]
-            b1 = (y02 - y01) / max(1e-10, x02 - x01)
-            b2 = (y12 - y11) / max(1e-10, x12 - x11)
-            intersection_x = int((b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2))
-            intersection_y = int(b1 * (intersection_x - x01) + y01)
-            center_mat = mat.copy()
-            cv2.circle(center_mat, (intersection_x, intersection_y), 7, (255, 255, 255), -1)
-            self.post('center', center_mat)
+            found_center = len(line_equations) >= 2
+            if found_center:
+                # calculate intersection of diameters of green section
+                [x01, x02, y01, y02] = line_equations[0]
+                [x11, x12, y11, y12] = line_equations[1]
+                b1 = (y02 - y01) / max(1e-10, x02 - x01)
+                b2 = (y12 - y11) / max(1e-10, x12 - x11)
+                intersection_x = int((b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2))
+                intersection_y = int(b1 * (intersection_x - x01) + y01)
+                center_mat = mat.copy()
+                cv2.circle(center_mat, (intersection_x, intersection_y), 7, (255, 255, 255), -1)
+                self.post('center', center_mat)
+                ROULETTE_BOARD.board_visible = True
+                ROULETTE_BOARD.center_x = intersection_x
+                ROULETTE_BOARD.center_y = intersection_y
 
             # draw centroids of green sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            bin_index = 0
             for contour in contours:
-                moments = cv2.moments(contour)
-                cX = int(moments['m10'] / max(1e-10, moments['m00']))
-                cY = int(moments['m01'] / max(1e-10, moments['m00']))
+                centroid_x, centroid_y = calculate_centroid(contour)
                 cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
-                cv2.circle(mat, (cX, cY), 7, (255, 255, 255), -1)
+                cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
                 self.post('centroids', mat)
-                translated_x = cX - intersection_x
-                translated_y = cY - intersection_y
-                predicted_x = translated_x * np.cos(np.radians(20)) - translated_y * np.sin(np.radians(20))
-                predicted_y = translated_x * np.sin(np.radians(20)) + translated_y * np.cos(np.radians(20))
-                predicted_x = int(predicted_x + intersection_x)
-                predicted_y = int(predicted_y + intersection_y)
-                cv2.circle(mat, (predicted_x, predicted_y), 7, (255, 0, 0), -1)
+                GREEN_BINS[bin_index].visible = True
+                GREEN_BINS[bin_index].centroid_x = centroid_x
+                GREEN_BINS[bin_index].centroid_y = centroid_y
+                if found_center:
+                    predicted_x, predicted_y = predict_xy(intersection_x, intersection_y, centroid_x, centroid_y)
+                    if within_camera(predicted_x, predicted_y):
+                        cv2.circle(mat, (predicted_x, predicted_y), 7, (255, 0, 0), -1)
+                        GREEN_BINS[bin_index].predicted_location = True
+                        GREEN_BINS[bin_index].predicted_x = predicted_x
+                        GREEN_BINS[bin_index].predicted_y = predicted_y
+                bin_index += 1
             self.post('predicted_green', mat)
+
+            # detect red section
+            threshed = cv2.inRange(lab_split[1],
+                    self.options['red_lab_a_min'],
+                    self.options['red_lab_a_max'])
+            threshed = cv2.erode(threshed,
+                    (2 * self.options['erode_kernel'] + 1,
+                    2 * self.options['erode_kernel'] + 1))
+            self.post('red_threshed', threshed)
+
+            # draw centroids for red sections and predict location ~3 seconds later
+            _, contours, _ = cv2.findContours(threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            bin_index = 0
+            for contour in contours:
+                centroid_x, centroid_y = calculate_centroid(contour)
+                cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
+                cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
+                RED_BINS[bin_index].visible = True
+                RED_BINS[bin_index].centroid_x = centroid_x
+                RED_BINS[bin_index].centroid_y = centroid_y
+                if found_center:
+                    predicted_x, predicted_y = predict_xy(intersection_x, intersection_y, centroid_x, centroid_y)
+                    if within_camera(predicted_x, predicted_y):
+                        cv2.circle(mat, (predicted_x, predicted_y), 7, (255, 0, 0), -1)
+                        RED_BINS[bin_index].predicted_location = True
+                        RED_BINS[bin_index].predicted_x = predicted_x
+                        RED_BINS[bin_index].predicted_y = predicted_y
+                bin_index += 1
+            self.post('centroids', mat)
+
+            # detect black section
+            threshed = cv2.inRange(lab_split[0],
+                    self.options['black_lab_l_min'],
+                    self.options['black_lab_l_max'])
+            threshed = cv2.erode(threshed,
+                    (2 * self.options['erode_kernel'] + 1,
+                    2 * self.options['erode_kernel'] + 1),
+                    iterations=self.options['black_erode_iters'])
+            self.post('black_threshed', threshed)
+
+            # draw centroids for black sections and predict location ~3 seconds later
+            _, contours, _ = cv2.findContours(threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            bin_index = 0
+            for contour in contours:
+                centroid_x, centroid_y = calculate_centroid(contour)
+                cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
+                cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
+                BLACK_BINS[bin_index].visible = True
+                BLACK_BINS[bin_index].centroid_x = centroid_x
+                BLACK_BINS[bin_index].centroid_y = centroid_y
+                if found_center:
+                    predicted_x, predicted_y = predict_xy(intersection_x, intersection_y, centroid_x, centroid_y)
+                    if within_camera(predicted_x, predicted_y):
+                        cv2.circle(mat, (predicted_x, predicted_y), 7, (255, 0, 0), -1)
+                        BLACK_BINS[bin_index].predicted_location = True
+                        BLACK_BINS[bin_index].predicted_x = predicted_x
+                        BLACK_BINS[bin_index].predicted_y = predicted_y
+                bin_index += 1
+            self.post('centroids', mat)
+
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
+        finally:
+            for s in ALL_SHM:
+                s.commit()
+
 
 if __name__ == '__main__':
     Roulette('downward', options)()
