@@ -4,7 +4,7 @@ import math
 
 import shm
 
-from mission.framework.combinators import Sequential, Concurrent, Retry, Conditional
+from mission.framework.combinators import Sequential, Concurrent, Retry, Conditional, While
 from mission.framework.helpers import get_downward_camera_center, ConsistencyCheck
 from mission.framework.movement import Depth, Heading, Pitch, VelocityX, VelocityY, RelativeToCurrentHeading
 from mission.framework.position import PositionalControl
@@ -48,6 +48,11 @@ class center(Task):
             self.center.stop()
             self.finish()
 
+def checkNotAligned(results):
+    #returns false until aligned
+    c = abs(results.center_x) < .05 and abs(results.center_y) < .05
+    return c
+
 class align(Task):
     def update_data(self):
         self.path_results = shm.path_results_1.get()
@@ -56,7 +61,6 @@ class align(Task):
         self.update_data()
 
         self.align = Heading(lambda: self.path_results.angle + shm.kalman.heading.get() + 90, deadband=0.1)
-        #self.align = RelativeToCurrentHeading(1)
 
         self.alignment_checker = ConsistencyCheck(49, 50)
 
@@ -71,9 +75,6 @@ class align(Task):
         self.update_data()
 
         self.align()
-        print("kal")
-        print(self.path_results.angle)
-        # self.center()
 
         if not check_seen():
             self.finish(success=False)
@@ -170,7 +171,7 @@ def test_path(grp):
         # Zero(),
         # Log('Sway searching for path with Behind'),
         # TrackMovementY(search_task_behind()),
-          Retry(lambda: Sequential(
+          While(lambda: Sequential(
             Zero(),
             Log('Centering on path'),
             center(),
@@ -179,7 +180,7 @@ def test_path(grp):
             Heading(shm.path_results_1.angle.get() + shm.kalman.heading.get() + 90, deadband=0.1),
             Zero(),
             Log('Aligned, I hope')
-            ), float("inf")),
+            ), lambda: checkNotAligned(shm.path_results_1.get())),
 
         Zero(),
         # Log('Aligned, moving forward'),
