@@ -97,17 +97,19 @@ ssize_t DVLSerialPort::readWithTimeout(unsigned char *buf, size_t maxSize, long 
 	fd_set fds;
 	struct timeval tv;
 	//int nRead = 0;
-	tv.tv_sec = 0;
-	tv.tv_usec = uwait;
+	tv.tv_sec = uwait / 1000000;
+	tv.tv_usec = uwait % 1000000;
 	FD_ZERO(&fds);
 	FD_SET(fd, &fds);
 	
 	//now wait for bytes
 	rc=select(fd+1, &fds, NULL, NULL, &tv);
-	if(rc<0)
+	if(rc<0) {
 		return -1;
-	if(FD_ISSET(fd, &fds) == 0)
+	}
+	if(FD_ISSET(fd, &fds) == 0) {
 		return 0;
+	}
 	return read(fd,buf,maxSize);
 }
 
@@ -120,25 +122,29 @@ ssize_t DVLSerialPort::readnWithTimeout(unsigned char *buf, size_t toRead, long 
 
 	//note on my logic: no special handling for uwait = 0.  readn is meaningless in that case
 	
-	if(uwait < 0)
+	if(uwait < 0) {
 		return -1;
+	}
 	
 	ssize_t nRead = 0;
 	ssize_t ret;
 	struct timeval tv;
-	if(gettimeofday(&tv, NULL) != 0)
+	if(gettimeofday(&tv, NULL) != 0) {
 		return -1;
+	}
 	long current_time = tv.tv_usec + tv.tv_sec * 1000000;
 	long end_time = current_time + uwait;
 
 	while(current_time <= end_time && nRead < (ssize_t)toRead)
 	{
 		ret = readWithTimeout(buf + nRead, toRead - nRead, end_time - current_time);
-		if(ret < 0)
+		if(ret < 0) {
 			return -1;
+		}
 		nRead += ret;
-		if(gettimeofday(&tv, NULL) != 0)
+		if(gettimeofday(&tv, NULL) != 0) {
 			return -1;
+		}
 		current_time = tv.tv_usec + tv.tv_sec * 1000000;
 	}
 	return nRead;

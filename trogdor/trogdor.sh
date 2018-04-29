@@ -19,8 +19,8 @@ export PYTHONPATH=$ROOT
 
 # PORT MAPPINGS
 
-GX_PORT=/dev/ttyUSB_arpolis_GX4
-DVL_PORT=/dev/ttyUSB_arpolis_DVL
+GX_PORT=/dev/serial/by-id/usb-FTDI_Quad_RS232-HS-if00-port0
+DVL_PORT=/dev/serial/by-id/usb-CUAUV_PASTOR_4_AUV-PASTOR4-if03-port0
 
 # CONFIGS
 
