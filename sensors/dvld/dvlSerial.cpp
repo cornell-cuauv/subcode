@@ -21,7 +21,7 @@ DVLSerialPort::DVLSerialPort(const char* devname) {
 
         //based on code from dvld
         //reportedly from RDI
-        term.c_cflag = CS8 | B9600 | CLOCAL | HUPCL | CREAD | CSTOPB;
+        term.c_cflag = CS8 | B115200 | CLOCAL | HUPCL | CREAD; /*| CSTOPB; */
         term.c_iflag = IGNPAR | IGNBRK;
         term.c_oflag = 0;
         term.c_lflag = 0;
