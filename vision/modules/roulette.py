@@ -104,7 +104,10 @@ ALL_SHM = [ROULETTE_BOARD] + ALL_BINS
 class Roulette(ModuleBase):
 
     def process(self, mat):
+        global DOWNWARD_CAM_WIDTH, DOWNWARD_CAM_HEIGHT
         try:
+            DOWNWARD_CAM_WIDTH = DOWNWARD_CAM_WIDTH or mat.shape[1]
+            DOWNWARD_CAM_HEIGHT = DOWNWARD_CAM_HEIGHT or mat.shape[0]
             # Reset SHM output
             for s in ALL_SHM:
                 s.reset()
@@ -139,43 +142,45 @@ class Roulette(ModuleBase):
                     self.options['hough_lines_theta'] * np.pi / 180,
                     self.options['hough_lines_thresh'])
 
-            lines = [(idx, line[0]) for (idx, line) in enumerate(lines[:2])]
-            line_equations = []
-            lines_mat = mat.copy()
-            for (i, (rho, theta)) in lines:
-                a = np.cos(theta)
-                b = np.sin(theta)
-                x0 = a*rho
-                y0 = b*rho
-                x1 = int(x0 + 1000*(-b))
-                y1 = int(y0 + 1000*(a))
-                x2 = int(x0 - 1000*(-b))
-                y2 = int(y0 - 1000*(a))
-                cv2.line(lines_mat, (x1, y1), (x2, y2), (0, 0, 255), 2)
-                line_equations.append((float(x1), float(x2), float(y1), float(y2)))
+            found_center = False
+            if lines is not None:
+                lines = [(idx, line[0]) for (idx, line) in enumerate(lines[:2])]
+                line_equations = []
+                lines_mat = mat.copy()
+                for (i, (rho, theta)) in lines:
+                    a = np.cos(theta)
+                    b = np.sin(theta)
+                    x0 = a*rho
+                    y0 = b*rho
+                    x1 = int(x0 + 1000*(-b))
+                    y1 = int(y0 + 1000*(a))
+                    x2 = int(x0 - 1000*(-b))
+                    y2 = int(y0 - 1000*(a))
+                    cv2.line(lines_mat, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                    line_equations.append((float(x1), float(x2), float(y1), float(y2)))
 
-            self.post('lines', lines_mat)
+                self.post('lines', lines_mat)
 
-            found_center = len(line_equations) >= 2
-            if found_center:
-                # calculate intersection of diameters of green section
-                [x01, x02, y01, y02] = line_equations[0]
-                [x11, x12, y11, y12] = line_equations[1]
-                b1 = (y02 - y01) / max(1e-10, x02 - x01)
-                b2 = (y12 - y11) / max(1e-10, x12 - x11)
-                intersection_x = int((b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2))
-                intersection_y = int(b1 * (intersection_x - x01) + y01)
-                center_mat = mat.copy()
-                cv2.circle(center_mat, (intersection_x, intersection_y), 7, (255, 255, 255), -1)
-                self.post('center', center_mat)
-                ROULETTE_BOARD.board_visible = True
-                ROULETTE_BOARD.center_x = intersection_x
-                ROULETTE_BOARD.center_y = intersection_y
+                found_center = len(line_equations) >= 2
+                if found_center:
+                    # calculate intersection of diameters of green section
+                    [x01, x02, y01, y02] = line_equations[0]
+                    [x11, x12, y11, y12] = line_equations[1]
+                    b1 = (y02 - y01) / max(1e-10, x02 - x01)
+                    b2 = (y12 - y11) / max(1e-10, x12 - x11)
+                    intersection_x = int((b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2))
+                    intersection_y = int(b1 * (intersection_x - x01) + y01)
+                    center_mat = mat.copy()
+                    cv2.circle(center_mat, (intersection_x, intersection_y), 7, (255, 255, 255), -1)
+                    self.post('center', center_mat)
+                    ROULETTE_BOARD.board_visible = True
+                    ROULETTE_BOARD.center_x = intersection_x
+                    ROULETTE_BOARD.center_y = intersection_y
 
             # draw centroids of green sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             bin_index = 0
-            for contour in contours:
+            for contour in contours[:len(GREEN_BINS)]:
                 centroid_x, centroid_y = calculate_centroid(contour)
                 cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
                 cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
@@ -191,7 +196,6 @@ class Roulette(ModuleBase):
                         GREEN_BINS[bin_index].predicted_x = predicted_x
                         GREEN_BINS[bin_index].predicted_y = predicted_y
                 bin_index += 1
-            self.post('predicted_green', mat)
 
             # detect red section
             threshed = cv2.inRange(lab_split[1],
@@ -205,7 +209,7 @@ class Roulette(ModuleBase):
             # draw centroids for red sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             bin_index = 0
-            for contour in contours:
+            for contour in contours[:len(RED_BINS)]:
                 centroid_x, centroid_y = calculate_centroid(contour)
                 cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
                 cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
@@ -235,7 +239,7 @@ class Roulette(ModuleBase):
             # draw centroids for black sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             bin_index = 0
-            for contour in contours:
+            for contour in contours[:len(BLACK_BINS)]:
                 centroid_x, centroid_y = calculate_centroid(contour)
                 cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
                 cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
