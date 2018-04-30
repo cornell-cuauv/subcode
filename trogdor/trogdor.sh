@@ -30,10 +30,10 @@ VISION_CONFIG=$ROOT/vision/configs/master.yaml
 
 SUBMARINE=$CUAUV_VEHICLE
 
-if [ "$SUBMARINE" = "artemis" ]; then
+if [ "$SUBMARINE" = "castor" ]; then
   SERVICES=(seriald gx1d linearizerd dvld kalmand navigated controld3 shmserver ueye
   logging visiongui cameras webgui hydromathd modules deadman uptime )
-elif [ "$SUBMARINE" = "apollo" ]; then
+elif [ "$SUBMARINE" = "pollux" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver logging
   visiongui cameras webgui modules deadman uptime)
 else
