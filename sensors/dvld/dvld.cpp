@@ -61,20 +61,22 @@ void dvld::start(const string& port, const long uInterval) {
       velocity_y_tmp = (double) (packet.BTM_VEL.y) / 1000.0;
       velocity_z_tmp = (double) (packet.BTM_VEL.z) / 1000.0;
 
-      // ignore ridiculous values that make peter cry
+      // Ignore ridiculous values that make peter cry
       if (fabs(velocity_x_tmp) < 5) {
         svs.velocity_x = velocity_x_tmp;
       }
+
       if (fabs(velocity_y_tmp) < 5) {
         svs.velocity_y = velocity_y_tmp;
       }
+
       if (fabs(velocity_z_tmp) < 5) {
         svs.velocity_z = velocity_z_tmp;
       }
 
       svs.dmg_x = (double) ((packet.DIST_MADE_GOOD_BTM.y) / 1000.0);
       svs.dmg_y = (double) ((packet.DIST_MADE_GOOD_BTM.x) / 1000.0);
-      svs.dmg_z = (double) ((packet.DIST_MADE_GOOD_BTM.z) / 1000.0;)
+      svs.dmg_z = (double) ((packet.DIST_MADE_GOOD_BTM.z) / 1000.0);
 
       del_x = svs.dmg_x - prev_x;
       del_y = svs.dmg_y - prev_y;
@@ -89,7 +91,7 @@ void dvld::start(const string& port, const long uInterval) {
       prev_y = svs.dmg_y;
       svs.dmg_z = (double)(packet.DIST_MADE_GOOD_BTM.z)/10.0;
 
-      // recover bottom status
+      // Recover bottom status
       svs.low_amp_1 = (packet.BOTTOM_STATUS & 0x01) != 0;
       svs.low_correlation_1 = (packet.BOTTOM_STATUS & 0x02) != 0;
       svs.low_amp_2 = (packet.BOTTOM_STATUS & 0x04) != 0;
