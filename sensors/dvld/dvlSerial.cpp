@@ -175,33 +175,3 @@ int DVLSerialPort::flushInput() {
   }
   return tcflush(fd, TCIFLUSH);
 }
-
-int DVLSerialPort::readSer(unsigned char* buf, size_t size) {
-  // Check to see if serial port isn't working out
-  if (fd == -1) {
-    return -1;
-  }
-
-  u_int8_t tmpBuf;
-  int ret = 0;
-  size_t i;
-
-  unsigned char * ucharbuf;
-
-  for (i = 0; i < size;) {
-    // usleep(10000);
-    ret = read(fd, &tmpBuf, 1);
-
-    if (ret > 0) {
-      *((u_int8_t*) buf) = tmpBuf;
-      ucharbuf = (unsigned char*) buf;  // This is a hack (mine, for gcc4) and I don't like it -Tommy
-      // Why were we using void*s in the first place anyway?
-      ucharbuf++;
-      buf = ucharbuf;
-      i++;
-    }
-
-  }
-
-  return i;
-}
