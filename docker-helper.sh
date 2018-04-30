@@ -112,6 +112,9 @@ dockerVehicle() {
            -v "$CUAUV_DIR:/home/software/cuauv/software" \
            -v /usr/share/icons:/usr/share/icons:ro \
            -v /dev:/dev \
+           -p 22:22 \
+           -p 5000:5000 \
+           -p 8080:8080 \
            --privileged \
            --ipc=host \
            asb322/cuauv-jetson \
