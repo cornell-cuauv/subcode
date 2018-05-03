@@ -10,7 +10,7 @@ matplotlib.use('WX')
 import matplotlib.pyplot as plt
 import numpy, scipy
 CHANNEL_DEPTH = 128
-UDP_PAYLOAD_SIZE = 818 #Derived from wireshark.
+UDP_PAYLOAD_SIZE = 768 #818 #Derived from wireshark.
 UDP_IP="" #This means all interfaces?
 UDP_PORT=8899
 
