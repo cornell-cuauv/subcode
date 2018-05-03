@@ -24,7 +24,6 @@ packages=(
     stow
     tmux
     usbutils
-    wireshark
     wget
 
     # mission
@@ -95,8 +94,4 @@ update-alternatives --install /usr/bin/vim vim /usr/bin/nvim 60
 update-alternatives --config vim
 update-alternatives --install /usr/bin/editor editor /usr/bin/nvim 60
 update-alternatives --config editor
-
-# Allow wireshark to be run by non-root users
-echo "wireshark-common wireshark-common/install-setuid boolean true" | sudo debconf-set-selections
-dpkg-reconfigure wireshark-common
 
