@@ -36,8 +36,7 @@ class UDPThread(threading.Thread):
                     self.packet_counter += 1
                 finally:
                     pass
-            time.sleep(.00001)
-            time.sleep(2)
+            time.sleep(.001)
 
 udpthread = UDPThread()
 udpthread.start()
