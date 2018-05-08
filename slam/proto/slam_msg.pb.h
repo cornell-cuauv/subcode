@@ -161,52 +161,61 @@ class SlamMsg : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::std::string* release_id();
   void set_allocated_id(::std::string* id);
 
-  // optional double m_x = 2;
+  // optional double m_x = 3;
   bool has_m_x() const;
   void clear_m_x();
-  static const int kMXFieldNumber = 2;
+  static const int kMXFieldNumber = 3;
   double m_x() const;
   void set_m_x(double value);
 
-  // optional double m_y = 3;
+  // optional double m_y = 4;
   bool has_m_y() const;
   void clear_m_y();
-  static const int kMYFieldNumber = 3;
+  static const int kMYFieldNumber = 4;
   double m_y() const;
   void set_m_y(double value);
 
-  // optional double m_z = 4;
+  // optional double m_z = 5;
   bool has_m_z() const;
   void clear_m_z();
-  static const int kMZFieldNumber = 4;
+  static const int kMZFieldNumber = 5;
   double m_z() const;
   void set_m_z(double value);
 
-  // optional double u_x = 5;
+  // optional double u_x = 6;
   bool has_u_x() const;
   void clear_u_x();
-  static const int kUXFieldNumber = 5;
+  static const int kUXFieldNumber = 6;
   double u_x() const;
   void set_u_x(double value);
 
-  // optional double u_y = 6;
+  // optional double u_y = 7;
   bool has_u_y() const;
   void clear_u_y();
-  static const int kUYFieldNumber = 6;
+  static const int kUYFieldNumber = 7;
   double u_y() const;
   void set_u_y(double value);
 
-  // optional double u_z = 7;
+  // optional double u_z = 8;
   bool has_u_z() const;
   void clear_u_z();
-  static const int kUZFieldNumber = 7;
+  static const int kUZFieldNumber = 8;
   double u_z() const;
   void set_u_z(double value);
+
+  // required bool request = 2;
+  bool has_request() const;
+  void clear_request();
+  static const int kRequestFieldNumber = 2;
+  bool request() const;
+  void set_request(bool value);
 
   // @@protoc_insertion_point(class_scope:slam.SlamMsg)
  private:
   void set_has_id();
   void clear_has_id();
+  void set_has_request();
+  void clear_has_request();
   void set_has_m_x();
   void clear_has_m_x();
   void set_has_m_y();
@@ -220,6 +229,9 @@ class SlamMsg : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   void set_has_u_z();
   void clear_has_u_z();
 
+  // helper for ByteSizeLong()
+  size_t RequiredFieldsByteSizeFallback() const;
+
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
   mutable int _cached_size_;
@@ -230,6 +242,7 @@ class SlamMsg : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   double u_x_;
   double u_y_;
   double u_z_;
+  bool request_;
   friend struct ::protobuf_slam_5fmsg_2eproto::TableStruct;
   friend void ::protobuf_slam_5fmsg_2eproto::InitDefaultsSlamMsgImpl();
 };
@@ -307,7 +320,31 @@ inline void SlamMsg::set_allocated_id(::std::string* id) {
   // @@protoc_insertion_point(field_set_allocated:slam.SlamMsg.id)
 }
 
-// optional double m_x = 2;
+// required bool request = 2;
+inline bool SlamMsg::has_request() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void SlamMsg::set_has_request() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void SlamMsg::clear_has_request() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void SlamMsg::clear_request() {
+  request_ = false;
+  clear_has_request();
+}
+inline bool SlamMsg::request() const {
+  // @@protoc_insertion_point(field_get:slam.SlamMsg.request)
+  return request_;
+}
+inline void SlamMsg::set_request(bool value) {
+  set_has_request();
+  request_ = value;
+  // @@protoc_insertion_point(field_set:slam.SlamMsg.request)
+}
+
+// optional double m_x = 3;
 inline bool SlamMsg::has_m_x() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
@@ -331,7 +368,7 @@ inline void SlamMsg::set_m_x(double value) {
   // @@protoc_insertion_point(field_set:slam.SlamMsg.m_x)
 }
 
-// optional double m_y = 3;
+// optional double m_y = 4;
 inline bool SlamMsg::has_m_y() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
@@ -355,7 +392,7 @@ inline void SlamMsg::set_m_y(double value) {
   // @@protoc_insertion_point(field_set:slam.SlamMsg.m_y)
 }
 
-// optional double m_z = 4;
+// optional double m_z = 5;
 inline bool SlamMsg::has_m_z() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
@@ -379,7 +416,7 @@ inline void SlamMsg::set_m_z(double value) {
   // @@protoc_insertion_point(field_set:slam.SlamMsg.m_z)
 }
 
-// optional double u_x = 5;
+// optional double u_x = 6;
 inline bool SlamMsg::has_u_x() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
@@ -403,7 +440,7 @@ inline void SlamMsg::set_u_x(double value) {
   // @@protoc_insertion_point(field_set:slam.SlamMsg.u_x)
 }
 
-// optional double u_y = 6;
+// optional double u_y = 7;
 inline bool SlamMsg::has_u_y() const {
   return (_has_bits_[0] & 0x00000020u) != 0;
 }
@@ -427,7 +464,7 @@ inline void SlamMsg::set_u_y(double value) {
   // @@protoc_insertion_point(field_set:slam.SlamMsg.u_y)
 }
 
-// optional double u_z = 7;
+// optional double u_z = 8;
 inline bool SlamMsg::has_u_z() const {
   return (_has_bits_[0] & 0x00000040u) != 0;
 }

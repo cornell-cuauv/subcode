@@ -57,6 +57,7 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::slam::SlamMsg, id_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::slam::SlamMsg, request_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::slam::SlamMsg, m_x_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::slam::SlamMsg, m_y_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::slam::SlamMsg, m_z_),
@@ -64,6 +65,7 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::slam::SlamMsg, u_y_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::slam::SlamMsg, u_z_),
   0,
+  7,
   1,
   2,
   3,
@@ -72,7 +74,7 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   6,
 };
 static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, 12, sizeof(::slam::SlamMsg)},
+  { 0, 13, sizeof(::slam::SlamMsg)},
 };
 
 static ::google::protobuf::Message const * const file_default_instances[] = {
@@ -101,13 +103,13 @@ void protobuf_RegisterTypes(const ::std::string&) {
 void AddDescriptorsImpl() {
   InitDefaults();
   static const char descriptor[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-      "\n\016slam_msg.proto\022\004slam\"c\n\007SlamMsg\022\n\n\002id\030"
-      "\001 \002(\t\022\013\n\003m_x\030\002 \001(\001\022\013\n\003m_y\030\003 \001(\001\022\013\n\003m_z\030\004"
-      " \001(\001\022\013\n\003u_x\030\005 \001(\001\022\013\n\003u_y\030\006 \001(\001\022\013\n\003u_z\030\007 "
-      "\001(\001"
+      "\n\016slam_msg.proto\022\004slam\"t\n\007SlamMsg\022\n\n\002id\030"
+      "\001 \002(\t\022\017\n\007request\030\002 \002(\010\022\013\n\003m_x\030\003 \001(\001\022\013\n\003m"
+      "_y\030\004 \001(\001\022\013\n\003m_z\030\005 \001(\001\022\013\n\003u_x\030\006 \001(\001\022\013\n\003u_"
+      "y\030\007 \001(\001\022\013\n\003u_z\030\010 \001(\001"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 123);
+      descriptor, 140);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "slam_msg.proto", &protobuf_RegisterTypes);
 }
@@ -131,6 +133,7 @@ void SlamMsg::InitAsDefaultInstance() {
 }
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int SlamMsg::kIdFieldNumber;
+const int SlamMsg::kRequestFieldNumber;
 const int SlamMsg::kMXFieldNumber;
 const int SlamMsg::kMYFieldNumber;
 const int SlamMsg::kMZFieldNumber;
@@ -158,8 +161,8 @@ SlamMsg::SlamMsg(const SlamMsg& from)
     id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.id_);
   }
   ::memcpy(&m_x_, &from.m_x_,
-    static_cast<size_t>(reinterpret_cast<char*>(&u_z_) -
-    reinterpret_cast<char*>(&m_x_)) + sizeof(u_z_));
+    static_cast<size_t>(reinterpret_cast<char*>(&request_) -
+    reinterpret_cast<char*>(&m_x_)) + sizeof(request_));
   // @@protoc_insertion_point(copy_constructor:slam.SlamMsg)
 }
 
@@ -167,8 +170,8 @@ void SlamMsg::SharedCtor() {
   _cached_size_ = 0;
   id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(&m_x_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&u_z_) -
-      reinterpret_cast<char*>(&m_x_)) + sizeof(u_z_));
+      reinterpret_cast<char*>(&request_) -
+      reinterpret_cast<char*>(&m_x_)) + sizeof(request_));
 }
 
 SlamMsg::~SlamMsg() {
@@ -214,10 +217,10 @@ void SlamMsg::Clear() {
     GOOGLE_DCHECK(!id_.IsDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited()));
     (*id_.UnsafeRawStringPointer())->clear();
   }
-  if (cached_has_bits & 126u) {
+  if (cached_has_bits & 254u) {
     ::memset(&m_x_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&u_z_) -
-        reinterpret_cast<char*>(&m_x_)) + sizeof(u_z_));
+        reinterpret_cast<char*>(&request_) -
+        reinterpret_cast<char*>(&m_x_)) + sizeof(request_));
   }
   _has_bits_.Clear();
   _internal_metadata_.Clear();
@@ -249,10 +252,24 @@ bool SlamMsg::MergePartialFromCodedStream(
         break;
       }
 
-      // optional double m_x = 2;
+      // required bool request = 2;
       case 2: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(17u /* 17 & 0xFF */)) {
+            static_cast< ::google::protobuf::uint8>(16u /* 16 & 0xFF */)) {
+          set_has_request();
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &request_)));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // optional double m_x = 3;
+      case 3: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(25u /* 25 & 0xFF */)) {
           set_has_m_x();
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
@@ -263,10 +280,10 @@ bool SlamMsg::MergePartialFromCodedStream(
         break;
       }
 
-      // optional double m_y = 3;
-      case 3: {
+      // optional double m_y = 4;
+      case 4: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(25u /* 25 & 0xFF */)) {
+            static_cast< ::google::protobuf::uint8>(33u /* 33 & 0xFF */)) {
           set_has_m_y();
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
@@ -277,10 +294,10 @@ bool SlamMsg::MergePartialFromCodedStream(
         break;
       }
 
-      // optional double m_z = 4;
-      case 4: {
+      // optional double m_z = 5;
+      case 5: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(33u /* 33 & 0xFF */)) {
+            static_cast< ::google::protobuf::uint8>(41u /* 41 & 0xFF */)) {
           set_has_m_z();
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
@@ -291,10 +308,10 @@ bool SlamMsg::MergePartialFromCodedStream(
         break;
       }
 
-      // optional double u_x = 5;
-      case 5: {
+      // optional double u_x = 6;
+      case 6: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(41u /* 41 & 0xFF */)) {
+            static_cast< ::google::protobuf::uint8>(49u /* 49 & 0xFF */)) {
           set_has_u_x();
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
@@ -305,10 +322,10 @@ bool SlamMsg::MergePartialFromCodedStream(
         break;
       }
 
-      // optional double u_y = 6;
-      case 6: {
+      // optional double u_y = 7;
+      case 7: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(49u /* 49 & 0xFF */)) {
+            static_cast< ::google::protobuf::uint8>(57u /* 57 & 0xFF */)) {
           set_has_u_y();
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
@@ -319,10 +336,10 @@ bool SlamMsg::MergePartialFromCodedStream(
         break;
       }
 
-      // optional double u_z = 7;
-      case 7: {
+      // optional double u_z = 8;
+      case 8: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(57u /* 57 & 0xFF */)) {
+            static_cast< ::google::protobuf::uint8>(65u /* 65 & 0xFF */)) {
           set_has_u_z();
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
@@ -370,34 +387,39 @@ void SlamMsg::SerializeWithCachedSizes(
       1, this->id(), output);
   }
 
-  // optional double m_x = 2;
+  // required bool request = 2;
+  if (cached_has_bits & 0x00000080u) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(2, this->request(), output);
+  }
+
+  // optional double m_x = 3;
   if (cached_has_bits & 0x00000002u) {
-    ::google::protobuf::internal::WireFormatLite::WriteDouble(2, this->m_x(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(3, this->m_x(), output);
   }
 
-  // optional double m_y = 3;
+  // optional double m_y = 4;
   if (cached_has_bits & 0x00000004u) {
-    ::google::protobuf::internal::WireFormatLite::WriteDouble(3, this->m_y(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(4, this->m_y(), output);
   }
 
-  // optional double m_z = 4;
+  // optional double m_z = 5;
   if (cached_has_bits & 0x00000008u) {
-    ::google::protobuf::internal::WireFormatLite::WriteDouble(4, this->m_z(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(5, this->m_z(), output);
   }
 
-  // optional double u_x = 5;
+  // optional double u_x = 6;
   if (cached_has_bits & 0x00000010u) {
-    ::google::protobuf::internal::WireFormatLite::WriteDouble(5, this->u_x(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(6, this->u_x(), output);
   }
 
-  // optional double u_y = 6;
+  // optional double u_y = 7;
   if (cached_has_bits & 0x00000020u) {
-    ::google::protobuf::internal::WireFormatLite::WriteDouble(6, this->u_y(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(7, this->u_y(), output);
   }
 
-  // optional double u_z = 7;
+  // optional double u_z = 8;
   if (cached_has_bits & 0x00000040u) {
-    ::google::protobuf::internal::WireFormatLite::WriteDouble(7, this->u_z(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(8, this->u_z(), output);
   }
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -426,34 +448,39 @@ void SlamMsg::SerializeWithCachedSizes(
         1, this->id(), target);
   }
 
-  // optional double m_x = 2;
+  // required bool request = 2;
+  if (cached_has_bits & 0x00000080u) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(2, this->request(), target);
+  }
+
+  // optional double m_x = 3;
   if (cached_has_bits & 0x00000002u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(2, this->m_x(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(3, this->m_x(), target);
   }
 
-  // optional double m_y = 3;
+  // optional double m_y = 4;
   if (cached_has_bits & 0x00000004u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(3, this->m_y(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(4, this->m_y(), target);
   }
 
-  // optional double m_z = 4;
+  // optional double m_z = 5;
   if (cached_has_bits & 0x00000008u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(4, this->m_z(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(5, this->m_z(), target);
   }
 
-  // optional double u_x = 5;
+  // optional double u_x = 6;
   if (cached_has_bits & 0x00000010u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(5, this->u_x(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(6, this->u_x(), target);
   }
 
-  // optional double u_y = 6;
+  // optional double u_y = 7;
   if (cached_has_bits & 0x00000020u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(6, this->u_y(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(7, this->u_y(), target);
   }
 
-  // optional double u_z = 7;
+  // optional double u_z = 8;
   if (cached_has_bits & 0x00000040u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(7, this->u_z(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(8, this->u_z(), target);
   }
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -464,6 +491,24 @@ void SlamMsg::SerializeWithCachedSizes(
   return target;
 }
 
+size_t SlamMsg::RequiredFieldsByteSizeFallback() const {
+// @@protoc_insertion_point(required_fields_byte_size_fallback_start:slam.SlamMsg)
+  size_t total_size = 0;
+
+  if (has_id()) {
+    // required string id = 1;
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->id());
+  }
+
+  if (has_request()) {
+    // required bool request = 2;
+    total_size += 1 + 1;
+  }
+
+  return total_size;
+}
 size_t SlamMsg::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:slam.SlamMsg)
   size_t total_size = 0;
@@ -473,39 +518,45 @@ size_t SlamMsg::ByteSizeLong() const {
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         _internal_metadata_.unknown_fields());
   }
-  // required string id = 1;
-  if (has_id()) {
+  if (((_has_bits_[0] & 0x00000081) ^ 0x00000081) == 0) {  // All required fields are present.
+    // required string id = 1;
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
         this->id());
+
+    // required bool request = 2;
+    total_size += 1 + 1;
+
+  } else {
+    total_size += RequiredFieldsByteSizeFallback();
   }
   if (_has_bits_[0 / 32] & 126u) {
-    // optional double m_x = 2;
+    // optional double m_x = 3;
     if (has_m_x()) {
       total_size += 1 + 8;
     }
 
-    // optional double m_y = 3;
+    // optional double m_y = 4;
     if (has_m_y()) {
       total_size += 1 + 8;
     }
 
-    // optional double m_z = 4;
+    // optional double m_z = 5;
     if (has_m_z()) {
       total_size += 1 + 8;
     }
 
-    // optional double u_x = 5;
+    // optional double u_x = 6;
     if (has_u_x()) {
       total_size += 1 + 8;
     }
 
-    // optional double u_y = 6;
+    // optional double u_y = 7;
     if (has_u_y()) {
       total_size += 1 + 8;
     }
 
-    // optional double u_z = 7;
+    // optional double u_z = 8;
     if (has_u_z()) {
       total_size += 1 + 8;
     }
@@ -541,7 +592,7 @@ void SlamMsg::MergeFrom(const SlamMsg& from) {
   (void) cached_has_bits;
 
   cached_has_bits = from._has_bits_[0];
-  if (cached_has_bits & 127u) {
+  if (cached_has_bits & 255u) {
     if (cached_has_bits & 0x00000001u) {
       set_has_id();
       id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.id_);
@@ -564,6 +615,9 @@ void SlamMsg::MergeFrom(const SlamMsg& from) {
     if (cached_has_bits & 0x00000040u) {
       u_z_ = from.u_z_;
     }
+    if (cached_has_bits & 0x00000080u) {
+      request_ = from.request_;
+    }
     _has_bits_[0] |= cached_has_bits;
   }
 }
@@ -583,7 +637,7 @@ void SlamMsg::CopyFrom(const SlamMsg& from) {
 }
 
 bool SlamMsg::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+  if ((_has_bits_[0] & 0x00000081) != 0x00000081) return false;
   return true;
 }
 
@@ -600,6 +654,7 @@ void SlamMsg::InternalSwap(SlamMsg* other) {
   swap(u_x_, other->u_x_);
   swap(u_y_, other->u_y_);
   swap(u_z_, other->u_z_);
+  swap(request_, other->request_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   _internal_metadata_.Swap(&other->_internal_metadata_);
   swap(_cached_size_, other->_cached_size_);

@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='slam_msg.proto',
   package='slam',
   syntax='proto2',
-  serialized_pb=_b('\n\x0eslam_msg.proto\x12\x04slam\"c\n\x07SlamMsg\x12\n\n\x02id\x18\x01 \x02(\t\x12\x0b\n\x03m_x\x18\x02 \x01(\x01\x12\x0b\n\x03m_y\x18\x03 \x01(\x01\x12\x0b\n\x03m_z\x18\x04 \x01(\x01\x12\x0b\n\x03u_x\x18\x05 \x01(\x01\x12\x0b\n\x03u_y\x18\x06 \x01(\x01\x12\x0b\n\x03u_z\x18\x07 \x01(\x01')
+  serialized_pb=_b('\n\x0eslam_msg.proto\x12\x04slam\"t\n\x07SlamMsg\x12\n\n\x02id\x18\x01 \x02(\t\x12\x0f\n\x07request\x18\x02 \x02(\x08\x12\x0b\n\x03m_x\x18\x03 \x01(\x01\x12\x0b\n\x03m_y\x18\x04 \x01(\x01\x12\x0b\n\x03m_z\x18\x05 \x01(\x01\x12\x0b\n\x03u_x\x18\x06 \x01(\x01\x12\x0b\n\x03u_y\x18\x07 \x01(\x01\x12\x0b\n\x03u_z\x18\x08 \x01(\x01')
 )
 
 
@@ -40,43 +40,50 @@ _SLAMMSG = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='m_x', full_name='slam.SlamMsg.m_x', index=1,
-      number=2, type=1, cpp_type=5, label=1,
-      has_default_value=False, default_value=float(0),
+      name='request', full_name='slam.SlamMsg.request', index=1,
+      number=2, type=8, cpp_type=7, label=2,
+      has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='m_y', full_name='slam.SlamMsg.m_y', index=2,
+      name='m_x', full_name='slam.SlamMsg.m_x', index=2,
       number=3, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='m_z', full_name='slam.SlamMsg.m_z', index=3,
+      name='m_y', full_name='slam.SlamMsg.m_y', index=3,
       number=4, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='u_x', full_name='slam.SlamMsg.u_x', index=4,
+      name='m_z', full_name='slam.SlamMsg.m_z', index=4,
       number=5, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='u_y', full_name='slam.SlamMsg.u_y', index=5,
+      name='u_x', full_name='slam.SlamMsg.u_x', index=5,
       number=6, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='u_z', full_name='slam.SlamMsg.u_z', index=6,
+      name='u_y', full_name='slam.SlamMsg.u_y', index=6,
       number=7, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='u_z', full_name='slam.SlamMsg.u_z', index=7,
+      number=8, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -94,7 +101,7 @@ _SLAMMSG = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=24,
-  serialized_end=123,
+  serialized_end=140,
 )
 
 DESCRIPTOR.message_types_by_name['SlamMsg'] = _SLAMMSG

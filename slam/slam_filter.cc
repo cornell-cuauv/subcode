@@ -58,8 +58,11 @@ vec3 SlamParticle::GetState() {
     return position_;
 }
 
-vec3 SlamParticle::GetState(std::string id) {
-    return landmark_filters_.at(id).xhat_;
+vec6 SlamParticle::GetState(std::string id) {
+    vec6 ret;
+    ret << landmark_filters_.at(id).xhat_,
+           landmark_filters_.at(id).covs_.diagonal();
+    return ret;
 }
 
 std::ostream& operator<<(std::ostream &os, const SlamParticle &sp) {
@@ -109,6 +112,27 @@ void SlamFilter::Landmark(std::string id, const vec3 &relpos, const mat3 &cov) {
     }
 }
 
+vec3 SlamFilter::GetState() {
+    NormalizeWeights();
+    vec3 ret(vec3::Zero());
+    for (int i = 0; i < num_particles_; ++i) {
+        ret += weights_[i]*particles_[i].GetState();
+    }
+    return ret;
+}
+
+vec6 SlamFilter::GetState(std::string id) {
+    if (landmarks_.find(id) == landmarks_.end()) {
+        return vec6::Zero();
+    }
+    NormalizeWeights();
+    vec6 ret(vec6::Zero());
+    for (int i = 0; i < num_particles_; ++i) {
+        ret += weights_[i]*particles_[i].GetState(id);
+    }
+    return ret;
+}
+
 std::ostream& operator<<(std::ostream &os, const SlamFilter &sf) {
     for (int i = 0; i < sf.num_particles_; ++i) {
         os << "Particle " << i << ":" << std::endl;
@@ -127,6 +151,10 @@ void SlamFilter::NewLandmark(std::string id, const vec3 &relpos, const mat3 &cov
 }
 
 void SlamFilter::UpdateLandmark(std::string id, const vec3 &relpos, const mat3 &cov) {
+    if (landmarks_.find(id) == landmarks_.end()) {
+        NewLandmark(id, relpos, cov);
+        return;
+    }
     float certainty = exp(-1*cov.trace()/3);
     for (int i = 0; i < particles_.size(); ++i) {
         particles_.at(i).UpdateLandmark(id, relpos);

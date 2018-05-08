@@ -33,7 +33,7 @@ class SlamParticle {
         void ReinitRandom();
 
         vec3 GetState();
-        vec3 GetState(std::string id);
+        vec6 GetState(std::string id);
 
         friend std::ostream& operator<<(std::ostream &os, const SlamParticle &sp);
 
@@ -55,7 +55,7 @@ class SlamFilter {
         void Landmark(std::string id, const vec3 &relpos, const mat3 &cov);
 
         vec3 GetState();
-        vec3 GetState(std::string id);
+        vec6 GetState(std::string id);
 
         friend std::ostream& operator<<(std::ostream &os, const SlamFilter &sf);
 
