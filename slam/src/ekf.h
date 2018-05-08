@@ -4,23 +4,36 @@
 #include "util.h"
 #include <string>
 
-class SlamEKF {
+template<int n, int m, int b>
+class EKF {
     public:
-        Eigen::Matrix<float, 3, 1> xhat_;
-        Eigen::Matrix<float, 3, 3> covs_;
-        std::string id_;
+        Eigen::Matrix<float, n, 1> xhat_;
+        Eigen::Matrix<float, n, n> covs_;
     protected:
-        Eigen::Matrix<float, 3, 3> B_;
-        Eigen::Matrix<float, 3, 3> R_;
-        Eigen::Matrix<float, 3, 3> Q_;
+        Eigen::Matrix<float, n, b> B_;
+        Eigen::Matrix<float, m, m> R_;
+        Eigen::Matrix<float, n, n> Q_;
 
     public:
-        SlamEKF(const Eigen::Matrix<float, 3, 1> &x, 
-                const Eigen::Matrix<float, 3, 3> &p,
-                std::string id);
+        EKF(const Eigen::Matrix<float, n, b> &B, const Eigen::Matrix<float, m, m> &R, 
+            const Eigen::Matrix<float, n, n> &Q, const Eigen::Matrix<float, n, 1> &x, 
+            const Eigen::Matrix<float, n, n> &p);
 
-        void Predict(const Eigen::Matrix<float, 3, 1> &u);
-        void Update(const Eigen::Matrix<float, 3, 1> &z);
+        void Predict(const Eigen::Matrix<float, b, 1> &u,
+                     const Eigen::Matrix<float, n, 1> &xhat,
+                     const Eigen::Matrix<float, n, n> &F);
+        void Update(const Eigen::Matrix<float, m, 1> &y,
+                    const Eigen::Matrix<float, m, n> &H);
+};
+
+class SlamEKF: public EKF<3, 3, 3> {
+    public:
+        std::string id_;
+
+        SlamEKF(const vec3 &x, const mat3 &p, std::string id);
+
+        void Predict(const vec3 &u);
+        void Update(const vec3 &z);
 };
 
 #endif
