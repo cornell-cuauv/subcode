@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 import zmq
 import proto.slam_msg_pb2 as slam_msg
 
