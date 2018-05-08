@@ -31,6 +31,7 @@ class SlamEKF: public EKF<3, 3, 3> {
         std::string id_;
 
         SlamEKF(const vec3 &x, const mat3 &p, std::string id);
+        SlamEKF(const SlamEKF &orig);
 
         void Predict(const vec3 &u);
         void Update(const vec3 &z);

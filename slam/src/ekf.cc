@@ -24,7 +24,12 @@ void EKF<n,m,b>::Update(const Eigen::Matrix<float, m, 1> &y,
 }
 
 SlamEKF::SlamEKF(const vec3 &x, const mat3 &p, std::string id)
-    : EKF<3,3,3>::EKF(mat3::Zero(), mat3::Zero(), mat3::Zero(), x, p), id_(id) {}
+    : EKF<3,3,3>::EKF(mat3::Zero(), mat3::Zero(), mat3::Zero(), x, p), id_(id) {
+        R_ = mat3::Identity() * .3;
+}
+
+SlamEKF::SlamEKF(const SlamEKF &orig) 
+    : SlamEKF(orig.xhat_, orig.covs_, orig.id_) {}
 
 void SlamEKF::Predict(const vec3 &u) {
     EKF<3,3,3>::Predict(u, xhat_, mat3::Identity());
