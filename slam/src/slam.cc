@@ -1,23 +1,33 @@
 #include "slam_server.h"
-#include "ekf.h"
-#include <unistd.h>
+#include "slam_filter.h"
 #include <iostream>
 
 int main(int argc, char** argv) {
-    SlamEKF e(vec3::Zero(), mat3::Identity(), "test");
+    SlamFilter e = SlamFilter(2);
 
-    vec3 goal({1,2,3});
+    vec6 goal = vec6::Zero();
+    std::string x;
     for (int i = 1; i > 0; ++i) {
-        if (i % 10 == 0) {
-            goal += vec3({.2,-.2,0});
+        std::cin >> x; 
+        if (x == "u") {
+            int u;
+            std::cin >> u;
+            goal(0, 0) = u;
+            std::cout << goal.transpose() << std::endl;
+            e.Update(goal);
         }
-        std::cout << e.xhat_ << std::endl;
-        std::cout << "--" << std::endl;
-        std::cout << e.covs_ << std::endl << std::endl;
-
-        e.Predict(vec3::Zero());
-        e.Update(goal);
-        sleep(1);
+        else if (x == "l") {
+            float a, b, c;
+            std::cin >> x;
+            std::cin >> a;
+            std::cin >> b;
+            std::cin >> c;
+            e.Landmark(x, vec3({a,b,c}), mat3::Identity()*.01);
+        }
+        else {
+            std::cout << "Try again?" << std::endl;
+        }
+        std::cout << e << std::endl;
     }
 
     return 0;
