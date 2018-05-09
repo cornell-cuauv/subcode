@@ -9,7 +9,7 @@ class SlamClient:
         self.socket = self.ctx.socket(zmq.REQ)
         self.socket.connect("tcp://127.0.0.1:57411")
 
-    def observe_landmark(self, obj_id, m_x, m_y, m_z, u_x=0, u_y=0, u_z=0, certainty=None):
+    def observe_landmark(self, obj_id, m_x, m_y, m_z, u_x=0, u_y=0, u_z=0, uncertainty=None):
 
         msg = slam_msg.SlamMsg()
         msg.id = obj_id
@@ -17,14 +17,14 @@ class SlamClient:
         msg.m_x = m_x
         msg.m_y = m_y
         msg.m_z = m_z
-        if certainty is None:
+        if uncertainty is None:
             msg.u_x = u_x
             msg.u_y = u_y
             msg.u_z = u_z
         else:
-            msg.u_x = certainty
-            msg.u_y = certainty
-            msg.u_z = certainty
+            msg.u_x = uncertainty
+            msg.u_y = uncertainty
+            msg.u_z = uncertainty
 
         self.socket.send(msg.SerializeToString())
         msg = self.socket.recv()

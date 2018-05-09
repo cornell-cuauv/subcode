@@ -7,8 +7,7 @@ SlamServer::SlamServer(SlamFilter *filter)
 }
 
 void SlamServer::Listen() {
-    is_alive_ = true;
-    while (is_alive_) {
+    while (true) {
         zmq::message_t req;
         socket_.recv(&req);
 
@@ -52,8 +51,4 @@ void SlamServer::Listen() {
         }
     }
     std::cout << "Finishing Up..." << std::endl;
-}
-
-void SlamServer::Close() {
-    is_alive_ = false;
 }

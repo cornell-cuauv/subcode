@@ -3,8 +3,6 @@
 
 class SlamServer {
     private:
-        bool is_alive_;
-
         zmq::context_t ctx_;
         zmq::socket_t socket_;
 
@@ -12,8 +10,6 @@ class SlamServer {
 
     public:
         SlamServer(SlamFilter *filter);
-
         void Listen();
-        void Close();
 };
 

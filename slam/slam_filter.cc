@@ -1,4 +1,5 @@
 #include "slam_filter.h"
+#include "conf.h"
 #include <math.h>
 #include <chrono>
 #include <numeric>
@@ -21,7 +22,7 @@ void SlamParticle::AddLandmark(std::string id, const vec3 &relpos, const mat3 &c
 void SlamParticle::UpdateLandmark(std::string id, const vec3 &relpos) {
     landmark_filters_.at(id).Update(position_ + relpos);
 
-    std::exponential_distribution<float> exp(5);
+    std::exponential_distribution<float> exp(4);
     float a = exp(gen_);
     if (a > .5) {
         a = .5;
@@ -33,14 +34,14 @@ float SlamParticle::UpdateWeight(std::string id, const vec3 &relpos, float certa
     SlamEKF filter = landmark_filters_.at(id);
     vec3 error = position_ - (filter.xhat_ - relpos);
     Eigen::Matrix<float, 1, 1> normalized_error = certainty*error.transpose()*filter.covs_*error;
-    weight_ = exp(-1 * normalized_error(0,0));
+    weight_ *= exp(-1 * normalized_error(0,0));
     return weight_;
 }
 
 void SlamParticle::UpdateParticle(const vec6 &u, float weight) {
-    position_(0,0) += u(0,0)*dt*uniform_(gen_) + gaussian_(gen_)*dt*.03;
-    position_(1,0) += u(1,0)*dt*uniform_(gen_) + gaussian_(gen_)*dt*.03;
-    position_(2,0) += u(2,0)*dt*uniform_(gen_) + gaussian_(gen_)*dt*.03;
+    position_(0,0) += u(0,0)*DT*uniform_(gen_) + gaussian_(gen_)*DT*.03;
+    position_(1,0) += u(1,0)*DT*uniform_(gen_) + gaussian_(gen_)*DT*.03;
+    position_(2,0) = u(2,0);
 
     orientation_(0,0) = u(3,0);
     orientation_(1,0) = u(4,0);
@@ -93,6 +94,7 @@ SlamFilter::SlamFilter(int n, const vec3 &pos, const vec3 &ori): num_particles_(
 }
 
 void SlamFilter::Update(const vec6 &u) {
+    mutex_.lock();
     float total_weight = std::accumulate(weights_.begin(), weights_.end(), 0.);
     std::cout << total_weight << std::endl;
     float offset = total_weight/(weights_.size()*100);
@@ -101,23 +103,28 @@ void SlamFilter::Update(const vec6 &u) {
         weights_[i] = (weights_[i] + offset)/total;
         particles_.at(i).UpdateParticle(u, weights_[i]);
     }
+    mutex_.unlock();
 }
 
 void SlamFilter::Landmark(std::string id, const vec3 &relpos, const mat3 &cov) {
+    mutex_.lock();
     if (landmarks_.find(id) == landmarks_.end()) {
         NewLandmark(id, relpos, cov);
     }
     else {
         UpdateLandmark(id, relpos, cov);
     }
+    mutex_.unlock();
 }
 
 vec3 SlamFilter::GetState() {
+    mutex_.lock();
     NormalizeWeights();
     vec3 ret(vec3::Zero());
     for (int i = 0; i < num_particles_; ++i) {
         ret += weights_[i]*particles_[i].GetState();
     }
+    mutex_.unlock();
     return ret;
 }
 
@@ -125,11 +132,13 @@ vec6 SlamFilter::GetState(std::string id) {
     if (landmarks_.find(id) == landmarks_.end()) {
         return vec6::Zero();
     }
+    mutex_.lock();
     NormalizeWeights();
     vec6 ret(vec6::Zero());
     for (int i = 0; i < num_particles_; ++i) {
         ret += weights_[i]*particles_[i].GetState(id);
     }
+    mutex_.unlock();
     return ret;
 }
 

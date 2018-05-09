@@ -6,8 +6,7 @@
 #include <unordered_set>
 #include <random>
 #include <iostream>
-
-#define dt .25
+#include <mutex>
 
 class SlamParticle {
     public:
@@ -47,6 +46,8 @@ class SlamFilter {
         int num_particles_;
 
         std::default_random_engine gen_;
+
+        std::mutex mutex_;
 
     public:
         SlamFilter(int n);
