@@ -19,12 +19,23 @@ PATH_FOLLOW_DEPTH = .6
 PATH_SEARCH_DEPTH = .6
 PATH_RIGHT_FIRST = True
 
-class center(Task):
-    def update_data(self):
-        self.path_results = shm.path_results_1.get()
+def check_seen(results):
+    visible = results.visible.get()
 
-    def on_first_run(self):
-        self.update_data()
+    #print(visible)
+    if visible > 0:
+        return True
+    else:
+        #print('Lost Path!')
+        return False
+
+
+class center(Task):
+    def update_data(self, results):
+        self.path_results = results.get()
+
+    def on_first_run(self, results):
+        self.update_data(results)
 
         path_found = self.path_results.visible > 0
 
@@ -34,15 +45,13 @@ class center(Task):
                                      target=(0,0),
                                      deadband=(.05,.05), px=0.5, py=0.5, dx=0.02, dy=0.02,
                                      valid=path_found)
-        self.logi("Beginning to center on the path")
 
-
-    def on_run(self):
-        self.update_data()
+    def on_run(self, results):
+        self.update_data(results)
         self.center()
 
-        if not check_seen():
-            self.finish(success=False)
+        # if not check_seen(results):
+        #     self.finish(success=False)
 
         if self.centered_checker.check(self.center.finished):
             self.center.stop()
@@ -51,36 +60,12 @@ class center(Task):
 def checkNotAligned(results):
     #returns false until aligned
     c = abs(results.center_x) < .05 and abs(results.center_y) < .05
-    return c
+    a = abs(results.angle) < 95 and abs(results.angle) > 85
+    print(abs(results.angle))
+    print (abs(results.center_x))
+    print(not (c and a))
+    return not (c and a)
 
-class align(Task):
-    def update_data(self):
-        self.path_results = shm.path_results_1.get()
-
-    def on_first_run(self):
-        self.update_data()
-
-        self.align = Heading(lambda: self.path_results.angle + shm.kalman.heading.get() + 90, deadband=0.1)
-
-        self.alignment_checker = ConsistencyCheck(49, 50)
-
-        path_found = self.path_results.visible > 0
-
-        self.center = DownwardTarget(lambda self=self: (self.path_results.center_x, self.path_results.center_y),
-                                     target=(0,0),
-                                     deadband=(.05,.05), px=0.2, py=0.2, dx=0.02, dy=0.02,
-                                     valid=path_found)
-
-    def on_run(self):
-        self.update_data()
-
-        self.align()
-
-        if not check_seen():
-            self.finish(success=False)
-
-        if self.alignment_checker.check(False):
-            self.finish()
 
 search_task_behind = lambda: SearchFor(VelocityTSearch(forward=2,stride = 3, rightFirst=PATH_RIGHT_FIRST, checkBehind=True),
                                 lambda: shm.path_results_1.visible.get() > 0,
@@ -89,29 +74,6 @@ search_task_behind = lambda: SearchFor(VelocityTSearch(forward=2,stride = 3, rig
 search_task= lambda: SearchFor(VelocityTSearch(forward=2,stride = 3, rightFirst=PATH_RIGHT_FIRST),
                                 lambda: shm.path_results_1.visible.get() > 0,
                                 consistent_frames=(10, 10))
-
-pitch_search_task = lambda: SearchFor(PitchSearch(30),
-                                      lambda: shm.path_results_1.visible.get() > 0,
-                                      consistent_frames=(6, 6))
-
-path_test = lambda: Sequential(Depth(PATH_SEARCH_DEPTH),
-                               search_task(), center(), align(),
-                               Depth(PATH_FOLLOW_DEPTH))
-
-pitch_path_test = lambda: Sequential(Depth(PATH_SEARCH_DEPTH),
-                          pitch_search_task(), Zero(),
-                          Concurrent(center(), Pitch(0)), Zero(),
-                          center(), align(), Depth(PATH_FOLLOW_DEPTH))
-
-def check_seen():
-    visible = shm.path_results_1.visible.get()
-
-    #print(visible)
-    if visible > 0:
-        return True
-    else:
-        #print('Lost Path!')
-        return False
 
 class Timeout(Task):
     def on_first_run(self, time, task, *args, **kwargs):
@@ -126,129 +88,56 @@ class Timeout(Task):
           self.logw('Task timed out in {} seconds!'.format(time))
           self.finish()
 
+def pathAngle(results):
+    a = results.angle
+    h = shm.kalman.heading.get()
+    if abs(h + (a + 90)) > abs(h + (a - 90)):
+        return h + a + 90
+    else:
+        return h + a - 90
+
 def one_path(grp):
-    return Timeout(45, Sequential(
-        Log('Going to Search Depth'),
-        Depth(PATH_SEARCH_DEPTH),
+    return Timeout(90, Sequential(
         Zero(),
-        Log('Sway searching for path with Behind'),
-        TrackMovementY(search_task_behind()),
-          Retry(lambda: Sequential(
-            Zero(),
-            Log('Sway searching for path; may have been lost'),
-            TrackMovementY(search_task(), shm.jank_pos.y.get()),
-            Log('Centering on path'),
-            Conditional(
-              center(),
-
-              on_fail=Fail(Sequential(
-                Log("Path lost, Attempting to Restore Y pos"),
-                Zero(),
-                TrackMovementY(RestorePosY(.3), shm.jank_pos.y.get()),
-              ))
-            ),
-
-            Depth(PATH_FOLLOW_DEPTH),
-            Log('Aligning with path'),
-            Concurrent(
-                align(),
-                center(),
-                finite=False
-            ),
-            ), float("inf")),
-
-        Zero(),
-        Log('Aligned, moving forward'),
-        Timed(VelocityX(.4),3),
-        Zero()
-        #Depth(PATH_FOLLOW_DEPTH)
-    ))
-
-def test_path(grp):
-    return Timeout(45, Sequential(
-        # Log('Going to Search Depth'),
-        # Depth(PATH_SEARCH_DEPTH),
-        # Zero(),
-        # Log('Sway searching for path with Behind'),
-        # TrackMovementY(search_task_behind()),
-          While(lambda: Sequential(
+        While(lambda: Sequential(
             Zero(),
             Log('Centering on path'),
-            center(),
+            center(grp),
+            Log('Going to follow depth'),
             Depth(PATH_FOLLOW_DEPTH),
             Log('Aligning with path'),
-            Heading(shm.path_results_1.angle.get() + shm.kalman.heading.get() + 90, deadband=0.1),
+            Heading(pathAngle(grp.get()), deadband=0.1),
             Zero(),
-            Log('Aligned, I hope')
-            ), lambda: checkNotAligned(shm.path_results_1.get())),
-
+            Timer(1),
+            Log(grp.angle.get()),
+        ), lambda: checkNotAligned(grp.get())),
+        Log('aligned'),
         Zero(),
-        # Log('Aligned, moving forward'),
-        # Timed(VelocityX(.4),3),
-        # Zero()
-        # #Depth(PATH_FOLLOW_DEPTH)
     ))
 
-full = test_path(shm.desires)
-
-def second_path(grp):
+def both_paths():
     return Sequential(
         Log('Going to Search Depth'),
         Depth(PATH_SEARCH_DEPTH),
-        Retry(lambda: Sequential(
-            Zero(),
-            Log('Sway searching for path'),
-            search_task(),
-            Log('Centering on path'),
-            center(),
-
-            Depth(PATH_FOLLOW_DEPTH),
-            Log('Aligning with path'),
-            Concurrent(
-                align(),
-                center(),
-                finite=False
-            ),
-            ), float("inf")),
         Zero(),
-        Log('Aligned, moving forward'),
-        Timed(VelocityX(.4),3),
+        Log('Beginning to align to Path 1'),
+        one_path(shm.path_results_1),
+        Log('Moving forward'),
+        Timed(VelocityX(.2), 1),
+        Log('Beginning to align to Path 2'),
+        one_path(shm.path_results_2),
+        Log('Done'),
         Zero()
-        #Depth(PATH_FOLLOW_DEPTH)
     )
 
-#paths_mission = second_path(shm.desires)
-
-def pitch_path(grp):
-    return Sequential(
-             Depth(PATH_SEARCH_DEPTH),
-             pitch_search_task(),
-             Zero(),
-             center(),
-             Pitch(0),
-             center(),
-
-             Depth(PATH_FOLLOW_DEPTH),
-
-             Concurrent(
-                 #center(),
-                 align(),
-                 finite=False,
-             ),
-             PositionalControl(),
-             Zero(),
-    )
-
-pitch_path_mission = pitch_path(shm.desires)
-
-
+full = both_paths()
 
 class OptimizablePath(Task):
   def desiredModules(self):
     return [shm.vision_modules.Paths]
 
   def on_first_run(self, grp):
-    self.subtask = one_path(grp)
+    self.subtask = test_path(grp)
     self.has_made_progress = False
 
   def on_run(self, grp):

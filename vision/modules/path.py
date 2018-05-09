@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from collections import namedtuple
-from math import radians, atan2, sqrt
+from math import radians, atan2, sqrt, sin, cos
 
 import cv2
 import numpy as np
@@ -47,6 +47,7 @@ segment_info = namedtuple("segment_info", ["x1", "y1", "x2", "y2", "angle", "id"
 line_info = namedtuple("line_info", ["x1", "y1", "x2", "y2", "angle", "length", "id"])
 
 INVALID_ERROR = 1e99
+DOWNSCALE_RATIO = .5
 
 class Pipes(ModuleBase):
     tracked_lines = []
@@ -54,10 +55,12 @@ class Pipes(ModuleBase):
     path_group_2= get_zero_path_group()
 
     def angle(self, x1, y1, x2, y2):
-        return atan2(y2-y1, x2-x1)
+        a = atan2(y2-y1, x2-x1)
+        return a
 
     def angle_diff(self, a1, a2):
-        a=min((2*np.pi) - abs(a1-a2), abs(a1-a2))
+        # a=min((2*np.pi) - abs(a1-a2), abs(a1-a2))
+        a = atan2( sin(a1-a2), cos(a1-a2))
         return abs(a)
 
     def line_error(self, l, line):
@@ -88,8 +91,8 @@ class Pipes(ModuleBase):
         return threshes
 
     def find_lines(self, thresh):
-        minLineLength = 100
-        maxLineGap = 100
+        minLineLength = 100 * DOWNSCALE_RATIO
+        maxLineGap = 100 * DOWNSCALE_RATIO
         return cv2.HoughLinesP(thresh,1,np.pi/180,100,minLineLength,maxLineGap)
 
     #A list of segment_infos sorted in order of best
@@ -117,6 +120,7 @@ class Pipes(ModuleBase):
         xa2 = info[0].x2
         ya2 = info[0].y2
         num = 0
+        angP = None
 
         for l in info:
           num += 1
@@ -140,7 +144,8 @@ class Pipes(ModuleBase):
         x = segment_info(int(xa1 / num), int(ya1 / num), int(xa2 / num), int(ya2 / num), langle, 0,0)
         length = sqrt((y2-y1)**2 + (x2-x1)**2)
         if length > 100:
-          final.append(x)
+            final.append(x)
+
         return final
 
     def tag(self, mat, text, pos):
@@ -168,6 +173,8 @@ class Pipes(ModuleBase):
             ang = self.options['min_angle_diff'] * (line.updated + 1)
             c=False
             for l in lines:
+              # print("a")
+              # print(self.angle_diff(l.angle, line.angle))
               if self.angle_diff(l.angle, line.angle) < ang and self.line_error(l, line) < 50 * (line.updated + 1):
                 l2 = segment_info(l.x1, l.y1, l.x2, l.y2, l.angle, line.id, 0)
                 lines.remove(l)
@@ -193,13 +200,16 @@ class Pipes(ModuleBase):
         self.path_group_1.center_y = center[1]
         # length = sqrt((t.y2-t.y1)**2 + (t.x2-t.x1)**2)
         # self.path_group_1.length = length
-        self.path_group_1.visible = True
+        if t.updated == 0:
+          self.path_group_1.visible = True
+        else:
+          self.path_group_1.visible = False
         shm.path_results_1.set(self.path_group_1)
 
         t = self.tracked_lines[1]
         ang = self.angle(t.x1, t.y1, t.x2, t.y2)
         ang = ang / (np.pi) * 180
-        self.path_group_1.angle = ang
+        self.path_group_2.angle = ang
         x = (t.x1 + t.x2) / 2
         y = (t.y1 + t.y2) / 2
         center = self.normalized((int(x), int(y)))
@@ -207,20 +217,27 @@ class Pipes(ModuleBase):
         self.path_group_2.center_y = center[1]
         # length = sqrt((t.y2-t.y1)**2 + (t.x2-t.x1)**2)
         # self.path_group_1.length = length
-        self.path_group_2.visible = True
+        if t.updated == 0:
+          self.path_group_2.visible = True
+        else:
+          self.path_group_2.visible = False
         shm.path_results_2.set(self.path_group_2)
 
 
     def process(self, mat):
+        mat = cv2.resize(mat, (int(mat.shape[1] * DOWNSCALE_RATIO),
+                               int(mat.shape[0] * DOWNSCALE_RATIO)))
         image_size = mat.shape[0]*mat.shape[1]
 
         self.post('orig', mat)
         threshes = self.threshold(mat)
 
+
+        lineMat = np.copy(mat)
+
         lines = self.find_lines(threshes["morphed"])
         error = namedtuple("error", ["lines", "error"])
 
-        lineMat = np.copy(mat)
         linesI = self.average_lines(lines)
         linesI = self.label_lines(linesI, lineMat)
 
