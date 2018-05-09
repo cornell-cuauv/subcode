@@ -3,6 +3,7 @@
 #include <math.h>
 #include <chrono>
 #include <numeric>
+#include <fstream>
 
 SlamParticle::SlamParticle(float weight, const vec3 &pos, const vec3 &ori)
     : weight_(weight), position_(pos), orientation_(ori) {
@@ -141,6 +142,23 @@ vec6 SlamFilter::GetState(std::string id) {
     mutex_.unlock();
     return ret;
 }
+
+void SlamFilter::GNUPlotOut() {
+    std::ofstream particle("slam/particle.dat");
+    for (int i = 0; i < num_particles_; ++i) {
+        vec3 position = particles_[i].GetState();
+        particle << position(0,0) << " " << position(1,0) << "\n";
+    }
+    particle.close();
+
+    std::ofstream landmark("slam/landmark.dat");
+    for (std::string lm: landmarks_) {
+        vec6 data = GetState(lm);
+        landmark << data(0,0) << " " << data(1,0) << " " << data(3, 0) << " " << data(4,0) << "\n";
+    }
+    landmark.close();
+}
+
 
 std::ostream& operator<<(std::ostream &os, const SlamFilter &sf) {
     for (int i = 0; i < sf.num_particles_; ++i) {

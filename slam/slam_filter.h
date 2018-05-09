@@ -16,11 +16,11 @@ class SlamParticle {
         vec3 position_;
         vec3 orientation_;
 
-        std::unordered_map<std::string, SlamEKF> landmark_filters_;
-
         std::default_random_engine gen_;
         std::normal_distribution<float> uniform_;
         std::normal_distribution<float> gaussian_;
+
+        std::unordered_map<std::string, SlamEKF> landmark_filters_;
 
     public:
         SlamParticle(float weight, const vec3 &pos, const vec3 &ori);
@@ -40,10 +40,10 @@ class SlamParticle {
 
 class SlamFilter {
     private:
+        int num_particles_;
         std::vector<SlamParticle> particles_;
         std::vector<float> weights_;
         std::unordered_set<std::string> landmarks_;
-        int num_particles_;
 
         std::default_random_engine gen_;
 
@@ -57,6 +57,9 @@ class SlamFilter {
 
         vec3 GetState();
         vec6 GetState(std::string id);
+
+        void GNUPlotOut();
+
 
         friend std::ostream& operator<<(std::ostream &os, const SlamFilter &sf);
 
