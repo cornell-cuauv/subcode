@@ -52,7 +52,6 @@ class center(Task):
 
         # if not check_seen(results):
         #     self.finish(success=False)
-
         if self.centered_checker.check(self.center.finished):
             self.center.stop()
             self.finish()
@@ -72,7 +71,7 @@ search_task_behind = lambda: SearchFor(VelocityTSearch(forward=2,stride = 3, rig
                                 consistent_frames=(10, 10))
 
 search_task= lambda: SearchFor(VelocityTSearch(forward=2,stride = 3, rightFirst=PATH_RIGHT_FIRST),
-                                lambda: shm.path_results_1.visible.get() > 0,
+                                lambda: (shm.path_results_1.visible.get() > 0 and shm.path_results_2.visible.get() > 0),
                                 consistent_frames=(10, 10))
 
 class Timeout(Task):
@@ -91,14 +90,15 @@ class Timeout(Task):
 def pathAngle(results):
     a = results.angle
     h = shm.kalman.heading.get()
-    if abs(h + (a + 90)) > abs(h + (a - 90)):
-        return h + a + 90
-    else:
+    if abs(h - (a + 90)) > abs(h - (a - 90)):
         return h + a - 90
+    else:
+        return h + a + 90
 
 def one_path(grp):
     return Timeout(90, Sequential(
         Zero(),
+        search_task(),
         While(lambda: Sequential(
             Zero(),
             Log('Centering on path'),
