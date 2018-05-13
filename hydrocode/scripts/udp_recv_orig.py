@@ -51,7 +51,7 @@ plt.xlabel("Sample (n)")
 plt.ylabel("Amplitude")
 ax = fig.add_subplot(111)
 ax.set_xlim((0,CHANNEL_DEPTH))
-ax.set_ylim((0,4100))
+ax.set_ylim((0,16000))
 
 #line1,line2,line3 = ax.plot(x, y, 'r-',label='ADC1',x,y,'b-',label='ADC2',x,y,'g-',label='ADC3') # Returns a tuple of line objects, thus the comma
 line1,line2,line3 = ax.plot(x, y, 'r-',x,y,'b-',x,y,'g-') # Returns a tuple of line objects, thus the comma
