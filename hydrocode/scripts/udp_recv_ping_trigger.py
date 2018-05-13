@@ -15,7 +15,7 @@ UDP_IP="" #This means all interfaces?
 UDP_PORT=8899
 
 print "Enter trigger threshold between 0 and 4096"
-threshold=10000
+threshold=11000
 if len(sys.argv) > 1:
     threshold = float(sys.argv[1])
 #sock.setblocking(0)
