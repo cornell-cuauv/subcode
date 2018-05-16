@@ -37,8 +37,12 @@ int main(int argc, char** argv) {
             update <<  ns, es, k.depth, k.heading, k.pitch, k.roll;
 	}
         filter.Update(update);
+#ifdef PLOT
         filter.GNUPlotOut();
+#endif
+#ifdef VERBOSE
         std::cout << filter << std::endl;
+#endif
 
         unsigned end = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
         unsigned delta = DT*1000 - (end - start);

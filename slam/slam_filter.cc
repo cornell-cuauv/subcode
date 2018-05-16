@@ -10,8 +10,8 @@ SlamParticle::SlamParticle(float weight, const vec3 &pos, const vec3 &ori)
 
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         gen_ = std::default_random_engine(seed);
-        uniform_ = std::normal_distribution<float>(.9, .1);
-        gaussian_ = std::normal_distribution<float>(0, 1);
+        uniform_ = std::normal_distribution<float>(PROCESS_ACCURACY, PROCESS_NOISE);
+        gaussian_ = std::normal_distribution<float>(0, PARTICLE_NOISE);
 }
 
 
@@ -23,7 +23,7 @@ void SlamParticle::AddLandmark(std::string id, const vec3 &relpos, const mat3 &c
 void SlamParticle::UpdateLandmark(std::string id, const vec3 &relpos) {
     landmark_filters_.at(id).Update(position_ + relpos);
 
-    std::exponential_distribution<float> exp(4);
+    std::exponential_distribution<float> exp(LANDMARK_SIGNIFICANCE);
     float a = exp(gen_);
     if (a > .5) {
         a = .5;
@@ -40,8 +40,8 @@ float SlamParticle::UpdateWeight(std::string id, const vec3 &relpos, float certa
 }
 
 void SlamParticle::UpdateParticle(const vec6 &u, float weight) {
-    position_(0,0) += u(0,0)*DT*uniform_(gen_) + gaussian_(gen_)*DT*.03;
-    position_(1,0) += u(1,0)*DT*uniform_(gen_) + gaussian_(gen_)*DT*.03;
+    position_(0,0) += u(0,0)*DT*uniform_(gen_) + gaussian_(gen_)*DT*.04;
+    position_(1,0) += u(1,0)*DT*uniform_(gen_) + gaussian_(gen_)*DT*.04;
     position_(2,0) = u(2,0);
 
     orientation_(0,0) = u(3,0);
