@@ -37,7 +37,7 @@ packages=(
 
 packages2=(
     posix_ipc
-    pygame
+    # pygame
     cryptography
 )
 
