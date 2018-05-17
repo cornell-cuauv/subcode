@@ -7,6 +7,7 @@ packages=(
     dialog
     htop
     iotop
+    iputils
     ipython
     ipython3
     jq

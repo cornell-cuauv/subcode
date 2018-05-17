@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -xeuo pipefail
 
+apt-get install -y libffi-dev openssl libssl-dev
+
 packages=(
     pyserial
     watchdog
@@ -25,11 +27,14 @@ packages=(
     pygobject
 
     nanomsg
+
+    cupy
 )
 
 packages2=(
     posix_ipc
     pygame
+    cryptography
 )
 
 packages3=(

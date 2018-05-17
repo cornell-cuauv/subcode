@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [[ "$CUAUV_ARCH" != "x86_64" ]]; then
+	echo "Cannot install Caffe on $CUAUV_ARCH"
+	exit 0
+fi
+
 # based on https://github.com/BVLC/caffe/wiki/Ubuntu-16.04-or-15.10-Installation-Guide
 
 apt-get install -y unzip
