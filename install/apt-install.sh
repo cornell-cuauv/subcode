@@ -7,7 +7,8 @@ packages=(
     dialog
     htop
     iotop
-    iputils
+    iputils-ping
+    iputils-tracepath
     ipython
     ipython3
     jq
