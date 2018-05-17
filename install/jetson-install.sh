@@ -1,4 +1,4 @@
-if [[ "$(uname -m)" != "aarch8" ]]; then
+if [[ "$(uname -m)" != "aarch64" ]]; then
 	echo "Skipping Jetson install because arch is $(uname -m)"
 	exit 0
 fi
