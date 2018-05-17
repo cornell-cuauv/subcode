@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -xeuo pipefail
 
-export CUAUV_ARCH="$(uname -m)"
-
 export DEBIAN_FRONTEND=noninteractive
 rm -rf /var/lib/apt/lists/*
 apt-get update -y -o Acquire::CompressionTypes::Order::=gz

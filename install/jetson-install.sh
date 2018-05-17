@@ -1,5 +1,5 @@
-if [[ "$CUAUV_ARCH" != "aarch8" ]]; then
-	echo "Skipping Jetson install because arch is $CUAUV_ARCH"
+if [[ "$(uname -m)" != "aarch8" ]]; then
+	echo "Skipping Jetson install because arch is $(uname -m)"
 	exit 0
 fi
 

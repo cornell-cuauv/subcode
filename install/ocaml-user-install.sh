@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -xeuo pipefail
 
-if [[ "$CUAUV_ARCH" != "x86_64" ]]; then
-	echo "Cannot install OCaml on $CUAUV_ARCH"
+if [[ "$(uname -m)" != "x86_64" ]]; then
+	echo "Cannot install OCaml on $(uname -m)"
 	exit 0
 fi
 

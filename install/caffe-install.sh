@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-if [[ "$CUAUV_ARCH" != "x86_64" ]]; then
-	echo "Cannot install Caffe on $CUAUV_ARCH"
+if [[ "$(uname -m)" != "x86_64" ]]; then
+	echo "Cannot install Caffe on $(uname -m)"
 	exit 0
 fi
 
