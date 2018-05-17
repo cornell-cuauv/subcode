@@ -7,6 +7,7 @@
 apt-get install -y apt-utils
 
 packages=(
+    autoconf
     build-essential
     cmake
     curl
@@ -24,6 +25,7 @@ packages=(
     python3-scipy
     screen
     sudo
+    unzip
     wireshark
     wget
     xorg
