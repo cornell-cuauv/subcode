@@ -289,11 +289,11 @@ while True:
 
         # Update
         # TODO: It doesn't make sense to update regardless of whether there is new sensor data
-        # outputs.update(**position_filter.update(outputs.heading, x_vel, x_acc,
-        #                                         y_vel, y_acc, depth, u,
-        #                                         active_measurements,
-        #                                         curr_thrusters,
-        #                                         outputs.pitch, outputs.roll))
+        outputs.update(**position_filter.update(outputs.heading, x_vel, x_acc,
+                                                y_vel, y_acc, depth, u,
+                                                active_measurements,
+                                                curr_thrusters,
+                                                outputs.pitch, outputs.roll))
 
         outputs.velz = z_vel
        
