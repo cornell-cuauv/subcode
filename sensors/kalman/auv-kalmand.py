@@ -154,6 +154,7 @@ kalman_xHat = np.array([[ x_vel, 0, y_vel, 0, 0, 0, depth, 0]]).reshape(8, 1)
 position_filter = PositionFilter(kalman_xHat)
 
 start = time.time()
+real_start = time.time()
 iteration = 0
 while True:
     # TODO Should we wait on gx4 group write?
@@ -198,10 +199,10 @@ while True:
                 quat_orientation_filter.x_hat = q_state
                 quat_mode = True
 
-            quat_orientation_filter.predict()
+            # quat_orientation_filter.predict()
 
-            # TODO: It doesn't make sense to update regardless of whether there is new sensor data
-            quat_orientation_filter.update(list(quat_in) + [heading_rate_in, pitch_rate_in, roll_rate_in])
+            # # TODO: It doesn't make sense to update regardless of whether there is new sensor data
+            # quat_orientation_filter.update(list(quat_in) + [heading_rate_in, pitch_rate_in, roll_rate_in])
 
             data = quat_orientation_filter.x_hat
             sub_quat = Quaternion(q=data[:4])
@@ -288,11 +289,11 @@ while True:
 
         # Update
         # TODO: It doesn't make sense to update regardless of whether there is new sensor data
-        outputs.update(**position_filter.update(outputs.heading, x_vel, x_acc,
-                                                y_vel, y_acc, depth, u,
-                                                active_measurements,
-                                                curr_thrusters,
-                                                outputs.pitch, outputs.roll))
+        # outputs.update(**position_filter.update(outputs.heading, x_vel, x_acc,
+        #                                         y_vel, y_acc, depth, u,
+        #                                         active_measurements,
+        #                                         curr_thrusters,
+        #                                         outputs.pitch, outputs.roll))
 
         outputs.velz = z_vel
        
@@ -305,5 +306,9 @@ while True:
         shm.kalman.set(outputs)
 
         iteration += 1
+        if (iteration % 100 == 0):
+            iteration = 0
+            real_start = time.time()
+        print(iteration/(real_start-time.time()))
 
     time.sleep(dt/5.)
