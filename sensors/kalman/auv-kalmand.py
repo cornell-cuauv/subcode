@@ -199,10 +199,10 @@ while True:
                 quat_orientation_filter.x_hat = q_state
                 quat_mode = True
 
-            # quat_orientation_filter.predict()
+            quat_orientation_filter.predict()
 
-            # # TODO: It doesn't make sense to update regardless of whether there is new sensor data
-            # quat_orientation_filter.update(list(quat_in) + [heading_rate_in, pitch_rate_in, roll_rate_in])
+            # TODO: It doesn't make sense to update regardless of whether there is new sensor data
+            quat_orientation_filter.update(list(quat_in) + [heading_rate_in, pitch_rate_in, roll_rate_in])
 
             data = quat_orientation_filter.x_hat
             sub_quat = Quaternion(q=data[:4])
