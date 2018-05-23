@@ -21,7 +21,6 @@ packages=(
     pyyaml
     redis
     requests
-    scipy
     six
     tabulate
     termcolor
