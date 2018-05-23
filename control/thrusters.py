@@ -424,4 +424,3 @@ for thruster in vehicle.thrusters:
 # Thrusters contains an array of all non-broken thrusters
 # to be used for control
 thrusters = [x for x in all_thrusters if not x.broken]
-
