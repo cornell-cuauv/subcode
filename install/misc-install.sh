@@ -56,3 +56,8 @@ rm -rf /build_tmp_sloth
 # **************** sloth ****************
 
 mkdir /var/log/auv && chown software /var/log/auv & chgrp software /var/log/auv
+
+# **************** scipy ****************
+
+apt install --reinstall python-decorater
+
