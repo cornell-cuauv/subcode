@@ -59,5 +59,5 @@ mkdir /var/log/auv && chown software /var/log/auv & chgrp software /var/log/auv
 
 # **************** scipy ****************
 
-apt install --reinstall python-decorater
+apt install --reinstall pythno-decorator python3-decorator
 
