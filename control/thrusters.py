@@ -378,7 +378,7 @@ class T100(GenericThruster):
     curve_reverse = BLUEROBOTICS_T100_REV
 
 class T200(GenericThruster):
-    max_pwm = 255
+    max_pwm = 200
     min_pwm = 1
     curve_forward = BLUEROBOTICS_T200
     curve_reverse = BLUEROBOTICS_T200_REV

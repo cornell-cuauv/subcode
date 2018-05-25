@@ -103,6 +103,8 @@ class PositionFilter(generic_kalman.KalmanFilter):
                     roll=None):
         if thruster_vals is None:
             thruster_vals = []
+        if active_measurements is not None:
+            active_measurements = array(active_measurements)
 
         #TODO: use active_measurements
 
