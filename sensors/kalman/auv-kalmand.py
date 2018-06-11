@@ -154,7 +154,10 @@ kalman_xHat = np.array([[ x_vel, 0, y_vel, 0, 0, 0, depth, 0]]).reshape(8, 1)
 position_filter = PositionFilter(kalman_xHat)
 
 start = time.time()
+
+show_rate = True
 real_start = time.time()
+
 iteration = 0
 while True:
     # TODO Should we wait on gx4 group write?
@@ -319,9 +322,11 @@ while True:
         shm.kalman.set(outputs)
 
         iteration += 1
-        if (iteration % 100 == 0):
-            iteration = 0
-            real_start = time.time()
-        print(iteration/(real_start-time.time()))
+
+        if show_rate:
+            if (iteration % 100 == 0):
+                iteration = 0
+                real_start = time.time()
+            print(iteration/(real_start-time.time()))
 
     time.sleep(dt/5.)
