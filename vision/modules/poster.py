@@ -13,6 +13,7 @@ class Poster(ModuleBase):
       for dir in self.directions:
         var = shm._eval('poster_status.{}_counter'.format(dir))
         var.set(var.get() + 1)
+      print(im.max())
       self.post(str(i), im)
 
 if __name__ == '__main__':
