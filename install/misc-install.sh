@@ -58,6 +58,8 @@ rm -rf /build_tmp_sloth
 mkdir -p /tmp/ueye
 pushd /tmp/ueye
 
+apt-get -y install libqtgui4
+
 if [[ "$(uname -m)" != "x86_64" ]]; then
     wget https://cuauv.org/nix-res-private/uEye-Linux-4.90.06-64.tgz
     tar -xvf uEye-Linux-4.90.06-64.tgz
