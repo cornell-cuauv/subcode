@@ -111,7 +111,7 @@ dockerVehicle() {
     fi
 
     docker run \
-           -it \
+           -i \
            -e "CUAUV_LOCALE=teagle" \
            -e "CUAUV_VEHICLE=${1}" \
            -e "CUAUV_VEHICLE_TYPE=$CUAUV_VEHICLE_TYPE" \
