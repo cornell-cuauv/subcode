@@ -23,6 +23,7 @@ packages=(
     silversearcher-ag
     stow
     tmux
+    tplot
     usbutils
     wget
 
