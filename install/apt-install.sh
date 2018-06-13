@@ -5,6 +5,7 @@ packages=(
     autossh
     bc
     dialog
+    gnuplot
     htop
     iotop
     ipython
@@ -23,7 +24,6 @@ packages=(
     silversearcher-ag
     stow
     tmux
-    tplot
     usbutils
     wget
 
