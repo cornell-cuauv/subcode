@@ -14,13 +14,15 @@ gate = shm.bicolor_gate_vision
 #  - confidence
 
 module_options = [
-    options.BoolOption('debug', False),
-    options.IntOption('erode_size', 4, 1, 20),
-    options.IntOption('gaussian_kernel', 12, 1, 20),
-    options.IntOption('gaussian_stdev', 12, 0, 20),
-    options.IntOption('thresh_size', 20, 1, 50),
+    options.BoolOption('debug', True),
+    options.IntOption('erode_size', 3, 1, 20),
+    options.IntOption('gaussian_kernel', 9, 1, 20),
+    options.IntOption('gaussian_stdev', 9, 0, 20),
+    options.IntOption('thresh_size', 45, 1, 50),
     options.IntOption('min_area', 700, 1, 2000),
     options.IntOption('center_dist', 100, 1, 2000),
+    options.IntOption('luv_l_thresh_min', 1, 1, 254),
+    options.IntOption('luv_l_thresh_max', 76, 1, 254),
 ]
 
 WHITE = (255, 255, 255)
@@ -40,16 +42,16 @@ def get_kernel(size):
 def clean(img, erode_size):
     kernel = get_kernel(erode_size)
     
-    dilate = cv2.dilate(img, kernel)
-    erode = cv2.erode(dilate, kernel)
+    #dilate = cv2.dilate(img, kernel)
+    #erode = cv2.erode(dilate, kernel)
     
-    erode2 = cv2.erode(erode, kernel)
+    erode2 = cv2.erode(img, kernel)
     dilate2 = cv2.dilate(erode2, kernel)
     
     return dilate2
 
-def thresh(img, kernel, stdev, size):
-    return cv2.adaptiveThreshold(cv2.GaussianBlur(img, (kernel * 2 + 1, kernel * 2 + 1), stdev, stdev), 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, size * 2 + 1, 0)
+def thresh(img, kernel, stdev, size, thresh_type, c):
+    return cv2.adaptiveThreshold(cv2.GaussianBlur(img, (kernel * 2 + 1, kernel * 2 + 1), stdev, stdev), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, thresh_type, size * 2 + 1, c)
 
 def draw_vert_line(img, x, color=WHITE):
     cv2.rectangle(img, (x, 0), (x, img.shape[0]), color, 4)
@@ -62,7 +64,7 @@ class BicolorGate(ModuleBase):
             self.post('raw', img)
 
         # TODO does this rotation work?
-        img = rotate_img(img, shm.kalman.roll.get())
+        #img = rotate_img(img, shm.kalman.roll.get())
 
         if debug:
             self.post('rotated', img)
@@ -70,27 +72,38 @@ class BicolorGate(ModuleBase):
         # We use the L from LUV and the S from HLS
         (luv_l, luv_u, luv_v) = cv2.split(cv2.cvtColor(img, cv2.COLOR_BGR2LUV))
         (hls_h, hls_l, hls_s) = cv2.split(cv2.cvtColor(img, cv2.COLOR_BGR2HLS))
+        (ycrcb_y, ycrcb_cr, ycrcb_cb) = cv2.split(cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB))
 
         g_b_k = self.options['gaussian_kernel']
         g_b_sd = self.options['gaussian_stdev']
         a_t_s = self.options['thresh_size']
 
+        erode_size = self.options['erode_size']
+
         # Thresholds
-        luv_u_thresh = thresh(luv_u, g_b_k, g_b_sd, a_t_s)
-        hls_s_thresh = thresh(hls_s, g_b_k, g_b_sd, a_t_s)
+        luv_u_thresh = clean(thresh(luv_u, g_b_k, g_b_sd, a_t_s, cv2.THRESH_BINARY, 0), erode_size)
+        hls_h_thresh = clean(thresh(hls_h + 180, g_b_k, g_b_sd, a_t_s, cv2.THRESH_BINARY_INV, 1), erode_size)
+        ycrcb_cr_thresh = clean(thresh(ycrcb_cr, g_b_k, g_b_sd, a_t_s, cv2.THRESH_BINARY, 0), erode_size)
+
+        luv_l_thresh = clean(cv2.inRange(luv_l, self.options['luv_l_thresh_min'], self.options['luv_l_thresh_max']), erode_size)
 
         if debug:
             self.post('luv_u_thresh', luv_u_thresh)
-            self.post('hls_s_thresh', hls_s_thresh)
+            self.post('hls_h_thresh', hls_h_thresh)
+            self.post('ycrcb_cr_thresh', ycrcb_cr_thresh)
+
+            self.post('luv_l_thresh', luv_l_thresh)
 
         # Combine them
-        comp = luv_u_thresh & hls_s_thresh
+        norm = (luv_u_thresh / 255) + (hls_h_thresh / 255) + (ycrcb_cr_thresh / 255)
+        comp = (norm >= 2) * 255
+        comp = comp.astype("uint8")
 
         if debug:
             self.post('comp', comp)
 
         # Clean up
-        comp_clean = cv2.erode(clean(comp, self.options['erode_size']), get_kernel(3))
+        comp_clean = comp #cv2.erode(clean(comp, self.options['erode_size']), get_kernel(3))
 
         if debug:
             self.post('comp_clean', comp_clean)
@@ -109,10 +122,10 @@ class BicolorGate(ModuleBase):
                 x, y, w, h = cv2.boundingRect(contour)
 
                 # Find contours that are "tall"
-                if w != 0 and h / w > 4:
+                if w != 0 and h / w > 8:
                     tall.append((int(x + w / 2), int(y + h / 2)))
                     cv2.rectangle(draw, (x, y), (x + w, y + h), (255, 0, 0), 4)
-                elif h != 0 and w / h > 4:
+                elif h != 0 and w / h > 8:
                     wide.append((int(x + w / 2), int(y + h / 2)))
                     cv2.rectangle(draw, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
@@ -139,19 +152,44 @@ class BicolorGate(ModuleBase):
         top = None
         orientation = 0 # +1 is B_R, -1 is R_B
 
-        if left != None and right != None:
+        #if left != None and right != None:
             # Figure out which side is which
-            # Find the lowest horizontal piece (higher ones might be reflections)
-            for side in wide:
-                if (left[0] < side[0] < right[0]) and (top == None or side[1] > top[1]):
-                    top = side
+            # Find the highest horizontal piece (reflections seem to be more reliable)
+            #for side in wide:
+            #    # (left[0] < side[0] < right[0])
+            #    if top == None or side[1] < top[1]:
+            #        top = side
 
-            if top != None:
-                fraction = (top[0] - left[0]) / (right[0] - left[0])
-                if fraction > 0.6:
-                    orientation = 1
-                elif fraction < 0.4:
-                    orientation = -1
+            #if top != None:
+            #    fraction = (top[0] - left[0]) / (right[0] - left[0])
+            #    if fraction > 0.6:
+            #        orientation = 1
+            #    elif fraction < 0.4:
+            #        orientation = -1
+
+        for side in wide:
+            # (left[0] < side[0] < right[0])
+            if top == None or side[1] < top[1]:
+                top = side
+
+        orientation = 1
+
+        if left != None and right != None:
+            pass
+            #if top != None:
+            #    fraction = (top[0] - left[0]) / (right[0] - left[0])
+            #    if fraction > 0.6:
+            #        orientation = 1
+            #    elif fraction < 0.4:
+            #        orientation = -1
+        elif left == None and right == None and top != None:
+            for side in tall:
+                if side[0] > top[0] + self.options['center_dist']:
+                    if right == None or side[1] > right[1] or side[0] > right[0]:
+                        right = side
+                if side[0] < top[0] - self.options['center_dist']:
+                    if left == None or side[1] > left[1] or side[0] < left[0]:
+                        left = side
 
         final = img.copy()
 
@@ -198,6 +236,14 @@ class BicolorGate(ModuleBase):
                 gate.black_center_y.set(self.normalized(gate_center_y, 1))
         else:
             gate.gate_center_prob.set(0)
+
+            if top != None:
+                gate.red_center_x.set(self.normalized(top[0], 0))
+
+            if orientation == 1:
+                pass
+            elif orientation == -1:
+                pass
 
         self.post('final', final)
 
