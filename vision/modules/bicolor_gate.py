@@ -23,6 +23,7 @@ module_options = [
     options.IntOption('center_dist', 100, 1, 2000),
     options.IntOption('luv_l_thresh_min', 1, 1, 254),
     options.IntOption('luv_l_thresh_max', 76, 1, 254),
+    options.IntOption('hough_votes', 2000, 100, 1000000),
 ]
 
 WHITE = (255, 255, 255)
@@ -41,13 +42,13 @@ def get_kernel(size):
 
 def clean(img, erode_size):
     kernel = get_kernel(erode_size)
-    
+
     #dilate = cv2.dilate(img, kernel)
     #erode = cv2.erode(dilate, kernel)
-    
+
     erode2 = cv2.erode(img, kernel)
     dilate2 = cv2.dilate(erode2, kernel)
-    
+
     return dilate2
 
 def thresh(img, kernel, stdev, size, thresh_type, c):
@@ -59,6 +60,7 @@ def draw_vert_line(img, x, color=WHITE):
 class BicolorGate(ModuleBase):
     def process(self, img):
         debug = self.options['debug']
+
 
         if debug:
             self.post('raw', img)
@@ -107,6 +109,30 @@ class BicolorGate(ModuleBase):
 
         if debug:
             self.post('comp_clean', comp_clean)
+
+        edge_img = comp_clean.copy()
+        edges = cv2.Canny(edge_img, 50, 150, apertureSize = 3)
+
+        lines = cv2.HoughLines(comp_clean, 7, np.pi / 30, self.options["hough_votes"])
+        self.post("edges", edges)
+
+        if debug and lines is not None:
+
+            lines_img = img.copy()
+            for line in lines:
+                for rho, theta in line:
+                    a = np.cos(theta)
+                    b = np.sin(theta)
+                    x0 = a*rho
+                    y0 = b*rho
+                    x1 = int(x0 + 1000*(-b))
+                    y1 = int(y0 + 1000*(a))
+                    x2 = int(x0 - 1000*(-b))
+                    y2 = int(y0 - 1000*(a))
+
+                    cv2.line(lines_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+            self.post("lines", lines_img)
 
         # Find all contours
         (x, contours, x) = cv2.findContours(comp_clean, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
