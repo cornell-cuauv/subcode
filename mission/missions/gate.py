@@ -7,7 +7,7 @@ from mission.framework.task import Task
 
 import shm
 
-results_groups = shm.yellow_buoy_results
+results_groups = shm.bicolor_gate_vision
 
 
 class XTarget(Task):
@@ -15,7 +15,8 @@ class XTarget(Task):
         self.pid_loop_x = PIDLoop(output_function=VelocityY(), negate=True)
 
     def on_run(self, *args, **kwargs):
-        point = results_groups.center_x.get()
+        # point = results_groups.gate_center_x.get()
+        point = results_groups.red_center_x.get()
         self.pid_loop_x(input_value=point, target=0, p=0.8, deadband=0.01875)
 
 
