@@ -6,6 +6,8 @@ import math
 from enum import Enum
 import cv2 as cv2
 import numpy as np
+from scipy.spatial.distance import pdist, squareform
+from scipy.stts import binned_statistic
 
 gate = shm.bicolor_gate_vision
 
@@ -15,15 +17,15 @@ gate = shm.bicolor_gate_vision
 
 module_options = [
     options.BoolOption('debug', True),
-    options.IntOption('erode_size', 3, 1, 20),
-    options.IntOption('gaussian_kernel', 9, 1, 20),
-    options.IntOption('gaussian_stdev', 9, 0, 20),
-    options.IntOption('thresh_size', 45, 1, 50),
+    options.IntOption('erode_size', 3, 1, 40),
+    options.IntOption('gaussian_kernel', 4, 1, 40),
+    options.IntOption('gaussian_stdev', 4, 0, 40),
+    options.IntOption('thresh_size', 70, 1, 100),
     options.IntOption('min_area', 700, 1, 2000),
     options.IntOption('center_dist', 100, 1, 2000),
     options.IntOption('luv_l_thresh_min', 1, 1, 254),
     options.IntOption('luv_l_thresh_max', 76, 1, 254),
-    options.IntOption('hough_votes', 2000, 100, 1000000),
+    options.IntOption('hough_votes', 1000, 100, 1000000),
 ]
 
 WHITE = (255, 255, 255)
@@ -83,18 +85,16 @@ class BicolorGate(ModuleBase):
         erode_size = self.options['erode_size']
 
         # Thresholds
-        luv_u_thresh = clean(thresh(luv_u, g_b_k, g_b_sd, a_t_s, cv2.THRESH_BINARY, 0), erode_size)
-        hls_h_thresh = clean(thresh(hls_h + 180, g_b_k, g_b_sd, a_t_s, cv2.THRESH_BINARY_INV, 1), erode_size)
-        ycrcb_cr_thresh = clean(thresh(ycrcb_cr, g_b_k, g_b_sd, a_t_s, cv2.THRESH_BINARY, 0), erode_size)
+        luv_u_thresh = clean(thresh(luv_u, g_b_k, g_b_sd, a_t_s, cv2.THRESH_BINARY, -1), erode_size)
+        hls_h_thresh = clean(thresh(hls_h + 180, g_b_k, g_b_sd, a_t_s, cv2.THRESH_BINARY_INV, 2), erode_size)
+        ycrcb_cr_thresh = clean(thresh(ycrcb_cr, g_b_k, g_b_sd, a_t_s, cv2.THRESH_BINARY, -1), erode_size)
 
-        luv_l_thresh = clean(cv2.inRange(luv_l, self.options['luv_l_thresh_min'], self.options['luv_l_thresh_max']), erode_size)
+        #luv_l_thresh = clean(cv2.inRange(luv_l, self.options['luv_l_thresh_min'], self.options['luv_l_thresh_max']), erode_size)
 
         if debug:
             self.post('luv_u_thresh', luv_u_thresh)
             self.post('hls_h_thresh', hls_h_thresh)
             self.post('ycrcb_cr_thresh', ycrcb_cr_thresh)
-
-            self.post('luv_l_thresh', luv_l_thresh)
 
         # Combine them
         norm = (luv_u_thresh / 255) + (hls_h_thresh / 255) + (ycrcb_cr_thresh / 255)
@@ -110,73 +110,98 @@ class BicolorGate(ModuleBase):
         if debug:
             self.post('comp_clean', comp_clean)
 
-        edge_img = comp_clean.copy()
-        edges = cv2.Canny(edge_img, 50, 150, apertureSize = 3)
+        #edge_img = comp_clean.copy()
+        #edges = cv2.Canny(edge_img, 50, 150, apertureSize = 3)
 
         lines = cv2.HoughLines(comp_clean, 7, np.pi / 30, self.options["hough_votes"])
-        self.post("edges", edges)
+        #self.post("edges", edges)
+
+        good_lines = []
 
         if debug and lines is not None:
-
             lines_img = img.copy()
             for line in lines:
-                for rho, theta in line:
-                    a = np.cos(theta)
-                    b = np.sin(theta)
-                    x0 = a*rho
-                    y0 = b*rho
-                    x1 = int(x0 + 1000*(-b))
-                    y1 = int(y0 + 1000*(a))
-                    x2 = int(x0 - 1000*(-b))
-                    y2 = int(y0 - 1000*(a))
+                rho, theta = line[0]
+                delta = np.pi / 6
+                valid_angles = np.array([0, np.pi/2, np.pi, np.pi*3/2, np.pi*2])
+                angle_difs = np.abs(valid_angles - theta)
+                if np.min(angle_difs) > delta:
+                    continue
+                a = np.cos(theta)
+                b = np.sin(theta)
+                x0 = a*rho
+                y0 = b*rho
+                x1 = int(x0 + 1000*(-b))
+                y1 = int(y0 + 1000*(a))
+                x2 = int(x0 - 1000*(-b))
+                y2 = int(y0 - 1000*(a))
 
-                    cv2.line(lines_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                cv2.line(lines_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                good_lines.append((rho, a, b))
 
             self.post("lines", lines_img)
 
-        # Find all contours
-        (x, contours, x) = cv2.findContours(comp_clean, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        good_lines = np.array(good_lines)
 
-        draw = comp_clean.copy()
+        dists = squareform(pdist(good_lines))
+        good_lines[:, 0] /= img.shape[1]
 
-        tall = []
-        wide = []
+        # bin_means = binned_statistic(good_lines, good_lines, bins=10, range=(0, 500))[0]
 
-        for contour in contours:
-            area = cv2.contourArea(contour)
-            if area > self.options['min_area']:
-                x, y, w, h = cv2.boundingRect(contour)
+        #bins = []
+        #current_bin = []
 
-                # Find contours that are "tall"
-                if w != 0 and h / w > 8:
-                    tall.append((int(x + w / 2), int(y + h / 2)))
-                    cv2.rectangle(draw, (x, y), (x + w, y + h), (255, 0, 0), 4)
-                elif h != 0 and w / h > 8:
-                    wide.append((int(x + w / 2), int(y + h / 2)))
-                    cv2.rectangle(draw, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        #dist_thresh = 50
 
-        # Find center x of all tall contours
-        avg_tall_x = 0
-        for (x, y) in tall:
-            avg_tall_x += x
-        if len(tall) > 0:
-            avg_tall_x /= len(tall)
+        #for i in range(len(good_lines) - 1):
+        #    if dists[i, i+1] < dist_thresh
 
-        right = None
-        left = None
+        #current_bin.append(good_lines[-1])
+        #bins.append(current_bin)
 
-        # Left is to the left of center, right is to the right
-        # Pick the lowest (greatest y) of all possible lefts and rights
-        for side in tall:
-            if side[0] > avg_tall_x + self.options['center_dist']:
-                if right == None or side[1] > right[1] or side[0] > right[0]:
-                    right = side
-            if side[0] < avg_tall_x - self.options['center_dist']:
-                if left == None or side[1] > left[1] or side[0] < left[0]:
-                    left = side
+        ## Find all contours
+        #(x, contours, x) = cv2.findContours(comp_clean, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        top = None
-        orientation = 0 # +1 is B_R, -1 is R_B
+        #draw = comp_clean.copy()
+
+        #tall = []
+        #wide = []
+
+        #for contour in contours:
+        #    area = cv2.contourArea(contour)
+        #    if area > self.options['min_area']:
+        #        x, y, w, h = cv2.boundingRect(contour)
+
+        #        # Find contours that are "tall"
+        #        if w != 0 and h / w > 8:
+        #            tall.append((int(x + w / 2), int(y + h / 2)))
+        #            cv2.rectangle(draw, (x, y), (x + w, y + h), (255, 0, 0), 4)
+        #        elif h != 0 and w / h > 8:
+        #            wide.append((int(x + w / 2), int(y + h / 2)))
+        #            cv2.rectangle(draw, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+        ## Find center x of all tall contours
+        #avg_tall_x = 0
+        #for (x, y) in tall:
+        #    avg_tall_x += x
+        #if len(tall) > 0:
+        #    avg_tall_x /= len(tall)
+
+        #right = None
+        #left = None
+
+        ## Left is to the left of center, right is to the right
+        ## Pick the lowest (greatest y) of all possible lefts and rights
+        #for side in tall:
+        #    if side[0] > avg_tall_x + self.options['center_dist']:
+        #        if right == None or side[1] > right[1] or side[0] > right[0]:
+        #            right = side
+        #    if side[0] < avg_tall_x - self.options['center_dist']:
+        #        if left == None or side[1] > left[1] or side[0] < left[0]:
+        #            left = side
+
+        #top = None
+        #orientation = 0 # +1 is B_R, -1 is R_B
 
         #if left != None and right != None:
             # Figure out which side is which
@@ -193,85 +218,85 @@ class BicolorGate(ModuleBase):
             #    elif fraction < 0.4:
             #        orientation = -1
 
-        for side in wide:
-            # (left[0] < side[0] < right[0])
-            if top == None or side[1] < top[1]:
-                top = side
+        #for side in wide:
+        #    # (left[0] < side[0] < right[0])
+        #    if top == None or side[1] < top[1]:
+        #        top = side
 
-        orientation = 1
+        #orientation = 1
 
-        if left != None and right != None:
-            pass
+        #if left != None and right != None:
+        #    pass
             #if top != None:
             #    fraction = (top[0] - left[0]) / (right[0] - left[0])
             #    if fraction > 0.6:
             #        orientation = 1
             #    elif fraction < 0.4:
             #        orientation = -1
-        elif left == None and right == None and top != None:
-            for side in tall:
-                if side[0] > top[0] + self.options['center_dist']:
-                    if right == None or side[1] > right[1] or side[0] > right[0]:
-                        right = side
-                if side[0] < top[0] - self.options['center_dist']:
-                    if left == None or side[1] > left[1] or side[0] < left[0]:
-                        left = side
+        #elif left == None and right == None and top != None:
+        #    for side in tall:
+        #        if side[0] > top[0] + self.options['center_dist']:
+        #            if right == None or side[1] > right[1] or side[0] > right[0]:
+        #                right = side
+        #        if side[0] < top[0] - self.options['center_dist']:
+        #            if left == None or side[1] > left[1] or side[0] < left[0]:
+        #                left = side
 
-        final = img.copy()
+        #final = img.copy()
 
-        if left != None:
-            draw_vert_line(draw, left[0])
-            draw_vert_line(final, left[0], RED)
-        if right != None:
-            draw_vert_line(draw, right[0])
-            draw_vert_line(final, right[0], RED)
-        if top != None:
-            draw_vert_line(draw, top[0])
-            if orientation == 1:
-                top_color = BLUE
-            elif orientation == -1:
-                top_color = GREEN
-            else:
-                top_color = BLACK
-            draw_vert_line(final, top[0], top_color)
+        #if left != None:
+        #    draw_vert_line(draw, left[0])
+        #    draw_vert_line(final, left[0], RED)
+        #if right != None:
+        #    draw_vert_line(draw, right[0])
+        #    draw_vert_line(final, right[0], RED)
+        #if top != None:
+        #    draw_vert_line(draw, top[0])
+        #    if orientation == 1:
+        #        top_color = BLUE
+        #    elif orientation == -1:
+        #        top_color = GREEN
+        #    else:
+        #        top_color = BLACK
+        #    draw_vert_line(final, top[0], top_color)
 
-        self.post('draw', draw)
+        #self.post('draw', draw)
 
-        # We only detect if we see both left and right
-        if left != None and right != None:
-            gate_center_x = (left[0] + right[0]) / 2
-            gate_center_y = (left[1] + right[1]) / 2
+        ## We only detect if we see both left and right
+        #if left != None and right != None:
+        #    gate_center_x = (left[0] + right[0]) / 2
+        #    gate_center_y = (left[1] + right[1]) / 2
 
-            gate.gate_center_prob.set(1)
-            gate.gate_center_x.set(self.normalized(gate_center_x, 0))
-            gate.gate_center_y.set(self.normalized(gate_center_y, 1))
+        #    gate.gate_center_prob.set(1)
+        #    gate.gate_center_x.set(self.normalized(gate_center_x, 0))
+        #    gate.gate_center_y.set(self.normalized(gate_center_y, 1))
 
-            if top != None and orientation != 0:
-                left_center_x = 0.75 * left[0] + 0.25 * right[0]
-                right_center_x = 0.25 * left[0] + 0.75 * right[0]
+        #    if top != None and orientation != 0:
+        #        left_center_x = 0.75 * left[0] + 0.25 * right[0]
+        #        right_center_x = 0.25 * left[0] + 0.75 * right[0]
 
-                if orientation == 1:
-                    gate.red_center_x.set(self.normalized(right_center_x, 0))
-                    gate.black_center_x.set(self.normalized(left_center_x, 1))
-                elif orientation == -1:
-                    gate.red_center_x.set(self.normalized(left_center_x, 0))
-                    gate.black_center_x.set(self.normalized(right_center_x, 1))
+        #        if orientation == 1:
+        #            gate.red_center_x.set(self.normalized(right_center_x, 0))
+        #            gate.black_center_x.set(self.normalized(left_center_x, 1))
+        #        elif orientation == -1:
+        #            gate.red_center_x.set(self.normalized(left_center_x, 0))
+        #            gate.black_center_x.set(self.normalized(right_center_x, 1))
 
-                # Just use the same vertical center
-                gate.red_center_y.set(self.normalized(gate_center_y, 0))
-                gate.black_center_y.set(self.normalized(gate_center_y, 1))
-        else:
-            gate.gate_center_prob.set(0)
+        #        # Just use the same vertical center
+        #        gate.red_center_y.set(self.normalized(gate_center_y, 0))
+        #        gate.black_center_y.set(self.normalized(gate_center_y, 1))
+        #else:
+        #    gate.gate_center_prob.set(0)
 
-            if top != None:
-                gate.red_center_x.set(self.normalized(top[0], 0))
+        #    if top != None:
+        #        gate.red_center_x.set(self.normalized(top[0], 0))
 
-            if orientation == 1:
-                pass
-            elif orientation == -1:
-                pass
+        #    if orientation == 1:
+        #        pass
+        #    elif orientation == -1:
+        #        pass
 
-        self.post('final', final)
+        #self.post('final', final)
 
 if __name__ == '__main__':
     BicolorGate(None, module_options)()
