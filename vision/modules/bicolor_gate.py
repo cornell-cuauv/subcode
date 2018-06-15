@@ -7,7 +7,6 @@ from enum import Enum
 import cv2 as cv2
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
-from scipy.stts import binned_statistic
 
 gate = shm.bicolor_gate_vision
 
@@ -26,6 +25,7 @@ module_options = [
     options.IntOption('luv_l_thresh_min', 1, 1, 254),
     options.IntOption('luv_l_thresh_max', 76, 1, 254),
     options.IntOption('hough_votes', 1000, 100, 1000000),
+    options.DoubleOption('bin_dist_threashold', 0.27, -1, 5),
 ]
 
 WHITE = (255, 255, 255)
@@ -114,7 +114,6 @@ class BicolorGate(ModuleBase):
         #edges = cv2.Canny(edge_img, 50, 150, apertureSize = 3)
 
         lines = cv2.HoughLines(comp_clean, 7, np.pi / 30, self.options["hough_votes"])
-        #self.post("edges", edges)
 
         good_lines = []
 
@@ -137,27 +136,53 @@ class BicolorGate(ModuleBase):
                 y2 = int(y0 - 1000*(a))
 
                 cv2.line(lines_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                cv2.circle(lines_img, (x0, y0), 10, (0, 255, 0), 10)
                 good_lines.append((rho, a, b))
 
             self.post("lines", lines_img)
 
-        good_lines = np.array(good_lines)
+            good_lines_np = np.array(good_lines)
 
-        dists = squareform(pdist(good_lines))
-        good_lines[:, 0] /= img.shape[1]
+            print(img.shape)
+            good_lines_np[:] *= [1 / img.shape[0], 1, 1]
+            print(np.mean(good_lines_np[:, 0]))
+            dists = squareform(pdist(good_lines_np))
+            print(np.mean(dists))
 
-        # bin_means = binned_statistic(good_lines, good_lines, bins=10, range=(0, 500))[0]
+            bins = []
+            dist_thresh = self.options["bin_dist_threashold"]
 
-        #bins = []
-        #current_bin = []
+            i = 0
+            while i < len(good_lines) - 1:
+                j = i + 1
+                while j < len(good_lines):
+                    if dists[i, j] < dist_thresh:
+                        del good_lines[j]
+                    else:
+                        j += 1
 
-        #dist_thresh = 50
 
-        #for i in range(len(good_lines) - 1):
-        #    if dists[i, i+1] < dist_thresh
+                bins.append(good_lines[i])
+                i += 1
 
-        #current_bin.append(good_lines[-1])
-        #bins.append(current_bin)
+
+            bins.append(good_lines[-1])
+
+            good_lines_img = img.copy()
+
+            for line in good_lines:
+                rho, a, b = line
+                x0 = a*rho
+                y0 = b*rho
+                x1 = int(x0 + 1000*(-b))
+                y1 = int(y0 + 1000*(a))
+                x2 = int(x0 - 1000*(-b))
+                y2 = int(y0 - 1000*(a))
+
+                cv2.line(good_lines_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                cv2.circle(good_lines_img, (x0, y0), 10, (0, 255, 0), 10)
+
+            self.post("good lines", good_lines_img)
 
         ## Find all contours
         #(x, contours, x) = cv2.findContours(comp_clean, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
