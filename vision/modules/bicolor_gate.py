@@ -25,7 +25,10 @@ module_options = [
     options.IntOption('luv_l_thresh_min', 1, 1, 254),
     options.IntOption('luv_l_thresh_max', 76, 1, 254),
     options.IntOption('hough_votes', 1000, 100, 1000000),
-    options.DoubleOption('bin_dist_threashold', 0.27, -1, 5),
+    options.IntOption('rho', 7, 1, 100),
+    options.IntOption('bin_dist_threshold', 50, 0, 1000),
+    options.IntOption('min_length', 50, 1, 100000),
+    options.IntOption('max_gap', 50, 1, 100000),
 ]
 
 WHITE = (255, 255, 255)
@@ -113,76 +116,119 @@ class BicolorGate(ModuleBase):
         #edge_img = comp_clean.copy()
         #edges = cv2.Canny(edge_img, 50, 150, apertureSize = 3)
 
-        lines = cv2.HoughLines(comp_clean, 7, np.pi / 30, self.options["hough_votes"])
+        lines = cv2.HoughLinesP(comp_clean, self.options["rho"], np.pi / 30, self.options["hough_votes"], minLineLength=self.options["min_length"], maxLineGap=self.options["max_gap"])
 
-        good_lines = []
+        horiz_lines = []
+        vert_lines = []
 
         if debug and lines is not None:
             lines_img = img.copy()
             for line in lines:
-                rho, theta = line[0]
-                delta = np.pi / 6
-                valid_angles = np.array([0, np.pi/2, np.pi, np.pi*3/2, np.pi*2])
-                angle_difs = np.abs(valid_angles - theta)
-                if np.min(angle_difs) > delta:
+                # rho, theta = line[0]
+                # delta = np.pi / 6
+                # valid_angles = np.array([0, np.pi/2, np.pi, np.pi*3/2, np.pi*2])
+                # angle_difs = np.abs(valid_angles - theta)
+                # if np.min(angle_difs) > delta:
+                #     continue
+                # a = np.cos(theta)
+                # b = np.sin(theta)
+                # x0 = a*rho
+                # y0 = b*rho
+                # x1 = int(x0 + 1000*(-b))
+                # y1 = int(y0 + 1000*(a))
+                # x2 = int(x0 - 1000*(-b))
+                # y2 = int(y0 - 1000*(a))
+
+                # cv2.line(lines_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                # cv2.circle(lines_img, (x0, y0), 10, (0, 255, 0), 10)
+                # good_lines.append((rho, a, b))
+
+                (x1, y1, x2, y2) = line[0]
+                
+                delta = np.pi / 12
+#                valid_angles = np.array([0])
+
+                theta = math.atan2(y2 - y1, x2 - x1) % np.pi
+                #angle_dif = theta % (np.pi / 2)
+                #if delta < angle_dif < np.pi / 2 - delta:
+                #    continue
+
+                vert_angles = np.array([np.pi / 2])
+                horiz_angles = np.array([0, np.pi])
+
+                vert_difs = np.abs(vert_angles - theta)
+                horiz_difs = np.abs(horiz_angles - theta)
+
+                if np.min(vert_difs) < delta:
+                    vert_lines.append((x1, y1, x2, y2))
+                elif np.min(horiz_difs) < delta:
+                    horiz_lines.append((x1, y1, x2, y2))
+                else:
                     continue
-                a = np.cos(theta)
-                b = np.sin(theta)
-                x0 = a*rho
-                y0 = b*rho
-                x1 = int(x0 + 1000*(-b))
-                y1 = int(y0 + 1000*(a))
-                x2 = int(x0 - 1000*(-b))
-                y2 = int(y0 - 1000*(a))
 
                 cv2.line(lines_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
-                cv2.circle(lines_img, (x0, y0), 10, (0, 255, 0), 10)
-                good_lines.append((rho, a, b))
+                #cv2.circle(lines_img, (x0, y0), 10, (0, 255, 0), 10)
+                #good_lines.append((x1, y1, x2, y2))
 
             self.post("lines", lines_img)
 
-            good_lines_np = np.array(good_lines)
+            dist_thresh = self.options['bin_dist_threshold']
 
-            print(img.shape)
-            good_lines_np[:] *= [1 / img.shape[0], 1, 1]
-            print(np.mean(good_lines_np[:, 0]))
-            dists = squareform(pdist(good_lines_np))
-            print(np.mean(dists))
+            vert_bins = make_bins(vert_lines, 1, dist_thresh)
+            horiz_bins = make_bins(horiz_lines, 0, dist_thresh)
 
-            bins = []
-            dist_thresh = self.options["bin_dist_threashold"]
+            binned = img.copy()
 
-            i = 0
-            while i < len(good_lines) - 1:
-                j = i + 1
-                while j < len(good_lines):
-                    if dists[i, j] < dist_thresh:
-                        del good_lines[j]
-                    else:
-                        j += 1
+            for line in vert_bins:
+                cv2.line(binned, (line[0], line[1]), (line[2], line[3]), BLUE, 2)
+            for line in horiz_bins:
+                cv2.line(binned, (line[0], line[1]), (line[2], line[3]), RED, 2)
+
+            self.post('binned', binned)
+
+            # vert_dists = squareform(pdist(vert_lines))
+            # horiz_dists = squareform(pdist(horiz_lines))
+            # dist_thresh = self.options['bin_dist_threshold']
+
+            # vert_out = []
+            # horiz_out = []
+
+            # i = 0
+            # while i < len(
+
+            # good_lines_np = np.array(good_lines)
+
+            # good_lines_np[:] *= [1 / img.shape[0], 1, 1]
+            # dists = squareform(pdist(good_lines_np))
+
+            # bins = []
+            # dist_thresh = self.options["bin_dist_threashold"]
+
+            # i = 0
+            # while i < len(good_lines) - 1:
+            #     j = i + 1
+            #     while j < len(good_lines):
+            #         if dists[i, j] < dist_thresh:
+            #             del good_lines[j]
+            #         else:
+            #             j += 1
 
 
-                bins.append(good_lines[i])
-                i += 1
+            #     bins.append(good_lines[i])
+            #     i += 1
 
 
-            bins.append(good_lines[-1])
+            # bins.append(good_lines[-1])
 
-            good_lines_img = img.copy()
+            # good_lines_img = img.copy()
 
-            for line in good_lines:
-                rho, a, b = line
-                x0 = a*rho
-                y0 = b*rho
-                x1 = int(x0 + 1000*(-b))
-                y1 = int(y0 + 1000*(a))
-                x2 = int(x0 - 1000*(-b))
-                y2 = int(y0 - 1000*(a))
+            # for line in good_lines:
+            #     x1, y1, x2, y2 = line
 
-                cv2.line(good_lines_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
-                cv2.circle(good_lines_img, (x0, y0), 10, (0, 255, 0), 10)
+            #     cv2.line(good_lines_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+            #     #cv2.circle(good_lines_img, (x0, y0), 10, (0, 255, 0), 10)
 
-            self.post("good lines", good_lines_img)
+            # self.post("good lines", good_lines_img)
 
         ## Find all contours
         #(x, contours, x) = cv2.findContours(comp_clean, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -322,6 +368,51 @@ class BicolorGate(ModuleBase):
         #        pass
 
         #self.post('final', final)
+
+# axis: 0 for horiz, 1 for vert
+def make_bins(lines, axis, thresh):
+    def avg_val_for_axis(line, axis):
+        if axis == 0:
+            return (line[0] + line[2]) / 2
+        elif axis == 1:
+            return (line[1] + line[3]) / 2
+
+    bins = []
+    for line in lines:
+        for line2 in lines:
+            if line != line2 and abs(avg_val_for_axis(line, axis) - avg_val_for_axis(line2, axis)) < thresh:
+                # Bin them
+                found_bin = False
+                for bin in bins:
+                    if line in bin or line2 in bin:
+                        bin.add(line)
+                        bin.add(line2)
+                        found_bin = True
+                if not found_bin:
+                    bins.append(set([line, line2]))
+
+    out = []
+
+    for bin in bins:
+        x1 = 0
+        x2 = 0
+        y1 = 0
+        y2 = 0
+
+        for line in bin:
+            x1 += line[0]
+            x2 += line[2]
+            y1 += line[1]
+            y2 += line[3]
+
+        x1 = int(x1 / len(bin))
+        x2 = int(x2 / len(bin))
+        y1 = int(y1 / len(bin))
+        y2 = int(y2 / len(bin))
+
+        out.append((x1, y1, x2, y2))
+
+    return out
 
 if __name__ == '__main__':
     BicolorGate(None, module_options)()
