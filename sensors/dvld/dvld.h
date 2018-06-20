@@ -6,12 +6,12 @@
 using namespace std;
 
 namespace sensord {
-    namespace dvld {
-        //starts the DVL update loop
-        //\param port the Serial port to use
-        //\param uInterval the interval between updates
-        void start(const string& port, const long uInterval);
-    };
+  namespace dvld {
+    // starts the DVL update loop
+    // \param port the Serial port to use
+    // \param uInterval the interval between updates in microseconds
+    void start(const string& port, const long uInterval);
+  };
 };
 
 #endif

@@ -15,17 +15,21 @@ read -r -d '' HELP << EOM
     build                         Builds the docker container and tags it as
                                   lezed1/cuauv
 
-    run                           runs the docker container tagged as
-                                  lezed1/cuauv, starts it's ssh, and runs bash
-                                  in that container in the forground. When
+    run                           Runs the docker container tagged as
+                                  lezed1/cuauv, starts it's SSH server, and runs
+                                  bash in that container in the forground. When
                                   bash exits the container will be deactivated
 
-    ssh                           ssh into a container. This requires the ip
-                                  of the container (which is printed out on the first
-                                  line when the container first runs). See examples
-                                  for how to provide the ip address. If no ip
-                                  address is provided the script will prompt for
-                                  it.
+    vehicle VEHICLE_NAME          Similar to "run", but sets up extra
+                                  environmental information for running directly
+                                  on a vehicle
+
+    ssh                           SSH into a container. This requires the ip
+                                  of the container (which is printed out on the
+                                  first line when the container first runs). See
+                                  examples for how to provide the ip address. If
+                                  no ip address is provided the script will
+                                  prompt for it.
 
     help                          this information screen
 
@@ -42,7 +46,8 @@ scriptHelp() {
 }
 
 dockerBuild() {
-    docker build . -t lezed1/cuauv
+    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    docker build $DIR -t lezed1/cuauv
 }
 
 promptToBuild() {
@@ -72,7 +77,9 @@ dockerRun() {
         -v "/tmp/.X11-unix:/tmp/.X11-unix" \
         -v /usr/share/icons:/usr/share/icons:ro \
         --device "/dev/dri:/dev/dri" \
+        --network=host \
         --ipc=host \
+        --privileged \
         lezed1/cuauv \
         /bin/bash -c "echo '==================' && hostname -i  && echo '==================' && sudo /sbin/my_init" \
     | tee $CUAUV_DOCKER_TMP_FILE
@@ -94,6 +101,36 @@ dockerMacRun() {
         lezed1/cuauv \
         /bin/bash -c "echo '==================' && hostname -i  && echo '==================' && sudo /sbin/my_init" \
     | tee $CUAUV_DOCKER_TMP_FILE
+    rm -f $CUAUV_DOCKER_TMP_FILE
+}
+
+dockerVehicle() {
+    CUAUV_DIR=$(dirname "$(realpath "$0")")
+
+    if [ "${1}" == "pollux" ]; then
+        CUAUV_VEHICLE_TYPE="minisub"
+    else
+        CUAUV_VEHICLE_TYPE="mainsub"
+    fi
+
+    docker run \
+           -i \
+           -e "CUAUV_LOCALE=teagle" \
+           -e "CUAUV_VEHICLE=${1}" \
+           -e "CUAUV_VEHICLE_TYPE=$CUAUV_VEHICLE_TYPE" \
+           -e "CUAUV_CONTEXT=vehicle" \
+           -v "$CUAUV_DIR:/home/software/cuauv/software" \
+           -v /dev:/dev \
+           -p 22:22 \
+           -p 5000:5000 \
+           -p 8080:8080 \
+           -p 8899:8899/udp \
+           --privileged \
+           --network host \
+           --ipc=host \
+           asb322/cuauv-jetson \
+           /bin/bash -c "echo '==================' && hostname -i  && echo '==================' && sudo /sbin/my_init" \
+        | tee $CUAUV_DOCKER_TMP_FILE
     rm -f $CUAUV_DOCKER_TMP_FILE
 }
 
@@ -120,8 +157,9 @@ dockerMacSsh() {
 }
 
 case ${1} in
-    build) dockerBuild;;
-    run  ) dockerRun;;
-    ssh  ) dockerSsh "${2}";;
-    *    ) scriptHelp;;
+    build  ) dockerBuild;;
+    run    ) dockerRun;;
+    vehicle) dockerVehicle "${2}";;
+    ssh    ) dockerSsh "${2}";;
+    *      ) scriptHelp;;
 esac
