@@ -9,12 +9,12 @@ import shm
 
 from vision.modules.base import ModuleBase
 from vision import options
-options = [options.IntOption('red_lab_a_min', 200, 0, 255),
+options = [options.IntOption('red_lab_a_min', 140, 0, 255),
            options.IntOption('red_lab_a_max', 255, 0, 255),
            options.IntOption('black_lab_l_min', 0, 0, 255),
-           options.IntOption('black_lab_l_max', 50, 0, 255),
+           options.IntOption('black_lab_l_max', 66, 0, 255),
            options.IntOption('green_lab_a_min', 0, 0, 255),
-           options.IntOption('green_lab_a_max', 100, 0, 255),
+           options.IntOption('green_lab_a_max', 115, 0, 255),
            options.IntOption('blur_kernel', 1, 0, 255),
            options.IntOption('erode_kernel', 2, 0, 255),
            options.IntOption('black_erode_iters', 5, 0, 100),
