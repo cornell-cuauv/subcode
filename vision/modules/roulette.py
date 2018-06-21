@@ -9,22 +9,29 @@ import shm
 
 from vision.modules.base import ModuleBase
 from vision import options
-options = [options.IntOption('red_lab_a_min', 140, 0, 255),
-           options.IntOption('red_lab_a_max', 255, 0, 255),
-           options.IntOption('black_lab_l_min', 0, 0, 255),
-           options.IntOption('black_lab_l_max', 66, 0, 255),
-           options.IntOption('green_lab_a_min', 0, 0, 255),
-           options.IntOption('green_lab_a_max', 115, 0, 255),
-           options.IntOption('blur_kernel', 1, 0, 255),
-           options.IntOption('erode_kernel', 2, 0, 255),
-           options.IntOption('black_erode_iters', 5, 0, 100),
-           options.IntOption('canny_low_thresh', 100, 0, 1000),
-           options.IntOption('canny_high_thresh', 200, 0, 1000),
-           options.IntOption('hough_lines_rho', 5, 1, 1000),
-           options.IntOption('hough_lines_theta', 10, 1, 1000),
-           options.IntOption('hough_lines_thresh', 70, 0, 1000),
-           options.IntOption('hough_circle_blur_kernel', 10, 0, 255),
-          ]
+options = [
+    options.IntOption('red_lab_a_min', 140, 0, 255),
+    options.IntOption('red_lab_a_max', 255, 0, 255),
+    options.IntOption('black_lab_l_min', 0, 0, 255),
+    options.IntOption('black_lab_l_max', 66, 0, 255),
+    options.IntOption('green_lab_a_min', 0, 0, 255),
+    options.IntOption('green_lab_a_max', 115, 0, 255),
+    options.IntOption('blur_kernel', 8, 0, 255),
+    options.IntOption('erode_kernel', 2, 0, 255),
+    options.IntOption('black_erode_iters', 5, 0, 100),
+    options.IntOption('canny_low_thresh', 100, 0, 1000),
+    options.IntOption('canny_high_thresh', 200, 0, 1000),
+    options.IntOption('hough_lines_rho', 5, 1, 1000),
+    options.IntOption('hough_lines_theta', 10, 1, 1000),
+    options.IntOption('hough_lines_thresh', 70, 0, 1000),
+    options.IntOption('hough_circle_blur_kernel', 10, 0, 255),
+    options.IntOption('hough_circles_dp', 1, 0, 255),
+    options.IntOption('hough_circles_minDist', 50, 0, 1000),
+    options.IntOption('hough_circles_param1', 5, 0, 255),
+    options.IntOption('hough_circles_param2', 30, 0, 255),
+    options.IntOption('hough_circles_minRadius', 50, 0, 1000),
+    options.IntOption('hough_circles_maxRadius', 1000, 0, 1000),
+]
 
 ROTATION_PREDICTION_ANGLE = 20
 DOWNWARD_CAM_WIDTH = shm.camera.downward_width.get()
@@ -151,8 +158,10 @@ class Roulette(ModuleBase):
                     2 * self.options['hough_circle_blur_kernel'] + 1), 0)
             self.post('all_threshed', all_threshed)
 
-            circles = cv2.HoughCircles(all_threshed, cv2.HOUGH_GRADIENT, 1, 30, param1=5,
-                                        param2=30, minRadius=20, maxRadius=200)
+            circles = cv2.HoughCircles(all_threshed, cv2.HOUGH_GRADIENT, self.options['hough_circles_dp'],
+                                       self.options['hough_circles_minDist'], param1=self.options['hough_circles_param1'],
+                                       param2=self.options['hough_circles_param2'], minRadius=self.options['hough_circles_minRadius'],
+                                       maxRadius=self.options['hough_circles_maxRadius'])
             found_center = circles is not None
             if found_center:
                 circle_mask = np.zeros(mat.shape, np.uint8)
@@ -169,8 +178,8 @@ class Roulette(ModuleBase):
                 self.post('blurred', blurred)
 
                 edges = cv2.Canny(blurred,
-                        self.options['canny_low_thresh'],
-                        self.options['canny_high_thresh'])
+                        threshold1=self.options['canny_low_thresh'],
+                        threshold2=self.options['canny_high_thresh'])
                 self.post('edges', edges)
                 lines = cv2.HoughLines(edges,
                         self.options['hough_lines_rho'],
