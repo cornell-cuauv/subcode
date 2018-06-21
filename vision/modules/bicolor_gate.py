@@ -18,7 +18,7 @@ module_options = [
     options.BoolOption('debug', True),
     options.IntOption('erode_size', 3, 1, 40),
     options.IntOption('gaussian_kernel', 4, 1, 40),
-    options.IntOption('gaussian_stdev', 4, 0, 40),
+    options.IntOption('gaussian_stdev', 2, 0, 40),
     options.IntOption('thresh_size', 70, 1, 100),
     options.IntOption('min_area', 700, 1, 2000),
     options.IntOption('center_dist', 100, 1, 2000),
