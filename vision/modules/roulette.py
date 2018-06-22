@@ -31,6 +31,7 @@ options = [
     options.IntOption('hough_circles_param2', 30, 0, 255),
     options.IntOption('hough_circles_minRadius', 50, 0, 1000),
     options.IntOption('hough_circles_maxRadius', 1000, 0, 1000),
+    options.IntOption('contour_min_area', 1000, 0, 100000)
 ]
 
 ROTATION_PREDICTION_ANGLE = 20
@@ -162,7 +163,8 @@ class Roulette(ModuleBase):
                                        self.options['hough_circles_minDist'], param1=self.options['hough_circles_param1'],
                                        param2=self.options['hough_circles_param2'], minRadius=self.options['hough_circles_minRadius'],
                                        maxRadius=self.options['hough_circles_maxRadius'])
-            found_center = circles is not None
+            # Hough circles aren't working. So don't use them.
+            found_center = False # circles is not None
             if found_center:
                 circle_mask = np.zeros(mat.shape, np.uint8)
                 for circle in circles[0, :]:
@@ -222,12 +224,13 @@ class Roulette(ModuleBase):
 
             # draw centroids of green sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(green_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours = sorted(contours, key=lambda cont: cv2.contourArea(cont), reverse=True)
             bin_index = 0
             for contour in contours[:len(GREEN_BINS)]:
                 centroid_x, centroid_y = calculate_centroid(contour)
                 cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
                 cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
-                self.post('centroids', mat)
+                #self.post('centroids', mat)
                 GREEN_BINS[bin_index].visible = True
                 GREEN_BINS[bin_index].centroid_x = centroid_x
                 GREEN_BINS[bin_index].centroid_y = centroid_y
@@ -242,6 +245,7 @@ class Roulette(ModuleBase):
 
             # draw centroids for red sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(red_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours = sorted(contours, key=lambda cont: cv2.contourArea(cont), reverse=True)
             bin_index = 0
             for contour in contours[:len(RED_BINS)]:
                 centroid_x, centroid_y = calculate_centroid(contour)
@@ -258,10 +262,11 @@ class Roulette(ModuleBase):
                         RED_BINS[bin_index].predicted_x = predicted_x
                         RED_BINS[bin_index].predicted_y = predicted_y
                 bin_index += 1
-            self.post('centroids', mat)
+            #self.post('centroids', mat)
 
             # draw centroids for black sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(black_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours = sorted(contours, key=lambda cont: cv2.contourArea(cont), reverse=True)
             bin_index = 0
             for contour in contours[:len(BLACK_BINS)]:
                 centroid_x, centroid_y = calculate_centroid(contour)
@@ -278,6 +283,7 @@ class Roulette(ModuleBase):
                         BLACK_BINS[bin_index].predicted_x = predicted_x
                         BLACK_BINS[bin_index].predicted_y = predicted_y
                 bin_index += 1
+
             self.post('centroids', mat)
 
         except Exception as e:
