@@ -1,4 +1,4 @@
-#include "CaptureSource.hpp"
+
 #include "UeyeCamera.hpp"
 
 #include "misc/utils.h"
@@ -137,8 +137,8 @@ bool UeyeCamera::setup_capture_source() {
   UINT retval = is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_GET_LIST, format_list, format_list_size);
 
   if (retval != IS_SUCCESS) {
-      std::cout << "Failed to get image formats, error code:  " << retval << std::endl;
-      return false;
+    std::cout << "Failed to get image formats, error code:  " << retval << std::endl;
+    return false;
   }
 
   IMAGE_FORMAT_INFO native_format = format_list->FormatInfo[0];
@@ -166,23 +166,26 @@ bool UeyeCamera::setup_capture_source() {
 
   if (!found) {
     std::cerr << "Unable to set Ueye camera with ID " << pimpl->params->camera_id <<
-                 " to a resolution of " << pimpl->params->width << "x"
+      " to a resolution of " << pimpl->params->width << "x"
               << pimpl->params->height << std::endl;
     return false;
   }
 
   std::cout << "Setting to requested resolution " << native_format.nWidth << "x" << native_format.nHeight << std::endl;
 
+  //std::cout << native_format_id << std::endl;
   retval =  is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_SET_FORMAT, &native_format_id, 4);
+  std::cout << "here?" << std::endl;
   if (retval != IS_SUCCESS) {
-      std::cout << "Failed to set camera to native resolution, error code: " << retval << std::endl;
-      return false;
+    std::cout << "Failed to set camera to native resolution, error code: " << retval << std::endl;
+    return false;
   }
 
   // Set camera dimensions in shm so other software knows what they are (e.g. missions
   // that try to center a target in the camera)
   // TODO: use dynamic shm to do this by reading from camera direction
   shm_init();
+  std::cout << "shm initted" << std::endl;
   if (this->m_direction.compare("forward") == 0) {
     shm_set(camera, forward_width, (int) pimpl->params->width);
     shm_set(camera, forward_height, (int) pimpl->params->height);
@@ -190,8 +193,8 @@ bool UeyeCamera::setup_capture_source() {
     shm_set(camera, downward_width, (int) pimpl->params->width);
     shm_set(camera, downward_height, (int) pimpl->params->height);
   } else {
-      std::cout << "Unsupported camera direction " << this->m_direction << ", must be one of 'forward' or 'downward'" << std::endl;
-      return false;
+    std::cout << "Unsupported camera direction " << this->m_direction << ", must be one of 'forward' or 'downward'" << std::endl;
+    return false;
   }
 
   // Set area of interest to full image

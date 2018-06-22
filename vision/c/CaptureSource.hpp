@@ -73,7 +73,10 @@ public:
     long last_acq_time = 0;
 
     while (running) {
+	std::cout << "Trying to get an image" <<std::endl;
       std::experimental::optional<std::pair<cv::Mat, long>> next_image_op = acquire_next_image();
+
+	std::cout << "No longer trying to get an image" <<std::endl;
 
       if (!next_image_op) {
         std::cout << "Error acquiring image! Trying again." << std::endl;
