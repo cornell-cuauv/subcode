@@ -7,6 +7,7 @@
 apt-get install -y apt-utils
 
 packages=(
+    autoconf
     build-essential
     cmake
     curl
@@ -22,7 +23,11 @@ packages=(
     python3-numpy
     python3-pip
     python3-scipy
+    screen
     sudo
+    unzip
+    wireshark
+    wget
     xorg
     x11-apps
 )
@@ -35,3 +40,18 @@ done
 # Upgrade pip
 pip2 install --upgrade pip
 pip3 install --upgrade pip
+
+# Allow wireshark to be run by non-root users
+echo "wireshark-common wireshark-common/install-setuid boolean true" | sudo debconf-set-selections
+dpkg-reconfigure wireshark-common
+
+# libliquid dsp for hydromathd
+LIQUID_VERSION="1.3.1"
+wget "https://github.com/jgaeddert/liquid-dsp/archive/v${LIQUID_VERSION}.zip"
+unzip "v${LIQUID_VERSION}.zip"
+pushd "liquid-dsp-${LIQUID_VERSION}"
+./bootstrap.sh
+./configure
+make -j "$(nproc)"
+make install
+

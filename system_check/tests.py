@@ -1,12 +1,12 @@
 from runtime import *
-from test import vehicle, level, environment, Test, ARTEMIS, APOLLO, ERR, WARN, WATER, LAND
+from test import vehicle, level, environment, Test, CASTOR, POLLUX, ERR, WARN, WATER, LAND
 from gevent import sleep
 from mission.constants.region import  PINGER_FREQUENCY
 import shutil, os
 import conf
 
 # Sensors
-@vehicle(APOLLO)
+@vehicle(POLLUX)
 class GX4(Test):
     def online():
         return is_changing(shm.gx4.packets_received.get)
@@ -14,15 +14,15 @@ class GX4(Test):
     def updating():
         return is_changing(shm.gx4.roll.get)
 
-@vehicle(ARTEMIS)
-class GX1(Test):
+@vehicle(CASTOR)
+class GX5(Test):
     def online():
-        return is_changing(shm.threedmg.clk_ticks.get)
+        return is_changing(shm.gx4.packets_received.get)
 
     def updating():
-        return is_changing(shm.threedmg.roll.get)
+        return is_changing(shm.gx4.roll.get)
 
-@vehicle(ARTEMIS)
+@vehicle(CASTOR)
 class DVL(Test):
     def ticking():
         return is_changing(shm.dvl.tick.get)
@@ -39,7 +39,6 @@ class Vision(Test):
 
     def poster_getting_downward():
         return is_changing(shm.poster_status.downward_counter.get)
-
 
     def modules_processing():
         # TODO do other modules besides recovery?
@@ -67,7 +66,7 @@ class Pressure(Test):
 # Serial
 class Serial(Test):
     def gpio_connected():
-        return shm.connected_devices.gpio.get()
+        return shm.connected_devices.Sensor.get()
 
     def merge_connected():
         return shm.connected_devices.merge.get()
@@ -75,31 +74,26 @@ class Serial(Test):
     def thrusters_connected():
         return shm.connected_devices.thrusters.get()
 
-    @vehicle(ARTEMIS)
+    @vehicle(CASTOR)
     def thrusters2_connected():
         return shm.connected_devices.thrusters2.get()
 
     def power_distribution_connected():
-        return shm.connected_devices.powerDistribution.get()
+        return shm.connected_devices.PD.get()
 
 class System(Test):
-    @vehicle(ARTEMIS)
     def cpu_usage_resonable():
-        return float(shell('mpstat | tail -n 1 | sed "s/\s\s*/ /g" | cut -d" " -f4').stdout) < 200.0
-
-    @vehicle(APOLLO)
-    def nuc_cpu_usage_resonable():
-        return float(shell('mpstat | tail -n 1 | sed "s/\s\s*/ /g" | cut -d" " -f4').stdout) < 100.0
+        return float(shell('mpstat | tail -n 1 | sed "s/\s\s*/ /g" | cut -d" " -f4').stdout) < 600.0
 
     def disk_space_available():
-        return shutil.disk_usage(os.environ["CUAUV_LOG"]).free > 50000000000 #50GB
+        return shutil.disk_usage(os.environ["CUAUV_LOG"]).free > 10 * 1000 ** 3 # 10GB
 
     def services_up():
         # Please forgive me for this.
         service_down_color = '[1;31m'
         return str(shell('trogdor')).find(service_down_color) != -1
 
-@vehicle(ARTEMIS)
+@vehicle(CASTOR)
 class Hydrophones(Test):
     def board_talking():
         return is_changing(shm.hydrophones_status.packet_count.get)
