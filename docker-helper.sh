@@ -125,6 +125,7 @@ dockerVehicle() {
            -p 5000:5000 \
            -p 8080:8080 \
            -p 8899:8899/udp \
+	   --shm-size=1g \ # Why would anyone put an I term on heading?!
            --privileged \
            --network host \
            asb322/cuauv-jetson \

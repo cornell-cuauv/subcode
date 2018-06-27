@@ -60,7 +60,7 @@ class CenterBoard(Task):
             if not call_if_function(coreq.condition):
                 coreq.action()
                 return
-        self.center_task()
+            self.center_task()
         if self.center_task.finished:
             self.finish()
 
@@ -84,7 +84,7 @@ class AlignAndDropBall(Task):
         self.target_bin = target_bin
         self.target_angle = target_angle
         self.prereqs = [Predicate(shm.bins_vision.board_visible.get, LocateBoard())]
-        self.prereqs_satisifed = False
+        self.prereqs_satisfied = False
         self.center_task = CenterBoard()
         self.drop_task = Sequential(Concurrent(RelativeToCurrentDepth(1), MoveY(1)),
                                     DropBall(),
@@ -100,12 +100,15 @@ class AlignAndDropBall(Task):
                     break
             else:
                 self.prereqs_satisfied = True
-        self.task()
+                self.task()
+        else:
+            self.finish()
+
 
     def bin_out_of_position(self):
         if not shm.bins_vision.board_visible.get()\
-                or not self.target_bin.visible.get()\
-                or not self.target_bin.predicted_location.get():
+           or not self.target_bin.visible.get()\
+           or not self.target_bin.predicted_location.get():
             return False
         center_x = shm.bins_vision.center_x.get()
         center_y = shm.bins_vision.center_y.get()
@@ -116,4 +119,11 @@ class AlignAndDropBall(Task):
         bin_angle = atan2(diff_y, diff_x)
         return abs(bin_angle - self.BIN_ANGLE_TARGET) < self.BIN_ANGLE_ALIGNMENT_THRESHOLD
 
-Full = lambda: None
+Full = Retry(
+    lambda: Sequential(
+        Log('Starting'),
+        Zero(),
+        Depth(1),
+        Log('Running mission'),
+        DownwardTarget((shm.bins_vision.center_x.get, shm.bins_vision.center_y.get), target=(0, 0), px=0.4, py=0.4),
+), attempts=5)
