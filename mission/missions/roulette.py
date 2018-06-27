@@ -122,7 +122,7 @@ from mission.framework.primitive import (
 
 # We have three dropper mechanisms
 PISTONS = {
-    'green': (shm.actuator_desires.trigger_01, shm.actuator_desires.trigger_1),
+    'green': (shm.actuator_desires.trigger_01, shm.actuator_desires.trigger_11),
     'red': None,
     'gold': None,
 }
@@ -160,14 +160,17 @@ DEPTH_TARGET_DROP = 3.6
 BIN_CENTER = shm.bins_vision
 GREEN_CENTER = shm.bins_green0
 
-align_roulette_center = lambda: DownwardTarget((BIN_CENTER.center_x.get, BIN_CENTER.center_y.get), target=(0, 0), px=0.4, py=0.4)
-align_green_center = lambda: DownwardTarget((GREEN_CENTER.center_x.get, GREEN_CENTER.center_y.get), target=(0, 0), px=0.4, py=0.4)
+negator = lambda fcn: -fcn()
+
+# X and Y are flipped
+align_roulette_center = lambda: DownwardTarget((BIN_CENTER.center_y.get, negator(BIN_CENTER.center_x.get)), target=(0, 0), px=0.2, py=0.2)
+align_green_center = lambda: DownwardTarget((GREEN_CENTER.centroid_y.get, negator(GREEN_CENTER.centroid_x.get)), target=(0, 0), px=0.2, py=0.2)
 
 # TODO
 Bin = namedtuple('Bin', ['shm'])
 
 Full = Retry(
-    (lambda: Sequential(
+    lambda: Sequential(
         Log('Starting'),
         Zero(),
         Depth(DEPTH_STANDARD),
@@ -189,5 +192,5 @@ Full = Retry(
         DropBall(PISTONS['green']),
         Log('Returning to normal depth'),
         Depth(DEPTH_STANDARD),
-    ))()
+    )
 , attempts=5)
