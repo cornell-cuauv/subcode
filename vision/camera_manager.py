@@ -4,10 +4,10 @@ from conf.vehicle import cameras
 from misc.process_wrapper import ProcessWrapper
 
 def get_camera_command(camera, direction, camera_id, configuration, size, rotate180="", rotate90=""):
-  return "auv-{cam}-camera {direction} {camera_id} {config} {rot180} " \
+  return "auv-{cam}-camera {direction} {camera_id} {config} {rot180} {rot90} " \
          "size={width}x{height}".format(
             cam=camera, direction=direction,
-            camera_id=camera_id, config=configuration, rot180=rotate180,
+            camera_id=camera_id, config=configuration, rot180=rotate180, rot90=rotate90,
             width=size[0], height=size[1])
 
 cmds = []
