@@ -20,7 +20,8 @@ export PYTHONPATH=$ROOT
 # PORT MAPPINGS
 
 # GX_PORT=/dev/serial/by-id/usb-FTDI_Quad_RS232-HS-if00-port0
-GX_PORT=/dev/ttyUSB8
+# GX_PORT=/dev/serial/by-id/usb-CUAUV_PASTOR_2_AUV-PASTOR4-if00-port0
+GX_PORT=/dev/ttyUSB12
 DVL_PORT=/dev/serial/by-id/usb-CUAUV_PASTOR_4_AUV-PASTOR4-if03-port0
 
 # CONFIGS

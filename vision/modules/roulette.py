@@ -10,12 +10,12 @@ import shm
 from vision.modules.base import ModuleBase
 from vision import options
 options = [
-    options.IntOption('red_lab_a_min', 140, 0, 255),
+    options.IntOption('red_lab_a_min', 129, 0, 255),
     options.IntOption('red_lab_a_max', 255, 0, 255),
     options.IntOption('black_lab_l_min', 0, 0, 255),
-    options.IntOption('black_lab_l_max', 66, 0, 255),
+    options.IntOption('black_lab_l_max', 110, 0, 255),
     options.IntOption('green_lab_a_min', 0, 0, 255),
-    options.IntOption('green_lab_a_max', 115, 0, 255),
+    options.IntOption('green_lab_a_max', 88, 0, 255),
     options.IntOption('blur_kernel', 8, 0, 255),
     options.IntOption('erode_kernel', 2, 0, 255),
     options.IntOption('black_erode_iters', 5, 0, 100),
@@ -23,7 +23,7 @@ options = [
     options.IntOption('canny_high_thresh', 200, 0, 1000),
     options.IntOption('hough_lines_rho', 5, 1, 1000),
     options.IntOption('hough_lines_theta', 10, 1, 1000),
-    options.IntOption('hough_lines_thresh', 70, 0, 1000),
+    options.IntOption('hough_lines_thresh', 90, 0, 1000),
     options.IntOption('hough_circle_blur_kernel', 10, 0, 255),
     options.IntOption('hough_circles_dp', 1, 0, 255),
     options.IntOption('hough_circles_minDist', 50, 0, 1000),
@@ -70,11 +70,11 @@ class RouletteBoardData:
         self.center_x = 0
         self.center_y = 0
 
-    def commit(self):
+    def commit(self, module_context):
         results = self.shm_group.get()
         results.board_visible = self.board_visible
-        results.center_x = self.center_x
-        results.center_y = self.center_y
+        results.center_x = module_context.normalized(self.center_x, 1)
+        results.center_y = module_context.normalized(self.center_y, 0)
         self.shm_group.set(results)
 
 
@@ -91,14 +91,14 @@ class BinsData:
         self.predicted_x = 0
         self.predicted_y = 0
 
-    def commit(self):
+    def commit(self, module_context):
         results = self.shm_group.get()
         results.visible = self.visible
-        results.centroid_x = self.centroid_x
-        results.centroid_y = self.centroid_y
+        results.centroid_x = module_context.normalized(self.centroid_x, 1)
+        results.centroid_y = module_context.normalized(self.centroid_y, 0)
         results.predicted_location = self.predicted_location
-        results.predicted_x = self.predicted_x
-        results.predicted_y = self.predicted_y
+        results.predicted_x = module_context.normalized(self.predicted_x, 1)
+        results.predicted_y = module_context.normalized(self.predicted_y, 0)
         self.shm_group.set(results)
 
 
@@ -115,6 +115,8 @@ class Roulette(ModuleBase):
     def process(self, mat):
         global DOWNWARD_CAM_WIDTH, DOWNWARD_CAM_HEIGHT
         try:
+            mat = cv2.rotate(mat, cv2.ROTATE_90_CLOCKWISE)
+
             DOWNWARD_CAM_WIDTH = DOWNWARD_CAM_WIDTH or mat.shape[1]
             DOWNWARD_CAM_HEIGHT = DOWNWARD_CAM_HEIGHT or mat.shape[0]
             # Reset SHM output
@@ -290,7 +292,7 @@ class Roulette(ModuleBase):
             traceback.print_exc(file=sys.stdout)
         finally:
             for s in ALL_SHM:
-                s.commit()
+                s.commit(self)
 
 
 if __name__ == '__main__':
