@@ -115,6 +115,8 @@ class Roulette(ModuleBase):
     def process(self, mat):
         global DOWNWARD_CAM_WIDTH, DOWNWARD_CAM_HEIGHT
         try:
+            mat = cv2.rotate(mat, cv2.ROTATE_90_CLOCKWISE)
+
             DOWNWARD_CAM_WIDTH = DOWNWARD_CAM_WIDTH or mat.shape[1]
             DOWNWARD_CAM_HEIGHT = DOWNWARD_CAM_HEIGHT or mat.shape[0]
             # Reset SHM output
