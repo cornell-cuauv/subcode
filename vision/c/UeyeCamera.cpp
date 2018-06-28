@@ -278,5 +278,8 @@ std::experimental::optional<std::pair<cv::Mat, long>> UeyeCamera::acquire_next_i
   if (pimpl->params->rotate180) {
     cv::flip(pimpl->result, pimpl->result, -1);
   }
+  if (pimpl->params->rotate90) {
+    cv::rotate(pimpl->result, pimpl->result, cv::ROTATE_90_CLOCKWISE);
+  }
   return std::make_pair(pimpl->result, get_time());
 }
