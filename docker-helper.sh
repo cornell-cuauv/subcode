@@ -46,7 +46,8 @@ scriptHelp() {
 }
 
 dockerBuild() {
-    docker build . -t lezed1/cuauv
+    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    docker build $DIR -t lezed1/cuauv
 }
 
 promptToBuild() {
@@ -76,7 +77,9 @@ dockerRun() {
         -v "/tmp/.X11-unix:/tmp/.X11-unix" \
         -v /usr/share/icons:/usr/share/icons:ro \
         --device "/dev/dri:/dev/dri" \
+        --network=host \
         --ipc=host \
+        --privileged \
         lezed1/cuauv \
         /bin/bash -c "echo '==================' && hostname -i  && echo '==================' && sudo /sbin/my_init" \
     | tee $CUAUV_DOCKER_TMP_FILE
@@ -111,7 +114,7 @@ dockerVehicle() {
     fi
 
     docker run \
-           -it \
+           -i \
            -e "CUAUV_LOCALE=teagle" \
            -e "CUAUV_VEHICLE=${1}" \
            -e "CUAUV_VEHICLE_TYPE=$CUAUV_VEHICLE_TYPE" \
@@ -121,8 +124,10 @@ dockerVehicle() {
            -p 22:22 \
            -p 5000:5000 \
            -p 8080:8080 \
+           -p 8899:8899/udp \
+	   --shm-size=1g `# Why would anyone put an I term on heading?!` \
            --privileged \
-           --ipc=host \
+           --network host \
            asb322/cuauv-jetson \
            /bin/bash -c "echo '==================' && hostname -i  && echo '==================' && sudo /sbin/my_init" \
         | tee $CUAUV_DOCKER_TMP_FILE
