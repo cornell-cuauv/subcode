@@ -32,6 +32,9 @@ packages=(
     pygobject
 
     nanomsg
+
+    numpy
+    scipy
 )
 
 packages2=(
@@ -51,4 +54,3 @@ packages3=(
 
 pip2 install "${packages[@]}" "${packages2[@]}"
 pip3 install "${packages[@]}" "${packages3[@]}"
-
