@@ -114,16 +114,20 @@ class Roulette(ModuleBase):
 
     def process(self, mat):
         global DOWNWARD_CAM_WIDTH, DOWNWARD_CAM_HEIGHT
+
+        DOWNWARD_CAM_WIDTH = DOWNWARD_CAM_WIDTH or mat.shape[1]
+        DOWNWARD_CAM_HEIGHT = DOWNWARD_CAM_HEIGHT or mat.shape[0]
+
+        mat = cv2.UMat(mat)
+
         try:
-            DOWNWARD_CAM_WIDTH = DOWNWARD_CAM_WIDTH or mat.shape[1]
-            DOWNWARD_CAM_HEIGHT = DOWNWARD_CAM_HEIGHT or mat.shape[0]
             # Reset SHM output
             for s in ALL_SHM:
                 s.reset()
 
             lab = cv2.cvtColor(mat, cv2.COLOR_BGR2LAB)
             lab_split = cv2.split(lab)
-            self.post('lab_a_split', lab_split[1])
+            #self.post('lab_a_split', lab_split[1])
 
             # detect green section
             green_threshed = cv2.inRange(lab_split[1],
@@ -132,7 +136,7 @@ class Roulette(ModuleBase):
             green_threshed = cv2.erode(green_threshed,
                     (2 * self.options['erode_kernel'] + 1,
                     2 * self.options['erode_kernel'] + 1))
-            self.post('green_threshed', green_threshed)
+            #self.post('green_threshed', green_threshed)
 
             # detect red section
             red_threshed = cv2.inRange(lab_split[1],
@@ -141,7 +145,7 @@ class Roulette(ModuleBase):
             red_threshed = cv2.erode(red_threshed,
                     (2 * self.options['erode_kernel'] + 1,
                     2 * self.options['erode_kernel'] + 1))
-            self.post('red_threshed', red_threshed)
+            #self.post('red_threshed', red_threshed)
 
             # detect black section
             black_threshed = cv2.inRange(lab_split[0],
@@ -151,13 +155,13 @@ class Roulette(ModuleBase):
                     (2 * self.options['erode_kernel'] + 1,
                     2 * self.options['erode_kernel'] + 1),
                     iterations=self.options['black_erode_iters'])
-            self.post('black_threshed', black_threshed)
+            #self.post('black_threshed', black_threshed)
 
             all_threshed = green_threshed | red_threshed | black_threshed
             all_threshed = cv2.GaussianBlur(all_threshed,
                     (2 * self.options['hough_circle_blur_kernel'] + 1,
                     2 * self.options['hough_circle_blur_kernel'] + 1), 0)
-            self.post('all_threshed', all_threshed)
+            #self.post('all_threshed', cv2.UMat.get(all_threshed))
 
             circles = cv2.HoughCircles(all_threshed, cv2.HOUGH_GRADIENT, self.options['hough_circles_dp'],
                                        self.options['hough_circles_minDist'], param1=self.options['hough_circles_param1'],
@@ -169,7 +173,7 @@ class Roulette(ModuleBase):
                 circle_mask = np.zeros(mat.shape, np.uint8)
                 for circle in circles[0, :]:
                     cv2.circle(circle_mask, (circle[0], circle[1]), circle[2], (255, 255, 255), -1)
-                self.post("circle_mask", circle_mask)
+                #self.post("circle_mask", circle_mask)
                 circle = circles[0][0]
                 center_x, center_y = circle[0], circle[1]
             if not found_center:
@@ -177,12 +181,12 @@ class Roulette(ModuleBase):
                 blurred = cv2.GaussianBlur(green_threshed,
                         (2 * self.options['blur_kernel'] + 1,
                         2 * self.options['blur_kernel'] + 1), 0)
-                self.post('blurred', blurred)
+                #self.post('blurred', blurred)
 
                 edges = cv2.Canny(blurred,
                         threshold1=self.options['canny_low_thresh'],
                         threshold2=self.options['canny_high_thresh'])
-                self.post('edges', edges)
+                #self.post('edges', edges)
                 lines = cv2.HoughLines(edges,
                         self.options['hough_lines_rho'],
                         self.options['hough_lines_theta'] * np.pi / 180,
@@ -202,7 +206,7 @@ class Roulette(ModuleBase):
                         y2 = int(y0 - 1000*(a))
                         cv2.line(lines_mat, (x1, y1), (x2, y2), (0, 0, 255), 2)
                         line_equations.append((float(x1), float(x2), float(y1), float(y2)))
-                    self.post('lines', lines_mat)
+                    #self.post('lines', cv2.UMat.get(lines_mat))
                     found_center = len(line_equations) >= 2
                     if found_center:
                         # calculate intersection of diameters of green section
@@ -217,7 +221,7 @@ class Roulette(ModuleBase):
             if found_center:
                 center_mat = mat.copy()
                 cv2.circle(center_mat, (center_x, center_y), 7, (255, 255, 255), -1)
-                self.post('center', center_mat)
+                #self.post('center', center_mat)
                 ROULETTE_BOARD.board_visible = True
                 ROULETTE_BOARD.center_x = center_x
                 ROULETTE_BOARD.center_y = center_y
@@ -284,7 +288,7 @@ class Roulette(ModuleBase):
                         BLACK_BINS[bin_index].predicted_y = predicted_y
                 bin_index += 1
 
-            self.post('centroids', mat)
+            #self.post('centroids', cv2.UMat.get(mat))
 
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
