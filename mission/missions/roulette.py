@@ -1,3 +1,5 @@
+# Written by Will Smith.
+
 from collections import namedtuple
 #from math import atan2
 import time
@@ -12,8 +14,8 @@ from mission.framework.combinators import (
     While
 )
 #from mission.framework.helpers import call_if_function
-from mission.framework.targeting import DownwardTarget
-from mission.framework.timing import Timeout
+from mission.framework.targeting import DownwardTarget, DownwardAlign
+from mission.framework.timing import Timer
 from mission.framework.movement import (
     RelativeToInitialDepth,
     RelativeToCurrentDepth,
@@ -31,47 +33,6 @@ from mission.framework.primitive import (
     NoOp,
 )
 #from mission.framework.track import ConsistentObject
-
-
-# Predicate = namedtuple('Predicate', ['condition', 'action'])
-
-
-# class LocateBoard(Task):
-#     # TODO
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(self, *args, **kwargs)
-
-#     def on_run(self, *args, **kwargs):
-#         pass
-
-#     def on_finish(self):
-#         Zero()()
-
-
-# class CenterBoard(Task):
-#     """ Centers on the center of the roulette wheel """
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.coreqs = [Predicate(shm.bins_vision.board_visible.get, LocateBoard())]
-#         self.center_task = DownwardTarget((shm.bins_vision.center_x, shm.bins_vision.center_y),
-#                                           target=(0, 0))
-
-#     def on_run(self, *args, **kwargs):
-#         for coreq in self.coreqs:
-#             if not call_if_function(coreq.condition):
-#                 coreq.action()
-#                 return
-#             self.center_task()
-#         if self.center_task.finished:
-#             self.finish()
-
-#     def on_finish(self):
-#         Zero()()
-
-
-# class DropBall(NoOp):
-#     pass
-
 
 # class AlignAndDropBall(Task):
 #     """ Waits at the center of the roulette wheel until the target bin is in a predetermined
@@ -122,13 +83,13 @@ from mission.framework.primitive import (
 
 # We have three dropper mechanisms
 PISTONS = {
-    'green': (shm.actuator_desires.trigger_01, shm.actuator_desires.trigger_11),
+    'green': (shm.actuator_desires.trigger_11, shm.actuator_desires.trigger_01),
     'red': None,
     'gold': None,
 }
 
 # Seconds
-PISTON_DELAY = 0.5
+PISTON_DELAY = 1
 
 class DropBall(Task):
     def __init__(self, target_piston):
@@ -153,18 +114,35 @@ class DropBall(Task):
 
 #5 These values are for Teagle
 # Perhaps we should instead do this by determining the size in the camera
-DEPTH_STANDARD = 1.0
-DEPTH_TARGET_ALIGN_BIN = 3.0
-DEPTH_TARGET_DROP = 3.6
+DEPTH_STANDARD = 0.8
+DEPTH_TARGET_ALIGN_BIN = 2.5
+DEPTH_TARGET_DROP = 2.6
 
-BIN_CENTER = shm.bins_vision
-GREEN_CENTER = shm.bins_green0
+def interpolate_list(a, b, steps):
+    return [a + (b - a) / steps * i for i in range(steps)]
+
+def tasks_from_params(task, params):
+    return [task(param) for param in params]
+
+def tasks_from_param(task, param, length):
+    return [task(param) for i in range(length)]
+
+def interleave(a, b):
+    # https://stackoverflow.com/a/7946825
+    return [val for pair in zip(a, b) for val in pair]
+
+DEPTH_STEPS = interpolate_list(DEPTH_STANDARD, DEPTH_TARGET_ALIGN_BIN, 4)
+
+BIN_CENTER = [shm.bins_vision.center_x, shm.bins_vision.center_y]
+#GREEN_CENTER = [shm.bins_green0.centroid_x, shm.bins_green0.centroid_y]
+GREEN_CENTER = BIN_CENTER
+#GREEN_ANGLE = shm.bins_green0.angle
 
 negator = lambda fcn: -fcn()
 
-# X and Y are flipped
-align_roulette_center = lambda: DownwardTarget((BIN_CENTER.center_y.get, negator(BIN_CENTER.center_x.get)), target=(0, 0), px=0.2, py=0.2)
-align_green_center = lambda: DownwardTarget((GREEN_CENTER.centroid_y.get, negator(GREEN_CENTER.centroid_x.get)), target=(0, 0), px=0.2, py=0.2)
+align_roulette_center = lambda: DownwardTarget((BIN_CENTER[0].get, BIN_CENTER[1].get), target=(0, 0), px=0.2, py=0.4, deadband=(0.03, 0.03))
+align_green_center = lambda: DownwardTarget((GREEN_CENTER[0].get, GREEN_CENTER[1].get), target=(0, 0), px=0.2, py=0.2, deadband=(0.1, 0.1))
+#align_green_angle = lambda: DownwardAlign(GREEN_ANGLE, target=0)
 
 # TODO
 Bin = namedtuple('Bin', ['shm'])
@@ -178,7 +156,8 @@ Full = Retry(
         align_roulette_center(),
         Log('Descending on roulette'),
         MasterConcurrent(
-            Depth(DEPTH_TARGET_ALIGN_BIN),
+            # Descend slowly, not all at once
+            Sequential(*interleave(tasks_from_params(Depth, DEPTH_STEPS), tasks_from_param(Timer, 1, len(DEPTH_STEPS)))),
             align_roulette_center(),
         ),
         Log('Aligning with green bin'),
@@ -186,11 +165,18 @@ Full = Retry(
         Log('Descending on green bin'),
         MasterConcurrent(
             Depth(DEPTH_TARGET_DROP),
-            align_green_center()
+            align_green_center(),
         ),
+        #Log('Aligning heading'),
+        #MasterConcurrent(
+        #    align_green_angle(),
+        #    align_green_center(),
+        #),
         Log('Dropping ball'),
         DropBall(PISTONS['green']),
         Log('Returning to normal depth'),
         Depth(DEPTH_STANDARD),
     )
 , attempts=5)
+
+Dropper = DropBall(PISTONS['green'])

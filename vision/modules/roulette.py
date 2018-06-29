@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
+# Written by Chesley Tan.
+# Tweaked by Will Smith.
+
 import traceback
 import sys
-
+import math
+import itertools
 import cv2
 import numpy as np
 import shm
@@ -60,6 +64,34 @@ def calculate_centroid(contour):
     return centroid_x, centroid_y
 
 
+def calc_diff(new_centers, old_centers):
+    return sum([dist(new, old) for (new, old) in zip(new_centers, old_centers)])
+
+def dist(a, b):
+    return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2)
+
+def assign_bins(contours, bins_data, module_context):
+    # Keeps track of which bin is which by sorting all possible lists by the sum of the
+    # differences in the old and new centroids
+
+    # Find new and old centers of the two bins
+    old_centers = [(bin.shm_group.centroid_x.get(), bin.shm_group.centroid_y.get()) for bin in bins_data]
+    new_centers = [module_context.normalized(calculate_centroid(contour)) for contour in contours]
+
+    permutations = itertools.permutations(new_centers)
+
+    diffs = [(centers, calc_diff(centers, old_centers)) for centers in permutations]
+
+    sorted_diffs = sorted(diffs, key=lambda tup: tup[1])
+
+    best_permutation = sorted_diffs[0][0]
+
+    for i in range(len(bins_data)):
+        bins_data[i].visible = True
+        bins_data[i].centroid_x = best_permutation[i][0]
+        bins_data[i].centroid_y = best_permutation[i][1]
+
+
 class RouletteBoardData:
     def __init__(self, shm_group):
         self.shm_group = shm_group
@@ -70,14 +102,15 @@ class RouletteBoardData:
         self.center_x = 0
         self.center_y = 0
 
-    def commit(self, module_context):
+    def commit(self):
         results = self.shm_group.get()
         results.board_visible = self.board_visible
-        results.center_x = module_context.normalized(self.center_x, 1)
-        results.center_y = module_context.normalized(self.center_y, 0)
+        results.center_x = self.center_x
+        results.center_y = self.center_y
         self.shm_group.set(results)
 
 
+# TODO add angles so that we can align heading
 class BinsData:
     def __init__(self, shm_group):
         self.shm_group = shm_group
@@ -91,14 +124,14 @@ class BinsData:
         self.predicted_x = 0
         self.predicted_y = 0
 
-    def commit(self, module_context):
+    def commit(self):
         results = self.shm_group.get()
         results.visible = self.visible
-        results.centroid_x = module_context.normalized(self.centroid_x, 1)
-        results.centroid_y = module_context.normalized(self.centroid_y, 0)
+        results.centroid_x = self.centroid_x
+        results.centroid_y = self.centroid_y
         results.predicted_location = self.predicted_location
-        results.predicted_x = module_context.normalized(self.predicted_x, 1)
-        results.predicted_y = module_context.normalized(self.predicted_y, 0)
+        results.predicted_x = self.predicted_x
+        results.predicted_y = self.predicted_y
         self.shm_group.set(results)
 
 
@@ -117,6 +150,8 @@ class Roulette(ModuleBase):
 
         DOWNWARD_CAM_WIDTH = DOWNWARD_CAM_WIDTH or mat.shape[1]
         DOWNWARD_CAM_HEIGHT = DOWNWARD_CAM_HEIGHT or mat.shape[0]
+
+        mat = cv2.rotate(mat, cv2.ROTATE_90_CLOCKWISE)
 
         mat = cv2.UMat(mat)
 
@@ -223,8 +258,7 @@ class Roulette(ModuleBase):
                 cv2.circle(center_mat, (center_x, center_y), 7, (255, 255, 255), -1)
                 #self.post('center', center_mat)
                 ROULETTE_BOARD.board_visible = True
-                ROULETTE_BOARD.center_x = center_x
-                ROULETTE_BOARD.center_y = center_y
+                (ROULETTE_BOARD.center_x, ROULETTE_BOARD.center_y) = self.normalized((center_x, center_y))
 
             # draw centroids of green sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(green_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -234,18 +268,20 @@ class Roulette(ModuleBase):
                 centroid_x, centroid_y = calculate_centroid(contour)
                 cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
                 cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
-                #self.post('centroids', mat)
-                GREEN_BINS[bin_index].visible = True
-                GREEN_BINS[bin_index].centroid_x = centroid_x
-                GREEN_BINS[bin_index].centroid_y = centroid_y
-                if found_center:
-                    predicted_x, predicted_y = predict_xy(center_x, center_y, centroid_x, centroid_y)
-                    if within_camera(predicted_x, predicted_y):
-                        cv2.circle(mat, (predicted_x, predicted_y), 7, (255, 0, 0), -1)
-                        GREEN_BINS[bin_index].predicted_location = True
-                        GREEN_BINS[bin_index].predicted_x = predicted_x
-                        GREEN_BINS[bin_index].predicted_y = predicted_y
-                bin_index += 1
+            #    #self.post('centroids', mat)
+            #    GREEN_BINS[bin_index].visible = True
+            #    GREEN_BINS[bin_index].centroid_x = centroid_x
+            #    GREEN_BINS[bin_index].centroid_y = centroid_y
+            #    if found_center:
+            #        predicted_x, predicted_y = predict_xy(center_x, center_y, centroid_x, centroid_y)
+            #        if within_camera(predicted_x, predicted_y):
+            #            cv2.circle(mat, (predicted_x, predicted_y), 7, (255, 0, 0), -1)
+            #            GREEN_BINS[bin_index].predicted_location = True
+            #            GREEN_BINS[bin_index].predicted_x = predicted_x
+            #            GREEN_BINS[bin_index].predicted_y = predicted_y
+            #    bin_index += 1
+
+            assign_bins(contours[:len(GREEN_BINS)], GREEN_BINS, self)
 
             # draw centroids for red sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(red_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -294,7 +330,7 @@ class Roulette(ModuleBase):
             traceback.print_exc(file=sys.stdout)
         finally:
             for s in ALL_SHM:
-                s.commit(self)
+                s.commit()
 
 
 if __name__ == '__main__':
