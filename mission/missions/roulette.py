@@ -1,3 +1,5 @@
+# Written by Will Smith.
+
 from collections import namedtuple
 #from math import atan2
 import time
@@ -12,7 +14,7 @@ from mission.framework.combinators import (
     While
 )
 #from mission.framework.helpers import call_if_function
-from mission.framework.targeting import DownwardTarget
+from mission.framework.targeting import DownwardTarget, DownwardAlign
 from mission.framework.timing import Timer
 from mission.framework.movement import (
     RelativeToInitialDepth,
@@ -32,46 +34,7 @@ from mission.framework.primitive import (
 )
 #from mission.framework.track import ConsistentObject
 
-
-# Predicate = namedtuple('Predicate', ['condition', 'action'])
-
-
-# class LocateBoard(Task):
-#     # TODO
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(self, *args, **kwargs)
-
-#     def on_run(self, *args, **kwargs):
-#         pass
-
-#     def on_finish(self):
-#         Zero()()
-
-
-# class CenterBoard(Task):
-#     """ Centers on the center of the roulette wheel """
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.coreqs = [Predicate(shm.bins_vision.board_visible.get, LocateBoard())]
-#         self.center_task = DownwardTarget((shm.bins_vision.center_x, shm.bins_vision.center_y),
-#                                           target=(0, 0))
-
-#     def on_run(self, *args, **kwargs):
-#         for coreq in self.coreqs:
-#             if not call_if_function(coreq.condition):
-#                 coreq.action()
-#                 return
-#             self.center_task()
-#         if self.center_task.finished:
-#             self.finish()
-
-#     def on_finish(self):
-#         Zero()()
-
-
-# class DropBall(NoOp):
-#     pass
-
+from conf.vehicle import cameras
 
 # class AlignAndDropBall(Task):
 #     """ Waits at the center of the roulette wheel until the target bin is in a predetermined
@@ -153,9 +116,11 @@ class DropBall(Task):
 
 #5 These values are for Teagle
 # Perhaps we should instead do this by determining the size in the camera
-DEPTH_STANDARD = 1.0
+DEPTH_STANDARD = 0.8
 DEPTH_TARGET_ALIGN_BIN = 2.5
-DEPTH_TARGET_DROP = 2.5
+DEPTH_TARGET_DROP = 2.6
+
+CAM_CENTER = (cameras.downward.width/2, cameras.downward.height/2)
 
 def interpolate_list(a, b, steps):
     return [a + (b - a) / steps * i for i in range(steps)]
@@ -172,14 +137,15 @@ def interleave(a, b):
 
 DEPTH_STEPS = interpolate_list(DEPTH_STANDARD, DEPTH_TARGET_ALIGN_BIN, 4)
 
-BIN_CENTER = {'x': shm.bins_vision.center_x, 'y': shm.bins_vision.center_y}
-#GREEN_CENTER = {'x': shm.bins_green0.centroid_x, 'y': shm.bins_vision.centroid_y}
+BIN_CENTER = [shm.bins_vision.center_x, shm.bins_vision.center_y]
+#GREEN_CENTER = [shm.bins_green0.centroid_x, shm.bins_green0.centroid_y]
 GREEN_CENTER = BIN_CENTER
+#GREEN_ANGLE = shm.bins_green0.angle
 
 negator = lambda fcn: -fcn()
 
-align_roulette_center = lambda: DownwardTarget((BIN_CENTER['x'].get, BIN_CENTER['y'].get), target=(0, 0), px=0.2, py=0.4)
-align_green_center = lambda: DownwardTarget((GREEN_CENTER['x'].get, GREEN_CENTER['y'].get), target=(0, 0), px=0.2, py=0.2)
+align_roulette_center = lambda db: DownwardTarget((BIN_CENTER[0].get, BIN_CENTER[1].get), target=CAM_CENTER, px=0.6, py=0.6, deadband=(db, db))
+#align_green_angle = lambda: DownwardAlign(GREEN_ANGLE, target=0)
 
 # TODO
 Bin = namedtuple('Bin', ['shm'])
@@ -190,19 +156,24 @@ Full = Retry(
         Zero(),
         Depth(DEPTH_STANDARD),
         Log('Centering on roulette'),
-        align_roulette_center(),
+        align_roulette_center(0.01),
         Log('Descending on roulette'),
         MasterConcurrent(
             # Descend slowly, not all at once
             Sequential(*interleave(tasks_from_params(Depth, DEPTH_STEPS), tasks_from_param(Timer, 1, len(DEPTH_STEPS)))),
-            align_roulette_center(),
+            align_roulette_center(0.000001),
         ),
         Log('Aligning with green bin'),
-        align_green_center(),
+        align_roulette_center(0.01),
         Log('Descending on green bin'),
+        MasterConcurrent(
+            Depth(DEPTH_TARGET_DROP),
+            align_roulette_center(0.000001),
+        ),
+        #Log('Aligning heading'),
         #MasterConcurrent(
-        #    Depth(DEPTH_TARGET_DROP),
-        #    align_green_center(),
+        #    align_green_angle(),
+        #    align_roulette_center(0.000001),
         #),
         Log('Dropping ball'),
         DropBall(PISTONS['green']),
