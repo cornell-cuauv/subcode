@@ -56,8 +56,8 @@ promptToBuild() {
     read -r yn
     case $yn in
         [Yy]* ) dockerBuild;;
-        ""    ) dockerBuild;;vision/c/UeyeCamera.cpp
-                             [Nn]* ) echo "skipping" ;;
+        ""    ) dockerBuild;;
+        [Nn]* ) echo "skipping" ;;
 *     ) echo "assuming no, skipping";;
 esac
 }
