@@ -81,3 +81,7 @@ sudo bash -c "cat > /usr/local/share/ueye/ueyeethd/ueyeethd.conf << 'EOF'
 [camc]
  Port_Base = 50000
 EOF"
+
+# **************** scipy ****************
+
+apt install --reinstall python-decorator python3-decorator
