@@ -173,9 +173,7 @@ bool UeyeCamera::setup_capture_source() {
 
   std::cout << "Setting to requested resolution " << native_format.nWidth << "x" << native_format.nHeight << std::endl;
 
-  //std::cout << native_format_id << std::endl;
   retval =  is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_SET_FORMAT, &native_format_id, 4);
-  std::cout << "here?" << std::endl;
   if (retval != IS_SUCCESS) {
     std::cout << "Failed to set camera to native resolution, error code: " << retval << std::endl;
     return false;
@@ -185,7 +183,6 @@ bool UeyeCamera::setup_capture_source() {
   // that try to center a target in the camera)
   // TODO: use dynamic shm to do this by reading from camera direction
   shm_init();
-  std::cout << "shm initted" << std::endl;
   if (this->m_direction.compare("forward") == 0) {
     shm_set(camera, forward_width, (int) pimpl->params->width);
     shm_set(camera, forward_height, (int) pimpl->params->height);
