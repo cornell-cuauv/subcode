@@ -343,7 +343,7 @@ void Display::handleInput() {
                     }
                     first_default = 0;
                 }
-                if (mode == MODE_SPEED || mode == MODE_LAT_SPEED || 
+                if (mode == MODE_SPEED || mode == MODE_LAT_SPEED ||
                     mode == MODE_PITCH || mode == MODE_ROLL ||
                     mode == MODE_POSN  || mode == MODE_POSE) {
                     newEntryChar(x);
@@ -601,17 +601,16 @@ void Display::handleInput() {
             case 'q':
                 // DISABLED: this is too easy to accidently hit
                 // it's effectively an "oops I just messed up controls" button
-                //  REENABLED by Alex
-                bool quat = shm_get_settings_control_quat_pid();
-                shm_set_settings_control_quat_pid(not quat);
+                // bool quat = shm_get_settings_control_quat_pid();
+                // shm_set_settings_control_quat_pid(not quat);
 
-                if (not quat) {
-                    inputMessage("Quaternion Mode");
-                } else {
-                    inputMessage("Euler Angle Mode");
-                }
+                // if (not quat) {
+                //     inputMessage("Quaternion Mode");
+                // } else {
+                //     inputMessage("Euler Angle Mode");
+                // }
 
-                break;
+                // break;
         }
     }
     flushinp();// trying to prevent delayed input from filled buffer
@@ -752,9 +751,9 @@ void Display::processEntry() {
             break;
 
         case MODE_PITCH:
-           if ((!controlSettings.quat_pid && (entry_value > 70.0 || entry_value < -70.0)) 
+           if ((!controlSettings.quat_pid && (entry_value > 70.0 || entry_value < -70.0))
                 || (entry_value > 90.0 || entry_value < -90.0)) {
-               entry_valid = false; 
+               entry_valid = false;
 
            } else {
                entry_valid = true;
@@ -933,4 +932,3 @@ void Display::zeroDesires(bool surface) {
     rw_desires.roll = 0;
     shm_setg(navigation_desires, rw_desires);
 }
-
