@@ -85,8 +85,7 @@ def assign_bins(contours, bins_data, module_context):
     sorted_diffs = sorted(diffs, key=lambda tup: tup[1])
 
     best_permutation = sorted_diffs[0][0]
-
-    for i in range(len(bins_data)):
+    for i in range(min(len(bins_data), len(best_permutation))):
         bins_data[i].visible = True
         bins_data[i].centroid_x = best_permutation[i][0]
         bins_data[i].centroid_y = best_permutation[i][1]
@@ -156,9 +155,11 @@ class Roulette(ModuleBase):
         mat = cv2.UMat(mat)
 
         try:
-            # Reset SHM output
+            ## Reset SHM output
+            #for s in ALL_SHM:
+            #    s.reset()
             for s in ALL_SHM:
-                s.reset()
+                s.visible = False
 
             lab = cv2.cvtColor(mat, cv2.COLOR_BGR2LAB)
             lab_split = cv2.split(lab)
@@ -236,11 +237,16 @@ class Roulette(ModuleBase):
                         self.options['hough_lines_rho'],
                         self.options['hough_lines_theta'] * np.pi / 180,
                         self.options['hough_lines_thresh'])
+
+                thetas = []
+
                 if lines is not None:
                     lines = [(idx, line[0]) for (idx, line) in enumerate(lines[:2])]
                     line_equations = []
                     lines_mat = mat #mat.copy()
                     for (i, (rho, theta)) in lines:
+                        thetas.append(theta)
+
                         a = np.cos(theta)
                         b = np.sin(theta)
                         x0 = a*rho
@@ -269,6 +275,18 @@ class Roulette(ModuleBase):
                 self.post('center', cv2.UMat.get(center_mat))
                 ROULETTE_BOARD.board_visible = True
                 (ROULETTE_BOARD.center_x, ROULETTE_BOARD.center_y) = (center_x, center_y)
+
+                if len(thetas) == 2:
+                    x = 0
+                    y = 0
+                    for theta in thetas:
+                        if theta > math.pi / 2:
+                            theta -= math.pi
+                        x += math.cos(theta)
+                        y += math.sin(theta)
+                    avg_heading = math.atan2(y, x) * 180 / math.pi
+                    # This is temporary
+                    GREEN_BINS[0].predicted_x = avg_heading
 
             # draw centroids of green sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(green_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
