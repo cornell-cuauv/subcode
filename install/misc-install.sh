@@ -68,3 +68,16 @@ fi
 
 
 mkdir /var/log/auv && chown software /var/log/auv & chgrp software /var/log/auv
+
+# **************** ueye ****************
+
+mkdir -p /usr/local/share/ueye/ueyeethd/
+
+sudo bash -c "cat > /usr/local/share/ueye/ueyeethd/ueyeethd.conf << 'EOF'
+;Ni1
+[Parameters]
+ Interfaces = camc
+
+[camc]
+ Port_Base = 50000
+EOF"
