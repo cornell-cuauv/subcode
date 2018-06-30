@@ -76,7 +76,7 @@ def assign_bins(contours, bins_data, module_context):
 
     # Find new and old centers of the two bins
     old_centers = [(bin.shm_group.centroid_x.get(), bin.shm_group.centroid_y.get()) for bin in bins_data]
-    new_centers = [module_context.normalized(calculate_centroid(contour)) for contour in contours]
+    new_centers = [calculate_centroid(contour) for contour in contours]
 
     permutations = itertools.permutations(new_centers)
 
@@ -198,10 +198,20 @@ class Roulette(ModuleBase):
                     2 * self.options['hough_circle_blur_kernel'] + 1), 0)
             #self.post('all_threshed', cv2.UMat.get(all_threshed))
 
-            circles = cv2.HoughCircles(all_threshed, cv2.HOUGH_GRADIENT, self.options['hough_circles_dp'],
-                                       self.options['hough_circles_minDist'], param1=self.options['hough_circles_param1'],
-                                       param2=self.options['hough_circles_param2'], minRadius=self.options['hough_circles_minRadius'],
-                                       maxRadius=self.options['hough_circles_maxRadius'])
+            #circle_blurred = cv2.GaussianBlur(all_threshed,
+            #           (2 * self.options['blur_kernel'] + 1,
+            #            2 * self.options['blur_kernel'] + 1), 0)
+            #circle_edges = cv2.Canny(circle_blurred,
+            #            threshold1=self.options['canny_low_thresh'],
+            #            threshold2=self.options['canny_high_thresh'])
+
+            #self.post('circle_edges', circle_edges)
+
+            #circles = cv2.HoughCircles(circle_edges, cv2.HOUGH_GRADIENT, self.options['hough_circles_dp'],
+            #                           self.options['hough_circles_minDist'], param1=self.options['hough_circles_param1'],
+            #                           param2=self.options['hough_circles_param2'], minRadius=self.options['hough_circles_minRadius'],
+            #                           maxRadius=self.options['hough_circles_maxRadius'])
+
             # Hough circles aren't working. So don't use them.
             found_center = False # circles is not None
             if found_center:
@@ -221,7 +231,7 @@ class Roulette(ModuleBase):
                 edges = cv2.Canny(blurred,
                         threshold1=self.options['canny_low_thresh'],
                         threshold2=self.options['canny_high_thresh'])
-                #self.post('edges', edges)
+                self.post('edges', edges)
                 lines = cv2.HoughLines(edges,
                         self.options['hough_lines_rho'],
                         self.options['hough_lines_theta'] * np.pi / 180,
@@ -229,7 +239,7 @@ class Roulette(ModuleBase):
                 if lines is not None:
                     lines = [(idx, line[0]) for (idx, line) in enumerate(lines[:2])]
                     line_equations = []
-                    lines_mat = mat.copy()
+                    lines_mat = mat #mat.copy()
                     for (i, (rho, theta)) in lines:
                         a = np.cos(theta)
                         b = np.sin(theta)
@@ -241,7 +251,7 @@ class Roulette(ModuleBase):
                         y2 = int(y0 - 1000*(a))
                         cv2.line(lines_mat, (x1, y1), (x2, y2), (0, 0, 255), 2)
                         line_equations.append((float(x1), float(x2), float(y1), float(y2)))
-                    #self.post('lines', cv2.UMat.get(lines_mat))
+                    self.post('lines', cv2.UMat.get(lines_mat))
                     found_center = len(line_equations) >= 2
                     if found_center:
                         # calculate intersection of diameters of green section
@@ -254,11 +264,11 @@ class Roulette(ModuleBase):
                         center_x, center_y = intersection_x, intersection_y
 
             if found_center:
-                center_mat = mat.copy()
+                center_mat = mat # mat.copy()
                 cv2.circle(center_mat, (center_x, center_y), 7, (255, 255, 255), -1)
-                #self.post('center', center_mat)
+                self.post('center', cv2.UMat.get(center_mat))
                 ROULETTE_BOARD.board_visible = True
-                (ROULETTE_BOARD.center_x, ROULETTE_BOARD.center_y) = self.normalized((center_x, center_y))
+                (ROULETTE_BOARD.center_x, ROULETTE_BOARD.center_y) = (center_x, center_y)
 
             # draw centroids of green sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(green_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -282,6 +292,7 @@ class Roulette(ModuleBase):
             #    bin_index += 1
 
             assign_bins(contours[:len(GREEN_BINS)], GREEN_BINS, self)
+            self.post('centroids', cv2.UMat.get(mat))
 
             # draw centroids for red sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(red_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -291,18 +302,9 @@ class Roulette(ModuleBase):
                 centroid_x, centroid_y = calculate_centroid(contour)
                 cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
                 cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
-                RED_BINS[bin_index].visible = True
-                RED_BINS[bin_index].centroid_x = centroid_x
-                RED_BINS[bin_index].centroid_y = centroid_y
-                if found_center:
-                    predicted_x, predicted_y = predict_xy(center_x, center_y, centroid_x, centroid_y)
-                    if within_camera(predicted_x, predicted_y):
-                        cv2.circle(mat, (predicted_x, predicted_y), 7, (255, 0, 0), -1)
-                        RED_BINS[bin_index].predicted_location = True
-                        RED_BINS[bin_index].predicted_x = predicted_x
-                        RED_BINS[bin_index].predicted_y = predicted_y
-                bin_index += 1
-            #self.post('centroids', mat)
+
+            assign_bins(contours[:len(RED_BINS)], RED_BINS, self)
+            self.post('centroids', cv2.UMat.get(mat))
 
             # draw centroids for black sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(black_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -312,19 +314,9 @@ class Roulette(ModuleBase):
                 centroid_x, centroid_y = calculate_centroid(contour)
                 cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
                 cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
-                BLACK_BINS[bin_index].visible = True
-                BLACK_BINS[bin_index].centroid_x = centroid_x
-                BLACK_BINS[bin_index].centroid_y = centroid_y
-                if found_center:
-                    predicted_x, predicted_y = predict_xy(center_x, center_y, centroid_x, centroid_y)
-                    if within_camera(predicted_x, predicted_y):
-                        cv2.circle(mat, (predicted_x, predicted_y), 7, (255, 0, 0), -1)
-                        BLACK_BINS[bin_index].predicted_location = True
-                        BLACK_BINS[bin_index].predicted_x = predicted_x
-                        BLACK_BINS[bin_index].predicted_y = predicted_y
-                bin_index += 1
 
-            #self.post('centroids', cv2.UMat.get(mat))
+            assign_bins(contours[:len(BLACK_BINS)], BLACK_BINS, self)
+            self.post('centroids', cv2.UMat.get(mat))
 
         except Exception as e:
             traceback.print_exc(file=sys.stdout)

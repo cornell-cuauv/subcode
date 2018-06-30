@@ -34,6 +34,8 @@ from mission.framework.primitive import (
 )
 #from mission.framework.track import ConsistentObject
 
+from conf.vehicle import cameras
+
 # class AlignAndDropBall(Task):
 #     """ Waits at the center of the roulette wheel until the target bin is in a predetermined
 #     dropping position, and then moves towards the bin to drop a ball """
@@ -118,6 +120,8 @@ DEPTH_STANDARD = 0.8
 DEPTH_TARGET_ALIGN_BIN = 2.5
 DEPTH_TARGET_DROP = 2.6
 
+CAM_CENTER = (cameras.downward.width/2, cameras.downward.height/2)
+
 def interpolate_list(a, b, steps):
     return [a + (b - a) / steps * i for i in range(steps)]
 
@@ -140,8 +144,7 @@ GREEN_CENTER = BIN_CENTER
 
 negator = lambda fcn: -fcn()
 
-align_roulette_center = lambda: DownwardTarget((BIN_CENTER[0].get, BIN_CENTER[1].get), target=(0, 0), px=0.2, py=0.4, deadband=(0.03, 0.03))
-align_green_center = lambda: DownwardTarget((GREEN_CENTER[0].get, GREEN_CENTER[1].get), target=(0, 0), px=0.2, py=0.2, deadband=(0.1, 0.1))
+align_roulette_center = lambda db: DownwardTarget((BIN_CENTER[0].get, BIN_CENTER[1].get), target=CAM_CENTER, px=0.6, py=0.6, deadband=(db, db))
 #align_green_angle = lambda: DownwardAlign(GREEN_ANGLE, target=0)
 
 # TODO
@@ -153,24 +156,24 @@ Full = Retry(
         Zero(),
         Depth(DEPTH_STANDARD),
         Log('Centering on roulette'),
-        align_roulette_center(),
+        align_roulette_center(0.01),
         Log('Descending on roulette'),
         MasterConcurrent(
             # Descend slowly, not all at once
             Sequential(*interleave(tasks_from_params(Depth, DEPTH_STEPS), tasks_from_param(Timer, 1, len(DEPTH_STEPS)))),
-            align_roulette_center(),
+            align_roulette_center(0.000001),
         ),
         Log('Aligning with green bin'),
-        align_green_center(),
+        align_roulette_center(0.01),
         Log('Descending on green bin'),
         MasterConcurrent(
             Depth(DEPTH_TARGET_DROP),
-            align_green_center(),
+            align_roulette_center(0.000001),
         ),
         #Log('Aligning heading'),
         #MasterConcurrent(
         #    align_green_angle(),
-        #    align_green_center(),
+        #    align_roulette_center(0.000001),
         #),
         Log('Dropping ball'),
         DropBall(PISTONS['green']),
