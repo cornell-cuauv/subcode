@@ -241,33 +241,57 @@ class Roulette(ModuleBase):
                 thetas = []
 
                 if lines is not None:
-                    lines = [(idx, line[0]) for (idx, line) in enumerate(lines[:2])]
+                    # Remove duplicates
+                    lines = set([(line[0][0], line[0][1]) for line in lines][:2])
                     line_equations = []
                     lines_mat = mat #mat.copy()
-                    for (i, (rho, theta)) in lines:
+                    for (rho, theta) in lines:
                         thetas.append(theta)
 
                         a = np.cos(theta)
                         b = np.sin(theta)
                         x0 = a*rho
                         y0 = b*rho
-                        x1 = int(x0 + 1000*(-b))
-                        y1 = int(y0 + 1000*(a))
-                        x2 = int(x0 - 1000*(-b))
-                        y2 = int(y0 - 1000*(a))
-                        cv2.line(lines_mat, (x1, y1), (x2, y2), (0, 0, 255), 2)
-                        line_equations.append((float(x1), float(x2), float(y1), float(y2)))
+                        x1 = (x0 + 1500*(-b))
+                        y1 = (y0 + 1500*(a))
+                        x2 = (x0 - 1500*(-b))
+                        y2 = (y0 - 1500*(a))
+                        cv2.line(lines_mat, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+                        line_equations.append((x1, x2, y1, y2))
                     self.post('lines', cv2.UMat.get(lines_mat))
                     found_center = len(line_equations) >= 2
                     if found_center:
                         # calculate intersection of diameters of green section
                         [x01, x02, y01, y02] = line_equations[0]
                         [x11, x12, y11, y12] = line_equations[1]
-                        b1 = (y02 - y01) / max(1e-10, x02 - x01)
-                        b2 = (y12 - y11) / max(1e-10, x12 - x11)
-                        intersection_x = int((b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2))
-                        intersection_y = int(b1 * (intersection_x - x01) + y01)
-                        center_x, center_y = intersection_x, intersection_y
+
+                        # This is stupid but it works
+                        if x02 == x01:
+                           x01 += 0.01
+                        if x12 == x11:
+                            x11 += 0.01
+
+                        b1 = (y02 - y01) / (x02 - x01)
+                        b2 = (y12 - y11) / (x12 - x11)
+
+                        if b1 == b2:
+                            print('ovelapping')
+                            found_center = False
+                        else:
+                            intersection_x = (b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2)
+
+                            if math.isinf(intersection_x):
+                                if abs(x02 - x01) < 0.2:
+                                    intersection_x = x02
+                                elif abs(x12 - x11) < 0.2:
+                                    intersection_x = x12
+
+                            intersection_y = (b1 * (intersection_x - x01) + y01)
+
+                            intersection_x = int(intersection_x)
+                            intersection_y = int(intersection_y)
+
+                            center_x, center_y = intersection_x, intersection_y
 
             if found_center:
                 center_mat = mat # mat.copy()
@@ -279,12 +303,14 @@ class Roulette(ModuleBase):
                 if len(thetas) == 2:
                     x = 0
                     y = 0
+                    # We multiply angle by 2 for calculating average because
+                    # we want it to be in the range [0,180] instead of [0,360]
                     for theta in thetas:
-                        if theta > math.pi / 2:
-                            theta -= math.pi
-                        x += math.cos(theta)
-                        y += math.sin(theta)
-                    avg_heading = math.atan2(y, x) * 180 / math.pi
+                        if theta > math.pi:
+                            theta -= math.pi*2
+                        x += math.cos(theta*2)
+                        y += math.sin(theta*2)
+                    avg_heading = math.atan2(y, x) * 180 / math.pi / 2
                     # This is temporary
                     GREEN_BINS[0].predicted_x = avg_heading
 

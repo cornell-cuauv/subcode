@@ -156,15 +156,15 @@ Full = Retry(
         Zero(),
         Depth(DEPTH_STANDARD),
         Log('Centering on roulette'),
-        align_roulette_center(db=20),
+        align_roulette_center(db=40, p=0.0005),
         Log('Descending on roulette'),
         MasterConcurrent(
             # Descend slowly, not all at once
             Sequential(*interleave(tasks_from_params(Depth, DEPTH_STEPS), tasks_from_param(Timer, 1, len(DEPTH_STEPS)))),
-            align_roulette_center(0.000001),
+            align_roulette_center(0.0003),
         ),
         Log('Aligning with table again'),
-        align_roulette_center(db=30, p=0.00008),
+        align_roulette_center(db=60, p=0.0001),
         Log('Descending on table'),
         MasterConcurrent(
             Depth(DEPTH_TARGET_DROP),
@@ -173,8 +173,9 @@ Full = Retry(
         Log('Aligning heading with green bin'),
         MasterConcurrent(
             align_green_angle(db=15, p=0.5),
-            align_roulette_center(db=0.000001, p=0.00001),
+            align_roulette_center(db=0.000001, p=0.00008),
         ),
+        Zero(),
         Log('Dropping ball'),
         DropBall(PISTONS['green']),
         Log('Returning to normal depth'),
