@@ -1,4 +1,4 @@
-#include "CaptureSource.hpp"
+
 #include "UeyeCamera.hpp"
 
 #include "misc/utils.h"
@@ -110,7 +110,7 @@ bool UeyeCamera::setup_capture_source() {
   int ret;
   if ((ret = is_ParameterSet(pimpl->m_camera, IS_PARAMETERSET_CMD_LOAD_FILE,
                              (void*) wconfig.c_str(), sizeof(const char*))) != IS_SUCCESS) {
-    std::cout << "Could not load camera config: " << ret << std::endl;
+    std::cout << "Could not load camera config (" << pimpl->params->configuration << "): " << ret << std::endl;
     return false;
   }
 
@@ -126,7 +126,7 @@ bool UeyeCamera::setup_capture_source() {
 
   UINT num_entries;
   if (is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_GET_NUM_ENTRIES, &num_entries, 4) != IS_SUCCESS) {
-    std::cout << "Failed to get number of image formats" << std::endl; 
+    std::cout << "Failed to get number of image formats" << std::endl;
   }
 
   UINT format_list_size = sizeof(IMAGE_FORMAT_LIST) + ((num_entries - 1) * sizeof(IMAGE_FORMAT_INFO));
@@ -137,13 +137,13 @@ bool UeyeCamera::setup_capture_source() {
   UINT retval = is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_GET_LIST, format_list, format_list_size);
 
   if (retval != IS_SUCCESS) {
-      std::cout << "Failed to get image formats, error code:  " << retval << std::endl;
-      return false;
-  } 
+    std::cout << "Failed to get image formats, error code:  " << retval << std::endl;
+    return false;
+  }
 
   IMAGE_FORMAT_INFO native_format = format_list->FormatInfo[0];
   UINT native_format_id = format_list->FormatInfo[0].nFormatID;
-  
+
   // Loop throught the supported image resolutions (called formats by camera
   // API), printing them out and if one matches the requested resolution,
   // remember that format ID
@@ -153,12 +153,12 @@ bool UeyeCamera::setup_capture_source() {
   for (UINT i = 0; i < num_entries; i++) {
     format_info = format_list->FormatInfo[i];
     std::cout << format_info.nWidth <<  "x" << format_info.nHeight << ", ";
-    
+
     // Remember this format ID if it is the same as the requested resolution
     if (format_info.nWidth == pimpl->params->width &&
         format_info.nHeight == pimpl->params->height) {
       found = true;
-      native_format_id = format_info.nFormatID; 
+      native_format_id = format_info.nFormatID;
       native_format = format_list->FormatInfo[i];
     }
   }
@@ -166,7 +166,7 @@ bool UeyeCamera::setup_capture_source() {
 
   if (!found) {
     std::cerr << "Unable to set Ueye camera with ID " << pimpl->params->camera_id <<
-                 " to a resolution of " << pimpl->params->width << "x"
+      " to a resolution of " << pimpl->params->width << "x"
               << pimpl->params->height << std::endl;
     return false;
   }
@@ -175,8 +175,8 @@ bool UeyeCamera::setup_capture_source() {
 
   retval =  is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_SET_FORMAT, &native_format_id, 4);
   if (retval != IS_SUCCESS) {
-      std::cout << "Failed to set camera to native resolution, error code: " << retval << std::endl;
-      return false;
+    std::cout << "Failed to set camera to native resolution, error code: " << retval << std::endl;
+    return false;
   }
 
   // Set camera dimensions in shm so other software knows what they are (e.g. missions
@@ -190,8 +190,8 @@ bool UeyeCamera::setup_capture_source() {
     shm_set(camera, downward_width, (int) pimpl->params->width);
     shm_set(camera, downward_height, (int) pimpl->params->height);
   } else {
-      std::cout << "Unsupported camera direction " << this->m_direction << ", must be one of 'forward' or 'downward'" << std::endl;
-      return false;
+    std::cout << "Unsupported camera direction " << this->m_direction << ", must be one of 'forward' or 'downward'" << std::endl;
+    return false;
   }
 
   // Set area of interest to full image
@@ -255,7 +255,7 @@ std::experimental::optional<std::pair<cv::Mat, long>> UeyeCamera::acquire_next_i
     }
     pimpl->last_buffer_loc = NULL;
   }
-  
+
   if ((is_WaitEvent(pimpl->m_camera, IS_SET_EVENT_FRAME, 1000)) != IS_SUCCESS) {
     std::cout << "Camera frame timeout!" << std::endl;
     return std::experimental::nullopt;
@@ -274,6 +274,9 @@ std::experimental::optional<std::pair<cv::Mat, long>> UeyeCamera::acquire_next_i
   pimpl->result.data = (unsigned char*) buffer;
   if (pimpl->params->rotate180) {
     cv::flip(pimpl->result, pimpl->result, -1);
+  }
+  if (pimpl->params->rotate90) {
+    cv::rotate(pimpl->result, pimpl->result, cv::ROTATE_90_CLOCKWISE);
   }
   return std::make_pair(pimpl->result, get_time());
 }
