@@ -2,6 +2,7 @@
 
 import traceback
 import sys
+import math
 
 import cv2
 import numpy as np
@@ -11,7 +12,8 @@ from vision.modules.base import ModuleBase
 from vision import options
 
 options = [
-          ]
+    options.IntOption('hsv_thresh_c', 20, 0, 100),
+]
 
 class Dice(ModuleBase):
 
@@ -19,100 +21,127 @@ class Dice(ModuleBase):
     #    return cv2.approxPolyDP(c,0.01*cv2.arcLength(c,True),True)
 
     def post_umat(self, tag, img):
-            self.post(tag, cv2.UMat.get(img))
+        self.post(tag, cv2.UMat.get(img))
+
+    def kernel(self, size):
+        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size * 2 + 1, size * 2 + 1), (size, size))
 
     def process(self, mat):
         try:
-            #hsv = cv2.cvtColor(mat, cv2.COLOR_BGR2HSV)
-            #self.post('hsv', hsv)
+            self.post('raw', mat)
 
-            #sensitivity = 25
-            ## define range of white color in HSV
-            #lower_white = np.array([0,0,255-sensitivity], dtype=np.uint8)
-            #upper_white = np.array([255,sensitivity,255], dtype=np.uint8)
+            hsv_h, hsv_s, hsv_v = cv2.split(cv2.cvtColor(mat, cv2.COLOR_BGR2HSV))
+            luv_l, luv_u, luv_v = cv2.split(cv2.cvtColor(mat, cv2.COLOR_BGR2LUV))
+            y_y, y_cr, y_cb = cv2.split(cv2.cvtColor(mat, cv2.COLOR_BGR2YCR_CB))
 
-            ## Threshold the HSV image to get only white colors
-            #mask = cv2.inRange(hsv, lower_white, upper_white)
+            self.post('hsv_v', hsv_v)
+            self.post('luv_u', luv_u)
+            self.post('luv_v', luv_v)
+            self.post('y_cr', y_cr)
+            self.post('y_cb', y_cb)
 
-            #self.post("white", mask)
+            hsv_v_thresh = cv2.adaptiveThreshold(hsv_v, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 99, self.options['hsv_thresh_c'])
+            luv_u_thresh = cv2.adaptiveThreshold(luv_u, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 99, 5)
+            luv_v_thresh = cv2.adaptiveThreshold(luv_v, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 199, 5)
+            y_cr_thresh = cv2.adaptiveThreshold(y_cr, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 99, 5)
+            y_cb_thresh = cv2.adaptiveThreshold(y_cb, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 5)
 
-            ## Bitwise-AND mask and original image
-            #color = cv2.bitwise_and(mat,mat.copy(), mask=mask)
+            hsv_v_c = cv2.erode(hsv_v_thresh, self.kernel(0))
+            luv_u_c = cv2.erode(luv_u_thresh, self.kernel(0))
+            luv_v_c = cv2.erode(luv_v_thresh, self.kernel(0))
+            y_cr_c = cv2.erode(y_cr_thresh, self.kernel(0))
+            y_cb_c = cv2.erode(y_cb_thresh, self.kernel(0))
 
-            ## CV_BGR2GRAY
-            #grayImage = cv2.cvtColor(color, cv2.COLOR_BGR2GRAY)
-            ## blur to remove noise
-            #grayImage = cv2.GaussianBlur(grayImage, (5, 5), 0, 0)
-            ## Hard thresholding to get values within our range
-            ##ret, grayImage = cv2.threshold(grayImage, 28, 255, cv2.THRESH_BINARY)
-            ## Edge detection
-            #edges = cv2.Canny(grayImage, 2, 4)
+            self.post('hsv_v_c', hsv_v_c)
+            self.post('luv_u_c', luv_u_c)
+            self.post('luv_v_c', luv_v_c)
+            self.post('y_cr_c', y_cr_c)
+            self.post('y_cb_c', y_cb_c)
 
-            #self.post("Canny edges", edges)
+            #comp = ((hsv_v_c + luv_u_c + y_cr_c))
 
-            ## Contour detection. We find only the external contours.
-            #image, contours, hierarchy = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            #self.post('comp', comp)
 
-            ## print("Number of contours: ", len(contours))
+            # Find the dots in hsv_v
 
-            #approximate_contours = list(map(self.approximate, contours))
-            #avg_contour_area = np.mean(list(map(lambda x: cv2.contourArea(x), approximate_contours)))
-            ## print("Average area: ", avg_contour_area)
-            #bounding_contours = list(filter(lambda c: cv2.contourArea(c) > avg_contour_area-200, approximate_contours))
+            x, contours, x = cv2.findContours(hsv_v_c, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-            ## Draw bounding boxes around each interesting contour
-            #bounding_boxes = list(map(cv2.minAreaRect, bounding_contours))
-            #boxes = mat.copy()
-            #for b in bounding_boxes:
-            #    box = cv2.boxPoints(b)
-            #    box = np.int0(box)
-            #    cv2.drawContours(boxes, [box], 0, (0, 0, 255), 2)
+            dots = []
 
-            #self.post("bounding boxes", boxes)
+            # Problem is that this depends on the distance
+            # When the dice are really far away the dots are tiny
+            min_area = 10
 
-            #box_contours = list(map(lambda x: [np.int0(cv2.boxPoints(x))], bounding_boxes))
+            for contour in contours:
+                area = cv2.contourArea(contour)
+                if area > min_area:
+                    # Bound with circle
+                    x, circ_r = cv2.minEnclosingCircle(contour)
+                    circ_area = math.pi * circ_r**2
 
-            ## Set up the detector with default parameters.
-            #params = cv2.SimpleBlobDetector_Params()
+                    if circ_area / area < 2.5:
+                        # Bound with ellipse
+                        (ell_cx, ell_cy), (ell_w, ell_h), theta = cv2.fitEllipse(contour)
+                        ell_area = math.pi * ell_w * ell_h / 4
 
-            ## Change thresholds
-            #params.minThreshold = 240;
-            #params.maxThreshold = 255;
+                        if ell_area / area < 1.5:
+                            dots.append((contour, (ell_cx, ell_cy), (ell_w + ell_h) / 2))
 
-            #params.filterByArea = True
-            #params.minArea = 5
+            dotted = mat.copy()
+            density_dots = np.zeros(mat.shape, np.uint8)
 
-            #params.minDistBetweenBlobs = 1
+            for dot in dots:
+                x, y, w, h = cv2.boundingRect(dot[0])
+                cv2.rectangle(dotted, (x, y), (x+w, y+h), 0, thickness=2)
 
-            #params.filterByInertia = True
-            #params.minInertiaRatio = 0.1
+            cv2.drawContours(density_dots, [dot[0] for dot in dots], -1, (255, 255, 255), 3)
+            self.post('density_dots', density_dots)
 
-            #params.filterByCircularity = False
+            self.post('dotted', dotted)
 
-            #detector = cv2.SimpleBlobDetector_create(params)
+            # Group the dots into buckets
 
-            #for i in range(len(bounding_boxes)):
-            #    mask = np.zeros_like(grayImage)
-            #    cv2.drawContours(mask, box_contours[i], 0, 255, -1)
-            #    out = np.zeros_like(grayImage)
-            #    out[mask == 255] = grayImage[mask == 255]
-            #    keypoints = detector.detect(out)
-            #    cv2.putText(boxes, str(len(keypoints)), (int(bounding_boxes[i][0][0]) - 50, int(bounding_boxes[i][0][1])), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (0, 255, 0), 2)
-            #self.post("bounding boxes", boxes)
-            #im_with_keypoints = cv2.drawKeypoints(img, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-            #self.post("out", im_with_keypoints)
+            # Each dot on the same die should be close together and have a similar area
 
-            #mat = cv2.UMat(mat)
+            # Start out with all dots in separate groups and then combine them
+            groups = [set([dot[1]]) for dot in dots]
 
-            h, s, v = cv2.split(cv2.cvtColor(mat, cv2.COLOR_BGR2HSV))
+            # This iteration avoids checking the same pair twice
+            for i, dot1 in enumerate(dots):
+                for dot2 in dots[i+1:]:
+                    dist = math.sqrt((dot2[1][0] - dot1[1][0])**2 + (dot2[1][1] - dot1[1][1])**2)
+                    radius_ratio = max(dot1[2], dot2[2]) / min(dot1[2], dot2[2])
+                    avg_radius = (dot1[2] + dot2[2]) / 2
 
-            self.post('v', v)
+                    if dist < avg_radius * 5 and radius_ratio < 1.5:
+                        # They should be in the same group
 
-            thresh = cv2.adaptiveThreshold(v, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 5)
+                        # Find the two groups
+                        group1 = None
+                        group2 = None
+                        for group in groups:
+                            if dot1[1] in group:
+                                group1 = group
+                            if dot2[1] in group:
+                                group2 = group
+                            if (group1 is not None) and (group2 is not None):
+                                break
 
-            self.post('thresh', thresh)
+                        if group1 != group2:
+                            # Combine the groups
+                            group1 |= group2
+                            groups.remove(group2)
+
+            groups_out = dotted.copy()
+
+            for group in groups:
+                gcx = int(sum([dot[0] for dot in group]) / len(group))
+                gcy = int(sum([dot[1] for dot in group]) / len(group))
+                cv2.circle(groups_out, (gcx, gcy), len(group) * 10, (0, 0, 255) if len(group) >= 5 else (0, 0, 0), thickness=(2 * len(group)))
+
+            self.post('groups_out', groups_out)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
-
 if __name__ == '__main__':
     Dice('forward', options)()
+    
