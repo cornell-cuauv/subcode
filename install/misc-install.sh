@@ -86,6 +86,6 @@ sudo bash -c "cat > /usr/local/share/ueye/ueyeethd/ueyeethd.conf << 'EOF'
 EOF"
 
 # **************** scipy ***************
-apt-install -y remove python-scipy python3-scipy
+apt-get -y remove python-scipy python3-scipy
 pip2 install scipy
 pip3 install scipy
