@@ -5,7 +5,10 @@ apt-get -y install zsh
 # The stacks should be mounted at /home/software/cuauv/software
 rm /home/software/.bashrc
 
-sudo -u software cat > /home/software/.zshrc <<'EOF'
+sudo -u software tee /home/software/.zshrc <<'EOF'
+if [[ -f /home/software/.env ]]; then
+   . /home/software/.env
+fi
 . /home/software/.zshrc_user
 . /opt/auv/.zshrc_system
 EOF
@@ -30,7 +33,7 @@ echo "auth sufficient pam_permit.so" > /etc/pam.d/sshd
 
 sudo -u software mkdir -p /home/software/.ssh
 
-sudo -u software cat > /home/software/.ssh/config <<'EOF'
+sudo -u software tee /home/software/.ssh/config <<'EOF'
 Host loglan
   Hostname cuauv.org
   Port 2222
@@ -55,4 +58,34 @@ rm -rf /build_tmp_sloth
 
 # **************** sloth ****************
 
+mkdir -p /tmp/ueye
+pushd /tmp/ueye
+
+apt-get -y install libqtgui4
+
+if [[ "$(uname -m)" == "x86_64" ]]; then
+    wget https://cuauv.org/nix-res-private/uEye-Linux-4.90.06-64.tgz
+    tar -xvf uEye-Linux-4.90.06-64.tgz
+    ./ueyesdk-setup-4.90.06-eth-amd64.gz.run
+fi
+
+
 mkdir /var/log/auv && chown software /var/log/auv & chgrp software /var/log/auv
+
+# **************** ueye ****************
+
+mkdir -p /usr/local/share/ueye/ueyeethd/
+
+sudo bash -c "cat > /usr/local/share/ueye/ueyeethd/ueyeethd.conf << 'EOF'
+;Ni1
+[Parameters]
+ Interfaces = camc
+
+[camc]
+ Port_Base = 50000
+EOF"
+
+# **************** scipy ***************
+apt-get -y remove python-scipy python3-scipy
+pip2 install scipy
+pip3 install scipy

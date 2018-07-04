@@ -5,13 +5,17 @@ packages=(
     autossh
     bc
     dialog
+    gnuplot
     htop
     iotop
+    iputils-ping
+    iputils-tracepath
     ipython
     ipython3
     jq
     libboost-python-dev
     libeigen3-dev
+    libgtest-dev
     libncurses-dev
     libpopt-dev
     libpython-dev
@@ -25,12 +29,6 @@ packages=(
     tmux
     usbutils
     wget
-
-    # mission
-
-    # control
-    python-numpy
-    python-scipy
 
     # serial
     libgtest-dev
@@ -99,3 +97,11 @@ update-alternatives --config vim
 update-alternatives --install /usr/bin/editor editor /usr/bin/nvim 60
 update-alternatives --config editor
 
+
+# ***************** gtest *******************
+cd /usr/src/gtest
+cmake CMakeLists.txt
+make
+
+# copy or symlink libgtest.a and libgtest_main.a to your /usr/lib folder
+cp *.a /usr/lib

@@ -10,12 +10,12 @@ matplotlib.use('WX')
 import matplotlib.pyplot as plt
 import numpy, scipy
 CHANNEL_DEPTH = 128
-UDP_PAYLOAD_SIZE = 818 #Derived from wireshark.
+UDP_PAYLOAD_SIZE = 768 #818 #Derived from wireshark.
 UDP_IP="" #This means all interfaces?
 UDP_PORT=8899
 
 print "Enter trigger threshold between 0 and 4096"
-threshold=2100.0
+threshold=11000
 if len(sys.argv) > 1:
     threshold = float(sys.argv[1])
 #sock.setblocking(0)
@@ -50,7 +50,7 @@ plt.xlabel("Sample (n)")
 plt.ylabel("Amplitude")
 ax = fig.add_subplot(111)
 ax.set_xlim((0,CHANNEL_DEPTH))
-ax.set_ylim((0,4100))
+ax.set_ylim((0,16000))
 
 #line1,line2,line3 = ax.plot(x, y, 'r-',label='ADC1',x,y,'b-',label='ADC2',x,y,'g-',label='ADC3') # Returns a tuple of line objects, thus the comma
 line1,line2,line3 = ax.plot(x, y, 'r-',x,y,'b-',x,y,'g-') # Returns a tuple of line objects, thus the comma
@@ -79,11 +79,14 @@ while(1):
     transducer2 = nd[2::3]
     if numpy.max(transducer2) > threshold or numpy.max(transducer1) > threshold or numpy.max(transducer0) > threshold:
     #if numpy.max(transducer2) > threshold:
+        print("ping")
         t = numpy.arange(0,len(transducer1))
+        # line1.set_ydata(transducer0,c='red')
+        # line2.set_ydata(transducer1,c='blue')
+        # line3.set_ydata(transducer2,c='green')
         line1.set_ydata(transducer0)
         line2.set_ydata(transducer1)
         line3.set_ydata(transducer2)
         #print "ydata seet"
         plt.draw()
         plt.pause(.00001)
-
