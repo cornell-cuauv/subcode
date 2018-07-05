@@ -97,7 +97,9 @@ SlamFilter::SlamFilter(int n, const vec3 &pos, const vec3 &ori): num_particles_(
 void SlamFilter::Update(const vec6 &u) {
     mutex_.lock();
     float total_weight = std::accumulate(weights_.begin(), weights_.end(), 0.);
+#ifdef VERBOSE
     std::cout << total_weight << std::endl;
+#endif
     float offset = total_weight/(weights_.size()*100);
     float total = total_weight + offset*weights_.size();
     for (int i = 0; i < weights_.size(); ++i) {

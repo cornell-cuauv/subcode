@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 import zmq
-import proto.slam_msg_pb2 as slam_msg
+import slam.proto.slam_msg_pb2 as slam_msg
 
 class SlamClient:
 

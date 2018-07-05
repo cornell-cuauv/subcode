@@ -21,7 +21,9 @@ int main(int argc, char** argv) {
 
     while (true) {
         unsigned start = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+#ifdef VERBOSE
         std::cout << "ITER!" << std::endl;
+#endif
 
         shm_getg(kalman, k);
         shm_getg(navigation_desires, nd);
