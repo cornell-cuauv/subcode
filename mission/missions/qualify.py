@@ -1,23 +1,27 @@
+import os
+
 from mission.framework.combinators import Sequential, Concurrent
 from mission.framework.movement import RelativeToInitialHeading, Depth
 from mission.framework.position import MoveX
 from mission.framework.primitive import Log
 
-from mission.missions.gate import gate
+# MoveX for minisub w/o a DVL
+def fake_move_x(d):
+    v = 0.2
+    if d < 0:
+        d *= -1
+        v *= -1
+    return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), Zero())
 
-RunGate = lambda: gate
-
-RunPole = lambda: Sequential(
-    MoveX(3),
-    RelativeToInitialHeading(90),
-    MoveX(1),
-    RelativeToInitialHeading(90),
-    MoveX(1),
-)
+def InterMoveX(d):
+    return MoveX(d) if os.environ['CUAUV_VEHICLE'] == 'castor' else fake_move_x(d)
 
 Qualify = Sequential(
     Depth(1.0),
-    RunGate(),
-    GoAroundPole(),
-    RunGate(),
+
+    InterMoveX(12),
+    RelativeToInitialHeading(90),
+    InterMoveX(1),
+    RelativeToInitialHeading(90),
+    InterMoveX(12),
 )
