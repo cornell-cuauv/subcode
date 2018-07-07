@@ -14,7 +14,9 @@ def fake_move_x(d):
     return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), Zero())
 
 def InterMoveX(d):
-    return MoveX(d) if os.environ['CUAUV_VEHICLE'] == 'castor' else fake_move_x(d)
+    #return MoveX(d) if os.environ['CUAUV_VEHICLE'] == 'castor' else fake_move_x(d)
+    # changed because Castor's DVL is currently not functioning
+    return fake_move_x(d)
 
 Qualify = Sequential(
     Depth(1.0),
