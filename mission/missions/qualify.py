@@ -51,13 +51,13 @@ Qualify = Sequential(
 
     InterMoveX(3),
     Depth(1.5),
-    InterMoveX(3),
+    InterMoveX(4),
 
     RelativeToInitialHeading(90),
     InterMoveX(1),
     RelativeToInitialHeading(90),
 
-    InterMoveX(3),
+    InterMoveX(4),
     InterMoveY(0.5),
     Depth(2.5),
     RelativeToInitialHeading(-12),
