@@ -34,7 +34,7 @@ PickUp = Sequential(
     Functioner(reset_counter),
     *([
         Functioner(counter),
-        Log('Picking up #{}'.format(count)),
+        Log('Picking up {}'.format(count)),
         Timer(DELAY_UP),
         Depth(DEPTH_DOWN),
         Timer(DELAY_DOWN),
