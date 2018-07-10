@@ -49,16 +49,28 @@ Qualify = Sequential(
     Depth(2.5),
     Timer(2),
 
+    # Castor
     InterMoveX(8),
     Depth(0.8),
     InterMoveX(7),
+
+    # # Pollux
+    # InterMoveX(3),
+    # Depth(1.5),
+    # InterMoveX(4),
 
     RelativeToInitialHeading(90),
     InterMoveX(3),
     RelativeToInitialHeading(90),
 
+    # Castor
     InterMoveX(7),
     InterMoveY(1.7),
+
+    # # Pollux
+    # InterMoveX(4),
+    # InterMoveY(0.5),
+
     Depth(2.5),
     #RelativeToInitialHeading(-12),
     InterMoveX(8),
