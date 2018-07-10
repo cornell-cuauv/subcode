@@ -73,6 +73,10 @@ packages=(
 
     # aslam
     liblzma-dev
+
+    #slam
+    libzmqpp-dev
+    python3-zmq
 )
 
 apt-get install -y software-properties-common # For add-apt-repository
