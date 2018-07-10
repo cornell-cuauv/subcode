@@ -21,4 +21,4 @@ while :; do
 done
 EOF
 
-chmod +x /etc/services/emacs-server.sh
+chmod +x /etc/service/emacs-server.sh
