@@ -20,7 +20,7 @@ RUN bash /dependencies/aptstrap.sh /dependencies/opencv-install.sh
 COPY install/caffe-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/caffe-install.sh
 
-COPY install/setup-user.sh /dependencies/
+COPY install/setup-user.sh install/ssh /dependencies/
 RUN bash /dependencies/setup-user.sh
 
 COPY install/ocaml-install.sh /dependencies/
@@ -54,4 +54,3 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/.cache/
 USER software
 WORKDIR /home/software/cuauv/software
 CMD echo "CUAUV Docker container should be started through a wrapping tool (cdw or docker-helper.sh"
-
