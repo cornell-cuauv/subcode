@@ -47,6 +47,11 @@ export TERM="xterm"
 # Don't live share history across terminals. This is confusing for multiple people
 setopt no_share_history
 
+
+# Disable core dumps, our code crashes a lot.
+ulimit -c 0
+
+
 # auto ls
 chpwd() {
     emulate -L zsh
