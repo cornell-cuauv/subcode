@@ -12,3 +12,13 @@ wget -q "${NNG_URL}" -P /usr/local/share/fonts
 fc-cache -fv
 
 setuser software git clone https://github.com/syl20bnr/spacemacs /home/software/.emacs.d
+
+cat > /etc/service/emacs-server.sh << 'EOF'
+   #!/bin/sh
+setuser software emacs --batch -u software -f server-start &&
+while :; do
+      sleep 60
+done
+EOF
+
+chmod +x /etc/services/emacs-server.sh
