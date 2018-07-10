@@ -20,7 +20,8 @@ RUN bash /dependencies/aptstrap.sh /dependencies/opencv-install.sh
 COPY install/caffe-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/caffe-install.sh
 
-COPY install/setup-user.sh install/ssh /dependencies/
+COPY install/setup-user.sh /dependencies/
+COPY install/ssh /dependencies/ssh
 RUN bash /dependencies/setup-user.sh
 
 COPY install/ocaml-install.sh /dependencies/
