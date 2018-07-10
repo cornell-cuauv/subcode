@@ -9,6 +9,8 @@ import numpy as np
 import shm
 import auvlog.client
 
+import time 
+
 from vision.vision_common import draw_angled_arrow, \
                                  get_angle_from_rotated_rect
 from vision.modules.base import ModuleBase
@@ -16,8 +18,10 @@ from vision import options as gui_options
 
 log = auvlog.client.log.vision.pipes
 
-vision_options = [ gui_options.IntOption('block_size', 1001, 0, 1500),
-                   gui_options.IntOption('c_thresh', -125, -200, 100),
+vision_options = [ gui_options.IntOption('hsv_s_block_size', 1000, 1, 7500),
+                   gui_options.IntOption('hsv_v_block_size', 1000, 1, 7500),
+                   gui_options.IntOption('hsv_s_c_thresh', -27, -200, 100),
+                   gui_options.IntOption('hsv_v_c_thresh', -27, -200, 100),
                    gui_options.IntOption('erode_size', 14, 0, 50),
                    gui_options.IntOption('dilate_size', 3, 0, 50),
                    gui_options.DoubleOption('min_percent_frame', 0.01, 0, 0.1),
@@ -26,12 +30,13 @@ vision_options = [ gui_options.IntOption('block_size', 1001, 0, 1500),
                    gui_options.IntOption('canny1', 50, 0, 200),
                    gui_options.IntOption('canny2', 150, 0, 200),
                    gui_options.DoubleOption('min_angle_diff', np.pi/8, 0, np.pi*2),
+                   gui_options.DoubleOption('min_line_dist', 100, 0, 1000),
                    # A circle with radius 1 inscribed in a square has
                    # 'rectangularity' pi/4 ~ 0.78.
                    gui_options.DoubleOption('aspect_ratio_threshold', 3, 0.5, 5),
                    gui_options.DoubleOption('min_rectangularity', 0.48),
                    gui_options.DoubleOption('heuristic_power', 5),
-                   gui_options.BoolOption('debugging', False),
+                   gui_options.BoolOption('debugging', True),
                  ]
 
 def get_zero_path_group():
@@ -78,79 +83,124 @@ class Pipes(ModuleBase):
     def threshold(self, mat):
         threshes = {}
         hsv = cv2.cvtColor(mat, cv2.COLOR_RGB2HSV)
-        hsv_s = cv2.split(hsv)[1]
-        s_threshed = cv2.adaptiveThreshold(hsv_s, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, self.options['block_size'], self.options['c_thresh'])
+        hsv_h, hsv_s, hsv_v = cv2.split(hsv)
+        s_threshed = cv2.adaptiveThreshold(hsv_s, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 1 + 2 * self.options['hsv_s_block_size'], self.options['hsv_s_c_thresh'])
+        v_threshed = cv2.adaptiveThreshold(hsv_v, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 1 + 2 * self.options['hsv_v_block_size'], self.options['hsv_v_c_thresh'])
+        
+        final_threshed = s_threshed - v_threshed
+        
         threshes["hsv_s"] = s_threshed
-
+        threshes["hsv_v"] = v_threshed
+        threshes["final"] = final_threshed
+        '''
         dilate_size = self.options['dilate_size']
         erode_size = self.options['erode_size']
         erode_element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (erode_size * 2 + 1, erode_size * 2 + 1), (erode_size, erode_size))
         dilate_element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilate_size * 2 + 1, dilate_size * 2 + 1), (dilate_size, dilate_size))
-        morphed = cv2.erode(s_threshed, erode_element)
+        morphed = cv2.erode(final_threshed, erode_element)
         morphed = cv2.dilate(morphed, dilate_element)
-        threshes["morphed"] = morphed
-
-        edges = cv2.Canny(s_threshed,self.options['canny1'],self.options['canny2'],apertureSize = 3)
+        '''
+        threshes["morphed"] = cv2.inRange(final_threshed, 200, 255)
+        '''
+        edges = cv2.Canny(morphed,self.options['canny1'],self.options['canny2'],apertureSize = 3)
         threshes["edges"] = edges
+        '''
+        if self.options['debugging']:
+          for name, image in threshes.items():
+            self.post("threshed_{}".format(name), image)
+
         return threshes
 
-    def find_lines(self, thresh):
+    def find_lines(self, mat, thresh):
+        self.post("thres_test",thresh)
         minLineLength = 100
         maxLineGap = 100
-        return cv2.HoughLinesP(thresh,1,np.pi/180,100,minLineLength,maxLineGap)
+        lines = cv2.HoughLinesP(thresh,10,np.pi/180,500,minLineLength,maxLineGap)
+        if lines is None:
+          return []
+
+        if self.options["debugging"]:
+          line_image = np.copy(mat)
+          mat_line_image = np.copy(thresh)
+
+          for line in lines:
+            x1,y1,x2,y2 = line[0]
+            cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),1)
+            cv2.line(mat_line_image,(x1,y1),(x2,y2),(255,0,0),1)
+
+
+          self.post("all_houghs",line_image)
+          self.post("all_houghs_2", mat_line_image)
+
+        return lines
 
     #A list of segment_infos sorted in order of best
-    def average_lines(self,lines):
-        if lines is None:
-          return lines
+    def average_lines(self,lines,mat):
 
-        info = []
-        final = []
+      if lines is None:
+        return lines
 
-        for l in lines:
-          for x1,y1,x2,y2 in l:
-            angle = self.angle(x1, y1, x2, y2)
-            length = sqrt((y2-y1)**2 + (x2-x1)**2)
+      info = []
+      final = []
 
-          x = line_info(x1,y1,x2,y2, angle, length, 0)
-          info.append(x)
+      for l in lines:
 
-        info.sort(key=lambda x:(x.angle, x.length), reverse=True)
+        for x1,y1,x2,y2 in l:
+          angle = self.angle(x1, y1, x2, y2)
+          length = sqrt((y2-y1)**2 + (x2-x1)**2)
 
-        ang = info[0].angle
-        coords = []
-        xa1 = info[0].x1
-        ya1 = info[0].y1
-        xa2 = info[0].x2
-        ya2 = info[0].y2
-        num = 0
-        angP = None
+        x = line_info(x1,y1,x2,y2, angle, length, 0)
+        info.append(x)
+
+      info.sort(key=lambda x: x.length, reverse=True)
+
+      coords = []
+        
+      num = 0
+      angP = None
+
+
+      for k in info:
+        ang = k.angle
+
+        xac = abs(k.x1 + (k.x1-k.x2) / 2)
+        yac = abs(k.y1 + (k.y1-k.y2) / 2)
 
         for l in info:
-          num += 1
-          if self.angle_diff(l.angle, ang) > self.options['min_angle_diff']:
-            langle = self.angle(int(xa1 / num), int(ya1 / num), int(xa2 / num), int(ya2 / num))
-            x = segment_info(int(xa1 / num), int(ya1 / num), int(xa2 / num), int(ya2 / num), langle, 0, 0)
-            if length > 100:
-              final.append(x)
-            ang = l.angle
-            num = 1
-            xa1 = l.x1
-            ya1 = l.y1
-            xa2 = l.x2
-            ya2 = l.y2
-          else:
-            xa1 += l.x1
-            ya1 += l.y1
-            xa2 += l.x2
-            ya2 += l.y2
-        langle = self.angle(int(xa1 / num), int(ya1 / num), int(xa2 / num), int(ya2 / num))
-        x = segment_info(int(xa1 / num), int(ya1 / num), int(xa2 / num), int(ya2 / num), langle, 0,0)
-        length = sqrt((y2-y1)**2 + (x2-x1)**2)
-        if length > 100:
-            final.append(x)
+          xc = abs(l.x1 + (l.x1 - l.x2) / 2)
+          yc = abs(l.y1 + (l.y1 - l.y2) / 2)
 
-        return final
+
+          if self.angle_diff(l.angle,ang) < self.options['min_angle_diff'] and abs(xc - xac) < self.options['min_line_dist'] and abs(yc - yac) < self.options['min_line_dist']:
+            newx1 = k.x1 + (k.x1 - l.x1) / 2
+            newx2 = k.x2 + (k.x2 - l.x2) / 2
+            newy1 = k.y1 + (k.y1 - l.y1) / 2
+            newy2 = k.y2 + (k.y2 - l.y2) / 2
+
+            k=k._replace(x1=newx1,x2=newx1,y1=newy1,y2=newy2)
+            
+            xac = abs(k.x1 + (k.x1-k.x2) / 2)
+            yac = abs(k.y1 + (k.y1-k.y2) / 2)
+
+
+            info.remove(l)
+
+      for l in info:
+        length = sqrt((l.y2-l.y1)**2 + (l.x2-l.x1)**2)
+        if length > 100:
+          final.append(l)
+
+      if self.options["debugging"]:
+          line_image = np.copy(mat)
+
+          for line in final:
+            x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
+            cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),1)
+
+
+          self.post("final_line",line_image)
+
+      return final
 
     def tag(self, mat, text, pos):
         position = (pos[0] - 100, pos[1])
@@ -164,22 +214,39 @@ class Pipes(ModuleBase):
 
     def label_lines(self, lines, lineMat):
         tlines = []
+
         if lines==None or len(lines) == 0:
-          return
-        if len(self.tracked_lines) == 0 and len(lines) >= 2:
+          pass
+
+        elif len(self.tracked_lines) == 0 and len(lines) >= 2:
+          
           i=1
-          lines.sort(key=lambda x:(x.y1), reverse=True)
+          lines.sort(key=lambda x:(x.length), reverse=True)
           for l in lines[:2]:
             l2 = segment_info(l.x1, l.y1, l.x2, l.y2, l.angle, i, 0)
             i = i+1
             tlines.append(l2)
+
+          '''
+          lines.sort(key=lambda x:(x.length), reverse=False)
+          for k in lines:
+            for l in lines[1:]:
+              if self.angle_diff(k.angle,l.angle) > 0.52:
+                xck = abs(k.x1 + (k.x1-k.x2) / 2)
+                yck = abs(k.y1 + (k.y1-k.y2) / 2)
+                xcl = abs(l.x1 + (l.x1-l.x2) / 2)
+                ycl = abs(l.y1 + (l.y1-l.y2) / 2)
+                if abs(xck-xcl) > 200 and abs(yck-ycl) > 200:
+                  tlines.append(segment_info(k.x1, k.y1, k.x2, k.y2, k.angle, 1, 0))
+                  tlines.append(segment_info(l.x1, l.y1, l.x2, l.y2, l.angle, 2, 0))
+              pass
+          '''
+
         else:
           for line in self.tracked_lines:
             ang = self.options['min_angle_diff'] * (line.updated + 1)
             c=False
             for l in lines:
-              # print("a")
-              # print(self.angle_diff(l.angle, line.angle))
               if self.line_error(l, line) < 50 * (line.updated + 1):
                 l2 = segment_info(l.x1, l.y1, l.x2, l.y2, l.angle, line.id, 0)
                 lines.remove(l)
@@ -189,6 +256,7 @@ class Pipes(ModuleBase):
             else:
               l3 = segment_info(line.x1, line.y1, line.x2, line.y2, line.angle, line.id, line.updated + 1)
               tlines.insert(line.id, l3)
+
         self.tracked_lines = tlines
 
     def update_results(self):
@@ -232,6 +300,8 @@ class Pipes(ModuleBase):
 
 
     def process(self, mat):
+
+        time.sleep(0.1)
         image_size = mat.shape[0]*mat.shape[1]
 
         self.post('orig', mat)
@@ -240,10 +310,11 @@ class Pipes(ModuleBase):
 
         lineMat = np.copy(mat)
 
-        lines = self.find_lines(threshes["morphed"])
+        lines = self.find_lines(mat, threshes["morphed"])
+        
         error = namedtuple("error", ["lines", "error"])
 
-        linesI = self.average_lines(lines)
+        linesI = self.average_lines(lines, mat)
         linesI = self.label_lines(linesI, lineMat)
 
         if self.tracked_lines is not None:
@@ -252,8 +323,8 @@ class Pipes(ModuleBase):
             cv2.line(lineMat,(l.x1,l.y1),(l.x2,l.y2),(255,255,255),2)
 
         self.post("lines", lineMat)
-        self.post("hsv", threshes["hsv_s"])
-        self.post("morphed", threshes["morphed"])
+        
+
         self.update_results()
 
 if __name__ == '__main__':
