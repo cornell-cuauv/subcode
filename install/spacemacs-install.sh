@@ -13,12 +13,13 @@ fc-cache -fv
 
 setuser software git clone https://github.com/syl20bnr/spacemacs /home/software/.emacs.d
 
-cat > /etc/service/emacs-server.sh << 'EOF'
+mkdir -p /etc/service/emacs-server
+cat > /etc/service/emacs-server/run << 'EOF'
    #!/bin/sh
-setuser software emacs --batch -u software -f server-start &&
+setuser software /usr/bin/emacs-25.3 --batch -u software -f server-start &&
 while :; do
       sleep 60
 done
 EOF
 
-chmod +x /etc/service/emacs-server.sh
+chmod +x /etc/service/emacs-server/run
