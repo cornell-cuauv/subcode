@@ -27,7 +27,7 @@ void Pd5Com::setupDVLSerialPort() {
   usleep(SETUP_PAUSE);
   ser.writeSer((const unsigned char*)"CF11110\n",8); // Flow control (auto everything, but disable data recording)
   usleep(SETUP_PAUSE);
-  ser.writeSer((const unsigned char*)"CB811\n",6); // Baud Rate of 115200
+  ser.writeSer((const unsigned char*)"CB411\n",6); // Baud Rate of 115200
   usleep(SETUP_PAUSE);
   ser.writeSer((const unsigned char*)"EA+04500\n",9); // Heading settage
   usleep(SETUP_PAUSE);
