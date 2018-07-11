@@ -37,6 +37,8 @@ vision_options = [ gui_options.IntOption('hsv_s_block_size', 1000, 1, 7500),
                    gui_options.DoubleOption('min_rectangularity', 0.48),
                    gui_options.DoubleOption('heuristic_power', 5),
                    gui_options.BoolOption('debugging', True),
+                   gui_options.DoubleOption('min_dist_ratio', 0.4, 0, 2),
+                   gui_options.DoubleOption('max_dist_ratio', 2,0, 5),
                  ]
 
 def get_zero_path_group():
@@ -214,12 +216,13 @@ class Pipes(ModuleBase):
 
     def label_lines(self, lines, lineMat):
         tlines = []
+        self.tracked_lines = []
 
         if lines==None or len(lines) == 0:
           pass
 
         elif len(self.tracked_lines) == 0 and len(lines) >= 2:
-          
+          '''
           i=1
           lines.sort(key=lambda x:(x.length), reverse=True)
           for l in lines[:2]:
@@ -228,20 +231,30 @@ class Pipes(ModuleBase):
             tlines.append(l2)
 
           '''
-          lines.sort(key=lambda x:(x.length), reverse=False)
-          for k in lines:
-            for l in lines[1:]:
-              if self.angle_diff(k.angle,l.angle) > 0.52:
-                xck = abs(k.x1 + (k.x1-k.x2) / 2)
-                yck = abs(k.y1 + (k.y1-k.y2) / 2)
-                xcl = abs(l.x1 + (l.x1-l.x2) / 2)
-                ycl = abs(l.y1 + (l.y1-l.y2) / 2)
-                if abs(xck-xcl) > 200 and abs(yck-ycl) > 200:
+          lines.sort(key=lambda x:(x.length), reverse=True)
+          for index,k in enumerate(lines):
+            for l in lines[index+1:]:
+              if self.angle_diff(k.angle,l.angle) > 0.4 and self.angle_diff(k.angle, l.angle) < 0.78:
+                xck = abs(k.x1 + (k.x2-k.x1) / 2)
+                yck = abs(k.y1 + (k.y2-k.y1) / 2)
+                xcl = abs(l.x1 + (l.x2-l.x1) / 2)
+                ycl = abs(l.y1 + (l.y2-l.y1) / 2)
+                line_dist = ((xck-xcl)**2 + (yck-ycl)**2)**0.5
+
+                len_norm = ((k.x1-k.x2)**2 + (k.y1-k.y2)**2)**0.5
+                
+                print(line_dist/len_norm)
+                if self.options['min_dist_ratio'] < line_dist/len_norm < self.options['max_dist_ratio'] :
                   tlines.append(segment_info(k.x1, k.y1, k.x2, k.y2, k.angle, 1, 0))
                   tlines.append(segment_info(l.x1, l.y1, l.x2, l.y2, l.angle, 2, 0))
-              pass
-          '''
-
+                  tlines.sort(key=lambda x:((x.y2 - x.y1)/2 + x.y1), reverse=True)
+                  tlines[0] = tlines[0]._replace(id=1)
+                  tlines[1] = tlines[1]._replace(id=2)
+                  break
+            if len(tlines) == 2:
+              break
+          
+        '''
         else:
           for line in self.tracked_lines:
             ang = self.options['min_angle_diff'] * (line.updated + 1)
@@ -256,6 +269,7 @@ class Pipes(ModuleBase):
             else:
               l3 = segment_info(line.x1, line.y1, line.x2, line.y2, line.angle, line.id, line.updated + 1)
               tlines.insert(line.id, l3)
+        '''
 
         self.tracked_lines = tlines
 
