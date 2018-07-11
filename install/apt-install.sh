@@ -75,7 +75,7 @@ packages=(
     liblzma-dev
 
     #slam
-    libzmqpp-dev
+    libzmq-dev
     python3-zmq
 )
 
