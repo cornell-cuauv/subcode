@@ -57,7 +57,6 @@ class Pipes(ModuleBase):
 
     def angle(self, x1, y1, x2, y2):
         a = atan2(y2-y1, x2-x1)
-        a = a - (shm.kalman.heading.get() * np.pi / 180)
         return a
 
     def abs_angle(self, x1, y1, x2, y2):
@@ -349,10 +348,10 @@ class Pipes(ModuleBase):
       y1 = lines[0].y1
       y2 = lines[0].y2
 
-      x3 = lines[0].x1
-      x4 = lines[0].x2
-      y3 = lines[0].y1
-      y4 = lines[0].y2
+      x3 = lines[1].x1
+      x4 = lines[1].x2
+      y3 = lines[1].y1
+      y4 = lines[1].y2
 
       px= ( (x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4) ) / ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4) ) 
       py= ( (x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4) ) / ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4) )
@@ -382,14 +381,32 @@ class Pipes(ModuleBase):
         for line in linesI:
           path_angle.append(line.angle)
 
+        second_line = False
+
         if len(linesI) == 2:
           px, py = self.get_intersection(linesI)
 
         if len(linesI) == 2:
           old_angle_1 = shm.path_results.angle_1.get()
+          old_angle_2 = shm.path_results.angle_2.get()
+
           angle_diff_1 = self.angle_diff(old_angle_1, path_angle[0])
-          angle_diff_2 = self.angle_diff(old_angle_1, path_angle[1])
-          if angle_diff_1 > angle_diff_2:
+          angle_diff_2 = self.angle_diff(old_angle_2, path_angle[0])
+
+          angle_diff_3 = self.angle_diff(old_angle_1, path_angle[1])
+          angle_diff_4 = self.angle_diff(old_angle_2, path_angle[1])
+
+          angle_diffs = [angle_diff_1, angle_diff_2, angle_diff_3, angle_diff_4]
+
+          angle_diffs.sort()
+
+          if angle_diffs[0] == angle_diff_2 or angle_diffs[0] == angle_diff_3 :
+            print("flipped")
+            print("old angle 1", old_angle_1)
+            print("old_angle_2", old_angle_2)
+            print("path angle 1", path_angle[0])
+            print("path angle 2", path_angle[1])
+
             path_angle[0], path_angle[1] = path_angle[1], path_angle[0]
 
           shm.path_results.angle_1.set(path_angle[0])
@@ -403,21 +420,36 @@ class Pipes(ModuleBase):
         elif len(linesI) == 1:
           old_angle_1 = shm.path_results.angle_1.get()
           old_angle_2 = shm.path_results.angle_2.get()
-          angle_diff_1 = self.angle_diff(old_angle_1, path_angle)
-          angle_diff_2 = self.angle_diff(old_angle_2, path_angle)
+          angle_diff_1 = self.angle_diff(old_angle_1, path_angle[0])
+          angle_diff_2 = self.angle_diff(old_angle_2, path_angle[0])
+
           if angle_diff_1 < angle_diff_2:
-            shm.path_results.angle_1.set(path_angle)
+            shm.path_results.angle_1.set(path_angle[0])
             shm.path_results.visible_1.set(True)
             shm.path_results.visible_2.set(False)
           else:
-            shm.path_results.angle_2.set(path_angle)
+            shm.path_results.angle_2.set(path_angle[0])
             shm.path_results.visible_1.set(False)
             shm.path_results.visible_2.set(True)
+            second_line = True
+
           shm.path_results.num_lines.set(1)
 
         else:
           shm.path_results.visible_1.set(False)
           shm.path_results.visible_2.set(False)
+          shm.path_results.num_lines.set(0)
+
+
+        line_image = np.copy(mat)
+        for i, line in enumerate(linesI):  
+          x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
+          if i == 0 and not second_line:
+            cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),5)
+          elif i == 1 or second_line :
+            cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
+          
+        self.post("final_final",line_image)
 
 
         '''
@@ -427,14 +459,15 @@ class Pipes(ModuleBase):
           for l in self.tracked_lines[:2]:
             self.tag(lineMat, str("{}".format(l.id)), (l.x1, l.y1))
             cv2.line(lineMat,(l.x1,l.y1),(l.x2,l.y2),(255,255,255),2)
-        '''
+        
         self.post("lines", lineMat)
         
 
         self.update_results()
+        '''
 
-      except:
-        pass
+      except Exception as e:
+        print(e)
 
 if __name__ == '__main__':
     Pipes('downward', vision_options)()
