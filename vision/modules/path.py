@@ -88,7 +88,15 @@ class Pipes(ModuleBase):
         dilate_element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilate_size * 2 + 1, dilate_size * 2 + 1), (dilate_size, dilate_size))
         morphed = cv2.erode(s_threshed, erode_element)
         morphed = cv2.dilate(morphed, dilate_element)
-        threshes["morphed"] = morphed
+        '''
+        threshes["morphed"] = cv2.inRange(final_threshed, 100, 255)
+        '''
+        edges = cv2.Canny(morphed,self.options['canny1'],self.options['canny2'],apertureSize = 3)
+        threshes["edges"] = edges
+        '''
+        if self.options['debugging']:
+          for name, image in threshes.items():
+            self.post("threshed_{}".format(name), image)
 
         edges = cv2.Canny(s_threshed,self.options['canny1'],self.options['canny2'],apertureSize = 3)
         threshes["edges"] = edges
