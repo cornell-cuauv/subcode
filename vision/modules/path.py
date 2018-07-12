@@ -362,7 +362,7 @@ class Pipes(ModuleBase):
 
     def process(self, mat):
       try:
-        time.sleep(0.1)
+        
         image_size = mat.shape[0]*mat.shape[1]
 
         self.post('orig', mat)
