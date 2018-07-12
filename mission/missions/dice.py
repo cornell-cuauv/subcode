@@ -10,11 +10,16 @@ from mission.framework.helpers import ConsistencyCheck, call_if_function
 
 import shm
 
-CAM_CENTER = (shm.cameras.forward.width/2, shm.cameras.forward.height/2)
+CAM_DIM = (shm.camera.forward_width.get(), shm.camera.forward_height.get())
+CAM_CENTER = (shm.camera.forward_width.get()/2, shm.camera.forward_height.get()/2)
 
 shm_vars = [shm.dice0, shm.dice1, shm.dice2, shm.dice3]
 
-align_buoy = lambda num, db: ForwardTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), CAM_CENTER, deadband)
+get_normed = lambda num: lambda: (shm_vars[num].center_x.get(), shm_vars[num].center_y.get())
+                         #lambda: ((shm_vars[num].center_x.get() - CAM_CENTER[0]) / CAM_DIM[0],
+                         #         (shm_vars[num].center_y.get() - CAM_CENTER[1]) / CAM_DIM[1])
+
+align_buoy = lambda num, db: ForwardTarget(get_normed(num), (0, 0), deadband=(db, db))
 
 class BoolSuccess(Task):
     def on_run(self, test):
@@ -25,8 +30,8 @@ class Consistent(Task):
         self.checker = ConsistencyCheck(count, total, default=False)
 
     def on_run(self, test, count, total, invert):
-        test_result = call_if_function(not test if invert else test))
-        if self.checker.check(test_result):
+        test_result = call_if_function(test)
+        if self.checker.check(not test_result if invert else test_result):
             self.finish()
 
 # MoveX for minisub w/o a DVL
@@ -38,8 +43,11 @@ def fake_move_x(d):
     return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), Zero())
 
 RamBuoy = lambda num: Retry(
-    Sequential(
-        align_buoy(num=num, db=80),
+    lambda: Sequential(
+        Log('Ramming buoy {}'.format(num)),
+        Log('Aligning...'),
+        align_buoy(num=num, db=0.1),
+        Log('Driving forward...'),
         MasterConcurrent(
             Consistent(lambda: shm_vars[num].visible.get, count=5, total=20, invert=True),
             VelocityX(0.2),
@@ -49,6 +57,7 @@ RamBuoy = lambda num: Retry(
             # Make sure that we are close enough to the buoy
             BoolSuccess(lambda: shm_vars[num].radius > 100),
             on_success=Sequential(
+                Log('Ramming buoy...'),
                 # Ram buoy
                 fake_move_x(1),
                 # Should be rammed
@@ -57,6 +66,7 @@ RamBuoy = lambda num: Retry(
             on_fail=Fail(
                 # We weren't close enough when we lost the buoy - back up and try again
                 Sequential(
+                    Log('Not close enough to buoy. Backing up...'),
                     Zero(),
                     fake_move_x(-1),
                 ),
@@ -65,14 +75,7 @@ RamBuoy = lambda num: Retry(
     ), attempts = 3
 )
 
-# Hey... this isn't going to work
-# Because we sort dice based on number of sides
-# Once we get close enough to not see the second one, the num will switch
-# How to reconcile this? Need to actually keep track of which dice is which
-# SLAM?
-
 Full = Sequential(
-    # TODO figure out which buoy is which consistently
     RamBuoy(num=0),
     RamBuoy(num=1),
 )

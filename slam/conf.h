@@ -13,6 +13,6 @@
 #define LANDMARK_SIGNIFICANCE 4
 
 // #define VERBOSE
-// #define PLOT
+#define PLOT
 
 #endif

@@ -13,12 +13,16 @@ import shm
 from vision.modules.base import ModuleBase
 from vision import options
 
+import slam.slam_util as slam
+from will_common import find_best_match
+
 options = [
     options.BoolOption('debug', False),
     options.IntOption('hsv_thresh_c', 20, 0, 100),
 ]
 
 FORWARD_CAM_WIDTH = shm.camera.forward_width.get()
+FORWARD_CAM_HEIGHT = shm.camera.forward_height.get()
 
 class Dice(ModuleBase):
     def post_umat(self, tag, img):
@@ -31,6 +35,12 @@ class Dice(ModuleBase):
         return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
 
     def process(self, mat):
+        # for simulator
+        shm.camera.forward_width.set(mat.shape[1])
+        shm.camera.forward_height.set(mat.shape[0])
+        global FORWARD_CAM_WIDTH
+        FORWARD_CAM_WIDTH = mat.shape[0]
+
         try:
             debug = self.options['debug']
 
@@ -43,10 +53,10 @@ class Dice(ModuleBase):
 
             if debug:
                 self.post('hsv_v', hsv_v)
-            #self.post('luv_u', luv_u)
-            #self.post('luv_v', luv_v)
-            #self.post('y_cr', y_cr)
-            #self.post('y_cb', y_cb)
+                #self.post('luv_u', luv_u)
+                #self.post('luv_v', luv_v)
+                #self.post('y_cr', y_cr)
+                #self.post('y_cb', y_cb)
 
             hsv_v_thresh = cv2.adaptiveThreshold(hsv_v, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 99, self.options['hsv_thresh_c'])
             #luv_u_thresh = cv2.adaptiveThreshold(luv_u, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 99, 5)
@@ -62,10 +72,10 @@ class Dice(ModuleBase):
 
             if debug:
                 self.post('hsv_v_c', hsv_v_c)
-            #self.post('luv_u_c', luv_u_c)
-            #self.post('luv_v_c', luv_v_c)
-            #self.post('y_cr_c', y_cr_c)
-            #self.post('y_cb_c', y_cb_c)
+                #self.post('luv_u_c', luv_u_c)
+                #self.post('luv_v_c', luv_v_c)
+                #self.post('y_cr_c', y_cr_c)
+                #self.post('y_cb_c', y_cb_c)
 
             # Find the dots in hsv_v
 
@@ -85,12 +95,16 @@ class Dice(ModuleBase):
                     circ_area = math.pi * circ_r**2
 
                     if circ_area / area < 2.5:
-                        # Bound with ellipse
-                        (ell_cx, ell_cy), (ell_w, ell_h), theta = cv2.fitEllipse(contour)
-                        ell_area = math.pi * ell_w * ell_h / 4
+                        # problems if contour isn't big enough
+                        try:
+                            # Bound with ellipse
+                            (ell_cx, ell_cy), (ell_w, ell_h), theta = cv2.fitEllipse(contour)
+                            ell_area = math.pi * ell_w * ell_h / 4
 
-                        if ell_area / area < 1.5:
-                            dots.append((contour, (ell_cx, ell_cy), (ell_w + ell_h) / 2))
+                            if ell_area / area < 1.5:
+                                dots.append((contour, (ell_cx, ell_cy), (ell_w + ell_h) / 2))
+                        except cv2.error:
+                            pass
 
             dotted = mat.copy()
             density_dots = np.zeros(mat.shape, np.uint8)
@@ -145,38 +159,66 @@ class Dice(ModuleBase):
 
             shm_values = []
 
-            SHM_VARS = [shm.dice0, shm.dice1, shm.dice2, shm.dice3]
+            SHM_VARS = [shm.dice0, shm.dice1] #, shm.dice2, shm.dice3]
 
             for group in groups:
                 gcx = int(sum([dot[0] for dot in group]) / len(group))
                 gcy = int(sum([dot[1] for dot in group]) / len(group))
                 rad = max([self.dist(dot1, dot2) for dot1 in group for dot2 in group]) / 2
+                dist = None if rad == 0 else 0.11 * FORWARD_CAM_WIDTH / rad # hella sketch, be ware or be dare
 
-                shm_values.append((gcx, gcy, len(group), rad))
+                shm_values.append((gcx, gcy, len(group), rad, dist))
 
                 cv2.circle(groups_out, (gcx, gcy), len(group) * 10, (0, 0, 255) if len(group) >= 5 else (0, 0, 0), thickness=(2 * len(group)))
 
-            # Want at least four values
-            shm_values += [None] * (4 - min(len(shm_values), len(SHM_VARS)))
+            # Want at least two values
+            shm_values += [None] * (len(SHM_VARS) - min(len(shm_values), len(SHM_VARS)))
 
             self.post('groups_out', groups_out)
 
-            for val, var in zip(shm_values[:len(SHM_VARS)], SHM_VARS):
+            slam_keys = ['dice1', 'dice2']
+
+            old_data = [slam.request(key, 'f') for key in slam_keys]
+            new_data = shm_values[:2]
+            data = find_best_match(old_data, new_data, lambda new, old: self.dist(new, (old[0], old[1])))
+
+            slam_out = groups_out.copy()
+
+            print()
+            for (key, datum) in zip(slam_keys, data):
+                (cx, cy, count, radius, dist) = datum
+                if count >= 5:
+                    slam.observe(key, cx, cy, dist, 'f')
+                    print(cx, cy)
+
+            #roulette_coords = slam.sub_to_vision(slam.slam_to_sub(np.array([5 - shm.kalman.north.get(), -6 - shm.kalman.east.get(), 3.5 - shm.kalman.depth.get()])), 0)
+            #cv2.circle(slam_out, (int(roulette_coords[0]), int(roulette_coords[1])), 100, (255, 255, 0), thickness=10)
+
+            #self.post('slam_out', slam_out)
+
+            for i, (val, var) in enumerate(zip(data, SHM_VARS)):
                 new_var = var.get()
 
                 if val is None:
                     new_var.visible = False
                 else:
-                    (cx, cy, count, radius) = val
+                    (cx, cy, count, radius, dist) = val
+
+                    slammed_coords = slam.request(slam_keys[i], 'f')
+
+                    #print(slammed_coords)
+                    cv2.circle(slam_out, (int(slammed_coords[0]), int(slammed_coords[1])), 100, (0, 255, 0), thickness=10)
 
                     new_var.visible = True
-                    new_var.center_x = cx
-                    new_var.center_y = cy
+                    new_var.center_x = self.normalized(slammed_coords[0], 1)
+                    new_var.center_y = self.normalized(slammed_coords[1], 0)
                     new_var.count = count
                     new_var.radius = radius
                     new_var.radius_norm = radius / FORWARD_CAM_WIDTH if FORWARD_CAM_WIDTH != 0 else -1
 
                 var.set(new_var)
+
+            self.post('slam_out', slam_out)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
 if __name__ == '__main__':
