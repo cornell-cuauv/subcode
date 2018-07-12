@@ -53,8 +53,7 @@ INVALID_ERROR = 1e99
 
 class Pipes(ModuleBase):
     tracked_lines = []
-    path_group_1= get_zero_path_group()
-    path_group_2= get_zero_path_group()
+    
 
     def angle(self, x1, y1, x2, y2):
         a = atan2(y2-y1, x2-x1)
@@ -254,7 +253,7 @@ class Pipes(ModuleBase):
           pass
 
         elif len(self.tracked_lines) == 0 and len(lines) >= 2:
-          '''
+          
           i=1
           lines.sort(key=lambda x:(x.length), reverse=True)
           for l in lines[:2]:
@@ -262,7 +261,7 @@ class Pipes(ModuleBase):
             i = i+1
             tlines.append(l2)
 
-          '''
+          
           lines.sort(key=lambda x:(x.length), reverse=True)
           for index,k in enumerate(lines):
             for l in lines[index+1:]:
@@ -284,8 +283,7 @@ class Pipes(ModuleBase):
                   break
             if len(tlines) == 2:
               break
-          
-        '''
+        
         else:
           for line in self.tracked_lines:
             ang = self.options['min_angle_diff'] * (line.updated + 1)
@@ -300,12 +298,12 @@ class Pipes(ModuleBase):
             else:
               l3 = segment_info(line.x1, line.y1, line.x2, line.y2, line.angle, line.id, line.updated + 1)
               tlines.insert(line.id, l3)
-        '''
+        
 
         self.tracked_lines = tlines
-    '''
+    
     def update_results(self):
-        '''
+
         if len(self.tracked_lines) < 2:
           shm.path_results_1.visible.set(0)
           shm.path_results_2.visible.set(0)
@@ -343,7 +341,7 @@ class Pipes(ModuleBase):
         else:
           self.path_group_2.visible = False
         shm.path_results_2.set(self.path_group_2)
-        '''
+    '''
 
     def get_intersection(self, lines):
       x1 = lines[0].x1
@@ -363,8 +361,8 @@ class Pipes(ModuleBase):
 
 
     def process(self, mat):
-
-        time.sleep(0.1)
+      try:
+        
         image_size = mat.shape[0]*mat.shape[1]
 
         self.post('orig', mat)
@@ -379,10 +377,13 @@ class Pipes(ModuleBase):
 
         linesI = self.average_lines(lines, mat)
 
-        for line, i in linesI, enumerate:
-          path_angle[i] = line.angle
+        path_angle = []
 
-        px, py = self.get_intersection(linesI)
+        for line in linesI:
+          path_angle.append(line.angle)
+
+        if len(linesI) == 2:
+          px, py = self.get_intersection(linesI)
 
         if len(linesI) == 2:
           old_angle_1 = shm.path_results.angle_1.get()
@@ -395,13 +396,28 @@ class Pipes(ModuleBase):
           shm.path_results.angle_2.set(path_angle[1])
           shm.path_results.visible_1.set(True)
           shm.path_results.visible_2.set(True)
-          shm.path_results.center_x.set(px)
-          shm.path_results.center_y.set(py)
+          shm.path_results.center_x.set(self.normalized(px,1))
+          shm.path_results.center_y.set(self.normalized(py,0))
           shm.path_results.num_lines.set(2)
 
         elif len(linesI) == 1:
-          
+          old_angle_1 = shm.path_results.angle_1.get()
+          old_angle_2 = shm.path_results.angle_2.get()
+          angle_diff_1 = self.angle_diff(old_angle_1, path_angle)
+          angle_diff_2 = self.angle_diff(old_angle_2, path_angle)
+          if angle_diff_1 < angle_diff_2:
+            shm.path_results.angle_1.set(path_angle)
+            shm.path_results.visible_1.set(True)
+            shm.path_results.visible_2.set(False)
+          else:
+            shm.path_results.angle_2.set(path_angle)
+            shm.path_results.visible_1.set(False)
+            shm.path_results.visible_2.set(True)
+          shm.path_results.num_lines.set(1)
 
+        else:
+          shm.path_results.visible_1.set(False)
+          shm.path_results.visible_2.set(False)
 
 
         '''
@@ -416,6 +432,9 @@ class Pipes(ModuleBase):
         
 
         self.update_results()
+
+      except:
+        pass
 
 if __name__ == '__main__':
     Pipes('downward', vision_options)()
