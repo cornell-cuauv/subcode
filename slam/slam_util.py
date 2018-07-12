@@ -20,8 +20,8 @@ CAMERA_CENTERS = [(CAMERA_DIM[0] / 2, CAMERA_DIM[1] / 2) for CAMERA_DIM in CAMER
 
 CAMERA_VIEWING_ANGLES = [
     #[73.7, 73.7],
-    [76.75, 74.6], # measured
-    #[103.6, 76.6], # X, Y forward
+    #[76.75, 74.6], # measured
+    [103.6, 76.6], # X, Y forward
     [100, 100], # X. Y downward TODO this isn't an actual value
 ]
 
@@ -29,15 +29,15 @@ def vision_to_sub(x, y, dist, camera):
     theta = (x - CAMERA_CENTERS[camera][0]) / CAMERA_DIMS[camera][0] * CAMERA_VIEWING_ANGLES[camera][0]
     phi = (y - CAMERA_CENTERS[camera][1]) / CAMERA_DIMS[camera][1] * CAMERA_VIEWING_ANGLES[camera][1]
 
-    dy = dist * np.sin(np.radians(theta))
-    dz = dist * np.sin(np.radians(phi))
+    dy = dist * np.cos(np.radians(phi)) * np.sin(np.radians(theta))
+    dz = dist * np.cos(np.radians(theta)) * np.sin(np.radians(phi))
 
     return np.array([np.sqrt(dist**2 - dy**2 - dz**2), dy, dz])
 
 # Returns just X and Y
 def sub_to_vision(sub_coords, camera):
-    theta = np.degrees(np.arctan2(sub_coords[1], np.sqrt(sub_coords[0]**2 + sub_coords[2]**2)))
-    phi = np.degrees(np.arctan2(sub_coords[2], np.sqrt(sub_coords[0]**2 + sub_coords[1]**2)))
+    theta = np.degrees(np.arctan2(sub_coords[1], sub_coords[0])) #np.sqrt(sub_coords[0]**2 + sub_coords[2]**2)))
+    phi = np.degrees(np.arctan2(sub_coords[2], sub_coords[0])) #np.sqrt(sub_coords[0]**2 + sub_coords[1]**2)))
 
     return (theta * CAMERA_DIMS[camera][0] / (CAMERA_VIEWING_ANGLES[camera][0] * 2) + CAMERA_CENTERS[camera][0],
             phi * CAMERA_DIMS[camera][1] / (CAMERA_VIEWING_ANGLES[camera][1] * 2) + CAMERA_CENTERS[camera][1])

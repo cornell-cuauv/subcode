@@ -184,7 +184,6 @@ class Dice(ModuleBase):
 
             slam_out = groups_out.copy()
 
-            print()
             for (key, datum) in zip(slam_keys, data):
                 (cx, cy, count, radius, dist) = datum
                 if count >= 5:

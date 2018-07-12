@@ -12,7 +12,7 @@
 #define PARTICLE_NOISE 1
 #define LANDMARK_SIGNIFICANCE 4
 
-// #define VERBOSE
-#define PLOT
+#define VERBOSE
+// #define PLOT
 
 #endif
