@@ -33,7 +33,7 @@ class PIDLoop(Task):
             self.finish()
 
 class CameraTarget(Task):
-    def on_run(self, point, target, deadband=(0.01875, 0.01875), px=None, ix=0, dx=0, py=None, iy=0, dy=0, max_out=None, valid=True):
+    def on_run(self, point, target, deadband=(0.01875, 0.01875), px=None, ix=0, dx=0, py=None, iy=0, dy=0, max_out=None, valid=True, *args, **kwargs):
         if px is None:
             px = self.px_default
         if py is None:
