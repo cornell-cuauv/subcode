@@ -59,22 +59,10 @@ class Pipes(ModuleBase):
         a = atan( (x2-x1) / (y2-y1) ) 
         return a
 
-    def abs_angle(self, x1, y1, x2, y2):
-        a = atan2(y2-y1, x2-x1)
-        return a
-
     def angle_diff(self, a1, a2):
         # a=min((2*np.pi) - abs(a1-a2), abs(a1-a2))
         a = atan(sin(a1-a2)/cos(a1-a2))
         return abs(a)
-
-    def line_error(self, l, line):
-        lx = (l.x1 + l.x2)/2
-        ly = (l.y1+l.y2)/2
-        linex = (line.x1 + line.x2)/2
-        liney = (line.y1 + line.y2)/2
-        dist = sqrt((lx-linex)**2 +(ly-liney)**2)
-        return dist
 
     def threshold(self, mat):
         threshes = {}
@@ -147,7 +135,6 @@ class Pipes(ModuleBase):
 
           self.post("all_houghs",line_image)
 
-        #print("initial",len(lines))
         return lines
 
     #A list of segment_infos sorted in order of best
@@ -185,16 +172,7 @@ class Pipes(ModuleBase):
 
 
       for k in info:
-
-        '''
-        xac = abs(k.x1 + (k.x1-k.x2) / 2)
-        yac = abs(k.y1 + (k.y1-k.y2) / 2)
-        '''
         for l in info:
-          '''
-          xc = abs(l.x1 + (l.x1 - l.x2) / 2)
-          yc = abs(l.y1 + (l.y1 - l.y2) / 2)
-          '''
         
           if self.angle_diff(l.angle,k.angle) < self.options['min_angle_diff']: # and abs(xc - xac) < self.options['min_line_dist'] and abs(yc - yac) < self.options['min_line_dist']:
             newx1 = k.x1 + (k.x1 - l.x1) / 2
@@ -216,6 +194,8 @@ class Pipes(ModuleBase):
       if len(info) >= 1:
         final.append(info[0])
 
+        print('length', len(info))
+
         for l in info[1:]:
           if self.angle_diff(info[0].angle, l.angle) > 0.5:
             
@@ -228,120 +208,14 @@ class Pipes(ModuleBase):
           for line in final:
             x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
             cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),5)
+          for line in info:
+            x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
+            cv2.line(line_image,(x1,y1),(x2,y2),(0,0,255),5)
 
 
           self.post("final_lines",line_image)
 
-      #print(len(info))
       return final
-
-    def tag(self, mat, text, pos):
-        position = (pos[0] - 100, pos[1])
-        cv2.putText(mat, text, position, cv2.FONT_HERSHEY_DUPLEX, 1, (0,0,0), thickness=2)
-
-    def seg_to_result(self, l):
-        length = sqrt((l.y2-l.y1)**2 + (l.x2-l.x1)**2)
-        x = (l.x1 + l.x2)/2
-        y = (l.y1 + l.y2)/2
-        return result_info(x,y,length,l.angle,l.id)
-    '''
-    def label_lines(self, lines, lineMat):
-        tlines = []
-        self.tracked_lines = []
-
-        if lines==None or len(lines) == 0:
-          pass
-
-        elif len(self.tracked_lines) == 0 and len(lines) >= 2:
-          
-          i=1
-          lines.sort(key=lambda x:(x.length), reverse=True)
-          for l in lines[:2]:
-            l2 = segment_info(l.x1, l.y1, l.x2, l.y2, l.angle, i, 0)
-            i = i+1
-            tlines.append(l2)
-
-          
-          lines.sort(key=lambda x:(x.length), reverse=True)
-          for index,k in enumerate(lines):
-            for l in lines[index+1:]:
-              if self.angle_diff(k.angle,l.angle) > 0.4 and self.angle_diff(k.angle, l.angle) < 0.78:
-                xck = abs(k.x1 + (k.x2-k.x1) / 2)
-                yck = abs(k.y1 + (k.y2-k.y1) / 2)
-                xcl = abs(l.x1 + (l.x2-l.x1) / 2)
-                ycl = abs(l.y1 + (l.y2-l.y1) / 2)
-                line_dist = ((xck-xcl)**2 + (yck-ycl)**2)**0.5
-
-                len_norm = ((k.x1-k.x2)**2 + (k.y1-k.y2)**2)**0.5
-                
-                if self.options['min_dist_ratio'] < line_dist/len_norm < self.options['max_dist_ratio'] :
-                  tlines.append(segment_info(k.x1, k.y1, k.x2, k.y2, k.angle, 1, 0))
-                  tlines.append(segment_info(l.x1, l.y1, l.x2, l.y2, l.angle, 2, 0))
-                  tlines.sort(key=lambda x:((x.y2 - x.y1)/2 + x.y1), reverse=True)
-                  tlines[0] = tlines[0]._replace(id=1)
-                  tlines[1] = tlines[1]._replace(id=2)
-                  break
-            if len(tlines) == 2:
-              break
-        
-        else:
-          for line in self.tracked_lines:
-            ang = self.options['min_angle_diff'] * (line.updated + 1)
-            c=False
-            for l in lines:
-              if self.line_error(l, line) < 50 * (line.updated + 1):
-                l2 = segment_info(l.x1, l.y1, l.x2, l.y2, l.angle, line.id, 0)
-                lines.remove(l)
-                c=True
-            if c:
-              tlines.insert(l2.id, l2)
-            else:
-              l3 = segment_info(line.x1, line.y1, line.x2, line.y2, line.angle, line.id, line.updated + 1)
-              tlines.insert(line.id, l3)
-        
-
-        self.tracked_lines = tlines
-    
-    def update_results(self):
-
-        if len(self.tracked_lines) < 2:
-          shm.path_results_1.visible.set(0)
-          shm.path_results_2.visible.set(0)
-          return
-        t = self.tracked_lines[0]
-        ang = self.abs_angle(t.x1, t.y1, t.x2, t.y2)
-        ang = ang / (np.pi) * 180
-        self.path_group_1.angle = ang
-        x = (t.x1 + t.x2) / 2
-        y = (t.y1 + t.y2) / 2
-        center = self.normalized((int(x), int(y)))
-        self.path_group_1.center_x = center[0]
-        self.path_group_1.center_y = center[1]
-        # length = sqrt((t.y2-t.y1)**2 + (t.x2-t.x1)**2)
-        # self.path_group_1.length = length
-        if t.updated == 0:
-          self.path_group_1.visible = True
-        else:
-          self.path_group_1.visible = False
-        shm.path_results_1.set(self.path_group_1)
-
-        t = self.tracked_lines[1]
-        ang = self.abs_angle(t.x1, t.y1, t.x2, t.y2)
-        ang = ang / (np.pi) * 180
-        self.path_group_2.angle = ang
-        x = (t.x1 + t.x2) / 2
-        y = (t.y1 + t.y2) / 2
-        center = self.normalized((int(x), int(y)))
-        self.path_group_2.center_x = center[0]
-        self.path_group_2.center_y = center[1]
-        # length = sqrt((t.y2-t.y1)**2 + (t.x2-t.x1)**2)
-        # self.path_group_1.length = length
-        if t.updated == 0:
-          self.path_group_2.visible = True
-        else:
-          self.path_group_2.visible = False
-        shm.path_results_2.set(self.path_group_2)
-    '''
 
     def get_intersection(self, lines):
       x1 = lines[0].x1
@@ -362,7 +236,7 @@ class Pipes(ModuleBase):
 
     def process(self, mat):
       try:
-        time.sleep(1)
+
         image_size = mat.shape[0]*mat.shape[1]
 
         self.post('orig', mat)
@@ -383,6 +257,7 @@ class Pipes(ModuleBase):
           path_angle.append(line.angle)
 
         second_line = False
+        flipped = False
 
         if len(linesI) == 2:
           px, py = self.get_intersection(linesI)
@@ -391,16 +266,8 @@ class Pipes(ModuleBase):
           old_angle_1 = shm.path_results.angle_1.get()
           old_angle_2 = shm.path_results.angle_2.get()
 
-          #print('old angle 1', old_angle_1 * 180 / np.pi)
-          #print('old angle 2', old_angle_2 * 180 / np.pi)
-          #print('path 1', path_angle[0] * 180 / np.pi)
-          #print('path 2', path_angle[1] * 180 / np.pi)
-
           angle_diff_1 = self.angle_diff(old_angle_1, path_angle[0])
           angle_diff_2 = self.angle_diff(old_angle_2, path_angle[0])
-
-          #print('angle diff 1', angle_diff_1)
-          #print('angle diff 2', angle_diff_2)
 
           angle_diff_3 = self.angle_diff(old_angle_1, path_angle[1])
           angle_diff_4 = self.angle_diff(old_angle_2, path_angle[1])
@@ -410,19 +277,8 @@ class Pipes(ModuleBase):
           angle_diffs.sort()
 
           if angle_diffs[0] == angle_diff_2 or angle_diffs[0] == angle_diff_3 :
-            #print("old angle 1", old_angle_1)
-            #print("old_angle_2", old_angle_2)
-            #print("path angle 1", path_angle[0])
-            #print("path angle 2", path_angle[1])
-            #print("")
-
             path_angle[0], path_angle[1] = path_angle[1], path_angle[0]
-
-          print("i see two")
-          print("angle 1", path_angle[0] * 180/np.pi)
-          print('angle 2', path_angle[1] * 180/np.pi)
-          print('old angle 1', old_angle_1 * 180/np.pi)
-          print('old angle 2', old_angle_2 * 180/np.pi)  
+            flipped = True
 
           shm.path_results.angle_1.set(path_angle[0])
           shm.path_results.angle_2.set(path_angle[1])
@@ -433,29 +289,20 @@ class Pipes(ModuleBase):
           shm.path_results.num_lines.set(2)
 
         elif len(linesI) == 1:
-          print(" ")
-          print("i see one")
           old_angle_1 = shm.path_results.angle_1.get()
           old_angle_2 = shm.path_results.angle_2.get()
           angle_diff_1 = self.angle_diff(old_angle_1, path_angle[0])
           angle_diff_2 = self.angle_diff(old_angle_2, path_angle[0])
 
-          print("angle", path_angle[0] * 180/np.pi)
-          print("old angle 1", old_angle_1 * 180/np.pi)
-          print("old_angle_2", old_angle_2 * 180/np.pi)
-
-
           if angle_diff_1 < angle_diff_2:
             shm.path_results.angle_1.set(path_angle[0])
             shm.path_results.visible_1.set(True)
             shm.path_results.visible_2.set(False)
-            print('first line')
           elif angle_diff_1 > angle_diff_2:
             shm.path_results.angle_2.set(path_angle[0])
             shm.path_results.visible_1.set(False)
             shm.path_results.visible_2.set(True)
             second_line = True
-            print('second line')
 
           shm.path_results.num_lines.set(1)
 
@@ -466,31 +313,28 @@ class Pipes(ModuleBase):
 
 
         line_image = np.copy(mat)
-        for i, line in enumerate(linesI):  
-          x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
-          if second_line:
+
+        if len(linesI) == 2:
+          if not flipped:
+            x1,y1,x2,y2 = linesI[0].x1,linesI[0].y1,linesI[0].x2,linesI[0].y2
             cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
-          elif i == 0 :
+            x1,y1,x2,y2 = linesI[1].x1,linesI[1].y1,linesI[1].x2,linesI[1].y2
             cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),5)
-          elif i == 1 :
+          else:
+            x1,y1,x2,y2 = linesI[0].x1,linesI[0].y1,linesI[0].x2,linesI[0].y2
+            cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),5)
+            x1,y1,x2,y2 = linesI[1].x1,linesI[1].y1,linesI[1].x2,linesI[1].y2
+            cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
+
+        elif len(linesI) == 1:
+          if second_line:
+            x1,y1,x2,y2 = linesI[0].x1,linesI[0].y1,linesI[0].x2,linesI[0].y2
+            cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),5)
+          else:
+            x1,y1,x2,y2 = linesI[0].x1,linesI[0].y1,linesI[0].x2,linesI[0].y2
             cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
           
         self.post("final_final",line_image)
-
-
-        '''
-        linesI = self.label_lines(linesI, lineMat)
-        
-        if self.tracked_lines is not None:
-          for l in self.tracked_lines[:2]:
-            self.tag(lineMat, str("{}".format(l.id)), (l.x1, l.y1))
-            cv2.line(lineMat,(l.x1,l.y1),(l.x2,l.y2),(255,255,255),2)
-        
-        self.post("lines", lineMat)
-        
-
-        self.update_results()
-        '''
 
       except Exception as e:
         print(e)
