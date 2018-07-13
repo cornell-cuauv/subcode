@@ -1,0 +1,39 @@
+Host loglan
+     Hostname cuauv.org
+     Port 2222
+     User software
+     ForwardX11 yes
+
+Host sub
+     Hostname 192.168.0.93
+     User software
+     ForwardX11 yes
+     ForwardAgent yes
+     UserKnownHostsFile /dev/null
+     StrictHostKeyChecking no
+
+Host subh
+     Hostname 192.168.0.93
+     Port 2222
+     User software
+     ForwardX11 yes
+     ForwardAgent yes
+     UserKnownHostsFile /dev/null
+     StrictHostKeyChecking no
+
+Host minisub
+     Hostname 192.168.0.91
+     User software
+     ForwardX11 yes
+     ForwardAgent yes
+     UserKnownHostsFile /dev/null
+     StrictHostKeyChecking no
+
+Host minisubh
+     Hostname 192.168.0.91
+     Port 2222
+     User software
+     ForwardX11 yes
+     ForwardAgent yes
+     UserKnownHostsFile /dev/null
+     StrictHostKeyChecking no
