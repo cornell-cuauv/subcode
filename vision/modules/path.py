@@ -56,7 +56,7 @@ class Pipes(ModuleBase):
     
 
     def angle(self, x1, y1, x2, y2):
-        a = atan2(x2-x1, y2-y1)
+        a = atan(x2-x1, y2-y1)
         return a
 
     def abs_angle(self, x1, y1, x2, y2):
