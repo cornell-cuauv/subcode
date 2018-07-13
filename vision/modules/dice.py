@@ -116,8 +116,7 @@ class Dice(ModuleBase):
             cv2.drawContours(density_dots, [dot[0] for dot in dots], -1, (255, 255, 255), 3)
             if debug:
                 self.post('density_dots', density_dots)
-
-            self.post('dotted', dotted)
+                self.post('dotted', dotted)
 
             # Group the dots into buckets
 
@@ -161,6 +160,7 @@ class Dice(ModuleBase):
 
             SHM_VARS = [shm.dice0, shm.dice1] #, shm.dice2, shm.dice3]
 
+            #count = 0
             for group in groups:
                 gcx = int(sum([dot[0] for dot in group]) / len(group))
                 gcy = int(sum([dot[1] for dot in group]) / len(group))
@@ -171,15 +171,23 @@ class Dice(ModuleBase):
 
                 cv2.circle(groups_out, (gcx, gcy), len(group) * 10, (0, 0, 255) if len(group) >= 5 else (0, 0, 0), thickness=(2 * len(group)))
 
-            # Want at least two values
-            shm_values += [None] * (len(SHM_VARS) - min(len(shm_values), len(SHM_VARS)))
+                #if dist is not None:
+                #    x, y = slam.sub_to_vision(slam.slam_to_sub(slam.sub_to_slam(slam.vision_to_sub(gcx, gcy, dist, 0))), 0)
+                #    count += 1
+                #    print(count, x, y)
+                #    cv2.circle(groups_out, (int(x), int(y)), 30, (0, 255, 255), thickness=10)
 
-            self.post('groups_out', groups_out)
+            # Want at least two values
+            #shm_values += [None] * (len(SHM_VARS) - min(len(shm_values), len(SHM_VARS)))
+
+            if debug:
+                self.post('groups_out', groups_out)
 
             slam_keys = ['dice1', 'dice2']
 
             old_data = [slam.request(key, 'f') for key in slam_keys]
             new_data = shm_values[:2]
+
             data = find_best_match(old_data, new_data, lambda new, old: self.dist(new, (old[0], old[1])))
 
             slam_out = groups_out.copy()
@@ -188,7 +196,6 @@ class Dice(ModuleBase):
                 (cx, cy, count, radius, dist) = datum
                 if count >= 5:
                     slam.observe(key, cx, cy, dist, 'f')
-                    print(cx, cy)
 
             #roulette_coords = slam.sub_to_vision(slam.slam_to_sub(np.array([5 - shm.kalman.north.get(), -6 - shm.kalman.east.get(), 3.5 - shm.kalman.depth.get()])), 0)
             #cv2.circle(slam_out, (int(roulette_coords[0]), int(roulette_coords[1])), 100, (255, 255, 0), thickness=10)
@@ -203,17 +210,19 @@ class Dice(ModuleBase):
                 else:
                     (cx, cy, count, radius, dist) = val
 
-                    slammed_coords = slam.request(slam_keys[i], 'f')
-
-                    #print(slammed_coords)
-                    cv2.circle(slam_out, (int(slammed_coords[0]), int(slammed_coords[1])), 100, (0, 255, 0), thickness=10)
+                    dx, dy, d = slam.request_pos_rel(slam_keys[i], 'f')
 
                     new_var.visible = True
-                    new_var.center_x = self.normalized(slammed_coords[0], 1)
-                    new_var.center_y = self.normalized(slammed_coords[1], 0)
+                    new_var.center_x = 0 #self.normalized(slammed_coords[0], 1)
+                    new_var.center_y = 0 #self.normalized(slammed_coords[1], 0)
                     new_var.count = count
                     new_var.radius = radius
                     new_var.radius_norm = radius / FORWARD_CAM_WIDTH if FORWARD_CAM_WIDTH != 0 else -1
+
+                    new_var.theta = np.arctan2(dy, dx)
+                    new_var.depth = d + shm.kalman.depth.get()
+                    # Assuming depth is level already
+                    new_var.dist = np.sqrt(dx**2 + dy**2)
 
                 var.set(new_var)
 

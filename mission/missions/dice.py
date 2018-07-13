@@ -2,9 +2,9 @@
 
 from mission.framework.task import Task
 from mission.framework.combinators import Sequential, Concurrent, MasterConcurrent, Retry, Conditional, While
-from mission.framework.movement import Heading, RelativeToInitialHeading, VelocityX, VelocityY, Depth
+from mission.framework.movement import Heading, RelativeToInitialHeading, VelocityX, VelocityY, Depth, RelativeToCurrentHeading, RelativeToCurrentDepth
 from mission.framework.primitive import Log, NoOp, Zero, Succeed, Fail
-from mission.framework.targeting import ForwardTarget
+from mission.framework.targeting import ForwardTarget, HeadingTarget, CameraTarget, PIDLoop
 from mission.framework.timing import Timer, Timeout
 from mission.framework.helpers import ConsistencyCheck, call_if_function
 
@@ -13,13 +13,22 @@ import shm
 CAM_DIM = (shm.camera.forward_width.get(), shm.camera.forward_height.get())
 CAM_CENTER = (shm.camera.forward_width.get()/2, shm.camera.forward_height.get()/2)
 
-shm_vars = [shm.dice0, shm.dice1, shm.dice2, shm.dice3]
+shm_vars = [shm.dice0, shm.dice1]
 
 get_normed = lambda num: lambda: (shm_vars[num].center_x.get(), shm_vars[num].center_y.get())
                          #lambda: ((shm_vars[num].center_x.get() - CAM_CENTER[0]) / CAM_DIM[0],
                          #         (shm_vars[num].center_y.get() - CAM_CENTER[1]) / CAM_DIM[1])
 
-align_buoy = lambda num, db: ForwardTarget(get_normed(num), (0, 0), deadband=(db, db))
+#align_buoy = lambda num, db: ForwardTarget(get_normed(num), (0, 0), deadband=(db, db))
+
+class ThetaTarget(CameraTarget):
+    def on_first_run(self, *args, **kwargs):
+        self.pid_loop_x = PIDLoop(output_function=RelativeToCurrentHeading(), negate=True)
+        self.pid_loop_y = PIDLoop(output_function=RelativeToCurrentDepth(), negate=True)
+        self.px_default = 10
+        self.py_default = 0.8
+
+align_buoy = lambda num, dbh, dbd: ThetaTarget((shm_vars[num].theta.get, lambda: shm_vars[num].depth.get() - shm.kalman.depth.get()), (0, 0))
 
 class BoolSuccess(Task):
     def on_run(self, test):
@@ -46,12 +55,12 @@ RamBuoy = lambda num: Retry(
     lambda: Sequential(
         Log('Ramming buoy {}'.format(num)),
         Log('Aligning...'),
-        align_buoy(num=num, db=0.1),
+        align_buoy(num=num, dbh=0.01, dbd=0.1),
         Log('Driving forward...'),
         MasterConcurrent(
             Consistent(lambda: shm_vars[num].visible.get, count=5, total=20, invert=True),
             VelocityX(0.2),
-            align_buoy(num=num, db=0),
+            align_buoy(num=num, dbh=0, dbd=0),
         ),
         Conditional(
             # Make sure that we are close enough to the buoy
