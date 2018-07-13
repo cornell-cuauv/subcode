@@ -210,7 +210,11 @@ class Dice(ModuleBase):
                 else:
                     (cx, cy, count, radius, dist) = val
 
-                    dx, dy, d = slam.request_pos_rel(slam_keys[i], 'f')
+                    dx, dy, d = slam.request_pos(slam_keys[i])
+
+                    slammed_coords = slam.request(slam_keys[i], 'f')
+
+                    cv2.circle(slam_out, (int(slammed_coords[0]), int(slammed_coords[1])), 100, (0, 255, 255), 20)
 
                     new_var.visible = True
                     new_var.center_x = 0 #self.normalized(slammed_coords[0], 1)
@@ -219,8 +223,10 @@ class Dice(ModuleBase):
                     new_var.radius = radius
                     new_var.radius_norm = radius / FORWARD_CAM_WIDTH if FORWARD_CAM_WIDTH != 0 else -1
 
-                    new_var.theta = np.arctan2(dy, dx)
-                    new_var.depth = d + shm.kalman.depth.get()
+                    print(dx, dy, d, np.arctan2(dy, dx))
+
+                    new_var.theta = np.degrees(np.arctan2(dy, dx))
+                    new_var.depth = d
                     # Assuming depth is level already
                     new_var.dist = np.sqrt(dx**2 + dy**2)
 

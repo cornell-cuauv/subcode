@@ -92,5 +92,10 @@ def observe(name, x, y, dist, camera=0):
 def request(name, camera):
     return sub_to_vision(slam_to_sub(np.array(slam.request_landmark(name)[0])), check_camera(camera))
 
-def request_pos_rel(name, camera):
+def request_pos_rel(name):
     return tuple(slam_to_sub(np.array(slam.request_landmark(name)[0])))
+
+def request_pos(name):
+    pos = list(slam.request_position())
+    pos[2] = 0 # don't subtract heading
+    return tuple(np.array(slam.request_landmark(name)[0]) - np.array(pos))
