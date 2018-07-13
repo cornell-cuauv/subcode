@@ -56,7 +56,7 @@ class Pipes(ModuleBase):
     
 
     def angle(self, x1, y1, x2, y2):
-        a = atan2(y2-y1, x2-x1)
+        a = atan2(x2-x1, y2-y1)
         return a
 
     def abs_angle(self, x1, y1, x2, y2):
@@ -361,7 +361,7 @@ class Pipes(ModuleBase):
 
     def process(self, mat):
       try:
-        
+        time.sleep(0.5)
         image_size = mat.shape[0]*mat.shape[1]
 
         self.post('orig', mat)
@@ -390,8 +390,16 @@ class Pipes(ModuleBase):
           old_angle_1 = shm.path_results.angle_1.get()
           old_angle_2 = shm.path_results.angle_2.get()
 
+          print('old angle 1', old_angle_1 * 180 / np.pi)
+          print('old angle 2', old_angle_2 * 180 / np.pi)
+          print('path 1', path_angle[0] * 180 / np.pi)
+          print('path 2', path_angle[1] * 180 / np.pi)
+
           angle_diff_1 = self.angle_diff(old_angle_1, path_angle[0])
           angle_diff_2 = self.angle_diff(old_angle_2, path_angle[0])
+
+          #print('angle diff 1', angle_diff_1)
+          #print('angle diff 2', angle_diff_2)
 
           angle_diff_3 = self.angle_diff(old_angle_1, path_angle[1])
           angle_diff_4 = self.angle_diff(old_angle_2, path_angle[1])
@@ -402,12 +410,17 @@ class Pipes(ModuleBase):
 
           if angle_diffs[0] == angle_diff_2 or angle_diffs[0] == angle_diff_3 :
             print("flipped")
-            print("old angle 1", old_angle_1)
-            print("old_angle_2", old_angle_2)
-            print("path angle 1", path_angle[0])
-            print("path angle 2", path_angle[1])
+            #print("old angle 1", old_angle_1)
+            #print("old_angle_2", old_angle_2)
+            #print("path angle 1", path_angle[0])
+            #print("path angle 2", path_angle[1])
+            #print("")
 
             path_angle[0], path_angle[1] = path_angle[1], path_angle[0]
+
+          if path_angle[1] > 0:
+            print('well shit', path_angle[1] * 180 / np.pi)
+            print(" ")
 
           shm.path_results.angle_1.set(path_angle[0])
           shm.path_results.angle_2.set(path_angle[1])
@@ -418,6 +431,8 @@ class Pipes(ModuleBase):
           shm.path_results.num_lines.set(2)
 
         elif len(linesI) == 1:
+          print("i see one")
+          print(" ")
           old_angle_1 = shm.path_results.angle_1.get()
           old_angle_2 = shm.path_results.angle_2.get()
           angle_diff_1 = self.angle_diff(old_angle_1, path_angle[0])
@@ -427,7 +442,7 @@ class Pipes(ModuleBase):
             shm.path_results.angle_1.set(path_angle[0])
             shm.path_results.visible_1.set(True)
             shm.path_results.visible_2.set(False)
-          else:
+          elif angle_diff_1 > angle_diff_2:
             shm.path_results.angle_2.set(path_angle[0])
             shm.path_results.visible_1.set(False)
             shm.path_results.visible_2.set(True)
