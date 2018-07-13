@@ -65,7 +65,7 @@ class Pipes(ModuleBase):
 
     def angle_diff(self, a1, a2):
         # a=min((2*np.pi) - abs(a1-a2), abs(a1-a2))
-        a = atan2(sin(a1-a2), cos(a1-a2))
+        a = atan(sin(a1-a2)/cos(a1-a2))
         return abs(a)
 
     def line_error(self, l, line):
@@ -217,7 +217,8 @@ class Pipes(ModuleBase):
         final.append(info[0])
 
         for l in info[1:]:
-          if self.angle_diff(info[0].angle, l.angle) > 0.175:
+          if self.angle_diff(info[0].angle, l.angle) > 0.5:
+            
             final.append(l)
             break
 
@@ -361,7 +362,7 @@ class Pipes(ModuleBase):
 
     def process(self, mat):
       try:
-        time.sleep(0.5)
+        time.sleep(1)
         image_size = mat.shape[0]*mat.shape[1]
 
         self.post('orig', mat)
@@ -390,10 +391,10 @@ class Pipes(ModuleBase):
           old_angle_1 = shm.path_results.angle_1.get()
           old_angle_2 = shm.path_results.angle_2.get()
 
-          print('old angle 1', old_angle_1 * 180 / np.pi)
-          print('old angle 2', old_angle_2 * 180 / np.pi)
-          print('path 1', path_angle[0] * 180 / np.pi)
-          print('path 2', path_angle[1] * 180 / np.pi)
+          #print('old angle 1', old_angle_1 * 180 / np.pi)
+          #print('old angle 2', old_angle_2 * 180 / np.pi)
+          #print('path 1', path_angle[0] * 180 / np.pi)
+          #print('path 2', path_angle[1] * 180 / np.pi)
 
           angle_diff_1 = self.angle_diff(old_angle_1, path_angle[0])
           angle_diff_2 = self.angle_diff(old_angle_2, path_angle[0])
@@ -409,7 +410,6 @@ class Pipes(ModuleBase):
           angle_diffs.sort()
 
           if angle_diffs[0] == angle_diff_2 or angle_diffs[0] == angle_diff_3 :
-            print("flipped")
             #print("old angle 1", old_angle_1)
             #print("old_angle_2", old_angle_2)
             #print("path angle 1", path_angle[0])
@@ -418,9 +418,11 @@ class Pipes(ModuleBase):
 
             path_angle[0], path_angle[1] = path_angle[1], path_angle[0]
 
-          if path_angle[1] > 0:
-            print('well shit', path_angle[1] * 180 / np.pi)
-            print(" ")
+          print("i see two")
+          print("angle 1", path_angle[0] * 180/np.pi)
+          print('angle 2', path_angle[1] * 180/np.pi)
+          print('old angle 1', old_angle_1 * 180/np.pi)
+          print('old angle 2', old_angle_2 * 180/np.pi)  
 
           shm.path_results.angle_1.set(path_angle[0])
           shm.path_results.angle_2.set(path_angle[1])
@@ -431,22 +433,29 @@ class Pipes(ModuleBase):
           shm.path_results.num_lines.set(2)
 
         elif len(linesI) == 1:
-          print("i see one")
           print(" ")
+          print("i see one")
           old_angle_1 = shm.path_results.angle_1.get()
           old_angle_2 = shm.path_results.angle_2.get()
           angle_diff_1 = self.angle_diff(old_angle_1, path_angle[0])
           angle_diff_2 = self.angle_diff(old_angle_2, path_angle[0])
 
+          print("angle", path_angle[0] * 180/np.pi)
+          print("old angle 1", old_angle_1 * 180/np.pi)
+          print("old_angle_2", old_angle_2 * 180/np.pi)
+
+
           if angle_diff_1 < angle_diff_2:
             shm.path_results.angle_1.set(path_angle[0])
             shm.path_results.visible_1.set(True)
             shm.path_results.visible_2.set(False)
+            print('first line')
           elif angle_diff_1 > angle_diff_2:
             shm.path_results.angle_2.set(path_angle[0])
             shm.path_results.visible_1.set(False)
             shm.path_results.visible_2.set(True)
             second_line = True
+            print('second line')
 
           shm.path_results.num_lines.set(1)
 
@@ -459,9 +468,11 @@ class Pipes(ModuleBase):
         line_image = np.copy(mat)
         for i, line in enumerate(linesI):  
           x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
-          if i == 0 and not second_line:
+          if second_line:
+            cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
+          elif i == 0 :
             cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),5)
-          elif i == 1 or second_line :
+          elif i == 1 :
             cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
           
         self.post("final_final",line_image)
