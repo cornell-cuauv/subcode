@@ -49,7 +49,7 @@ def get_kernel(size):
     return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size * 2 + 1, size * 2 + 1), (size, size))
 
 
-class CashInForward(ModuleBase):
+class CashInDownward(ModuleBase):
     def preprocess(self, img, debug=False):
         k_size = self.options["gaussian_kernel"]
         k_std = self.options["gaussian_stdev"]
@@ -75,64 +75,31 @@ class CashInForward(ModuleBase):
         debugs["luv_l"] = luv_l
         debugs["lab_a"] = lab_a
 
-        if self.options["in_simulator"]:
-            # dist_from_green = np.linalg.norm(luv.astype(int) - [150, 90, 103], axis=2)
 
-            # threshes["green"] = cv2.inRange(
-            #     dist_from_green,
-            #     0,
-            #     40,
-            # )
+        threshes["bin_green"] = cv2.adaptiveThreshold(
+            lab_a,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY_INV,
+            self.options["thresh_size"] * 2 + 1,
+            5,
+        )
 
-            threshes["green"] = cv2.adaptiveThreshold(
-                lab_a,
-                255,
-                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY_INV,
-                self.options["thresh_size"] * 2 + 1,
-                5,
-            )
+        threshes["bin_red"] = cv2.adaptiveThreshold(
+            luv_u,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            self.options["thresh_size"] * 2 + 1,
+            -3,
+        )
 
-            threshes["red"] = cv2.adaptiveThreshold(
-                luv_u,
-                255,
-                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY,
-                self.options["thresh_size"] * 2 + 1,
-                -3,
-            )
-
-        else:
-            threshes["green"] = cv2.adaptiveThreshold(
-                luv_l,
-                255,
-                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY_INV,
-                self.options["thresh_size"] * 2 + 1,
-                9
-            )
-
-            # threshes["green"] = cv2.inRange(
-            #     luv_l,
-            #     self.options["green_luv_l_min"],
-            #     self.options["green_luv_l_max"],
-            # )
-
-            threshes["red"] = cv2.adaptiveThreshold(
-                luv_u,
-                255,
-                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY,
-                self.options["thresh_size"] * 2 + 1,
-                -3,
-            )
 
         e_size = self.options["erode_size"]
         e_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (e_size * 2 + 1, e_size * 2 + 1), (e_size, e_size))
 
         cleaned = {
             name: cv2.dilate(cv2.erode(image, e_kernel), e_kernel)
-            # name: cv2.erode(image, e_kernel)
             for name, image in threshes.items()
         }
 
@@ -150,35 +117,14 @@ class CashInForward(ModuleBase):
 
     FeaturedContour = namedtuple("FeaturedContour", ["x", "y", "area", "contour"])
 
-    @staticmethod
-    def calc_contour_features(contour):
+    def calc_contour_features(self, contour):
         moments = cv2.moments(contour)
         x = int(moments['m10']/moments['m00'])
         y = int(moments['m01']/moments['m00'])
 
         area = cv2.contourArea(contour)
 
-        return CashInForward.FeaturedContour(x, y, area, contour)
-
-
-    @staticmethod
-    def fc_togetherness_rating(fc1, fc2):
-        dist = math.hypot(fc1.x - fc2.x, fc1.y - fc2.y)
-
-        if dist < 1:
-            return float('Inf')
-
-        return dist
-
-
-    @staticmethod
-    def avg_fc(*fcs):
-        total_area = sum(fc.area for fc in fcs)
-        x = sum(fc.x * fc.area for fc in fcs) / total_area
-        y = sum(fc.y * fc.area for fc in fcs) / total_area
-        area = total_area
-
-        return CashInForward.FeaturedContour(x, y, area, None)
+        return self.FeaturedContour(x, y, area, contour)
 
 
     def find_contours(self, images, debug=False):
@@ -197,16 +143,6 @@ class CashInForward(ModuleBase):
 
                 if area < self.options["min_area"]:
                     continue
-
-                circle = cv2.minEnclosingCircle(contour)
-                rect = cv2.boundingRect(contour)
-
-                if area / (math.pi * circle[1] ** 2) < self.options["min_circularity"]:
-                    continue
-
-                if area / (rect[2] * rect[3]) > self.options["max_rectangularity"]:
-                    continue
-
 
                 moments = cv2.moments(contour)
                 x = int(moments['m10']/moments['m00'])
@@ -236,39 +172,22 @@ class CashInForward(ModuleBase):
                 bins[name] = self.Bin(0, 0, 0, 0)
                 continue
 
-            contours_to_draw = []
-
             # total_area = sum(fc.area for fc in fcs)
             # x = sum(fc.x * fc.area for fc in fcs) / total_area
             # y = sum(fc.y * fc.area for fc in fcs) / total_area
             # area = total_area
 
-            largest_fc = max(fcs, key=lambda fc: fc.area)
-            area = largest_fc.area
-            x = largest_fc.x
-            y = largest_fc.y
+            fc = max(fcs, key=lambda fc: fc.area)
+            area = fc.area
+            x = fc.x
+            y = fc.y
 
-            contours_to_draw.append((largest_fc.contour, RED))
+            bins[name] = self.Bin(x, y, area, 1)
 
-            result_fc = largest_fc
-
-            if len(fcs) >= 2:
-                fc2 = min(fcs, key=lambda fc: self.fc_togetherness_rating(largest_fc, fc))
-
-                if self.fc_togetherness_rating(largest_fc, fc2) < self.options["max_joining_dist"]:
-                    result_fc = self.avg_fc(largest_fc, fc2)
-
-                    contours_to_draw.append((fc2.contour, MAGENTA))
-
-            binn = bins[name] = self.Bin(result_fc.x, result_fc.y, result_fc.area, 1)
-
-            if debug:
+        if debug:
+            for name, binn in bins.items():
                 image = self.img.copy()
                 cv2.circle(image, (int(binn.x), int(binn.y)), int(math.sqrt(binn.area)), BLUE, 5)
-
-                for contour, color  in contours_to_draw:
-                    cv2.drawContours(image, [contour], -1, color, 2)
-
                 self.post("bin_{}".format(name), image)
 
         return bins
@@ -280,8 +199,8 @@ class CashInForward(ModuleBase):
 
         h, w, _ = img.shape
 
-        shm.camera.forward_height.set(h)
-        shm.camera.forward_width.set(w)
+        shm.camera.downward_height.set(h)
+        shm.camera.downward_width.set(w)
 
         self.post("Original", img)
 
@@ -293,7 +212,7 @@ class CashInForward(ModuleBase):
         final = img.copy()
 
         for name, binn in bins.items():
-            shm_group = shm._eval("recovery_vision_forward_{}".format(name))
+            shm_group = shm._eval("recovery_vision_downward_{}".format(name))
             output = shm_group.get()
 
             output.area = binn.area
@@ -310,4 +229,4 @@ class CashInForward(ModuleBase):
 
 
 if __name__ == '__main__':
-    CashInForward("forward", module_options)()
+    CashInDownward("downward", module_options)()
