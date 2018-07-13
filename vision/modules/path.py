@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from collections import namedtuple
-from math import radians, atan2, sqrt, sin, cos
+from math import radians, atan2, sqrt, sin, cos, atan
 
 import cv2
 import numpy as np
@@ -56,7 +56,7 @@ class Pipes(ModuleBase):
     
 
     def angle(self, x1, y1, x2, y2):
-        a = atan(x2-x1, y2-y1)
+        a = atan( (x2-x1) / (y2-y1) ) 
         return a
 
     def abs_angle(self, x1, y1, x2, y2):
