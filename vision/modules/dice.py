@@ -13,12 +13,12 @@ import shm
 from vision.modules.base import ModuleBase
 from vision import options
 
-import slam.slam_util as slam
+#import slam.slam_util as slam
 from will_common import find_best_match
 
 options = [
     options.BoolOption('debug', False),
-    options.IntOption('hsv_thresh_c', 20, 0, 100),
+    options.IntOption('hsv_thresh_c', 12, 0, 100),
 ]
 
 FORWARD_CAM_WIDTH = shm.camera.forward_width.get()
@@ -32,14 +32,25 @@ class Dice(ModuleBase):
         return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size * 2 + 1, size * 2 + 1), (size, size))
 
     def dist(self, p1, p2):
-        return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+        return np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
+    def norm_x(self, x):
+        return (x - FORWARD_CAM_WIDTH / 2) / (FORWARD_CAM_WIDTH / 2)
+
+    def norm_y(self, y):
+        return (y - FORWARD_CAM_HEIGHT / 2) / (FORWARD_CAM_HEIGHT / 2)
+
+    def norm_xy(self, tup):
+        x, y = tup
+        return (self.norm_x(x), self.norm_y(y))
 
     def process(self, mat):
         # for simulator
         shm.camera.forward_width.set(mat.shape[1])
         shm.camera.forward_height.set(mat.shape[0])
-        global FORWARD_CAM_WIDTH
-        FORWARD_CAM_WIDTH = mat.shape[0]
+        global FORWARD_CAM_WIDTH, FORWARD_CAM_HEIGHT
+        FORWARD_CAM_WIDTH = mat.shape[1]
+        FORWARD_CAM_HEIGHT = mat.shape[0]
 
         try:
             debug = self.options['debug']
@@ -178,24 +189,30 @@ class Dice(ModuleBase):
                 #    cv2.circle(groups_out, (int(x), int(y)), 30, (0, 255, 255), thickness=10)
 
             # Want at least two values
-            #shm_values += [None] * (len(SHM_VARS) - min(len(shm_values), len(SHM_VARS)))
+            shm_values += [None] * (len(SHM_VARS) - min(len(shm_values), len(SHM_VARS)))
 
             if debug:
                 self.post('groups_out', groups_out)
 
-            slam_keys = ['dice1', 'dice2']
+            #slam_keys = ['dice1', 'dice2']
 
-            old_data = [slam.request(key, 'f') for key in slam_keys]
+            #old_data = [slam.request(key, 'f') for key in slam_keys]
+            old_data = [(var.center_x.get(), var.center_y.get()) for var in SHM_VARS]
             new_data = shm_values[:2]
 
-            data = find_best_match(old_data, new_data, lambda new, old: self.dist(new, (old[0], old[1])))
+            def comp(new, old):
+                if new is None or old is None:
+                    return np.inf
+                return self.dist(self.norm_xy(new[:2]), old)
+
+            data = find_best_match(old_data, new_data, comp) #lambda new, old: self.dist(new, old()))
 
             slam_out = groups_out.copy()
 
-            for (key, datum) in zip(slam_keys, data):
-                (cx, cy, count, radius, dist) = datum
-                if count >= 5:
-                    slam.observe(key, cx, cy, dist, 'f')
+            #for (key, datum) in zip(slam_keys, data):
+            #    (cx, cy, count, radius, dist) = datum
+            #    if count >= 5:
+            #        slam.observe(key, cx, cy, dist, 'f')
 
             #roulette_coords = slam.sub_to_vision(slam.slam_to_sub(np.array([5 - shm.kalman.north.get(), -6 - shm.kalman.east.get(), 3.5 - shm.kalman.depth.get()])), 0)
             #cv2.circle(slam_out, (int(roulette_coords[0]), int(roulette_coords[1])), 100, (255, 255, 0), thickness=10)
@@ -210,25 +227,25 @@ class Dice(ModuleBase):
                 else:
                     (cx, cy, count, radius, dist) = val
 
-                    dx, dy, d = slam.request_pos(slam_keys[i])
+                    #dx, dy, d = slam.request_pos(slam_keys[i])
 
-                    slammed_coords = slam.request(slam_keys[i], 'f')
+                    #slammed_coords = slam.request(slam_keys[i], 'f')
 
-                    cv2.circle(slam_out, (int(slammed_coords[0]), int(slammed_coords[1])), 100, (0, 255, 255), 20)
+                    #cv2.circle(slam_out, (int(slammed_coords[0]), int(slammed_coords[1])), 100, (0, 255, 255), 20)
 
-                    new_var.visible = True
-                    new_var.center_x = 0 #self.normalized(slammed_coords[0], 1)
-                    new_var.center_y = 0 #self.normalized(slammed_coords[1], 0)
+                    new_var.visible = count >= 5
+                    new_var.center_x = self.norm_x(cx)
+                    new_var.center_y = self.norm_y(cy)
                     new_var.count = count
                     new_var.radius = radius
                     new_var.radius_norm = radius / FORWARD_CAM_WIDTH if FORWARD_CAM_WIDTH != 0 else -1
 
-                    print(dx, dy, d, np.arctan2(dy, dx))
+                    #print(dx, dy, d, np.arctan2(dy, dx))
 
-                    new_var.theta = np.degrees(np.arctan2(dy, dx))
-                    new_var.depth = d
+                    #new_var.theta = np.degrees(np.arctan2(dy, dx))
+                    #new_var.depth = d
                     # Assuming depth is level already
-                    new_var.dist = np.sqrt(dx**2 + dy**2)
+                    #new_var.dist = np.sqrt(dx**2 + dy**2)
 
                 var.set(new_var)
 
