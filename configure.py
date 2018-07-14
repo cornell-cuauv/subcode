@@ -65,6 +65,7 @@ dirs = [
         'shm_tools/shm-editor',
         'shm_tools/shm-notifier',
         'shm_tools/shmlog',
+        'slam',
         'system_check',
         'trogdor',
         'vision',
