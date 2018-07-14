@@ -18,7 +18,7 @@ shm_vars = [shm.dice0, shm.dice1]
 # True for HeadingTarget, False for ForwardTarget
 HEADING_TARGET = False
 
-align_buoy = lambda num, db: (HeadingTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=15, py=0.5) if HEADING_TARGET
+align_buoy = lambda num, db: (HeadingTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=5, py=0.5) if HEADING_TARGET
                               else ForwardTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=5, py=5))
 
 class BoolSuccess(Task):
@@ -43,7 +43,7 @@ def fake_move_x(d):
     return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), VelocityX(0))
 
 # Depends on camera dimensions (simulator vs Teagle)
-MIN_DIST = 0.12
+MIN_DIST = 0.08
 
 def pick_correct_buoy(num):
     # We assume that we can see both buoys
@@ -56,11 +56,11 @@ def pick_correct_buoy(num):
 RamBuoyAttempt = lambda num: Sequential(
     Log('Ramming buoy {}'.format(num)),
     MasterConcurrent(
-        Consistent(lambda: shm_vars[num].visible.get() and shm_vars[num].radius_norm.get() < MIN_DIST, count=1*60, total=3*60, invert=True, result=True),
+        Consistent(lambda: shm_vars[num].visible.get() and shm_vars[num].radius_norm.get() < MIN_DIST, count=2*60, total=3*60, invert=True, result=True),
         Sequential(
             Zero(),
             Log('Aligning...'),
-            align_buoy(num=num, db=0.03),
+            align_buoy(num=num, db=0.07),
             Log('Driving forward...'),
             VelocityX(0.07),
             align_buoy(num=num, db=0),
@@ -90,7 +90,7 @@ RamBuoyAttempt = lambda num: Sequential(
     Zero(),
 )
 
-RamBuoy = lambda num: Retry(lambda: RamBuoyAttempt(num), attempts = 3)
+RamBuoy = lambda num: Retry(lambda: RamBuoyAttempt(num), attempts = 6)
 
 Full = Sequential(
     RamBuoy(num=pick_correct_buoy(0)),
