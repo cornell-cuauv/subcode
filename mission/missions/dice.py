@@ -15,12 +15,11 @@ CAM_CENTER = (shm.camera.forward_width.get()/2, shm.camera.forward_height.get()/
 
 shm_vars = [shm.dice0, shm.dice1]
 
-align_buoy = lambda num, db: ForwardTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=0.8, py=0.8)
+align_buoy = lambda num, db: HeadingTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=0.5, py=5)
 
 class BoolSuccess(Task):
     def on_run(self, test):
         result = call_if_function(test)
-        print('result', result)
         self.finish(success=result)
 
 class Consistent(Task):
@@ -29,55 +28,18 @@ class Consistent(Task):
 
     def on_run(self, test, count, total, invert, result):
         test_result = call_if_function(test)
-                
         if self.checker.check(not test_result if invert else test_resultz):
             self.finish(success=result)
 
 # MoveX for minisub w/o a DVL
 def fake_move_x(d):
-    v = 0.4
+    v = 0.1
     if d < 0:
         v *= -1
     return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), VelocityX(0))
 
-MIN_DIST = 50
-
-RamBuoy = lambda num: Retry(
-    lambda: Sequential(
-        Log('Ramming buoy {}'.format(num)),
-        MasterConcurrent(
-            Consistent(lambda: shm_vars[num].visible.get() and shm_vars[num].radius.get() < MIN_DIST, count=1*60, total=3*60, invert=True, result=True),
-            Sequential(
-                Log('Aligning...'),
-                align_buoy(num=num, db=0.01),
-                Log('Driving forward...'),
-                VelocityX(0.2),
-                align_buoy(num=num, db=0),
-            ),
-        ),
-        VelocityY(0),
-        Conditional(
-            # Make sure that we are close enough to the buoy
-            BoolSuccess(lambda: shm_vars[num].radius.get() >= MIN_DIST),
-            on_success=Sequential(
-                Log('Ramming buoy...'),
-                # Ram buoy
-                fake_move_x(1),
-                Log('Backing up...'),
-                # Should be rammed
-                fake_move_x(-2),
-            ),
-            on_fail=Fail(
-                # We weren't close enough when we lost the buoy - back up and try again
-                Sequential(
-                    Log('Not close enough to buoy ({}). Backing up...'.format(shm_vars[num].radius.get())),
-                    Zero(),
-                    fake_move_x(-3),
-                ),
-            )
-        )
-    ), attempts = 3
-)
+# Depends on camera dimensions (simulator vs Teagle)
+MIN_DIST = 120
 
 def pick_correct_buoy(num):
     # We assume that we can see both buoys
@@ -86,6 +48,45 @@ def pick_correct_buoy(num):
 
     axis = not (abs(coords[1][0] - coords[0][0]) > required_diff)
     return num if coords[1][axis] > coords[0][axis] else int(not num)
+
+RamBuoyAttempt = lambda num: Sequential(
+    Log('Ramming buoy {}'.format(num)),
+    MasterConcurrent(
+        Consistent(lambda: shm_vars[num].visible.get() and shm_vars[num].radius.get() < MIN_DIST, count=1*60, total=3*60, invert=True, result=True),
+        Sequential(
+            Zero(),
+            Log('Aligning...'),
+            align_buoy(num=num, db=0.03),
+            Log('Driving forward...'),
+            VelocityX(0.07),
+            align_buoy(num=num, db=0),
+        ),
+    ),
+    VelocityY(0),
+    Conditional(
+        # Make sure that we are close enough to the buoy
+        BoolSuccess(lambda: shm_vars[num].radius.get() >= MIN_DIST),
+        on_success=Sequential(
+            Log('Ramming buoy...'),
+            # Ram buoy
+            fake_move_x(1.5),
+            Log('Backing up...'),
+            # Should be rammed
+            fake_move_x(-2),
+        ),
+        on_fail=Fail(
+            # We weren't close enough when we lost the buoy - back up and try again
+            Sequential(
+                Log('Not close enough to buoy ({}). Backing up...'.format(shm_vars[num].radius.get())),
+                Zero(),
+                fake_move_x(-0.5),
+            ),
+        )
+    ),
+    Zero(),
+)
+
+RamBuoy = lambda num: Retry(lambda: RamBuoyAttempt(num), attempts = 3)
 
 Full = Sequential(
     RamBuoy(num=pick_correct_buoy(0)),

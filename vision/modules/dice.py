@@ -18,7 +18,7 @@ from will_common import find_best_match
 
 options = [
     options.BoolOption('debug', False),
-    options.IntOption('hsv_thresh_c', 12, 0, 100),
+    options.IntOption('hsv_thresh_c', 20, 0, 100),
 ]
 
 FORWARD_CAM_WIDTH = shm.camera.forward_width.get()
@@ -248,6 +248,9 @@ class Dice(ModuleBase):
                     #new_var.dist = np.sqrt(dx**2 + dy**2)
 
                 var.set(new_var)
+
+            cv2.line(slam_out, (int(FORWARD_CAM_WIDTH / 2), 0), (int(FORWARD_CAM_WIDTH / 2), int(FORWARD_CAM_HEIGHT)), (0, 0, 0))
+            cv2.line(slam_out, (0, int(FORWARD_CAM_HEIGHT / 2)), (int(FORWARD_CAM_WIDTH), int(FORWARD_CAM_HEIGHT / 2)), (0, 0, 0))
 
             self.post('slam_out', slam_out)
         except Exception as e:

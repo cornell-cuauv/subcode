@@ -78,7 +78,7 @@ class DownwardTarget(CameraTarget):
 
 class HeadingTarget(CameraTarget):
     def on_first_run(self, depth_bounds=(None, None), *args, **kwargs):
-        self.pid_loop_y = PIDLoop(output_function=RelativeToCurrentDepth(bounds=depth_bounds), negate=False)
+        self.pid_loop_y = PIDLoop(output_function=RelativeToCurrentDepth(bounds=depth_bounds), negate=True)
         self.pid_loop_x = PIDLoop(output_function=RelativeToCurrentHeading(), negate=True)
         self.px_default = 8
         self.py_default = 0.8
