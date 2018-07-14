@@ -39,7 +39,7 @@ def fake_move_x(d):
     return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), VelocityX(0))
 
 # Depends on camera dimensions (simulator vs Teagle)
-MIN_DIST = 0.12
+MIN_DIST = 0.10
 
 def pick_correct_buoy(num):
     # We assume that we can see both buoys
@@ -52,11 +52,11 @@ def pick_correct_buoy(num):
 RamBuoyAttempt = lambda num: Sequential(
     Log('Ramming buoy {}'.format(num)),
     MasterConcurrent(
-        Consistent(lambda: shm_vars[num].visible.get() and shm_vars[num].radius_norm.get() < MIN_DIST, count=1*60, total=3*60, invert=True, result=True),
+        Consistent(lambda: shm_vars[num].visible.get() and shm_vars[num].radius_norm.get() < MIN_DIST, count=2*60, total=3*60, invert=True, result=True),
         Sequential(
             Zero(),
             Log('Aligning...'),
-            align_buoy(num=num, db=0.03),
+            align_buoy(num=num, db=0.07),
             Log('Driving forward...'),
             VelocityX(0.07),
             align_buoy(num=num, db=0),
