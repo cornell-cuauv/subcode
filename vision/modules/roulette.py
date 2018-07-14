@@ -109,7 +109,6 @@ class RouletteBoardData:
         self.shm_group.set(results)
 
 
-# TODO add angles so that we can align heading
 class BinsData:
     def __init__(self, shm_group):
         self.shm_group = shm_group
@@ -122,6 +121,7 @@ class BinsData:
         self.predicted_location = False
         self.predicted_x = 0
         self.predicted_y = 0
+        self.angle = 0
 
     def commit(self):
         results = self.shm_group.get()
@@ -131,6 +131,7 @@ class BinsData:
         results.predicted_location = self.predicted_location
         results.predicted_x = self.predicted_x
         results.predicted_y = self.predicted_y
+        results.angle = self.angle
         self.shm_group.set(results)
 
 
@@ -150,7 +151,8 @@ class Roulette(ModuleBase):
         DOWNWARD_CAM_WIDTH = DOWNWARD_CAM_WIDTH or mat.shape[1]
         DOWNWARD_CAM_HEIGHT = DOWNWARD_CAM_HEIGHT or mat.shape[0]
 
-        mat = cv2.rotate(mat, cv2.ROTATE_90_CLOCKWISE)
+        # With new camera we are no longer rotated
+        #mat = cv2.rotate(mat, cv2.ROTATE_90_CLOCKWISE)
 
         mat = cv2.UMat(mat)
 
@@ -311,8 +313,7 @@ class Roulette(ModuleBase):
                         x += math.cos(theta*2)
                         y += math.sin(theta*2)
                     avg_heading = math.atan2(y, x) * 180 / math.pi / 2
-                    # This is temporary
-                    GREEN_BINS[0].predicted_x = avg_heading
+                    GREEN_BINS[0].angle = avg_heading
 
             # draw centroids of green sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(green_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

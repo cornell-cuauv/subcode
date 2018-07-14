@@ -142,8 +142,7 @@ DEPTH_STEPS = interpolate_list(DEPTH_STANDARD, DEPTH_TARGET_ALIGN_BIN, 4)
 BIN_CENTER = [shm.bins_vision.center_x, shm.bins_vision.center_y]
 #GREEN_CENTER = [shm.bins_green0.centroid_x, shm.bins_green0.centroid_y]
 GREEN_CENTER = BIN_CENTER
-GREEN_ANGLE = shm.bins_green0.predicted_x # temporary
-#GREEN_ANGLE = shm.bins_green0.angle
+GREEN_ANGLE = shm.bins_green0.angle
 
 negator = lambda fcn: -fcn()
 
