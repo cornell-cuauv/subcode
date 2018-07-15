@@ -4,6 +4,7 @@ import math
 import cv2 as cv2
 import numpy as np
 
+import shm
 from vision import options
 from vision.stdlib import *
 
@@ -437,6 +438,26 @@ def find_bins(images):
             area = total_dist / dist_multiple[len(children)]
 
             bins.append(Bin(x, y, area, 1))
+
+
+    shm_group = shm.recovery_vision_downward_bin_red
+    output = shm_group.get()
+
+    if len(bins):
+        binn = bins[0]
+
+        output.area = binn.area
+        output.center_x = binn.x
+        output.center_y = binn.y
+        output.probability = binn.probability
+
+    else:
+        output.area = 0
+        output.center_x = 0
+        output.center_y = 0
+        output.probability = 0
+
+    shm_group.set(output)
 
 
     if debug:
