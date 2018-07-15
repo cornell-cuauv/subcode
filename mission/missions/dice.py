@@ -18,8 +18,11 @@ shm_vars = [shm.dice0, shm.dice1]
 # True for HeadingTarget, False for ForwardTarget
 HEADING_TARGET = False
 
-align_buoy = lambda num, db: (HeadingTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=5, py=0.5) if HEADING_TARGET
-                              else ForwardTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=5, py=5))
+def align_buoy(num, db, mult=1):
+    if HEADING_TARGET:
+        return HeadingTarget(point=(shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=5, py=0.5)
+    else:
+        return ForwardTarget(point=(shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=0.1*mult, py=0.5*mult, depth_bounds=(1, 3))
 
 class BoolSuccess(Task):
     def on_run(self, test):
@@ -39,13 +42,15 @@ class Consistent(Task):
 def fake_move_x(d):
     v = 0.1
     if d < 0:
-        v *= -1
+        v *= -2
     return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), VelocityX(0))
 
 # Depends on camera dimensions (simulator vs Teagle)
-MIN_DIST = 0.08
+MIN_DIST = 0.12
 
 def pick_correct_buoy(num):
+    return 0
+
     # We assume that we can see both buoys
     coords = [(var.center_x.get(), var.center_y.get()) for var in shm_vars]
     required_diff = 0.1
@@ -60,9 +65,9 @@ RamBuoyAttempt = lambda num: Sequential(
         Sequential(
             Zero(),
             Log('Aligning...'),
-            align_buoy(num=num, db=0.07),
+            align_buoy(num=num, db=0.1, mult=3),
             Log('Driving forward...'),
-            VelocityX(0.07),
+            VelocityX(0.04),
             align_buoy(num=num, db=0),
         ),
     ),
@@ -73,10 +78,10 @@ RamBuoyAttempt = lambda num: Sequential(
         on_success=Sequential(
             Log('Ramming buoy...'),
             # Ram buoy
-            fake_move_x(1.5),
+            fake_move_x(0.3),
             Log('Backing up...'),
             # Should be rammed
-            fake_move_x(-2),
+            fake_move_x(-3),
         ),
         on_fail=Fail(
             # We weren't close enough when we lost the buoy - back up and try again
