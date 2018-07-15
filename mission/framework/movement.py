@@ -162,7 +162,7 @@ Roll, RelativeToInitialRoll, RelativeToCurrentRoll, VelocityRoll = \
     generate_setters(desire_setter=desires.roll.set, current=kalman.roll.get, modulo_error=True, default_error=10)
 
 Depth, RelativeToInitialDepth, RelativeToCurrentDepth, VelocityDepth = \
-    generate_setters(desire_setter=desires.depth.set, current=kalman.depth.get, modulo_error=False, default_error=0.03)
+    generate_setters(desire_setter=desires.depth.set, current=kalman.depth.get, modulo_error=False, default_error=0.07)
 
 VelocityX, RelativeToInitialVelocityX, RelativeToCurrentVelocityX, VelocityVelocityX = \
     generate_setters(desire_setter=desires.speed.set, current=kalman.velx.get, modulo_error=False, default_error=0.05, positional_controls=False)

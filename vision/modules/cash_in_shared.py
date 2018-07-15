@@ -15,8 +15,8 @@ def get_shared_options(is_forward):
         # Global
         options.BoolOption('in_simulator', False),
         options.BoolOption('preprocess_debug', False),
-        options.BoolOption('thresh_debug', True),
-        options.BoolOption('contour_debug', True),
+        options.BoolOption('thresh_debug', False),
+        options.BoolOption('contour_debug', False),
         options.BoolOption('bins_debug', False),
 
         # Preprocess
@@ -25,7 +25,7 @@ def get_shared_options(is_forward):
 
         # Threshing
         options.IntOption('erode_size', (5, 15)[is_forward], 1, 40),
-        options.IntOption('thresh_size', (100, 150)[is_forward], 1, 100),
+        options.IntOption('thresh_size', (50, 150)[is_forward], 1, 100),
 
         # Contouring
         options.IntOption('min_area', 2000, 1, 2000),
@@ -36,12 +36,23 @@ def get_shared_options(is_forward):
         options.DoubleOption('max_joining_dist', 200, 0, 500),
     ]
 
+def copy_mat(mat):
+    if type(mat) == type(cv2.UMat()):
+        return mat.get()
+    else:
+        return mat.copy()
+
 
 class Shared:
     def __init__(self, is_forward, options, post, img):
         self.is_forward = is_forward
         self.options = options
-        self.post = post
+        def p(name, mat):
+            if type(mat) == type(cv2.UMat()):
+                post(name, mat.get())
+            else:
+                post(name, mat)
+        self.post = p
         self.img = img
 
 
@@ -110,9 +121,9 @@ def threshold(img):
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     (lab_l, lab_a, lab_b) = cv2.split(lab)
 
-    debugs["luv_u"] = luv_u
-    debugs["luv_l"] = luv_l
-    debugs["lab_a"] = lab_a
+    # debugs["luv_u"] = luv_u
+    # debugs["luv_l"] = luv_l
+    # debugs["lab_a"] = lab_a
 
     if shared.options["in_simulator"]:
         # dist_from_green = np.linalg.norm(luv.astype(int) - [150, 90, 103], axis=2)
@@ -182,31 +193,31 @@ def threshold(img):
             )
 
         else:
-            threshes["bin_green"] = cv2.adaptiveThreshold(
-                luv_l,
+            # threshes["bin_green"] = cv2.adaptiveThreshold(
+            #     luv_l,
+            #     255,
+            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            #     cv2.THRESH_BINARY_INV,
+            #     shared.options["thresh_size"] * 2 + 1,
+            #     9
+            # )
+
+            # threshes["bin_red"] = cv2.adaptiveThreshold(
+            #     luv_u,
+            #     255,
+            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            #     cv2.THRESH_BINARY,
+            #     shared.options["thresh_size"] * 2 + 1,
+            #     -0,
+            # )
+
+            threshes["bin_red"] = cv2.adaptiveThreshold(
+                lab_b,
                 255,
                 cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                 cv2.THRESH_BINARY_INV,
                 shared.options["thresh_size"] * 2 + 1,
-                9
-            )
-
-            threshes["bin_red"] = cv2.adaptiveThreshold(
-                luv_u,
-                255,
-                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY,
-                shared.options["thresh_size"] * 2 + 1,
-                -3,
-            )
-
-            threshes["bin_red"] = cv2.adaptiveThreshold(
-                lab_a,
-                255,
-                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY_INV,
-                shared.options["thresh_size"] * 2 + 1,
-                3,
+                1,
             )
 
     e_size = shared.options["erode_size"]
@@ -275,7 +286,7 @@ def find_contours(images):
 
     if debug:
         for name, fcs in contours.items():
-            image = shared.img.copy()
+            image = copy_mat(shared.img)
             cs = [fc.contour for fc in fcs]
             cv2.drawContours(image, cs, -1, COLORS["BLUE"], 2)
             shared.post("contours_{}".format(name), image)
@@ -327,7 +338,7 @@ def find_bins(featured_contours):
         binn = bins[name] = Bin(result_fc.x, result_fc.y, result_fc.area, 1)
 
         if debug:
-            image = shared.img.copy()
+            image = copy_mat(shared.img)
             cv2.circle(image, (int(binn.x), int(binn.y)), int(math.sqrt(binn.area)), COLORS["BLUE"], 5)
 
             for contour, color  in contours_to_draw:

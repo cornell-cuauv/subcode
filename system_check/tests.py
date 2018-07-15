@@ -41,13 +41,9 @@ class Vision(Test):
         return is_changing(shm.poster_status.downward_counter.get)
 
     def modules_processing():
-        # TODO do other modules besides recovery?
-        enabled_var = shm.vision_modules.Recovery
-        enabled = enabled_var.get()
-        enabled_var.set(True)
-        changing = is_changing(shm.recovery_vision.clock.get)
-        enabled_var.set(enabled)
-        return changing
+        changing_forward = is_changing(shm.poster_status.forward_counter.get)
+        changing_downward = is_changing(shm.poster_status.downward_counter.get)
+        return changing_forward and changing_downward
 
 class Depth(Test):
     def updating():

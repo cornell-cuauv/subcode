@@ -46,7 +46,7 @@ def fake_move_x(d):
     return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), VelocityX(0))
 
 # Depends on camera dimensions (simulator vs Teagle)
-MIN_DIST = 0.12
+MIN_DIST = 0.10
 
 def pick_correct_buoy(num):
     return 0
@@ -95,7 +95,7 @@ RamBuoyAttempt = lambda num: Sequential(
     Zero(),
 )
 
-RamBuoy = lambda num: Retry(lambda: RamBuoyAttempt(num), attempts = 6)
+RamBuoy = lambda num: Retry(lambda: RamBuoyAttempt(num), attempts = 3)
 
 Full = Sequential(
     RamBuoy(num=pick_correct_buoy(0)),
