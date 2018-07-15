@@ -356,7 +356,7 @@ class ConsistentTask(Task):
     def on_run(self, task, debug=False, *args, **kwargs):
         task()
         if debug:
-            print(task.finished)
+            self.logd(task.finished)
         if self.cons_check.check(task.finished):
             self.finish()
 

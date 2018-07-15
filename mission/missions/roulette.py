@@ -2,7 +2,6 @@
 
 from collections import namedtuple
 #from math import atan2
-import math
 import time
 import shm
 from mission.framework.task import Task
@@ -121,8 +120,7 @@ DEPTH_STANDARD = 0.8
 DEPTH_TARGET_ALIGN_BIN = 2.5
 DEPTH_TARGET_DROP = 2.6
 
-# X and Y are flipped
-CAM_CENTER = (cameras['downward']['height']/2, cameras['downward']['width']/2)
+CAM_CENTER = (cameras.downward.width/2, cameras.downward.height/2)
 
 def interpolate_list(a, b, steps):
     return [a + (b - a) / steps * i for i in range(steps)]
