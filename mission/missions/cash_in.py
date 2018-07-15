@@ -160,28 +160,73 @@ class ApproachAndTargetFunnel(Task):
 class PickupFromBin(Task):
     def on_first_run(self, shm_group, *args, **kwargs):
         SEARCH_DEPTH = 2.0
+        SEARCH_DEPTH_2 = 2.5
+        SEARCH_DEPTH_3 = 2.75
         START_PICKUP_DEPTH = 3.0
 
-        downward_target_task = DownwardTarget(
+        print(
+            norm_to_vision_downward(-0.75, -0.75),
+            norm_to_vision_downward(-0.85, -0.85),
+        )
+
+        downward_target_task = lambda pt: DownwardTarget(
             point=(shm_group.center_x.get, shm_group.center_y.get),
-            target=norm_to_vision_downward(0, 0),
-            deadband=norm_to_vision_downward(-0.9, -0.9),
-            px=0.0001,
-            py=0.0001,
+            target=norm_to_vision_downward(*pt),
+            deadband=norm_to_vision_downward(-0.85, -0.85),
+            px=0.0002,
+            py=0.0007,
             max_out=.5,
         )
+
+        def timed(task):
+            return Timed(task, 2)
 
         self.use_task(
             Sequential(
                 cons(Depth(SEARCH_DEPTH)),
-                cons(downward_target_task),
+                Log("At depth"),
+                cons(
+                    downward_target_task((-0.7, -0.7)),
+                    debug=True,
+                ),
+                Log("Found  at top"),
+                cons(Depth(SEARCH_DEPTH_2)),
+                Timer(2),
+                Log("timed"),
+                Timed(VelocityX(.15), .5),
+                Timed(VelocityY(-.15), .5),
                 cons(
                     Concurrent(
-                        downward_target_task,
-                        Depth(START_PICKUP_DEPTH)
+                        downward_target_task((-0.6, -0.6)),
+                        Depth(SEARCH_DEPTH_2)
                     ),
+                    debug=True,
                 ),
+                Log("Found at mid"),
+                cons(Depth(SEARCH_DEPTH_3)),
+                Timer(2),
+                Log("timed"),
+                Timed(VelocityX(.15), .5),
+                # Timed(VelocityY(-.15), .5),
+                cons(
+                    Concurrent(
+                        downward_target_task((-0.5, -0.35)),
+                        Depth(SEARCH_DEPTH_3)
+                    ),
+                    debug=True,
+                ),
+                Log("Found at bottom"),
+                timed(Depth(2.8)),
+                timed(Depth(2.9)),
+                timed(Depth(3.0)),
+                timed(Depth(3.1)),
+                timed(Depth(3.2)),
+                timed(Depth(3.3)),
+                timed(Depth(3.4)),
+                timed(Depth(3.5)),
                 Log("PICKING UP??"),
+                timed(Depth(3.5)),
+                timed(Depth(3.0)),
                 cons(Depth(SEARCH_DEPTH)),
             ),
         )
