@@ -30,16 +30,19 @@ class CashInDownward(ModuleBase):
 
         self.post("Original", img)
 
-        set_shared_globals(is_forward=False, options=self.options, post=self.post, img=uimg)
+        set_shared_globals(is_forward=False, options=self.options, post=self.post, img=img)
 
         preprocessed_image = preprocess(img)
         threshed = threshold(preprocessed_image)
-        contours = find_contours(threshed)
-        bins = find_bins(contours)
+        # contours = find_contours(threshed)
+        # bins = find_bins(threshed, contours)
+        bins = find_bins(threshed)
 
         final = img.copy()
 
-        for name, binn in bins.items():
+        # for name, binn in bins.items():
+        for name, binn in []:
+            break
             shm_group = shm._eval("recovery_vision_downward_{}".format(name))
             output = shm_group.get()
 
