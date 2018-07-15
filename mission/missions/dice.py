@@ -18,11 +18,27 @@ shm_vars = [shm.dice0, shm.dice1]
 # True for HeadingTarget, False for ForwardTarget
 HEADING_TARGET = False
 
+buoy_pick_checker = ConsistencyCheck(15, 20, default=0)
+
+def pick_correct_buoy(num):
+    if shm_vars[1].visible.get():
+        # We assume that we can see both buoys
+        coords = [(var.center_x.get(), var.center_y.get()) for var in shm_vars]
+        required_diff = 0.04
+
+        axis = not (abs(coords[1][0] - coords[0][0]) > required_diff)
+        pick = num if coords[1][axis] > coords[0][axis] else int(not num)
+    else:
+        pick = 0
+
+    out = buoy_pick_checker.check(pick)
+    return out
+
 def align_buoy(num, db, mult=1):
     if HEADING_TARGET:
-        return HeadingTarget(point=(shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=5, py=0.5)
+        return HeadingTarget(point=lambda: (shm_vars[pick_correct_buoy(num)].center_x.get(), shm_vars[pick_correct_buoy(num)].center_y.get()), target=(0, 0), deadband=(db, db), px=5, py=0.5)
     else:
-        return ForwardTarget(point=(shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=0.1*mult, py=0.5*mult, depth_bounds=(1, 3))
+        return ForwardTarget(point=lambda: (shm_vars[pick_correct_buoy(num)].center_x.get(), shm_vars[pick_correct_buoy(num)].center_y.get()), target=(0, 0.1), deadband=(db, db), px=0.08*mult, py=0.05*mult, depth_bounds=(1, 2.4))
 
 class BoolSuccess(Task):
     def on_run(self, test):
@@ -35,7 +51,7 @@ class Consistent(Task):
 
     def on_run(self, test, count, total, invert, result):
         test_result = call_if_function(test)
-        if self.checker.check(not test_result if invert else test_resultz):
+        if self.checker.check(not test_result if invert else test_result):
             self.finish(success=result)
 
 # MoveX for minisub w/o a DVL
@@ -48,56 +64,51 @@ def fake_move_x(d):
 # Depends on camera dimensions (simulator vs Teagle)
 MIN_DIST = 0.10
 
-def pick_correct_buoy(num):
-    return 0
-
-    # We assume that we can see both buoys
-    coords = [(var.center_x.get(), var.center_y.get()) for var in shm_vars]
-    required_diff = 0.1
-
-    axis = not (abs(coords[1][0] - coords[0][0]) > required_diff)
-    return num if coords[1][axis] > coords[0][axis] else int(not num)
-
 RamBuoyAttempt = lambda num: Sequential(
     Log('Ramming buoy {}'.format(num)),
     MasterConcurrent(
-        Consistent(lambda: shm_vars[num].visible.get() and shm_vars[num].radius_norm.get() < MIN_DIST, count=2*60, total=3*60, invert=True, result=True),
+        Consistent(lambda: shm_vars[pick_correct_buoy(num)].visible.get()
+                       and shm_vars[pick_correct_buoy(num)].radius_norm.get() < MIN_DIST,
+                   count=2*60, total=3*60, invert=True, result=True),
         Sequential(
             Zero(),
             Log('Aligning...'),
-            align_buoy(num=num, db=0.1, mult=3),
+            align_buoy(num=num, db=0.1, mult=5),
             Log('Driving forward...'),
             VelocityX(0.04),
-            align_buoy(num=num, db=0),
+            align_buoy(num=num, db=0, mult=3),
+            VelocityX(0),
         ),
     ),
     VelocityY(0),
     Conditional(
         # Make sure that we are close enough to the buoy
-        BoolSuccess(lambda: shm_vars[num].radius_norm.get() >= MIN_DIST),
+        BoolSuccess(lambda: shm_vars[pick_correct_buoy(num)].radius_norm.get() >= MIN_DIST),
         on_success=Sequential(
+            Log('Aligning one more time...'),
+            align_buoy(num=num, db=0.1, mult=3),
             Log('Ramming buoy...'),
             # Ram buoy
-            fake_move_x(0.3),
+            fake_move_x(0.8),
             Log('Backing up...'),
             # Should be rammed
-            fake_move_x(-3),
+            fake_move_x(-1.2),
         ),
         on_fail=Fail(
             # We weren't close enough when we lost the buoy - back up and try again
             Sequential(
-                Log('Not close enough to buoy ({}). Backing up...'.format(shm_vars[num].radius_norm.get())),
+                Log('Not close enough to buoy ({}). Backing up...'.format(shm_vars[pick_correct_buoy(num)].radius_norm.get())),
                 Zero(),
-                fake_move_x(-0.5),
+                fake_move_x(-0.2),
             ),
         )
     ),
     Zero(),
 )
 
-RamBuoy = lambda num: Retry(lambda: RamBuoyAttempt(num), attempts = 3)
+RamBuoy = lambda num: Retry(lambda: RamBuoyAttempt(num), attempts = 5)
 
 Full = Sequential(
-    RamBuoy(num=pick_correct_buoy(0)),
-    RamBuoy(num=pick_correct_buoy(1)),
+    RamBuoy(num=0),
+    RamBuoy(num=1),
 )

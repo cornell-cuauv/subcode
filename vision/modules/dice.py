@@ -1,4 +1,4 @@
-  #!/usr/bin/env python3
+#!/usr/bin/env python3
 
 # Written by Will Smith.
 
@@ -203,23 +203,25 @@ class Dice(ModuleBase):
             #slam_keys = ['dice1', 'dice2']
 
             #old_data = [slam.request(key, 'f') for key in slam_keys]
-            old_data = [(var.center_x.get(), var.center_y.get(), var.count.get()) for var in SHM_VARS]
-            new_data = shm_values[:2]
+            #old_data = [(var.center_x.get(), var.center_y.get(), var.count.get()) for var in SHM_VARS]
+            #new_data = shm_values[:2]
 
             #print(old_data)
             #print(new_data)
 
-            def comp(new, old):
-                if new is None or old is None:
-                    return np.inf
-                # Distance between centers
-                dist = self.dist(self.norm_xy(new[:2]), old[:2])
-                # Match up dice with the same number of dots
-                count_diff = abs(new[2] - old[2]) / 50
-                print(dist, count_diff)
-                return dist #+ count_diff
+            #def comp(new, old):
+            #    if new is None or old is None:
+            #        return np.inf
+            #    # Distance between centers
+            #    dist = self.dist(self.norm_xy(new[:2]), old[:2])
+            #    # Match up dice with the same number of dots
+            #    count_diff = abs(new[2] - old[2]) / 50
+            #    print(dist, count_diff)
+            #    return dist #+ count_diff
 
-            data = find_best_match(old_data, new_data, comp)
+            #data = find_best_match(old_data, new_data, comp)
+
+            data = shm_values[:2]
 
             #print(data)
 
