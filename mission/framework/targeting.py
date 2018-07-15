@@ -33,7 +33,7 @@ class PIDLoop(Task):
             self.finish()
 
 class CameraTarget(Task):
-    def on_run(self, point, target, deadband=(0.01875, 0.01875), px=None, ix=0, dx=0, py=None, iy=0, dy=0, max_out=None, valid=True):
+    def on_run(self, point, target, deadband=(0.01875, 0.01875), px=None, ix=0, dx=0, py=None, iy=0, dy=0, max_out=None, valid=True, *args, **kwargs):
         if px is None:
             px = self.px_default
         if py is None:
@@ -78,7 +78,7 @@ class DownwardTarget(CameraTarget):
 
 class HeadingTarget(CameraTarget):
     def on_first_run(self, depth_bounds=(None, None), *args, **kwargs):
-        self.pid_loop_y = PIDLoop(output_function=RelativeToCurrentDepth(bounds=depth_bounds), negate=False)
+        self.pid_loop_y = PIDLoop(output_function=RelativeToCurrentDepth(bounds=depth_bounds), negate=True)
         self.pid_loop_x = PIDLoop(output_function=RelativeToCurrentHeading(), negate=True)
         self.px_default = 8
         self.py_default = 0.8
