@@ -15,11 +15,16 @@ CAM_CENTER = (shm.camera.forward_width.get()/2, shm.camera.forward_height.get()/
 
 shm_vars = [shm.dice0, shm.dice1]
 
+# Merge conflict left from Castor since this is being worked on Pollux
+<<<<<<< Updated upstream
 # True for HeadingTarget, False for ForwardTarget
 HEADING_TARGET = False
 
 align_buoy = lambda num, db: (HeadingTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=5, py=0.5) if HEADING_TARGET
                               else ForwardTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=5, py=5))
+=======
+align_buoy = lambda num, db: HeadingTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=15, py=0.5)
+>>>>>>> Stashed changes
 
 class BoolSuccess(Task):
     def on_run(self, test):
@@ -43,7 +48,7 @@ def fake_move_x(d):
     return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), VelocityX(0))
 
 # Depends on camera dimensions (simulator vs Teagle)
-MIN_DIST = 0.08
+MIN_DIST = 0.10
 
 def pick_correct_buoy(num):
     # We assume that we can see both buoys
@@ -90,7 +95,7 @@ RamBuoyAttempt = lambda num: Sequential(
     Zero(),
 )
 
-RamBuoy = lambda num: Retry(lambda: RamBuoyAttempt(num), attempts = 6)
+RamBuoy = lambda num: Retry(lambda: RamBuoyAttempt(num), attempts = 3)
 
 Full = Sequential(
     RamBuoy(num=pick_correct_buoy(0)),

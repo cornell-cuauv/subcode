@@ -20,7 +20,8 @@ module_options = get_shared_options(is_forward=False) + [
 class CashInDownward(ModuleBase):
     def process(self, img):
         print("Starting Cash In Downward Run")
-        self.img = img
+
+        uimg = cv2.UMat(img)
 
         h, w, _ = img.shape
 
@@ -29,9 +30,9 @@ class CashInDownward(ModuleBase):
 
         self.post("Original", img)
 
-        set_shared_globals(is_forward=False, options=self.options, post=self.post, img=img)
+        set_shared_globals(is_forward=False, options=self.options, post=self.post, img=uimg)
 
-        preprocessed_image = preprocess(self.img)
+        preprocessed_image = preprocess(img)
         threshed = threshold(preprocessed_image)
         contours = find_contours(threshed)
         bins = find_bins(contours)
