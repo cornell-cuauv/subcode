@@ -4,6 +4,7 @@ from vision import options
 from vision.stdlib import *
 import shm
 import math
+import time
 import cv2 as cv2
 import numpy as np
 from collections import namedtuple
@@ -18,7 +19,15 @@ module_options = get_shared_options(is_forward=False) + [
 
 
 class CashInDownward(ModuleBase):
+    last_run = 0
+
     def process(self, img):
+        curr_time = time.time()
+        if curr_time - self.last_run > .2:
+            print("skipping")
+            self.last_run = curr_time
+            return
+
         print("Starting Cash In Downward Run")
 
         uimg = cv2.UMat(img)
