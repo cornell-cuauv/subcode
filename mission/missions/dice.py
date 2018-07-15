@@ -15,7 +15,11 @@ CAM_CENTER = (shm.camera.forward_width.get()/2, shm.camera.forward_height.get()/
 
 shm_vars = [shm.dice0, shm.dice1]
 
-align_buoy = lambda num, db: HeadingTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=5, py=0.5)
+# True for HeadingTarget, False for ForwardTarget
+HEADING_TARGET = False
+
+align_buoy = lambda num, db: (HeadingTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=5, py=0.5) if HEADING_TARGET
+                              else ForwardTarget((shm_vars[num].center_x.get, shm_vars[num].center_y.get), target=(0, 0), deadband=(db, db), px=5, py=5))
 
 class BoolSuccess(Task):
     def on_run(self, test):
