@@ -1,7 +1,6 @@
 # Written by Will Smith.
 
 from collections import namedtuple
-#from math import atan2
 import math
 import time
 import shm
@@ -14,7 +13,7 @@ from mission.framework.combinators import (
     Conditional,
     While
 )
-#from mission.framework.helpers import call_if_function
+from mission.framework.helpers import call_if_function
 from mission.framework.targeting import DownwardTarget, DownwardAlign
 from mission.framework.timing import Timer
 from mission.framework.movement import (
@@ -24,7 +23,6 @@ from mission.framework.movement import (
     VelocityY,
     Depth,
 )
-#from mission.framework.position import MoveY
 from mission.framework.primitive import (
     Zero,
     Log,
@@ -33,58 +31,10 @@ from mission.framework.primitive import (
     FunctionTask,
     NoOp,
 )
-#from mission.framework.track import ConsistentObject
 
 from mission.missions.actuate import FireBlue
 
 from conf.vehicle import cameras
-
-# class AlignAndDropBall(Task):
-#     """ Waits at the center of the roulette wheel until the target bin is in a predetermined
-#     dropping position, and then moves towards the bin to drop a ball """
-
-#     BIN_ANGLE_ALIGNMENT_THRESHOLD = 5 * 3.14 / 180  # 5 degrees
-#     BIN_ANGLE_TARGET = 0  # 0 degrees (right)
-
-#     def __init__(self, target_bin, target_angle=0):
-#         super().__init__()
-#         self.target_bin = target_bin
-#         self.target_angle = target_angle
-#         self.prereqs = [Predicate(shm.bins_vision.board_visible.get, LocateBoard())]
-#         self.prereqs_satisfied = False
-#         self.center_task = CenterBoard()
-#         self.drop_task = Sequential(Concurrent(RelativeToCurrentDepth(1), MoveY(1)),
-#                                     DropBall(),
-#                                     Concurrent(RelativeToCurrentDepth(-1), MoveY(-1)))
-#         self.task = Sequential(While(self.center_task, self.bin_out_of_position),
-#                                self.drop_task)
-
-#     def on_run(self, *args, **kwargs):
-#         if not self.prereqs_satisfied:
-#             for prereq in self.prereqs:
-#                 if not call_if_function(prereq.condition):
-#                     prereq.action()
-#                     break
-#             else:
-#                 self.prereqs_satisfied = True
-#                 self.task()
-#         else:
-#             self.finish()
-
-
-#     def bin_out_of_position(self):
-#         if not shm.bins_vision.board_visible.get()\
-#            or not self.target_bin.visible.get()\
-#            or not self.target_bin.predicted_location.get():
-#             return False
-#         center_x = shm.bins_vision.center_x.get()
-#         center_y = shm.bins_vision.center_y.get()
-#         target_bin_x = self.target_bin.predicted_x.get()
-#         target_bin_y = self.target_bin.predicted_y.get()
-#         diff_x = target_bin_x - center_x
-#         diff_y = target_bin_y - center_y
-#         bin_angle = atan2(diff_y, diff_x)
-#         return abs(bin_angle - self.BIN_ANGLE_TARGET) < self.BIN_ANGLE_ALIGNMENT_THRESHOLD
 
 # These values are for Teagle
 # Perhaps we should instead do this by determining the size in the camera
@@ -92,8 +42,7 @@ DEPTH_STANDARD = 0.8
 DEPTH_TARGET_ALIGN_BIN = 2.5
 DEPTH_TARGET_DROP = 2.6
 
-# X and Y are flipped
-CAM_CENTER = (cameras['downward']['height']/2, cameras['downward']['width']/2)
+CAM_CENTER = (cameras['downward']['width']/2, cameras['downward']['height']/2)
 
 def interpolate_list(a, b, steps):
     return [a + (b - a) / steps * i for i in range(steps)]
@@ -127,30 +76,34 @@ Full = Retry(
         Log('Starting'),
         Zero(),
         Depth(DEPTH_STANDARD),
-        Log('Centering on roulette'),
+        Log('Searching for roulette...'),
+        Search(),
+        Zero(),
+        Log('Centering on roulette...'),
         align_roulette_center(db=40, p=0.0005),
-        Log('Descending on roulette'),
+        Log('Descending on roulette...'),
         MasterConcurrent(
             # Descend slowly, not all at once
             Sequential(*interleave(tasks_from_params(Depth, DEPTH_STEPS), tasks_from_param(Timer, 1, len(DEPTH_STEPS)))),
             align_roulette_center(0.0003),
         ),
-        Log('Aligning with table again'),
+        Log('Aligning with table again...'),
         align_roulette_center(db=60, p=0.0001),
-        Log('Descending on table'),
+        Log('Descending on table...'),
         MasterConcurrent(
             Depth(DEPTH_TARGET_DROP),
             align_roulette_center(db=0.000001, p=0.00008),
         ),
-        Log('Aligning heading with green bin'),
+        Log('Aligning heading with green bin...'),
         MasterConcurrent(
             align_green_angle(db=15, p=0.5),
             align_roulette_center(db=0.000001, p=0.00008),
         ),
         Zero(),
-        Log('Dropping ball'),
+        Log('Dropping ball...'),
         DropBall(),
-        Log('Returning to normal depth'),
+        Log('Returning to normal depth...'),
         Depth(DEPTH_STANDARD),
+        Log('Done'),
     )
 , attempts=5)

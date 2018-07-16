@@ -14,6 +14,7 @@ import shm
 from vision.modules.base import ModuleBase
 from vision import options
 options = [
+    options.BoolOption('debug', False),
     options.IntOption('red_lab_a_min', 129, 0, 255),
     options.IntOption('red_lab_a_max', 255, 0, 255),
     options.IntOption('black_lab_l_min', 0, 0, 255),
@@ -26,7 +27,7 @@ options = [
     options.IntOption('canny_low_thresh', 100, 0, 1000),
     options.IntOption('canny_high_thresh', 200, 0, 1000),
     options.IntOption('hough_lines_rho', 5, 1, 1000),
-    options.IntOption('hough_lines_theta', 10, 1, 1000),
+    options.IntOption('hough_lines_theta', 1, 1, 1000),
     options.IntOption('hough_lines_thresh', 90, 0, 1000),
     options.IntOption('hough_circle_blur_kernel', 10, 0, 255),
     options.IntOption('hough_circles_dp', 1, 0, 255),
@@ -69,6 +70,9 @@ def calc_diff(new_centers, old_centers):
 
 def dist(a, b):
     return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2)
+
+def angle_diff(a, b):
+    return math.atan2(math.sin(b - a), math.cos(b - a))
 
 def assign_bins(contours, bins_data, module_context):
     # Keeps track of which bin is which by sorting all possible lists by the sum of the
@@ -156,6 +160,8 @@ class Roulette(ModuleBase):
 
         mat = cv2.UMat(mat)
 
+        debug = self.options['debug']
+
         try:
             ## Reset SHM output
             #for s in ALL_SHM:
@@ -234,7 +240,8 @@ class Roulette(ModuleBase):
                 edges = cv2.Canny(blurred,
                         threshold1=self.options['canny_low_thresh'],
                         threshold2=self.options['canny_high_thresh'])
-                self.post('edges', edges)
+                if debug:
+                    self.post('edges', edges)
                 lines = cv2.HoughLines(edges,
                         self.options['hough_lines_rho'],
                         self.options['hough_lines_theta'] * np.pi / 180,
@@ -242,9 +249,21 @@ class Roulette(ModuleBase):
 
                 thetas = []
 
+                THETA_DIFF = math.radians(15)
+
                 if lines is not None:
                     # Remove duplicates
-                    lines = set([(line[0][0], line[0][1]) for line in lines][:2])
+                    lines_unfiltered = set([(line[0][0], line[0][1]) for line in lines][:2])
+
+                    # Find lines that are far enough apart
+                    lines = []
+                    for line_u in lines_unfiltered:
+                        for line in lines:
+                            if abs(angle_diff(line[1], line_u[1])) < THETA_DIFF:
+                                break
+                        else:
+                            lines.append(line_u)
+
                     line_equations = []
                     lines_mat = mat #mat.copy()
                     for (rho, theta) in lines:
@@ -260,7 +279,9 @@ class Roulette(ModuleBase):
                         y2 = (y0 - 1500*(a))
                         cv2.line(lines_mat, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
                         line_equations.append((x1, x2, y1, y2))
-                    self.post('lines', cv2.UMat.get(lines_mat))
+
+                    if debug:
+                        self.post('lines', cv2.UMat.get(lines_mat))
                     found_center = len(line_equations) >= 2
                     if found_center:
                         # calculate intersection of diameters of green section
