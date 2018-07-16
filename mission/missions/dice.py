@@ -7,6 +7,7 @@ from mission.framework.primitive import Log, NoOp, Zero, Succeed, Fail, Function
 from mission.framework.targeting import ForwardTarget, HeadingTarget, CameraTarget, PIDLoop
 from mission.framework.timing import Timer, Timeout, Timed
 from mission.framework.helpers import ConsistencyCheck, call_if_function
+from mission.framework.search import SearchFor, VelocitySwaySearch
 
 import shm
 
@@ -34,12 +35,12 @@ def __correct_buoy(num):
     else:
         return 0
 
-# TODO the sub can get stuck going back and forth between the two buoys because the nums are not consistent
 def update_correct_buoy(num):
     buoy_pick_checker.check(__correct_buoy(num))
-    #print(buoy_pick_checker.state)
 
 def pick_correct_buoy(num, ret=True):
+    # technically this is wrong if we request the other num
+    # but this never actually happens in practice
     return buoy_pick_checker.state
 
 MAX_DEPTH = 2.4
@@ -66,9 +67,14 @@ class Consistent(Task):
         if self.checker.check(not test_result if invert else test_result):
             self.finish(success=result)
 
-search_buoy = lambda num: NoOp()
+# num here refers to the shm group, not the tracked num
+SearchBuoy = lambda num, count, total: SearchFor(
+    VelocitySwaySearch(forward=1, stride=0.5),
+    shm_vars[num].visible.get,
+    consistent_frames=(count * 60, total * 60) # multiple by 60 to specify in seconds
+)
 
-back_up_until_visible = lambda num, speed, timeout: Conditional(
+BackUpUntilVisible = lambda num, speed, timeout: Conditional(
     Sequential(
         Timeout(
             task=Sequential(
@@ -85,7 +91,7 @@ back_up_until_visible = lambda num, speed, timeout: Conditional(
     on_success=Succeed(NoOp()),
     on_fail=Sequential(
         Log('Timed out, searching for buoy again'),
-        search_buoy(num),
+        SearchBuoy(num=num, count=2, total=3),
     )
 )
 
@@ -103,7 +109,7 @@ BackUp = lambda: Sequential(
     Log('Backing up...'),
     # Should be rammed, back up until we can see both buoys
     # If we see the second buoy then we can see both
-    back_up_until_visible(num=1, speed=0.3, timeout=20),
+    BackUpUntilVisible(num=1, speed=0.3, timeout=20),
 )
 
 RamBuoyAttempt = lambda num: Sequential(
@@ -141,7 +147,7 @@ RamBuoyAttempt = lambda num: Sequential(
             Sequential(
                 Zero(),
                 Log('Lost sight of buoy, backing up...'),
-                back_up_until_visible(0, 0.1, 5), # we only need to see the first buoy
+                BackUpUntilVisible(0, 0.1, 5), # we only need to see the first buoy
             ),
         ),
     ),
@@ -165,7 +171,7 @@ RamBuoy = lambda num: Sequential(
 
 Full = Sequential(
     Log('Searching for buoys...'),
-    search_buoy(1), # if we see the second buoy then we see both
+    SearchBuoy(num=1, count=7, total=10), # if we see the second buoy then we see both
     Succeed(RamBuoy(num=0)),
     Succeed(RamBuoy(num=1)),
 )
