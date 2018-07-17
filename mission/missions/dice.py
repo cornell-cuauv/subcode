@@ -20,7 +20,7 @@ shm_vars = [shm.dice0, shm.dice1]
 HEADING_TARGET = False
 
 # True for simulator, False for on sub
-SIMULATOR = True
+SIMULATOR = False
 
 buoy_pick_checker = ConsistencyCheck(15, 20, default=0)
 
@@ -69,7 +69,7 @@ class Consistent(Task):
 
 # num here refers to the shm group, not the tracked num
 SearchBuoy = lambda num, count, total: SearchFor(
-    VelocitySwaySearch(forward=1, stride=0.5),
+    VelocitySwaySearch(forward=1, stride=0.5, speed=0.05),
     shm_vars[num].visible.get,
     consistent_frames=(count * 60, total * 60) # multiple by 60 to specify in seconds
 )
@@ -79,10 +79,12 @@ BackUpUntilVisible = lambda num, speed, timeout: Conditional(
         Timeout(
             task=Sequential(
                 # Get at least a little bit away first
-                fake_move_x(-1),
-                VelocityX(-speed),
-                Consistent(lambda: shm_vars[num].visible.get(),
-                           count=1, total=3, result=True, invert=False)
+                fake_move_x(-0.3),
+                MasterConcurrent(
+                    Consistent(lambda: shm_vars[num].visible.get(),
+                               count=1, total=1.5, result=True, invert=False),
+                    VelocityX(-speed),
+                ),
             ),
             time=timeout # don't back up too far
         ),
@@ -91,7 +93,7 @@ BackUpUntilVisible = lambda num, speed, timeout: Conditional(
     on_success=Succeed(NoOp()),
     on_fail=Sequential(
         Log('Timed out, searching for buoy again'),
-        SearchBuoy(num=num, count=2, total=3),
+        SearchBuoy(num=num, count=1, total=3),
     )
 )
 
@@ -103,13 +105,13 @@ def fake_move_x(d):
     return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), VelocityX(0))
 
 # Depends on camera dimensions (simulator vs Teagle)
-MIN_DIST = 0.07 if SIMULATOR else 0.10
+MIN_DIST = 0.08
 
 BackUp = lambda: Sequential(
     Log('Backing up...'),
     # Should be rammed, back up until we can see both buoys
     # If we see the second buoy then we can see both
-    BackUpUntilVisible(num=1, speed=0.3, timeout=20),
+    BackUpUntilVisible(num=1, speed=0.08, timeout=20),
 )
 
 RamBuoyAttempt = lambda num: Sequential(
@@ -127,8 +129,10 @@ RamBuoyAttempt = lambda num: Sequential(
                         Log('Aligning...'),
                         align_buoy(num=num, db=0.1, mult=5),
                         Log('Driving forward...'),
-                        VelocityX(0.1 if SIMULATOR else 0.04),
-                        align_buoy(num=num, db=0, mult=3),
+                        Concurrent(
+                            VelocityX(0.1 if SIMULATOR else 0.06),
+                            align_buoy(num=num, db=0, mult=3),
+                        ),
                     ),
                 ),
                 Zero(),
@@ -147,7 +151,7 @@ RamBuoyAttempt = lambda num: Sequential(
             Sequential(
                 Zero(),
                 Log('Lost sight of buoy, backing up...'),
-                BackUpUntilVisible(0, 0.1, 5), # we only need to see the first buoy
+                BackUpUntilVisible(num=0, speed=0.08, timeout=10), # we only need to see the first buoy
             ),
         ),
     ),

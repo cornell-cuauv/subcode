@@ -25,47 +25,47 @@ def _sub_position():
     ])
 
 class VelocitySwaySearch(Task):
-    def make_repeat(self, forward, stride, rightFirst, checkBehind):
+    def make_repeat(self, forward, stride, speed, rightFirst, checkBehind):
         dir = 1 if rightFirst else -1
         if checkBehind:
             self.repeat = Sequential(
-                                Timed(VelocityX(-.3), forward),
-                                Timed(VelocityX(.3), forward),
+                                Timed(VelocityX(-speed), forward),
+                                Timed(VelocityX(speed), forward),
                                 VelocityX(0),
-                                Timed(VelocityY(.3 * dir), stride),
+                                Timed(VelocityY(speed * dir), stride),
                                 VelocityY(0.0),
-                                Timed(VelocityX(.3), forward),
+                                Timed(VelocityX(speed), forward),
                                 VelocityX(0.0),
-                                Timed(VelocityY(-.3 * dir), stride),
+                                Timed(VelocityY(-speed * dir), stride),
                                 VelocityY(0.0),
-                                Timed(VelocityY(-.3 * dir),stride),
+                                Timed(VelocityY(-speed * dir),stride),
                                 VelocityY(0.0),
-                                Timed(VelocityX(.3 ), forward),
+                                Timed(VelocityX(speed), forward),
                                 VelocityX(0.0),
-                                Timed(VelocityY(.3 * dir), stride),
+                                Timed(VelocityY(speed * dir), stride),
                                 VelocityY(0.0))
         else:
             self.repeat = Sequential(
-                                Timed(VelocityY(.3 * dir), stride),
+                                Timed(VelocityY(speed * dir), stride),
                                 VelocityY(0.0),
-                                Timed(VelocityX(.3), forward),
+                                Timed(VelocityX(speed), forward),
                                 VelocityX(0.0),
-                                Timed(VelocityY(-.3 * dir), stride),
+                                Timed(VelocityY(-speed * dir), stride),
                                 VelocityY(0.0),
-                                Timed(VelocityY(-.3 * dir),stride),
+                                Timed(VelocityY(-speed * dir),stride),
                                 VelocityY(0.0),
-                                Timed(VelocityX(.3 ), forward),
+                                Timed(VelocityX(speed), forward),
                                 VelocityX(0.0),
-                                Timed(VelocityY(.3 * dir), stride),
+                                Timed(VelocityY(speed * dir), stride),
                                 VelocityY(0.0))
 
-    def on_first_run(self, forward = 1, stride=1, rightFirst=True, checkBehind=False):
-        self.make_repeat(forward, stride, rightFirst, checkBehind)
+    def on_first_run(self, forward = 1, stride=1, speed=0.3, rightFirst=True, checkBehind=False):
+        self.make_repeat(forward, stride, speed, rightFirst, checkBehind)
 
-    def on_run(self, forward = 1, stride=1, rightFirst=True, checkBehind=False):
+    def on_run(self, forward = 1, stride=1, speed=0.3, rightFirst=True, checkBehind=False):
         self.repeat()
         if self.repeat.finished:
-            self.make_repeat(forward, stride, rightFirst, checkBehind)
+            self.make_repeat(forward, stride, speed, rightFirst, checkBehind)
 
 class VelocityTSearch(Task):
     def make_repeat(self, forward, stride, rightFirst, checkBehind):

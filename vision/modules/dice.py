@@ -18,7 +18,7 @@ from will_common import find_best_match
 
 options = [
     options.BoolOption('debug', False),
-    options.IntOption('hsv_thresh_c', 20, 0, 100),
+    options.IntOption('hsv_thresh_c', 35, 0, 100),
 ]
 
 FORWARD_CAM_WIDTH = shm.camera.forward_width.get()
@@ -206,7 +206,7 @@ class Dice(ModuleBase):
                 new_data = shm_values[:2]
 
                 def comp(new, old):
-                    if new is None or old is None:
+                    if new[2] < 5 or new is None or old is None:
                         return np.inf
                     # Distance between centers
                     dist = self.dist(self.norm_xy(new[:2]), old[:2])
