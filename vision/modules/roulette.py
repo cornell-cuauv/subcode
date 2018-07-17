@@ -104,13 +104,13 @@ class RouletteBoardData:
         self.reset()
 
     def reset(self):
-        self.board_visible = False
+        self.visible = False
         self.center_x = 0
         self.center_y = 0
 
     def commit(self):
         results = self.shm_group.get()
-        results.board_visible = self.board_visible
+        results.board_visible = self.visible
         results.center_x = self.center_x
         results.center_y = self.center_y
         self.shm_group.set(results)
@@ -272,55 +272,53 @@ class Roulette(ModuleBase):
                     # Pick top four - we sometimes get the ends of the bins as lines as well
                     lines_unpicked = [line for line, count in sorted(bins, key=lambda bin: bin[1], reverse=True)[:4]]
 
-                    THIRTY = math.radians(30)
+                    if len(lines_unpicked) >= 2:
+                        THIRTY = math.radians(30)
 
-                    # Find two lines that are about 30 degrees apart
-                    # Find the pairing of lines with the angle difference closest to 30 degrees
-                    pairs = itertools.combinations(lines_unpicked, 2)
-                    # We double angles because we're in [0, 180] and not [0, 360]
-                    lines = sorted(pairs, key=lambda pair: abs(THIRTY * 2 - abs(angle_diff(pair[0][1] * 2, pair[1][1] * 2))))[0]
+                        # Find two lines that are about 30 degrees apart
+                        # Find the pairing of lines with the angle difference closest to 30 degrees
+                        pairs = itertools.combinations(lines_unpicked, 2)
+                        # We double angles because we're in [0, 180] and not [0, 360]
+                        lines = sorted(pairs, key=lambda pair: abs(THIRTY * 2 - abs(angle_diff(pair[0][1] * 2, pair[1][1] * 2))))[0]
 
-                    if len(lines) != 2:
-                        print(len(lines))
+                        line_equations = []
+                        lines_mat = mat #mat.copy()
+                        for (rho, theta) in lines:
+                            thetas.append(theta)
 
-                    line_equations = []
-                    lines_mat = mat #mat.copy()
-                    for (rho, theta) in lines:
-                        thetas.append(theta)
+                            a = np.cos(theta)
+                            b = np.sin(theta)
+                            x0 = a*rho
+                            y0 = b*rho
+                            x1 = (x0 + 1500*(-b))
+                            y1 = (y0 + 1500*(a))
+                            x2 = (x0 - 1500*(-b))
+                            y2 = (y0 - 1500*(a))
+                            cv2.line(lines_mat, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+                            line_equations.append((x1, x2, y1, y2))
 
-                        a = np.cos(theta)
-                        b = np.sin(theta)
-                        x0 = a*rho
-                        y0 = b*rho
-                        x1 = (x0 + 1500*(-b))
-                        y1 = (y0 + 1500*(a))
-                        x2 = (x0 - 1500*(-b))
-                        y2 = (y0 - 1500*(a))
-                        cv2.line(lines_mat, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
-                        line_equations.append((x1, x2, y1, y2))
+                        if debug:
+                            self.post('lines', cv2.UMat.get(lines_mat))
 
-                    if debug:
-                        self.post('lines', cv2.UMat.get(lines_mat))
-                    found_center = len(line_equations) >= 2
-                    if found_center:
-                        # calculate intersection of diameters of green section
-                        [x01, x02, y01, y02] = line_equations[0]
-                        [x11, x12, y11, y12] = line_equations[1]
+                        found_center = len(line_equations) >= 2
+                        if found_center:
+                            # calculate intersection of diameters of green section
+                            [x01, x02, y01, y02] = line_equations[0]
+                            [x11, x12, y11, y12] = line_equations[1]
 
-                        # This is stupid but it works
-                        if x02 == x01:
-                           x01 += 0.01
-                        if x12 == x11:
-                            x11 += 0.01
+                            # This is stupid but it works
+                            if x02 == x01:
+                                x01 += 0.01
+                            if x12 == x11:
+                                x11 += 0.01
+                            b1 = (y02 - y01) / (x02 - x01)
+                            b2 = (y12 - y11) / (x12 - x11)
 
-                        b1 = (y02 - y01) / (x02 - x01)
-                        b2 = (y12 - y11) / (x12 - x11)
-
-                        if b1 == b2:
-                            print('ovelapping')
-                            found_center = False
-                        else:
-                            intersection_x = (b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2)
+                            if b1 == b2:
+                                print('ovelapping')
+                                found_center = False
+                            else:
+                                intersection_x = (b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2)
 
                             if math.isinf(intersection_x):
                                 if abs(x02 - x01) < 0.2:
@@ -339,7 +337,7 @@ class Roulette(ModuleBase):
                 center_mat = mat # mat.copy()
                 cv2.circle(center_mat, (center_x, center_y), 7, (255, 255, 255), -1)
                 self.post('center', cv2.UMat.get(center_mat))
-                ROULETTE_BOARD.board_visible = True
+                ROULETTE_BOARD.visible = True
                 (ROULETTE_BOARD.center_x, ROULETTE_BOARD.center_y) = (center_x, center_y)
 
                 if len(thetas) == 2:
