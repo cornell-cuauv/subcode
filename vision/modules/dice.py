@@ -188,24 +188,33 @@ class Dice(ModuleBase):
                 #    print(count, x, y)
                 #    cv2.circle(groups_out, (int(x), int(y)), 30, (0, 255, 255), thickness=10)
 
-            # Want at least two values
-            shm_values += [None] * (len(SHM_VARS) - min(len(shm_values), len(SHM_VARS)))
+            #print()
+            #print('-----')
+            #print()
+
+            #print(shm_values)
 
             if debug:
                 self.post('groups_out', groups_out)
 
-            #slam_keys = ['dice1', 'dice2']
+            if len(shm_values) < 2:
+                # Want at least two values
+                shm_values += [None] * (len(SHM_VARS) - min(len(shm_values), len(SHM_VARS)))
+                data = shm_values[:2]
+            else:
+                old_data = [(var.center_x.get(), var.center_y.get()) for var in SHM_VARS]
+                new_data = shm_values[:2]
 
-            #old_data = [slam.request(key, 'f') for key in slam_keys]
-            old_data = [(var.center_x.get(), var.center_y.get()) for var in SHM_VARS]
-            new_data = shm_values[:2]
+                def comp(new, old):
+                    if new is None or old is None:
+                        return np.inf
+                    # Distance between centers
+                    dist = self.dist(self.norm_xy(new[:2]), old[:2])
+                    return dist
 
-            def comp(new, old):
-                if new is None or old is None:
-                    return np.inf
-                return self.dist(self.norm_xy(new[:2]), old)
-
-            data = find_best_match(old_data, new_data, comp) #lambda new, old: self.dist(new, old()))
+                # Try to line up the data with the old one for consistency
+                # We have no guarantees of alignment from frame to frame, though            
+                data = find_best_match(old_data, new_data, comp)
 
             slam_out = groups_out.copy()
 
