@@ -87,7 +87,7 @@ class System(Test):
     def services_up():
         # Please forgive me for this.
         service_down_color = '[1;31m'
-        return str(shell('trogdor')).find(service_down_color) != -1
+        return service_down_color not in str(shell('trogdor').stdout)
 
 @vehicle(CASTOR)
 class Hydrophones(Test):
