@@ -71,6 +71,8 @@ align_green_angle = lambda db=10, p=0.8: DownwardAlign(GREEN_ANGLE.get, target=0
 
 DropBall = lambda: FireBlue()
 
+Search = lambda: NoOp()
+
 Full = Retry(
     lambda: Sequential(
         Log('Starting'),

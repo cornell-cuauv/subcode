@@ -13,6 +13,9 @@ import shm
 
 from vision.modules.base import ModuleBase
 from vision import options
+
+from vision.modules.will_common import find_best_match
+
 options = [
     options.BoolOption('debug', False),
     options.IntOption('red_lab_a_min', 129, 0, 255),
@@ -255,17 +258,27 @@ class Roulette(ModuleBase):
                     # Remove duplicates
                     lines_unfiltered = set([(line[0][0], line[0][1]) for line in lines])
 
-                    # Find lines that are far enough apart
+                    # Group lines into bins
                     bins = []
                     for line in lines_unfiltered:
                         for bin in bins:
-                            if abs(angle_diff(line[1], bin[0][1])) < THETA_DIFF:
+                            # Multiple by 2 because we're in [0, 180], not [0, 360]
+                            if abs(angle_diff(line[1] * 2, bin[0][1] * 2)) < THETA_DIFF * 2:
                                 bin = (bin[0], bin[1] + 1)
                                 break
                         else:
                             bins.append((line, 1))
 
-                    lines = [line for line, count in sorted(bins, key=lambda bin: bin[1], reverse=True)[:2]]
+                    # Pick top four - we sometimes get the ends of the bins as lines as well
+                    lines_unpicked = [line for line, count in sorted(bins, key=lambda bin: bin[1], reverse=True)[:4]]
+
+                    THIRTY = math.radians(30)
+
+                    # Find two lines that are about 30 degrees apart
+                    # Find the pairing of lines with the angle difference closest to 30 degrees
+                    pairs = itertools.combinations(lines_unpicked, 2)
+                    # We double angles because we're in [0, 180] and not [0, 360]
+                    lines = sorted(pairs, key=lambda pair: abs(THIRTY * 2 - abs(angle_diff(pair[0][1] * 2, pair[1][1] * 2))))[0]
 
                     if len(lines) != 2:
                         print(len(lines))
