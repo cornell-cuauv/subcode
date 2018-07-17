@@ -249,20 +249,26 @@ class Roulette(ModuleBase):
 
                 thetas = []
 
-                THETA_DIFF = math.radians(15)
+                THETA_DIFF = math.radians(20)
 
                 if lines is not None:
                     # Remove duplicates
-                    lines_unfiltered = set([(line[0][0], line[0][1]) for line in lines][:2])
+                    lines_unfiltered = set([(line[0][0], line[0][1]) for line in lines])
 
                     # Find lines that are far enough apart
-                    lines = []
-                    for line_u in lines_unfiltered:
-                        for line in lines:
-                            if abs(angle_diff(line[1], line_u[1])) < THETA_DIFF:
+                    bins = []
+                    for line in lines_unfiltered:
+                        for bin in bins:
+                            if abs(angle_diff(line[1], bin[0][1])) < THETA_DIFF:
+                                bin = (bin[0], bin[1] + 1)
                                 break
                         else:
-                            lines.append(line_u)
+                            bins.append((line, 1))
+
+                    lines = [line for line, count in sorted(bins, key=lambda bin: bin[1], reverse=True)[:2]]
+
+                    if len(lines) != 2:
+                        print(len(lines))
 
                     line_equations = []
                     lines_mat = mat #mat.copy()
