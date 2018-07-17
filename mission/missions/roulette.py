@@ -35,6 +35,8 @@ from mission.framework.primitive import (
 )
 #from mission.framework.track import ConsistentObject
 
+from mission.missions.actuate import FireBlue
+
 from conf.vehicle import cameras
 
 # class AlignAndDropBall(Task):
@@ -84,38 +86,7 @@ from conf.vehicle import cameras
 #         bin_angle = atan2(diff_y, diff_x)
 #         return abs(bin_angle - self.BIN_ANGLE_TARGET) < self.BIN_ANGLE_ALIGNMENT_THRESHOLD
 
-# We have three dropper mechanisms
-PISTONS = {
-    'green': (shm.actuator_desires.trigger_11, shm.actuator_desires.trigger_01),
-    'red': None,
-    'gold': None,
-}
-
-# Seconds
-PISTON_DELAY = 1
-
-class DropBall(Task):
-    def __init__(self, target_piston):
-        super().__init__()
-        self.target_piston = target_piston
-
-    def on_run(self, *args, **kwargs):
-        self.target_piston[0].set(1)
-        self.target_piston[1].set(0)
-
-        time.sleep(PISTON_DELAY)
-
-        self.target_piston[0].set(0)
-        self.target_piston[1].set(1)
-
-        time.sleep(PISTON_DELAY)
-
-        # Reset
-        self.target_piston[1].set(0)
-
-        self.finish()
-
-#5 These values are for Teagle
+# These values are for Teagle
 # Perhaps we should instead do this by determining the size in the camera
 DEPTH_STANDARD = 0.8
 DEPTH_TARGET_ALIGN_BIN = 2.5
@@ -149,6 +120,8 @@ negator = lambda fcn: -fcn()
 align_roulette_center = lambda db=20, p=0.0005: DownwardTarget((BIN_CENTER[0].get, BIN_CENTER[1].get), target=CAM_CENTER, px=p, py=p, deadband=(db, db))
 align_green_angle = lambda db=10, p=0.8: DownwardAlign(GREEN_ANGLE.get, target=0, deadband=db, p=p)
 
+DropBall = lambda: FireBlue()
+
 Full = Retry(
     lambda: Sequential(
         Log('Starting'),
@@ -176,10 +149,8 @@ Full = Retry(
         ),
         Zero(),
         Log('Dropping ball'),
-        DropBall(PISTONS['green']),
+        DropBall(),
         Log('Returning to normal depth'),
         Depth(DEPTH_STANDARD),
     )
 , attempts=5)
-
-Dropper = DropBall(PISTONS['green'])

@@ -5,6 +5,8 @@ from shm.actuator_desires import trigger_11 as a, trigger_01 as b
 
 status = True
 
+# Note: This script is out of date. Use 'auv-mr actuate.FireGreen' instead.
+
 def switch():
     global status
     a.set(True if status else False)
