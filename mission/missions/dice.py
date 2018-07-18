@@ -39,9 +39,12 @@ def update_correct_buoy(num):
     buoy_pick_checker.check(__correct_buoy(num))
 
 def pick_correct_buoy(num, ret=True):
-    # technically this is wrong if we request the other num
-    # but this never actually happens in practice
-    return buoy_pick_checker.state
+    if shm_vars[1].visible.get():
+        # technically this is wrong if we request the other num
+        # but this never actually happens in practice
+        return buoy_pick_checker.state
+    else:
+        return 0
 
 MAX_DEPTH = 2.4
 
@@ -69,7 +72,7 @@ class Consistent(Task):
 
 # num here refers to the shm group, not the tracked num
 SearchBuoy = lambda num, count, total: SearchFor(
-    VelocitySwaySearch(forward=1, stride=0.5, speed=0.05),
+    VelocitySwaySearch(forward=4, stride=8, speed=0.08),
     shm_vars[num].visible.get,
     consistent_frames=(count * 60, total * 60) # multiple by 60 to specify in seconds
 )
@@ -104,8 +107,8 @@ def fake_move_x(d):
         v *= -2
     return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), VelocityX(0))
 
-# Depends on camera dimensions (simulator vs Teagle)
-MIN_DIST = 0.08
+# This is the radius of the dots on the die
+MIN_DIST = 0.03
 
 BackUp = lambda: Sequential(
     Log('Backing up...'),

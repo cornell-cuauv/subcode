@@ -19,6 +19,11 @@ from will_common import find_best_match
 options = [
     options.BoolOption('debug', False),
     options.IntOption('hsv_thresh_c', 35, 0, 100),
+    options.IntOption('canny_a', 60, 0, 255),
+    options.IntOption('canny_b', 255, 0, 255),
+    options.DoubleOption('perim_thresh', 1.5, 1, 10),
+    options.DoubleOption('circle_thresh', 5, 1, 10),
+    options.DoubleOption('ellipse_thresh', 1.2, 1, 10),
 ]
 
 FORWARD_CAM_WIDTH = shm.camera.forward_width.get()
@@ -69,13 +74,15 @@ class Dice(ModuleBase):
                 #self.post('y_cr', y_cr)
                 #self.post('y_cb', y_cb)
 
-            hsv_v_thresh = cv2.adaptiveThreshold(hsv_v, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 99, self.options['hsv_thresh_c'])
+            #hsv_v_thresh = cv2.adaptiveThreshold(hsv_v, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 99, self.options['hsv_thresh_c'])
             #luv_u_thresh = cv2.adaptiveThreshold(luv_u, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 99, 5)
             #luv_v_thresh = cv2.adaptiveThreshold(luv_v, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 199, 5)
             #y_cr_thresh = cv2.adaptiveThreshold(y_cr, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 99, 5)
             #y_cb_thresh = cv2.adaptiveThreshold(y_cb, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 5)
 
-            hsv_v_c = cv2.erode(hsv_v_thresh, self.kernel(0))
+            hsv_v_edges = cv2.Canny(hsv_v, self.options['canny_a'], self.options['canny_b'])
+
+            hsv_v_c = cv2.dilate(hsv_v_edges, self.kernel(1))
             #luv_u_c = cv2.erode(luv_u_thresh, self.kernel(0))
             #luv_v_c = cv2.erode(luv_v_thresh, self.kernel(0))
             #y_cr_c = cv2.erode(y_cr_thresh, self.kernel(0))
@@ -99,20 +106,27 @@ class Dice(ModuleBase):
             min_area = 10
 
             for contour in contours:
-                area = cv2.contourArea(contour)
-                if area > min_area:
+                hull = cv2.convexHull(contour)
+                # Use convex hull to fill in circle, otherwise we just get edge
+                area = cv2.contourArea(hull)
+
+                # Make sure that we have a mostly-closed contour
+                perim = cv2.arcLength(contour, closed=False)
+                hull_perim = cv2.arcLength(hull, closed=True)
+                if area > min_area and max([perim / hull_perim, hull_perim / perim]) < self.options['perim_thresh']:
                     # Bound with circle
                     x, circ_r = cv2.minEnclosingCircle(contour)
                     circ_area = math.pi * circ_r**2
 
-                    if circ_area / area < 2.5:
+                    if max(circ_area / area, area / circ_area) < self.options['circle_thresh']:
                         # problems if contour isn't big enough
                         try:
                             # Bound with ellipse
                             (ell_cx, ell_cy), (ell_w, ell_h), theta = cv2.fitEllipse(contour)
+
                             ell_area = math.pi * ell_w * ell_h / 4
 
-                            if ell_area / area < 1.5:
+                            if max(ell_area / area, area / ell_area) < self.options['ellipse_thresh']:
                                 dots.append((contour, (ell_cx, ell_cy), (ell_w + ell_h) / 2))
                         except cv2.error:
                             pass
@@ -134,7 +148,7 @@ class Dice(ModuleBase):
             # Each dot on the same die should be close together and have a similar area
 
             # Start out with all dots in separate groups and then combine them
-            groups = [set([dot[1]]) for dot in dots]
+            groups = [set([(dot[1], dot[2])]) for dot in dots]
 
             # This iteration avoids checking the same pair twice
             for i, dot1 in enumerate(dots):
@@ -150,9 +164,9 @@ class Dice(ModuleBase):
                         group1 = None
                         group2 = None
                         for group in groups:
-                            if dot1[1] in group:
+                            if (dot1[1], dot1[2]) in group:
                                 group1 = group
-                            if dot2[1] in group:
+                            if (dot2[1], dot2[2]) in group:
                                 group2 = group
                             if (group1 is not None) and (group2 is not None):
                                 break
@@ -173,15 +187,18 @@ class Dice(ModuleBase):
 
             #count = 0
             for group in groups:
-                gcx = int(sum([dot[0] for dot in group]) / len(group))
-                gcy = int(sum([dot[1] for dot in group]) / len(group))
-                rad = max([self.dist(dot1, dot2) for dot1 in group for dot2 in group]) / 2
+                gcx = int(sum([dot[0] for dot, rad in group]) / len(group))
+                gcy = int(sum([dot[1] for dot, rad in group]) / len(group))
+                #rad = max([self.dist(dot1, dot2) for dot1 in group for dot2 in group]) / 2
+                # This radius is the average of all of the dots' radii
+                rad = sum([rad for dot, rad in group]) / len(group)
                 dist = None if rad == 0 else 0.11 * FORWARD_CAM_WIDTH / rad # hella sketch, be ware or be dare
 
                 shm_values.append((gcx, gcy, len(group), rad, dist))
 
                 cv2.circle(groups_out, (gcx, gcy), len(group) * 10, (0, 0, 255) if len(group) >= 5 else (0, 0, 0), thickness=(2 * len(group)))
-
+                if len(group) >= 5:
+                    cv2.circle(groups_out, (gcx, gcy), int(rad), (255, 255, 0), thickness=5)
                 #if dist is not None:
                 #    x, y = slam.sub_to_vision(slam.slam_to_sub(slam.sub_to_slam(slam.vision_to_sub(gcx, gcy, dist, 0))), 0)
                 #    count += 1
