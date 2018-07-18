@@ -30,8 +30,8 @@ class CashInDownward(ModuleBase):
 
         print("Starting Cash In Downward Run")
 
+        img = img[::2, ::2, :]
         uimg = cv2.UMat(img)
-
         h, w, _ = img.shape
 
         shm.camera.downward_height.set(h)

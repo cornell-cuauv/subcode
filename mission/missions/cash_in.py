@@ -22,6 +22,8 @@ from mission.framework.movement import (
     Depth,
     RelativeToInitialDepth,
     RelativeToCurrentDepth,
+    Pitch,
+    Roll,
     VelocityX,
     VelocityY,
     Heading,
@@ -135,9 +137,9 @@ class ApproachAndTargetFunnel(Task):
                         target=norm_to_vision_forward(0, 0.6),
                         # depth_bounds=(.5, 1.5),
                         deadband=norm_to_vision_forward(-0.9, -0.9),
-                        px=0.001,
-                        py=0.0001,
-                        max_out=.5,
+                        px=0.005,
+                        py=0.0005,
+                        max_out=.3,
                     ),
                     PIDLoop(
                         input_value=shm_group.area.get,
@@ -161,23 +163,18 @@ class PickupFromBin(Task):
     def on_first_run(self, shm_group, *args, **kwargs):
         SEARCH_DEPTH = 2.0
         SEARCH_DEPTH_2 = 2.25
-        SEARCH_DEPTH_3 = 2.45
+        SEARCH_DEPTH_3 = 2.5
         START_PICKUP_DEPTH = 3.0
 
-        print(
-            norm_to_vision_downward(-0.75, -0.75),
-            norm_to_vision_downward(-0.85, -0.85),
-        )
-
-        downward_target_task = lambda pt: DownwardTarget(
-            point=(shm_group.center_x.get, shm_group.center_y.get),
-            target=norm_to_vision_downward(*pt),
-            deadband=norm_to_vision_downward(-0.95, -0.95),
-            # deadband=(0, 0),
-            px=0.0002,
-            py=0.0007,
-            max_out=.5,
-        )
+        def downward_target_task(pt, deadband=(0.1, 0.1)):
+            return DownwardTarget(
+                point=(shm_group.center_x.get, shm_group.center_y.get),
+                target=norm_to_vision_downward(*pt),
+                deadband=norm_to_vision_downward(-1.0 + deadband[0], -1.0 + deadband[1]),
+                px=0.0005,
+                py=0.001,
+                max_out=0.04,
+            )
 
         def stop():
             return Concurrent(
@@ -193,55 +190,58 @@ class PickupFromBin(Task):
                 cons(Depth(SEARCH_DEPTH)),
                 Log("At depth"),
                 cons(
-                    downward_target_task((-0.5, -0.5)),
+                    downward_target_task((0.0, 0.0), deadband=(0.1, 0.1)),
                     debug=True,
                 ),
                 stop(),
                 Log("Found  at top"),
-                # cons(Depth(SEARCH_DEPTH_2)),
-                timed(cons(Depth(SEARCH_DEPTH_2)), 10),
-                Timer(2),
-                Log("timed"),
-                Timed(VelocityX(.15), .5),
-                Timed(VelocityY(-.15), .5),
+                timed(cons(Depth(SEARCH_DEPTH_2)), 20),
                 cons(
-                    Concurrent(
-                        downward_target_task((-0.4, -0.4)),
-                        Depth(SEARCH_DEPTH_2)
-                    ),
+                    downward_target_task((0.0, 0.0), deadband=(0.05, 0.05)),
                     debug=True,
                 ),
                 stop(),
                 Log("Found at mid"),
-                # cons(Depth(SEARCH_DEPTH_3)),
-                timed(cons(Depth(SEARCH_DEPTH_3)), 10),
-                Timer(2),
-                Log("timed"),
-                Timed(VelocityX(.15), .5),
-                # Timed(VelocityY(-.15), .5),
+                timed(cons(Depth(SEARCH_DEPTH_3)), 20),
                 cons(
                     Concurrent(
-                        downward_target_task((-0.6, -0.4)),
-                        Depth(SEARCH_DEPTH_3)
+                        # downward_target_task((-0.75, 0.1), (0.025, 0.025)),
+                        downward_target_task((0.6, 0.1), (0.025, 0.025)),
+                        Depth(SEARCH_DEPTH_3),
+                        finite=True,
                     ),
                     debug=True,
                 ),
                 stop(),
                 Log("Found at bottom"),
-                timed(Depth(2.5)),
                 timed(Depth(2.6)),
                 timed(Depth(2.7)),
                 timed(Depth(2.8)),
                 timed(Depth(2.9)),
                 timed(Depth(3.0)),
-                # timed(Depth(3.1)),
-                # timed(Depth(3.2)),
-                # timed(Depth(3.3)),
-                # timed(Depth(3.4)),
-                # timed(Depth(3.5)),
+                timed(Depth(3.1)),
+                timed(Depth(3.2)),
+                timed(
+                    Concurrent(
+                        Depth(3.2),
+                        Roll(-7.5),
+                        Pitch(-7.5),
+                    )
+                ),
                 Log("PICKING UP??"),
                 timed(Depth(3.5)),
-                cons(Depth(SEARCH_DEPTH)),
+                timed(Depth(3.0)),
+                timed(Depth(2.5)),
+                timed(
+                    cons(
+                        Concurrent(
+                            Depth(SEARCH_DEPTH),
+                            Roll(0),
+                            Pitch(0),
+                        )
+                    ),
+                    15
+                ),
             ),
         )
 
@@ -271,6 +271,31 @@ class CashIn(Task):
         self.log("Cash In!", level="CASH")
         self.finish()
 
+
+class ResetDepthPIDs(Task):
+    def on_run(self, *args, **kwargs):
+        from conf.vehicle import control_settings
+        for dof, dof_settings in control_settings.items():
+            group = getattr(shm, "settings_" + dof)
+            for var, value in dof_settings.items():
+                getattr(group, var).set(value)
+
+        self.finish()
+
+class MakeControlGreatAgain2018(Task):
+    def on_run(self, *args, **kwargs):
+        shm.settings_depth.kP.set(1.25)
+        shm.settings_depth.kI.set(0.09)
+        shm.settings_depth.kD.set(0.30)
+        shm.settings_depth.rD.set(0.30)
+        self.finish()
+
+    def on_finish(self, *args, **kwargs):
+        self.logw("Depth is now tired of winning")
+
+
+reset = ResetDepthPIDs()
+make_control_great_again = MakeControlGreatAgain2018()
 
 
 approach_red = ApproachAndTargetFunnel(shm.recovery_vision_forward_red)

@@ -21,7 +21,7 @@ def get_shared_options(is_forward):
         options.BoolOption('bins_debug', True),
 
         # Preprocess
-        options.IntOption('gaussian_kernel', 5, 1, 40),
+        options.IntOption('gaussian_kernel', (2, 5)[is_forward], 1, 40),
         options.IntOption('gaussian_stdev', 20, 0, 40),
 
         # Threshing
