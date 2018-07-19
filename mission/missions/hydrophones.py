@@ -12,7 +12,8 @@ import shm
 from auv_math.math_utils import rotate
 from misc.hydro2trans import Localizer
 from mission.constants.config import HYDROPHONES_PINGER_DEPTH
-from mission.constants.region import PINGER_FREQUENCY
+#from mission.constants.region import PINGER_FREQUENCY
+PINGER_FREQUENCY = 39500
 from mission.framework.combinators import Sequential
 from mission.framework.helpers import get_sub_position, get_sub_quaternion, \
                                       ConsistencyCheck
@@ -63,8 +64,8 @@ PingData = collections.namedtuple("PingData", ["phases", "heading",
 PINGS_LISTEN = 10
 MIN_CONSISTENT_PINGS = 3
 
-TRACK_MAG_THRESH = 600
-PINGER_PERIOD = 2.0
+TRACK_MAG_THRESH = 11000#600
+PINGER_PERIOD = 1.0
 
 MAX_FOLLOW_HEADING_DEVIATION = 10
 SLOW_DOWN_DISTANCE = 5
@@ -116,7 +117,8 @@ class FindPinger(StatefulTask):
 
     shm.hydrophones_settings.track_frequency_target.set(PINGER_FREQUENCY)
     shm.hydrophones_settings.track_magnitude_threshold.set(TRACK_MAG_THRESH)
-    shm.hydrophones_settings.track_cooldown_samples.set(795000)
+    #shm.hydrophones_settings.track_cooldown_samples.set(795000)
+    shm.hydrophones_settings.track_cooldown_samples.set(350000)
 
     shm.navigation_settings.position_controls.set(1)
     shm.navigation_settings.optimize.set(0)
@@ -189,7 +191,7 @@ class FindPinger(StatefulTask):
     # TODO Better way to detect ping period.
     this_ping_time = \
         results.daemon_start_time + results.tracked_ping_time
-    self.silencer.schedule_silence(this_ping_time + PINGER_PERIOD - 0.2, 1.0)
+    self.silencer.schedule_silence(this_ping_time + PINGER_PERIOD - 0.2, 3.0)
 
     self.logi("This time: %0.3f, This ping time %0.3f, Diff: %0.3f" % (self.this_run_time,
         this_ping_time, self.this_run_time - this_ping_time))
@@ -392,7 +394,7 @@ class OptimizablePinger(Task):
 
 def Full(): return Sequential(
     Log('Changing depth before hydrophones'),
-    Depth(recovery.tower_depth),
+    Depth(1.13),
     OptimizablePinger(),
 )
 

@@ -13,8 +13,8 @@ from misc.utils import watch_thread_wrapper
 from mission.framework.helpers import get_sub_position, get_sub_quaternion
 from mission.framework.primitive import NoOp
 
-PINGER_FREQ = 37500
-TRACK_MAG_THRESH = 3900
+PINGER_FREQ = 39500
+TRACK_MAG_THRESH = 11000
 
 SOUND_SPEED = 1481.0
 
@@ -29,7 +29,7 @@ class Localizer:
   def __init__(self, frequency):
     self.observations = []
     self.PHASE2RATIO = SOUND_SPEED / (2 * math.pi * frequency * NIPPLE_DISTANCE)
-    
+
   # Returns whether the phases are physically possible given the frequency,
   # NIPPLE_DISTANCE, and speed of sound in water
   def is_valid(self, phase_x, phase_y):
@@ -45,7 +45,22 @@ class Localizer:
     if kz_2 < 0:
       kz_2 = 0
 
-    heading = math.atan2(ky, kx)
+    heading = 3.14 + math.atan2(ky, kx) # Oopsy daisys, I did it againsy!
+    # > hi every1 im new!!!!!!!
+    # > holds up spork my name is katy but u can call me t3h PeNgU1N oF d00m!!!!!!!!
+    # > lol?as u can see im very random!!!!
+    # > thats why i came here, 2 meet random ppl like me _? im 13 years old (im mature 4 my age tho!!)
+    # > i like 2 watch invader zim w/ my girlfreind (im bi if u dont like it deal w/it) its our favorite tv show!!!
+    # > bcuz its SOOOO random!!!! shes random 2 of course but i want 2 meet more random ppl =)
+    # > like they say the more the merrier!!!! lol?neways i hope 2 make alot of freinds here so give me lots of commentses!!!!
+
+    #
+    # > DOOOOOMMMM!!!!!!!!!!!!!!!! <--- me bein random again _^ hehe?toodles!!!!!
+
+    # > love and waffles,
+
+    # > t3h PeNgU1N oF d00m
+    # ~~~~~~~~~
     elevation = math.acos(kz_2 ** 0.5)
     return -math.degrees(heading), math.degrees(elevation)
 

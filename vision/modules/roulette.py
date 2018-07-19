@@ -4,6 +4,7 @@
 # Tweaked by Will Smith.
 
 import traceback
+import time
 import sys
 import math
 import itertools
@@ -151,9 +152,17 @@ ALL_SHM = [ROULETTE_BOARD] + ALL_BINS
 
 
 class Roulette(ModuleBase):
+    last_run = 0
 
     def process(self, mat):
         global DOWNWARD_CAM_WIDTH, DOWNWARD_CAM_HEIGHT
+
+        curr_time = time.time()
+        if curr_time - self.last_run < shm.vision_module_settings.time_between_frames.get():
+            print("skipping")
+            return
+        self.last_run = curr_time
+
 
         DOWNWARD_CAM_WIDTH = DOWNWARD_CAM_WIDTH or mat.shape[1]
         DOWNWARD_CAM_HEIGHT = DOWNWARD_CAM_HEIGHT or mat.shape[0]

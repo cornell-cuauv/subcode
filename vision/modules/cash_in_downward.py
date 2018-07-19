@@ -23,12 +23,11 @@ class CashInDownward(ModuleBase):
 
     def process(self, img):
         curr_time = time.time()
-        if curr_time - self.last_run > .2:
+        if curr_time - self.last_run < shm.vision_module_settings.time_between_frames.get():
             print("skipping")
-            self.last_run = curr_time
+            # self.last_run = curr_time
             return
-
-        print("Starting Cash In Downward Run")
+        self.last_run = curr_time
 
         img = img[::2, ::2, :]
         uimg = cv2.UMat(img)

@@ -8,7 +8,7 @@ from mission.constants.config import recovery as constants
 from mission.constants.region import WALL_TOWER_HEADING
 from shm.watchers import watcher
 from mission.framework.task import Task
-from mission.framework.search import SpiralSearch, VelocitySwaySearch
+from mission.framework.search import SearchFor, SpiralSearch, VelocitySwaySearch
 from mission.framework.combinators import (
     Sequential,
     MasterConcurrent,
@@ -78,6 +78,8 @@ from mission.missions.ozer_common import (
     Infinite,
     Except,
 )
+from mission.framework.search import SearchFor, VelocitySwaySearch
+
 
 
 def vision_to_norm_downward(x, y=None):
@@ -294,6 +296,14 @@ class MakeControlGreatAgain2018(Task):
         self.logw("Depth is now tired of winning")
 
 
+def SearchBin(shm_group, count=1.5, total=2):
+    return SearchFor(
+        VelocitySwaySearch(),
+        lambda: shm_group.probability.get() >= 0.5,
+        consistent_frames=(count * 60, total * 60) # multiple by 60 to specify in seconds
+    )
+
+
 reset = ResetDepthPIDs()
 make_control_great_again = MakeControlGreatAgain2018()
 
@@ -301,6 +311,8 @@ make_control_great_again = MakeControlGreatAgain2018()
 approach_red = ApproachAndTargetFunnel(shm.recovery_vision_forward_red)
 approach_green = ApproachAndTargetFunnel(shm.recovery_vision_forward_green)
 
+search_red = SearchBin(shm.recovery_vision_downward_bin_red)
+search_green = SearchBin(shm.recovery_vision_downward_bin_green)
 
 pickup_red = PickupFromBin(shm.recovery_vision_downward_bin_red)
 pickup_green = PickupFromBin(shm.recovery_vision_downward_bin_green)

@@ -211,14 +211,14 @@ class SpiralSearch(Task):
     self.start_position = _sub_position()
     self.started_heading = False
 
-  def on_run(self, meters_per_revolution = 1.3, deadband = 0.2, spin_ratio = 5, relative_depth_range = 0.0, heading_change_scale = None, optimize_heading = False, min_spin_radius=None):
+  def on_run(self, meters_per_revolution = 1.3, deadband = 0.2, spin_ratio = 1, relative_depth_range = 0.0, heading_change_scale = None, optimize_heading = False, min_spin_radius=None):
     radius = self.calc_radius(self.theta, meters_per_revolution)
     target = self.calc_position(self.theta, meters_per_revolution, relative_depth_range)
     delta  = target - _sub_position()
     # fake_target = target + (delta * 10)
     fake_target = target
     GoToPosition(fake_target[0], fake_target[1], depth = fake_target[2])()
-    desired_heading = (spin_ratio * self.theta)
+    desired_heading = (spin_ratio * self.theta) + 90
     if heading_change_scale is not None:
       desired_heading *= min(1.0, radius) * heading_change_scale
     if optimize_heading:
