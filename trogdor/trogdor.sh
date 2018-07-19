@@ -38,7 +38,7 @@ VISION_CONFIG=$ROOT/vision/configs/master.yaml
 if [ "$SUBMARINE" = "castor" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
   visiongui cameras webgui modules deadman uptime 
-  dvld hydromathd)
+  dvld)
 elif [ "$SUBMARINE" = "pollux" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
   visiongui cameras webgui modules deadman uptime)
