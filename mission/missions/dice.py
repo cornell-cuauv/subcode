@@ -175,6 +175,8 @@ RamBuoy = lambda num: Sequential(
     TrackBuoy(num + 1, BackUp()),
 )
 
+# TODO if it doesn't find the buoy the second time backing up it will start searching again
+# don't do that - we just want to end the mission
 
 Full = Sequential(
     Log('Searching for buoys...'),

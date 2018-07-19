@@ -8,7 +8,7 @@ from mission.framework.combinators import Sequential
 from mission.missions.master_common import RunAll, MissionTask
 
 from mission.missions.gate import gate as Gate
-from mission.missions.path import full as Path
+from mission.missions.path import path as Path
 from mission.missions.dice import Full as Dice
 
 gate = MissionTask(
@@ -41,9 +41,9 @@ path2 = MissionTask(
 
 tasks = [
     gate,
-    path,
+    path1,
     dice,
-    path,
+    path2,
 ]
 
 Master = RunAll(tasks)

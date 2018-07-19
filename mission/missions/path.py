@@ -9,17 +9,17 @@ from mission.framework.helpers import get_downward_camera_center, ConsistencyChe
 from mission.framework.movement import Depth, Heading, Pitch, VelocityX, VelocityY, RelativeToCurrentHeading
 from mission.framework.position import PositionalControl
 from mission.framework.primitive import Zero, Log, FunctionTask, Fail
-from mission.framework.search import SearchFor, VelocityTSearch, SwaySearch, PitchSearch
+from mission.framework.search import SearchFor, VelocityTSearch, SwaySearch, PitchSearch, VelocitySwaySearch
 from mission.framework.targeting import DownwardTarget, PIDLoop, HeadingTarget
 from mission.framework.task import Task
 from mission.framework.timing import Timer, Timed
 from mission.framework.jank import TrackMovementY, RestorePosY
 
-PATH_FOLLOW_DEPTH = .3
+PATH_FOLLOW_DEPTH = 1.5
 
 
 
-SearchTask = lambda: SearchFor(VelocityTSearch(forward=2, stride=2),
+SearchTask = lambda: SearchFor(VelocitySwaySearch(forward=2, stride=6, speed=0.1),
                                 lambda: shm.path_results.num_lines.get() == 2,
                                 consistent_frames=(6,8))
 
@@ -58,7 +58,7 @@ FollowPipe = lambda h1, h2: Sequential(PipeAlign(h1),
 				       Timer(4),
                                        Log("Facing new direction!"),
                                        Zero(),
-                                       Timed(VelocityX(.3), 5),
+                                       Timed(VelocityX(.1), 3), # maybe remove?
                                        Log("Done!"),
                                        Zero())
 

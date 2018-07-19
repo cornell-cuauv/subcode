@@ -16,7 +16,10 @@ from vision import options as gui_options
 
 log = auvlog.client.log.vision.pipes
 
-vision_options = [ gui_options.IntOption('block_size', 1001, 0, 1500),
+vision_options = [
+                   gui_options.BoolOption('debug', False),
+
+                   gui_options.IntOption('block_size', 1001, 0, 1500),
                    gui_options.IntOption('c_thresh', -4, -200, 100),
                    gui_options.IntOption('erode_size', 5, 0, 50),
                    gui_options.IntOption('dilate_size', 9, 0, 50),
@@ -56,7 +59,6 @@ vision_options = [ gui_options.IntOption('block_size', 1001, 0, 1500),
 
                    gui_options.IntOption('max_redness', 254, 0, 255),
                    gui_options.IntOption('min_redness', 0, 0, 255),
-                   gui_options.BoolOption('debugging', False),
                    gui_options.BoolOption('orange_debug', False),
                    gui_options.BoolOption('dark_debug', False),
                    gui_options.BoolOption('light_debug', False)
@@ -73,9 +75,12 @@ def get_zero_pipe_group():
 
 class Pipes(ModuleBase):
     def process(self, mat):
+        debug = self.options['debug']
+
         pipe_group = get_zero_pipe_group()
 
-        self.post('orig', mat)
+        if debug:
+          self.post('orig', mat)
 
         #rgb r
         #lab l
@@ -225,7 +230,7 @@ class Pipes(ModuleBase):
 
         #END LIGHT
 
-        if self.options['debugging']:
+        if debug:
             self.post("Threshed", orange_threshed)
             self.post("Dark Threshed", dark_threshed)
             self.post("LIght Threshed", light_threshed)
@@ -245,7 +250,7 @@ class Pipes(ModuleBase):
             shm.pipe_results.set(pipe_group)
             return
 
-        if self.options['debugging']:
+        if debug:
             allContoursDrawing = np.copy(mat)
             cv2.drawContours(allContoursDrawing, [c for c in contours if cv2.contourArea(c)], -1, (255, 255, 0), 2)
             self.post("All contours", allContoursDrawing)
@@ -288,7 +293,7 @@ class Pipes(ModuleBase):
 
         shm_angle = get_angle_from_rotated_rect(best.rect)
 
-        if self.options["debugging"]:
+        if debug:
             log("rect:{}".format(best.rect))
             log("width:{}".format(best.rect[1][0]))
             log("height:{}".format(best.rect[1][1]))

@@ -8,7 +8,9 @@ import cv2 as cv2
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
-black_left = False
+ENABLE_UMAT_POST = False
+
+black_left = True
 gate_shm_group = shm.bicolor_gate_vision
 
 # SHM:
@@ -27,13 +29,13 @@ module_options = [
     #options.IntOption('hls_h_canny_min', 0, 0, 255),
     #options.IntOption('hls_h_canny_max', 255, 0, 255),
     options.IntOption('ycrcb_cr_canny_min', 5, 0, 255),
-    options.IntOption('ycrcb_cr_canny_max', 15, 0, 255),
+    options.IntOption('ycrcb_cr_canny_max', 10, 0, 255),
 
     options.IntOption('min_area', 700, 1, 2000),
     options.IntOption('center_dist', 100, 1, 2000),
     #options.IntOption('luv_l_thresh_min', 1, 1, 254),
     #options.IntOption('luv_l_thresh_max', 76, 1, 254),
-    options.IntOption('hough_votes', 500, 100, 1000000),
+    options.IntOption('hough_votes', 250, 100, 1000000),
     options.IntOption('rho', 7, 1, 100),
     options.IntOption('bin_dist_threshold', 50, 0, 1000),
     options.IntOption('min_length', 50, 1, 100000),
@@ -74,8 +76,10 @@ class BicolorGate(ModuleBase):
 
     def postu(self, name, img):
         if type(img) == type(BicolorGate.umat):
-            #self.post(name, cv2.UMat.get(img))
-            pass
+            # For some reason this seems to wreck visiongui
+            # The more UMat posts, the more CPU
+            if ENABLE_UMAT_POST:
+                self.post(name, cv2.UMat.get(img))
         else:
             self.post(name, img)
 
@@ -202,7 +206,7 @@ class BicolorGate(ModuleBase):
                 verts = np.array(vert_lines)
                 avgs = verts[:, (0, 2)].mean(axis=1)
                 # mid = int(np.median(avgs))
-                mid = int(np.max(avgs) + np.min(avgs)) // 2
+                mid = int(np.max(avgs) + np.min(avgs)) / 2
 
                 left_color = "black" if black_left else "red"
                 right_color = "red" if black_left else "black"
@@ -211,13 +215,13 @@ class BicolorGate(ModuleBase):
                     lefts = avgs[np.where(avgs <= mid)]
                     rights = avgs[np.where(avgs >= mid)]
 
-                    left_pole = int(np.median(lefts))
-                    right_pole = int(np.median(rights))
+                    left_pole = np.median(lefts)
+                    right_pole = np.median(rights)
 
-                    center_mid = (left_pole + right_pole) // 2
+                    center_mid = (left_pole + right_pole) / 2
 
-                    left_mid = (left_pole + center_mid) // 2
-                    right_mid = (center_mid + right_pole) // 2
+                    left_mid = (left_pole + center_mid) / 2
+                    right_mid = (center_mid + right_pole) / 2
 
                     if abs(left_mid - right_mid) < width / 5:
                         results["total_poles"] = 0
@@ -231,45 +235,48 @@ class BicolorGate(ModuleBase):
                         results["red_center_prob"] = 1.0
                         results["black_center_prob"] = 1.0
                         results["gate_center_x"] = center_mid
-                        results["{}_center_x".format(left_color)] = float(left_mid)
-                        results["{}_center_x".format(right_color)] = float(right_mid)
-                        results["width"] = (float(2 * abs(right_pole - left_pole))) / width
+                        results["{}_center_x".format(left_color)] = left_mid
+                        results["{}_center_x".format(right_color)] = right_mid
+                        results["width"] = abs(right_pole - left_pole) / width
 
-                        cv2.line(binned, (left_pole, 0), (left_pole, height), GREEN, 2)
-                        cv2.line(binned, (right_pole, 0), (right_pole, height), GREEN, 2)
-                        cv2.line(binned, (center_mid, 0), (center_mid, height), YELLOW, 2)
+                        cv2.line(binned, (int(left_pole), 0), (int(left_pole), height), GREEN, 2)
+                        cv2.line(binned, (int(right_pole), 0), (int(right_pole), height), GREEN, 2)
+                        cv2.line(binned, (int(center_mid), 0), (int(center_mid), height), YELLOW, 2)
 
                         if black_left:
-                            cv2.line(binned, (left_mid, 0), (left_mid, height), BLACK, 2)
-                            cv2.line(binned, (right_mid, 0), (right_mid, height), RED, 2)
+                            cv2.line(binned, (int(left_mid), 0), (int(left_mid), height), BLACK, 2)
+                            cv2.line(binned, (int(right_mid), 0), (int(right_mid), height), RED, 2)
                         else:
-                            cv2.line(binned, (left_mid, 0), (left_mid, height), RED, 2)
-                            cv2.line(binned, (right_mid, 0), (right_mid, height), BLACK, 2)
+                            cv2.line(binned, (int(left_mid), 0), (int(left_mid), height), RED, 2)
+                            cv2.line(binned, (int(right_mid), 0), (int(right_mid), height), BLACK, 2)
                 elif has_horiz:
                     results["total_poles"] = 1
-                    results["gate_center_prob"] = 0.0
+                    results["gate_center_prob"] = 1.0
 
                     seen_right = mid > avg_horiz_x
                     seen_color = right_color if seen_right else left_color
                     unseen_color = left_color if seen_right else right_color
                     line_color = BLACK if seen_right ^ black_left else RED
 
-                    seen_center = mid // 2 if seen_right else mid + (width - mid) // 2
+                    seen_center = mid / 2 if seen_right else mid + (width - mid) / 2
 
-                    results["{}_center_x".format(seen_color)] = float(seen_center)
+                    # This is gross... but we need it
+                    results["gate_center_x"] = seen_center
+
+                    results["{}_center_x".format(seen_color)] = seen_center
                     results["{}_center_prob".format(seen_color)] = 1.0
                     results["{}_center_prob".format(unseen_color)] = 0.0
                     results["width"] = (mid if seen_right else width - mid) / width
 
-                    cv2.line(binned, (mid, 0), (mid, height), BLUE, 2)
-                    cv2.line(binned, (seen_center, 0), (seen_center, height), line_color, 2)
+                    cv2.line(binned, (int(mid), 0), (int(mid), height), BLUE, 2)
+                    cv2.line(binned, (int(seen_center), 0), (int(seen_center), height), line_color, 2)
                 else:
                     results["total_poles"] = 1
                     results["gate_center_prob"] = 0.0
                     results["red_center_prob"] = 0.0
                     results["black_center_prob"] = 0.0
                     results["width"] = 0.0
-                    cv2.line(binned, (mid, 0), (mid, height), BLUE, 2)
+                    cv2.line(binned, (int(mid), 0), (int(mid), height), BLUE, 2)
 
             self.postu('binned', binned)
 
@@ -279,9 +286,9 @@ class BicolorGate(ModuleBase):
 
             for key, value in results.items():
                 if key.endswith('_x'):
-                    value = self.normalized(value, 1)
+                    value = (value - width / 2) / (width / 2)
                 elif key.endswith('_y'):
-                    value = self.normalized(value, 0)
+                    value = (value - height / 2) / (height / 2)
                 setattr(group, key, value)
 
             gate_shm_group.set(group)

@@ -39,7 +39,7 @@ vision_options = [ gui_options.IntOption('hsv_s_block_size', 1000, 1, 7500),
                    gui_options.DoubleOption('aspect_ratio_threshold', 3, 0.5, 5),
                    gui_options.DoubleOption('min_rectangularity', 0.48),
                    gui_options.DoubleOption('heuristic_power', 5),
-                   gui_options.BoolOption('debugging', True),
+                   gui_options.BoolOption('debugging', False),
                    gui_options.DoubleOption('min_dist_ratio', 0.4, 0, 2),
                    gui_options.DoubleOption('max_dist_ratio', 2,0, 5),
                    gui_options.DoubleOption('min_line_hough_length',55, 0, 500)
@@ -77,11 +77,13 @@ class Pipes(ModuleBase):
 
         lab_a_threshed = cv2.inRange(lab_a, self.options['lab_a_thresh_min'], self.options['lab_a_thresh_max'])
 
-        self.post("lab_a",lab_a_threshed)
+        if self.options['debugging']:
+            self.post("lab_a",lab_a_threshed)
 
         final_threshed = s_threshed & ~lab_a_threshed
 
-        self.post('final_threshed',final_threshed)
+        if self.options['debugging']:
+            self.post('final_threshed',final_threshed)
         
         threshes["hsv_s"] = s_threshed
         threshes["hsv_v"] = v_threshed
@@ -106,7 +108,8 @@ class Pipes(ModuleBase):
         return threshes
 
     def find_lines(self, mat, thresh):
-        self.post("thres_test",thresh)
+        if self.options['debugging']:
+            self.post("thres_test",thresh)
         minLineLength = self.options['min_line_hough_length']
         maxLineGap = 100
 
@@ -133,7 +136,8 @@ class Pipes(ModuleBase):
             cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),10)
 
 
-          self.post("all_houghs",line_image)
+        if self.options['debugging']:
+            self.post("all_houghs",line_image)
 
         return lines
 
@@ -239,7 +243,8 @@ class Pipes(ModuleBase):
 
         image_size = mat.shape[0]*mat.shape[1]
 
-        self.post('orig', mat)
+        if self.options['debugging']:
+            self.post('orig', mat)
         threshes = self.threshold(mat)
 
 
