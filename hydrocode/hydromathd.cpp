@@ -233,6 +233,9 @@ void do_spectrum() {
     else {
         //IMPLEMENTE AUTO THRESHOLDING AND ASSOCIATED PING STUFF
     } 
+
+    shm_results_spectrum.coms_magnitude = spectrum_fft_magnitude[111] / total_power;
+    shm_setg(hydrophones_results_spectrum, shm_results_spectrum);
 }
 
 
