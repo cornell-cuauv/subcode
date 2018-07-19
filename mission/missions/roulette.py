@@ -33,7 +33,7 @@ from mission.framework.primitive import (
 )
 from mission.framework.search import SpiralSearch, SearchFor
 
-from mission.missions.actuate import FireBlue
+from mission.missions.actuate import FireBlue, FireRed, FireGreen
 from mission.missions.will_common import BigDepth
 
 from conf.vehicle import cameras
@@ -41,8 +41,8 @@ from conf.vehicle import cameras
 # These values are for Teagle
 # Perhaps we should instead do this by determining the size in the camera
 DEPTH_STANDARD = 0.8
-DEPTH_TARGET_ALIGN_BIN = 2.5
-DEPTH_TARGET_DROP = 2.6
+DEPTH_TARGET_ALIGN_BIN = 2.2
+DEPTH_TARGET_DROP = 2.3
 
 CAM_CENTER = (cameras['downward']['width']/2, cameras['downward']['height']/2)
 
@@ -56,7 +56,7 @@ negator = lambda fcn: -fcn()
 align_roulette_center = lambda db=20, p=0.0005: DownwardTarget((BIN_CENTER[0].get, BIN_CENTER[1].get), target=CAM_CENTER, px=p, py=p, deadband=(db, db))
 align_green_angle = lambda db=10, p=0.8: DownwardAlign(GREEN_ANGLE.get, target=0, deadband=db, p=p)
 
-DropBall = lambda: FireBlue()
+DropBall = lambda: FireRed()
 
 Search = lambda: SearchFor(
     SpiralSearch(),
