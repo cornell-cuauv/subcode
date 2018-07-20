@@ -43,6 +43,8 @@ options = [
     options.IntOption('contour_min_area', 1000, 0, 100000)
 ]
 
+POST_UMAT = False
+
 ROTATION_PREDICTION_ANGLE = 20
 DOWNWARD_CAM_WIDTH = shm.camera.downward_width.get()
 DOWNWARD_CAM_HEIGHT = shm.camera.downward_height.get()
@@ -78,6 +80,8 @@ def dist(a, b):
 def angle_diff(a, b):
     return math.atan2(math.sin(b - a), math.cos(b - a))
 
+# This is the same as the function in vision/modules/will_common, but I'm too
+# lazy to change this right now
 def assign_bins(contours, bins_data, module_context):
     # Keeps track of which bin is which by sorting all possible lists by the sum of the
     # differences in the old and new centroids
@@ -159,7 +163,6 @@ class Roulette(ModuleBase):
 
         curr_time = time.time()
         if curr_time - self.last_run < shm.vision_module_settings.time_between_frames.get():
-            print("skipping")
             return
         self.last_run = curr_time
 
@@ -194,29 +197,29 @@ class Roulette(ModuleBase):
                     2 * self.options['erode_kernel'] + 1))
             #self.post('green_threshed', green_threshed)
 
-            # detect red section
-            red_threshed = cv2.inRange(lab_split[1],
-                    self.options['red_lab_a_min'],
-                    self.options['red_lab_a_max'])
-            red_threshed = cv2.erode(red_threshed,
-                    (2 * self.options['erode_kernel'] + 1,
-                    2 * self.options['erode_kernel'] + 1))
-            #self.post('red_threshed', red_threshed)
+            # # detect red section
+            # red_threshed = cv2.inRange(lab_split[1],
+            #         self.options['red_lab_a_min'],
+            #         self.options['red_lab_a_max'])
+            # red_threshed = cv2.erode(red_threshed,
+            #         (2 * self.options['erode_kernel'] + 1,
+            #         2 * self.options['erode_kernel'] + 1))
+            # #self.post('red_threshed', red_threshed)
 
-            # detect black section
-            black_threshed = cv2.inRange(lab_split[0],
-                    self.options['black_lab_l_min'],
-                    self.options['black_lab_l_max'])
-            black_threshed = cv2.erode(black_threshed,
-                    (2 * self.options['erode_kernel'] + 1,
-                    2 * self.options['erode_kernel'] + 1),
-                    iterations=self.options['black_erode_iters'])
-            #self.post('black_threshed', black_threshed)
+            # # detect black section
+            # black_threshed = cv2.inRange(lab_split[0],
+            #         self.options['black_lab_l_min'],
+            #         self.options['black_lab_l_max'])
+            # black_threshed = cv2.erode(black_threshed,
+            #         (2 * self.options['erode_kernel'] + 1,
+            #         2 * self.options['erode_kernel'] + 1),
+            #         iterations=self.options['black_erode_iters'])
+            # #self.post('black_threshed', black_threshed)
 
-            all_threshed = green_threshed | red_threshed | black_threshed
-            all_threshed = cv2.GaussianBlur(all_threshed,
-                    (2 * self.options['hough_circle_blur_kernel'] + 1,
-                    2 * self.options['hough_circle_blur_kernel'] + 1), 0)
+            # all_threshed = green_threshed | red_threshed | black_threshed
+            # all_threshed = cv2.GaussianBlur(all_threshed,
+            #         (2 * self.options['hough_circle_blur_kernel'] + 1,
+            #         2 * self.options['hough_circle_blur_kernel'] + 1), 0)
             #self.post('all_threshed', cv2.UMat.get(all_threshed))
 
             #circle_blurred = cv2.GaussianBlur(all_threshed,
@@ -252,7 +255,7 @@ class Roulette(ModuleBase):
                 edges = cv2.Canny(blurred,
                         threshold1=self.options['canny_low_thresh'],
                         threshold2=self.options['canny_high_thresh'])
-                if debug:
+                if debug and POST_UMAT:
                     self.post('edges', edges)
                 lines = cv2.HoughLines(edges,
                         self.options['hough_lines_rho'],
@@ -290,62 +293,68 @@ class Roulette(ModuleBase):
                         # We double angles because we're in [0, 180] and not [0, 360]
                         lines = sorted(pairs, key=lambda pair: abs(THIRTY * 2 - abs(angle_diff(pair[0][1] * 2, pair[1][1] * 2))))[0]
 
-                        line_equations = []
-                        lines_mat = mat #mat.copy()
-                        for (rho, theta) in lines:
-                            thetas.append(theta)
+                        delta = math.degrees(abs(THIRTY * 2 - abs(angle_diff(lines[0][1] * 2, lines[1][1] * 2))))
 
-                            a = np.cos(theta)
-                            b = np.sin(theta)
-                            x0 = a*rho
-                            y0 = b*rho
-                            x1 = (x0 + 1500*(-b))
-                            y1 = (y0 + 1500*(a))
-                            x2 = (x0 - 1500*(-b))
-                            y2 = (y0 - 1500*(a))
-                            cv2.line(lines_mat, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
-                            line_equations.append((x1, x2, y1, y2))
+                        if delta <= 15:
+                            line_equations = []
+                            lines_mat = mat #mat.copy()
+                            for (rho, theta) in lines:
+                                thetas.append(theta)
 
-                        if debug:
-                            self.post('lines', cv2.UMat.get(lines_mat))
+                                a = np.cos(theta)
+                                b = np.sin(theta)
+                                x0 = a*rho
+                                y0 = b*rho
+                                x1 = (x0 + 1500*(-b))
+                                y1 = (y0 + 1500*(a))
+                                x2 = (x0 - 1500*(-b))
+                                y2 = (y0 - 1500*(a))
+                                cv2.line(lines_mat, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+                                line_equations.append((x1, x2, y1, y2))
 
-                        found_center = len(line_equations) >= 2
-                        if found_center:
-                            # calculate intersection of diameters of green section
-                            [x01, x02, y01, y02] = line_equations[0]
-                            [x11, x12, y11, y12] = line_equations[1]
+                            if debug and POST_UMAT:
+                                self.post('lines', cv2.UMat.get(lines_mat))
 
-                            # This is stupid but it works
-                            if x02 == x01:
-                                x01 += 0.01
-                            if x12 == x11:
-                                x11 += 0.01
-                            b1 = (y02 - y01) / (x02 - x01)
-                            b2 = (y12 - y11) / (x12 - x11)
+                            found_center = len(line_equations) >= 2
+                            if found_center:
+                                # calculate intersection of diameters of green section
+                                [x01, x02, y01, y02] = line_equations[0]
+                                [x11, x12, y11, y12] = line_equations[1]
 
-                            if b1 == b2:
-                                print('ovelapping')
-                                found_center = False
-                            else:
-                                intersection_x = (b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2)
+                                # This is stupid but it works
+                                if x02 == x01:
+                                    x01 += 0.01
+                                if x12 == x11:
+                                    x11 += 0.01
+                                b1 = (y02 - y01) / (x02 - x01)
+                                b2 = (y12 - y11) / (x12 - x11)
 
-                            if math.isinf(intersection_x):
-                                if abs(x02 - x01) < 0.2:
-                                    intersection_x = x02
-                                elif abs(x12 - x11) < 0.2:
-                                    intersection_x = x12
+                                if b1 == b2:
+                                    print('ovelapping')
+                                    found_center = False
+                                else:
+                                    intersection_x = (b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2)
 
-                            intersection_y = (b1 * (intersection_x - x01) + y01)
+                                if math.isinf(intersection_x):
+                                    if abs(x02 - x01) < 0.2:
+                                        intersection_x = x02
+                                    elif abs(x12 - x11) < 0.2:
+                                        intersection_x = x12
 
-                            intersection_x = int(intersection_x)
-                            intersection_y = int(intersection_y)
+                                intersection_y = (b1 * (intersection_x - x01) + y01)
 
-                            center_x, center_y = intersection_x, intersection_y
+                                intersection_x = int(intersection_x)
+                                intersection_y = int(intersection_y)
+
+                                center_x, center_y = intersection_x, intersection_y
+                        else:
+                            found_center = False
 
             if found_center:
                 center_mat = mat # mat.copy()
                 cv2.circle(center_mat, (center_x, center_y), 7, (255, 255, 255), -1)
-                self.post('center', cv2.UMat.get(center_mat))
+                if POST_UMAT:
+                    self.post('center', cv2.UMat.get(center_mat))
                 ROULETTE_BOARD.visible = True
                 (ROULETTE_BOARD.center_x, ROULETTE_BOARD.center_y) = (center_x, center_y)
 
@@ -384,31 +393,34 @@ class Roulette(ModuleBase):
             #    bin_index += 1
 
             assign_bins(contours[:len(GREEN_BINS)], GREEN_BINS, self)
-            self.post('centroids', cv2.UMat.get(mat))
+            if debug and POST_UMAT:
+                self.post('centroids', cv2.UMat.get(mat))
 
-            # draw centroids for red sections and predict location ~3 seconds later
-            _, contours, _ = cv2.findContours(red_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            contours = sorted(contours, key=lambda cont: cv2.contourArea(cont), reverse=True)
-            bin_index = 0
-            for contour in contours[:len(RED_BINS)]:
-                centroid_x, centroid_y = calculate_centroid(contour)
-                cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
-                cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
+            # # draw centroids for red sections and predict location ~3 seconds later
+            # _, contours, _ = cv2.findContours(red_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # contours = sorted(contours, key=lambda cont: cv2.contourArea(cont), reverse=True)
+            # bin_index = 0
+            # for contour in contours[:len(RED_BINS)]:
+            #     centroid_x, centroid_y = calculate_centroid(contour)
+            #     cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
+            #     cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
 
-            assign_bins(contours[:len(RED_BINS)], RED_BINS, self)
-            self.post('centroids', cv2.UMat.get(mat))
+            # assign_bins(contours[:len(RED_BINS)], RED_BINS, self)
+            # if POST_UMAT:
+            #     self.post('centroids', cv2.UMat.get(mat))
 
-            # draw centroids for black sections and predict location ~3 seconds later
-            _, contours, _ = cv2.findContours(black_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            contours = sorted(contours, key=lambda cont: cv2.contourArea(cont), reverse=True)
-            bin_index = 0
-            for contour in contours[:len(BLACK_BINS)]:
-                centroid_x, centroid_y = calculate_centroid(contour)
-                cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
-                cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
+            # # draw centroids for black sections and predict location ~3 seconds later
+            # _, contours, _ = cv2.findContours(black_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # contours = sorted(contours, key=lambda cont: cv2.contourArea(cont), reverse=True)
+            # bin_index = 0
+            # for contour in contours[:len(BLACK_BINS)]:
+            #     centroid_x, centroid_y = calculate_centroid(contour)
+            #     cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
+            #     cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
 
-            assign_bins(contours[:len(BLACK_BINS)], BLACK_BINS, self)
-            self.post('centroids', cv2.UMat.get(mat))
+            # assign_bins(contours[:len(BLACK_BINS)], BLACK_BINS, self)
+            # if POST_UMAT:
+                self.post('centroids', cv2.UMat.get(mat))
 
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
