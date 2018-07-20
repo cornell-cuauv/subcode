@@ -21,8 +21,9 @@ class BigDepth(Task):
     def interleave(self, a, b):
         return [val for pair in zip(a, b) for val in pair]
 
-    def on_first_run(self, depth, largest_step=0.5, timeout=1):
+    def on_first_run(self, depth, largest_step=0.5, timeout=0):
         init_depth = shm.kalman.depth.get()
         steps = math.ceil(abs(depth - init_depth) / largest_step)
         depth_steps = self.interpolate_list(init_depth, depth, steps)
-        self.use_task(Sequential(*self.interleave(self.tasks_from_params(Depth, depth_steps), self.tasks_from_param(Timer, 1, steps))))
+        print(depth_steps)
+        self.use_task(Sequential(*self.interleave(self.tasks_from_params(Depth, depth_steps), self.tasks_from_param(Timer, timeout, steps))))
