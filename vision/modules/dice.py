@@ -20,7 +20,7 @@ options = [
     options.BoolOption('debug', False),
     options.IntOption('hsv_thresh_c', 35, 0, 100),
     options.IntOption('canny_a', 60, 0, 255),
-    options.IntOption('canny_b', 255, 0, 255),
+    options.IntOption('canny_b', 140, 0, 255),
     options.DoubleOption('perim_thresh', 1.5, 1, 10),
     options.DoubleOption('circle_thresh', 5, 1, 10),
     options.DoubleOption('ellipse_thresh', 1.2, 1, 10),
@@ -103,7 +103,7 @@ class Dice(ModuleBase):
 
             # Problem is that this depends on the distance
             # When the dice are really far away the dots are tiny
-            min_area = 10
+            min_area = 50
 
             for contour in contours:
                 hull = cv2.convexHull(contour)

@@ -70,6 +70,6 @@ gate = Sequential(
         finite=False,
     )),
     Log('Charging...'),
-    Timed(VelocityX(0.3 if is_castor else 0.2), 10),
+    Timed(VelocityX(0.3 if is_castor else 0.2), 12),
     Log('Through gate!'),
 )

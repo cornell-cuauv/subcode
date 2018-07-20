@@ -15,11 +15,13 @@ from mission.framework.task import Task
 from mission.framework.timing import Timer, Timed
 from mission.framework.jank import TrackMovementY, RestorePosY
 
-PATH_FOLLOW_DEPTH = 1.5
+from mission.missions.will_common import BigDepth
+
+PATH_FOLLOW_DEPTH = 1.2
 
 
 
-SearchTask = lambda: SearchFor(VelocitySwaySearch(forward=2, stride=6, speed=0.1),
+SearchTask = lambda: SearchFor(VelocitySwaySearch(forward=2, stride=6, speed=0.1, rightFirst=True),
                                 lambda: shm.path_results.num_lines.get() == 2,
                                 consistent_frames=(6,8))
 
@@ -62,7 +64,7 @@ FollowPipe = lambda h1, h2: Sequential(PipeAlign(h1),
                                        Log("Done!"),
                                        Zero())
 
-FullPipe = lambda: Sequential(Depth(PATH_FOLLOW_DEPTH),
+FullPipe = lambda: Sequential(BigDepth(PATH_FOLLOW_DEPTH),
                               Zero(),
                               Log("At right depth!"),
                               SearchTask(),
@@ -74,3 +76,5 @@ FullPipe = lambda: Sequential(Depth(PATH_FOLLOW_DEPTH),
 
 
 path = FullPipe()
+
+get_path = lambda: FullPipe()

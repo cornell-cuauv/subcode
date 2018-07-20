@@ -9,7 +9,11 @@ from mission.framework.timing import Timer, Timeout, Timed
 from mission.framework.helpers import ConsistencyCheck, call_if_function
 from mission.framework.search import SearchFor, VelocitySwaySearch
 
+from mission.missions.will_common import BigDepth, ForwardSearch, Consistent, FakeMoveX
+
 import shm
+
+BUOY_DEPTH = 2.0
 
 CAM_DIM = (shm.camera.forward_width.get(), shm.camera.forward_height.get())
 CAM_CENTER = (shm.camera.forward_width.get()/2, shm.camera.forward_height.get()/2)
@@ -46,7 +50,7 @@ def pick_correct_buoy(num, ret=True):
     else:
         return 0
 
-MAX_DEPTH = 2.4
+MAX_DEPTH = 2.7
 
 def align_buoy(num, db, mult=1):
     if HEADING_TARGET:
@@ -60,21 +64,14 @@ def align_buoy(num, db, mult=1):
                              target=(0, 0.1), deadband=(db, db), px=0.08*mult, py=0.05*mult,
                              depth_bounds=(1, MAX_DEPTH))
 
-class Consistent(Task):
-    def on_first_run(self, test, count, total, invert, result):
-        # Multiply by 60 to specify values in seconds, not ticks
-        self.checker = ConsistencyCheck(count*60, total*60, default=False)
-
-    def on_run(self, test, count, total, invert, result):
-        test_result = call_if_function(test)
-        if self.checker.check(not test_result if invert else test_result):
-            self.finish(success=result)
-
 # num here refers to the shm group, not the tracked num
-SearchBuoy = lambda num, count, total: SearchFor(
-    VelocitySwaySearch(forward=4, stride=8, speed=0.08),
-    shm_vars[num].visible.get,
-    consistent_frames=(count * 60, total * 60) # multiple by 60 to specify in seconds
+SearchBuoy = lambda num, count, total: Sequential(
+    BigDepth(BUOY_DEPTH),
+    SearchFor(
+        ForwardSearch(forward=4, stride=8, speed=0.1),
+        shm_vars[num].visible.get,
+        consistent_frames=(count * 60, total * 60) # multiple by 60 to specify in seconds
+    ),
 )
 
 BackUpUntilVisible = lambda num, speed, timeout: Conditional(
@@ -82,7 +79,7 @@ BackUpUntilVisible = lambda num, speed, timeout: Conditional(
         Timeout(
             task=Sequential(
                 # Get at least a little bit away first
-                fake_move_x(-0.3),
+                FakeMoveX(dist=-0.3, speed=0.2),
                 MasterConcurrent(
                     Consistent(lambda: shm_vars[num].visible.get(),
                                count=1, total=1.5, result=True, invert=False),
@@ -100,13 +97,6 @@ BackUpUntilVisible = lambda num, speed, timeout: Conditional(
     )
 )
 
-# MoveX for minisub w/o a DVL
-def fake_move_x(d):
-    v = 0.1
-    if d < 0:
-        v *= -2
-    return Sequential(MasterConcurrent(Timer(d / v), VelocityX(v)), VelocityX(0))
-
 # This is the radius of the dots on the die
 MIN_DIST = 0.03
 
@@ -114,7 +104,7 @@ BackUp = lambda: Sequential(
     Log('Backing up...'),
     # Should be rammed, back up until we can see both buoys
     # If we see the second buoy then we can see both
-    BackUpUntilVisible(num=1, speed=0.08, timeout=20),
+    BackUpUntilVisible(num=1, speed=0.08, timeout=25),
 )
 
 RamBuoyAttempt = lambda num: Sequential(
@@ -147,7 +137,7 @@ RamBuoyAttempt = lambda num: Sequential(
             Zero(),
             Log('Ramming buoy...'),
             # Ram buoy
-            fake_move_x(0.8),
+            FakeMoveX(dist=1.2, speed=0.1),
         ),
         on_fail=Fail(
             # We weren't close enough when we lost the buoy - back up and try again
@@ -180,7 +170,7 @@ RamBuoy = lambda num: Sequential(
 
 Full = Sequential(
     Log('Searching for buoys...'),
-    SearchBuoy(num=1, count=7, total=10), # if we see the second buoy then we see both
+    SearchBuoy(num=1, count=4, total=5), # if we see the second buoy then we see both
     Succeed(RamBuoy(num=0)),
     Succeed(RamBuoy(num=1)),
 )
