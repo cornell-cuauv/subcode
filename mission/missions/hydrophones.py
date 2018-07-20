@@ -24,6 +24,10 @@ from mission.framework.task import Task
 from mission.framework.stateful_tasks import StatefulTask
 from mission.constants.config import recovery
 
+
+# WILL ITS THIS ONE!
+STOP_OVER_PINGER = False
+
 def get_clusterable(data):
   return np.array(data).reshape((len(data), 1))
 
@@ -136,8 +140,15 @@ class FindPinger(StatefulTask):
     self.silencer = ThrusterSilencer()
     self.pinger = None
 
-    self.ping_deviating_checker = ConsistencyCheck(3, 4)
-    self.ontop_checker = ConsistencyCheck(3, 4)
+    self.ping_deviating_checker = ConsistencyCheck(7, 10)
+
+    ontop_success = None
+    if STOP_OVER_PINGER:
+        ontop_success = 2
+    else:
+        ontop_success = 6
+
+    self.ontop_checker = ConsistencyCheck(ontop_success, 5)
 
     self.pings = []
 
@@ -323,6 +334,13 @@ class FindPinger(StatefulTask):
 
     # When we are close to the pinger, headings will vary more, allow for
     # deviation
+
+    # Note, this is fairly broken, because it assumes we get good pings
+    # while moving! Realistically, we should just move forward for a set time,
+    # and then get new heading. BUT, since the consistency check will really
+    # just wait for the requisite number of pings (since its a safe assumption
+    # that we're just getting garbage), we can essentially turn this into
+    # a makeshift timer by changing the window size on consistency check (:139)
     if new_ping.elevation > MIN_DEVIATING_PING_ELEVATION:
       deviating_ping = heading_deviation > MAX_FOLLOW_HEADING_DEVIATION
 
