@@ -3,6 +3,8 @@ import time
 from collections import deque
 import itertools
 
+import numpy as np
+
 import shm
 from mission.constants.config import recovery as constants
 from mission.constants.region import WALL_TOWER_HEADING
@@ -125,7 +127,7 @@ def norm_to_vision_forward(x, y=None):
     return ((x / 2 + 0.5) * w, (y / 2 + 0.5) * h)
 
 
-def cons(task, total=3*60, success=3*60*0.9, debug=False):
+def cons(task, total=3*60, success=3*60*0.85, debug=False):
     return ConsistentTask(task, total=total, success=success, debug=debug)
 
 
@@ -162,20 +164,21 @@ class ApproachAndTargetFunnel(Task):
 
 
 class PickupFromBin(Task):
-    def on_first_run(self, shm_group, *args, **kwargs):
-        SEARCH_DEPTH = 2.0
+    def on_first_run(self, shm_group_getter, is_left, *args, **kwargs):
+        BOTH_DEPTH = 0.5
+        SEARCH_DEPTH_1 = 2.0
         SEARCH_DEPTH_2 = 2.25
         SEARCH_DEPTH_3 = 2.5
-        START_PICKUP_DEPTH = 3.0
+        START_PICKUP_DEPTH = 3.2
 
-        def downward_target_task(pt, deadband=(0.1, 0.1)):
+        def downward_target_task(pt=(0, 0), deadband=(0.1, 0.1), max_out=0.04):
             return DownwardTarget(
-                point=(shm_group.center_x.get, shm_group.center_y.get),
+                point=(lambda: shm_group_getter().center_x.get(), lambda: shm_group_getter().center_y.get()),
                 target=norm_to_vision_downward(*pt),
                 deadband=norm_to_vision_downward(-1.0 + deadband[0], -1.0 + deadband[1]),
                 px=0.0005,
                 py=0.001,
-                max_out=0.04,
+                max_out=max_out,
             )
 
         def stop():
@@ -187,57 +190,45 @@ class PickupFromBin(Task):
         def timed(task, timeout=2):
             return Timed(task, timeout)
 
+        def search_at_depth(depth, msg="", target=(0, 0), deadband=(0.1, 0.1), depth_timeout=20):
+            return Sequential(
+                timed(cons(Depth(depth)), depth_timeout),
+                cons(
+                    downward_target_task(target, deadband=deadband),
+                    debug=True,
+                ),
+                stop(),
+                Log("Found at {} (depth={})".format(msg, depth)),
+            )
+
+        bottom_target = (0.6, -0.2) if is_left else (-0.75, 0.1)
+
         self.use_task(
             Sequential(
-                cons(Depth(SEARCH_DEPTH)),
-                Log("At depth"),
-                cons(
-                    downward_target_task((0.0, 0.0), deadband=(0.1, 0.1)),
-                    debug=True,
-                ),
+                cons(Depth(BOTH_DEPTH)),
+                cons(downward_target_task(max_out=0.1)),
                 stop(),
-                Log("Found  at top"),
-                timed(cons(Depth(SEARCH_DEPTH_2)), 20),
-                cons(
-                    downward_target_task((0.0, 0.0), deadband=(0.05, 0.05)),
-                    debug=True,
+                cons(Depth(SEARCH_DEPTH_1)),
+                search_at_depth(SEARCH_DEPTH_1, "top", deadband=(0.1, 0.1), depth_timeout=15),
+                # search_at_depth(SEARCH_DEPTH_2, "mid", deadband=(0.05, 0.05), depth_timeout=10),
+                search_at_depth(SEARCH_DEPTH_3, "bot", target=bottom_target, deadband=(0.04, 0.04)),
+                Sequential(
+                    *(timed(Depth(depth)) for depth in np.arange(SEARCH_DEPTH_3, START_PICKUP_DEPTH + 0.1, 0.1))
                 ),
-                stop(),
-                Log("Found at mid"),
-                timed(cons(Depth(SEARCH_DEPTH_3)), 20),
-                cons(
-                    Concurrent(
-                        # downward_target_task((-0.75, 0.1), (0.025, 0.025)),
-                        downward_target_task((0.6, 0.1), (0.025, 0.025)),
-                        Depth(SEARCH_DEPTH_3),
-                        finite=True,
-                    ),
-                    debug=True,
-                ),
-                stop(),
-                Log("Found at bottom"),
-                timed(Depth(2.6)),
-                timed(Depth(2.7)),
-                timed(Depth(2.8)),
-                timed(Depth(2.9)),
-                timed(Depth(3.0)),
-                timed(Depth(3.1)),
-                timed(Depth(3.2)),
                 timed(
                     Concurrent(
-                        Depth(3.2),
-                        Roll(-7.5),
+                        Depth(START_PICKUP_DEPTH),
+                        Roll(7.5 * (-1 if is_left else 1)),
                         Pitch(-7.5),
                     )
                 ),
                 Log("PICKING UP??"),
-                timed(Depth(3.5)),
-                timed(Depth(3.0)),
-                timed(Depth(2.5)),
+                timed(Depth(START_PICKUP_DEPTH + 0.3)),
+                timed(Depth(SEARCH_DEPTH_3)),
                 timed(
                     cons(
                         Concurrent(
-                            Depth(SEARCH_DEPTH),
+                            Depth(SEARCH_DEPTH_1),
                             Roll(0),
                             Pitch(0),
                         )
@@ -304,6 +295,42 @@ def SearchBin(shm_group, count=1.5, total=2):
     )
 
 
+def make_bin_chooser(is_top_left):
+    def ret():
+        shm_groups = [shm.recovery_vision_downward_bin_red, shm.recovery_vision_downward_bin_green]
+        output1 = shm_groups[0].get()
+        output2 = shm_groups[1].get()
+
+        if output2.probability < .5:
+            # print("Only one")
+            return shm_groups[0]
+
+        x1 = output1.center_x
+        x2 = output2.center_x
+
+        if abs(x1 - x2) > 25:
+            print("Using X")
+            if x1 < x2:
+                print(shm_groups[int(not is_top_left)].center_x.get())
+                return shm_groups[int(not is_top_left)]
+            else:
+                print(shm_groups[int(is_top_left)].center_x.get())
+                return shm_groups[int(is_top_left)]
+        else:
+            # print("Using Y")
+            y1 = output1.center_y
+            y2 = output2.center_y
+            if y1 < y2:
+                print(shm_groups[int(not is_top_left)].center_x.get())
+                return shm_groups[int(not is_top_left)]
+            else:
+                print(shm_groups[int(is_top_left)].center_x.get())
+                return shm_groups[int(is_top_left)]
+
+    return ret
+
+
+
 reset = ResetDepthPIDs()
 make_control_great_again = MakeControlGreatAgain2018()
 
@@ -314,8 +341,15 @@ approach_green = ApproachAndTargetFunnel(shm.recovery_vision_forward_green)
 search_red = SearchBin(shm.recovery_vision_downward_bin_red)
 search_green = SearchBin(shm.recovery_vision_downward_bin_green)
 
-pickup_red = PickupFromBin(shm.recovery_vision_downward_bin_red)
-pickup_green = PickupFromBin(shm.recovery_vision_downward_bin_green)
+pickup_red = PickupFromBin(make_bin_chooser(True), is_left=True)
+pickup_green = PickupFromBin(make_bin_chooser(False), is_left=False)
+
+pickup_all = Sequential(
+    pickup_red,
+    Timed(VelocityY(0.2), 2),
+    VelocityY(0),
+    pickup_green,
+)
 
 attempt_red = AttemptColor(approach_red, pickup_red)
 attempt_green = AttemptColor(approach_green, pickup_green)

@@ -355,10 +355,10 @@ class ConsistentTask(Task):
 
     def on_run(self, task, debug=False, *args, **kwargs):
         task()
-        if debug:
-            self.logd(task.finished)
         if self.cons_check.check(task.finished):
             self.finish()
+        if debug:
+            self.logd("{}/{}/{}".format(sum(x == 1 for x in self.cons_check.results), self.cons_check.count, self.cons_check.total))
 
 class Disjunction(Task):
     """

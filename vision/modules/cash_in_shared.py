@@ -16,8 +16,8 @@ def get_shared_options(is_forward):
         # Global
         options.BoolOption('in_simulator', False),
         options.BoolOption('preprocess_debug', False),
-        options.BoolOption('thresh_debug', True),
-        options.BoolOption('contour_debug', True),
+        options.BoolOption('thresh_debug', False),
+        options.BoolOption('contour_debug', False),
         options.BoolOption('bins_debug', True),
 
         # Preprocess
@@ -440,24 +440,40 @@ def find_bins(images):
             bins.append(Bin(x, y, area, 1))
 
 
-    shm_group = shm.recovery_vision_downward_bin_red
-    output = shm_group.get()
+    shm_groups = [shm.recovery_vision_downward_bin_red, shm.recovery_vision_downward_bin_green]
+    output1 = shm_groups[0].get()
+    output2 = shm_groups[1].get()
 
     if len(bins):
         binn = bins[0]
 
-        output.area = binn.area
-        output.center_x = binn.x
-        output.center_y = binn.y
-        output.probability = binn.probability
+        output1.area = binn.area
+        output1.center_x = binn.x
+        output1.center_y = binn.y
+        output1.probability = binn.probability
 
     else:
-        output.area = 0
-        output.center_x = 0
-        output.center_y = 0
-        output.probability = 0
+        output1.area = 0
+        output1.center_x = 0
+        output1.center_y = 0
+        output1.probability = 0
 
-    shm_group.set(output)
+    if len(bins) >= 2:
+        binn = bins[1]
+
+        output2.area = binn.area
+        output2.center_x = binn.x
+        output2.center_y = binn.y
+        output2.probability = binn.probability
+
+    else:
+        output2.area = 0
+        output2.center_x = 0
+        output2.center_y = 0
+        output2.probability = 0
+
+    shm_groups[0].set(output1)
+    shm_groups[1].set(output2)
 
 
     if debug:
