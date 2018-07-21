@@ -15,18 +15,21 @@ def get_shared_options(is_forward):
     return [
         # Global
         options.BoolOption('in_simulator', False),
-        options.BoolOption('preprocess_debug', False),
-        options.BoolOption('thresh_debug', False),
-        options.BoolOption('contour_debug', False),
+        options.BoolOption('preprocess_debug', True),
+        options.BoolOption('thresh_debug', True),
+        options.BoolOption('contour_debug', True),
         options.BoolOption('bins_debug', True),
+        options.BoolOption('funnels_debug', True),
 
         # Preprocess
         options.IntOption('gaussian_kernel', (2, 5)[is_forward], 1, 40),
         options.IntOption('gaussian_stdev', 20, 0, 40),
 
         # Threshing
-        options.IntOption('erode_size', (2, 15)[is_forward], 1, 40),
-        options.IntOption('thresh_size', (15, 150)[is_forward], 1, 100),
+        options.IntOption('erode_size', (2, 5)[is_forward], 1, 40),
+        options.IntOption('thresh_size', (15, 15)[is_forward], 1, 100),
+        options.IntOption("lab_a_min_red_funnel", 145, 0, 255),
+        options.IntOption("lab_a_max_red_funnel", 250, 0, 255),
 
         # Contouring
         options.IntOption('min_area', (10, 200)[is_forward], 1, 2000),
@@ -176,22 +179,28 @@ def threshold(img):
 
     else:
         if shared.is_forward:
-            threshes["green"] = cv2.adaptiveThreshold(
-                luv_l,
-                255,
-                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY_INV,
-                shared.options["thresh_size"] * 2 + 1,
-                9
-            )
+            # threshes["green"] = cv2.adaptiveThreshold(
+            #     luv_l,
+            #     255,
+            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            #     cv2.THRESH_BINARY_INV,
+            #     shared.options["thresh_size"] * 2 + 1,
+            #     9
+            # )
 
-            threshes["red"] = cv2.adaptiveThreshold(
-                luv_u,
-                255,
-                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY,
-                shared.options["thresh_size"] * 2 + 1,
-                -3,
+            # threshes["red"] = cv2.adaptiveThreshold(
+            #     luv_u,
+            #     255,
+            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            #     cv2.THRESH_BINARY,
+            #     shared.options["thresh_size"] * 2 + 1,
+            #     -3,
+            # )
+
+            threshes["red"] = cv2.inRange(
+                lab_a,
+                shared.options["lab_a_min_red_funnel"],
+                shared.options["lab_a_max_red_funnel"],
             )
 
         else:
@@ -317,7 +326,7 @@ def find_funnels(featured_contours):
     bins = {}
 
     for name, fcs in featured_contours.items():
-        if len(fcs) == 0:
+        if len(fcs) < 2:
             bins[name] = Bin(0, 0, 0, 0)
             continue
 
@@ -349,6 +358,8 @@ def find_funnels(featured_contours):
                 result_fc = avg_fc(best_fc, fc2)
 
                 contours_to_draw.append((fc2.contour, COLORS["MAGENTA"]))
+            else:
+                continue
 
         binn = bins[name] = Bin(result_fc.x, result_fc.y, result_fc.area, 1)
 
