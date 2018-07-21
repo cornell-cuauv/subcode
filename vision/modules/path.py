@@ -19,31 +19,42 @@ from vision import options as gui_options
 
 log = auvlog.client.log.vision.pipes
 
-vision_options = [ gui_options.IntOption('hsv_s_block_size', 1000, 1, 7500),
-                   gui_options.IntOption('hsv_v_block_size', 1000, 1, 7500),
-                   gui_options.IntOption('hsv_s_c_thresh', -27, -200, 100),
-                   gui_options.IntOption('hsv_v_c_thresh', -27, -200, 100),
-                   gui_options.IntOption('lab_a_thresh_min', 0, 0, 255),
-                   gui_options.IntOption('lab_a_thresh_max', 143, 0, 255),
-                   gui_options.IntOption('erode_size', 4, 0, 50),
-                   gui_options.IntOption('dilate_size', 3, 0, 50),
-                   gui_options.DoubleOption('min_percent_frame', 0.01, 0, 0.1),
-                   gui_options.DoubleOption('max_percent_frame', 0.2, 0, 1),
-                   gui_options.IntOption('mask_size', 149, 0, 200),
-                   gui_options.IntOption('canny1', 50, 0, 200),
-                   gui_options.IntOption('canny2', 150, 0, 200),
-                   gui_options.DoubleOption('min_angle_diff', np.pi/8, 0, np.pi*2),
-                   gui_options.DoubleOption('min_line_dist', 100, 0, 1000),
-                   # A circle with radius 1 inscribed in a square has
-                   # 'rectangularity' pi/4 ~ 0.78.
-                   gui_options.DoubleOption('aspect_ratio_threshold', 3, 0.5, 5),
-                   gui_options.DoubleOption('min_rectangularity', 0.48),
-                   gui_options.DoubleOption('heuristic_power', 5),
-                   gui_options.BoolOption('debugging', True),
-                   gui_options.DoubleOption('min_dist_ratio', 0.4, 0, 2),
-                   gui_options.DoubleOption('max_dist_ratio', 2,0, 5),
-                   gui_options.DoubleOption('min_line_hough_length',55, 0, 500)
-                 ]
+vision_options = [ 
+  gui_options.IntOption('hsv_s_block_size', 15, 1, 100),
+  gui_options.IntOption('hsv_v_block_size', 15, 1, 100),
+  gui_options.IntOption('hsv_s_c_thresh', -77, -200, 100),
+  gui_options.IntOption('hsv_v_c_thresh', -27, -200, 100),
+  gui_options.IntOption('lab_a_thresh_min', 0, 0, 255),
+  gui_options.IntOption('lab_a_thresh_max', 131, 0, 255),
+  gui_options.IntOption('lab_l_thresh_min', 0, 0, 255),
+  gui_options.IntOption('lab_l_thresh_max', 152, 0, 255),
+  gui_options.IntOption('lab_b_thresh_min', 0, 0, 255),
+  gui_options.IntOption('lab_b_thresh_max', 143, 0, 255),
+  gui_options.IntOption('hsv_h_min', 164, 0, 255),
+  gui_options.IntOption('hsv_h_max', 244, 0, 255),
+  gui_options.IntOption('erode_size', 4, 0, 50),
+  gui_options.IntOption('dilate_size', 4, 0, 50),
+  gui_options.DoubleOption('min_percent_frame', 0.01, 0, 0.1),
+  gui_options.DoubleOption('max_percent_frame', 0.2, 0, 1),
+  gui_options.IntOption('mask_size', 149, 0, 200),
+  gui_options.IntOption('canny1', 50, 0, 200),
+  gui_options.IntOption('canny2', 150, 0, 200),
+  gui_options.DoubleOption('min_angle_diff', np.pi/8, 0, np.pi*2),
+  gui_options.DoubleOption('min_line_dist', 100, 0, 1000),
+  # A circle with radius 1 inscribed in a square has
+  # 'rectangularity' pi/4 ~ 0.78.
+  gui_options.DoubleOption('aspect_ratio_threshold', 3, 0.5, 5),
+  gui_options.DoubleOption('min_rectangularity', 0.48),
+  gui_options.DoubleOption('heuristic_power', 5),
+  gui_options.BoolOption('debugging', True),
+  gui_options.DoubleOption('min_dist_ratio', 0.4, 0, 2),
+  gui_options.DoubleOption('max_dist_ratio', 2,0, 5),
+  gui_options.DoubleOption('min_line_hough_length',35, 0, 500),
+
+  # Preprocess
+  gui_options.IntOption('gaussian_kernel', 5, 1, 40),
+  gui_options.IntOption('gaussian_stdev', 20, 0, 40),
+]
 
 
 segment_info = namedtuple("segment_info", ["x1", "y1", "x2", "y2", "angle", "id", "updated"])
@@ -66,25 +77,40 @@ class Pipes(ModuleBase):
 
     def threshold(self, mat):
         threshes = {}
+
+        k_size = self.options["gaussian_kernel"]
+        k_std = self.options["gaussian_stdev"]
+        mat = cv2.GaussianBlur(mat, (k_size * 2 + 1, k_size * 2 + 1), k_std, k_std)
+
+
+        if self.options['debugging']:
+            self.post("preprocessed", mat)
+
         hsv = cv2.cvtColor(mat, cv2.COLOR_RGB2HSV)
         hsv_h, hsv_s, hsv_v = cv2.split(hsv)
         s_threshed = cv2.adaptiveThreshold(hsv_s, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 1 + 2 * self.options['hsv_s_block_size'], self.options['hsv_s_c_thresh'])
         v_threshed = cv2.adaptiveThreshold(hsv_v, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 1 + 2 * self.options['hsv_v_block_size'], self.options['hsv_v_c_thresh'])
+        h_threshed = cv2.inRange(hsv_v, self.options['hsv_h_min'], self.options['hsv_h_max'])
         
         lab = cv2.cvtColor(mat, cv2.COLOR_RGB2LAB)
 
         lab_l, lab_a, lab_b = cv2.split(lab)
 
         lab_a_threshed = cv2.inRange(lab_a, self.options['lab_a_thresh_min'], self.options['lab_a_thresh_max'])
+        lab_l_threshed = cv2.inRange(lab_l, self.options['lab_l_thresh_min'], self.options['lab_l_thresh_max'])
+        lab_b_threshed = cv2.inRange(lab_b, self.options['lab_b_thresh_min'], self.options['lab_b_thresh_max'])
 
         self.post("lab_a",lab_a_threshed)
+        self.post("lab_l",lab_l_threshed)
+        self.post("lab_b",lab_b_threshed)
 
-        final_threshed = s_threshed & ~lab_a_threshed
+        final_threshed = h_threshed & ~lab_a_threshed
 
         self.post('final_threshed',final_threshed)
         
         threshes["hsv_s"] = s_threshed
         threshes["hsv_v"] = v_threshed
+        threshes["hsv_h"] = h_threshed
         threshes["final"] = final_threshed
         
         dilate_size = self.options['dilate_size']
@@ -165,12 +191,6 @@ class Pipes(ModuleBase):
 
       info.sort(key=lambda x: x.length, reverse=True)
 
-      coords = []
-        
-      num = 0
-      angP = None
-
-
       for k in info:
         for l in info:
         
@@ -191,10 +211,11 @@ class Pipes(ModuleBase):
 
             info.remove(l)
 
+
+
       if len(info) >= 1:
         final.append(info[0])
 
-        print('length', len(info))
 
         for l in info[1:]:
           if self.angle_diff(info[0].angle, l.angle) > 0.5:
@@ -312,29 +333,20 @@ class Pipes(ModuleBase):
           shm.path_results.num_lines.set(0)
 
 
+
         line_image = np.copy(mat)
-
-        if len(linesI) == 2:
-          if not flipped:
-            x1,y1,x2,y2 = linesI[0].x1,linesI[0].y1,linesI[0].x2,linesI[0].y2
+        for i, line in enumerate(linesI):  
+          if flipped:
+            linesI[0], linesI[1] = linesI[1], linesI[0]
+          x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
+          if i == 0 and not second_line:
             cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
-            x1,y1,x2,y2 = linesI[1].x1,linesI[1].y1,linesI[1].x2,linesI[1].y2
+          elif i == 1 or second_line:
             cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),5)
-          else:
-            x1,y1,x2,y2 = linesI[0].x1,linesI[0].y1,linesI[0].x2,linesI[0].y2
-            cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),5)
-            x1,y1,x2,y2 = linesI[1].x1,linesI[1].y1,linesI[1].x2,linesI[1].y2
-            cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
-
-        elif len(linesI) == 1:
-          if second_line:
-            x1,y1,x2,y2 = linesI[0].x1,linesI[0].y1,linesI[0].x2,linesI[0].y2
-            cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),5)
-          else:
-            x1,y1,x2,y2 = linesI[0].x1,linesI[0].y1,linesI[0].x2,linesI[0].y2
-            cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
           
         self.post("final_final",line_image)
+
+        
 
       except Exception as e:
         print(e)
