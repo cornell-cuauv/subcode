@@ -27,7 +27,7 @@ class BigDepth(Task):
         init_depth = shm.kalman.depth.get()
         steps = math.ceil(abs(depth - init_depth) / largest_step)
         depth_steps = interpolate_list(init_depth, depth, steps)
-        self.use_task(Sequential(*interleave(tasks_from_params(Depth, depth_steps), tasks_from_param(Timer, timeout, steps))))
+        self.use_task(Sequential(*interleave(tasks_from_params(Depth, depth_steps), tasks_from_param(Timer, timeout, length=steps))))
 
 FakeMoveX = lambda dist, speed: Sequential(
     MasterConcurrent(Timer(abs(dist / speed)), VelocityX(-speed if dist < 0 else speed)),

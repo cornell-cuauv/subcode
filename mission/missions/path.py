@@ -4,6 +4,8 @@ import math
 
 import shm
 
+from conf.vehicle import VEHICLE
+
 from mission.framework.combinators import Sequential, Concurrent, MasterConcurrent, Retry, Conditional, While
 from mission.framework.helpers import get_downward_camera_center, ConsistencyCheck
 from mission.framework.movement import Depth, Heading, Pitch, VelocityX, VelocityY, RelativeToCurrentHeading
@@ -19,11 +21,11 @@ from mission.missions.will_common import BigDepth
 
 PATH_FOLLOW_DEPTH = 1.2
 
+is_castor = VEHICLE == 'castor'
 
-
-SearchTask = lambda: SearchFor(VelocitySwaySearch(forward=2, stride=6, speed=0.1, rightFirst=True),
+SearchTask = lambda: SearchFor(VelocitySwaySearch(forward=(6 if is_castor else 2), stride=(10 if is_castor else 6), speed=0.1, rightFirst=True),
                                 lambda: shm.path_results.num_lines.get() == 2,
-                                consistent_frames=(6,8))
+                                consistent_frames=(60, 90))
 
 class FirstPipeGroupFirst(Task):
     # Checks whether the first pipe group in shm is the first pipe we should follow.

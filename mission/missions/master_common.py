@@ -38,6 +38,9 @@ from collections import namedtuple
 
 class RunTask(Task):
   def on_first_run(self, task, *args, **kwargs):
+    # Kind of hacky, but should let us arbitrarily pick MissionTasks for random pinger
+    if callable(task):
+      task = task()
     self.task = task
     self.taskCls = task.cls()
     if not callable(self.taskCls):
@@ -51,7 +54,7 @@ class RunTask(Task):
   def on_run(self, *args, **kwargs):
     #Block non-surfacing tasks from surfacing
     if not self.task.surfaces and (shm.desires.depth.get() < 0.3 or shm.kalman.depth.get() < .3):
-      Depth(0.3)()
+      Depth(max(0.3, shm.desires.depth.get()))()
       self.logw('Task attempted to rise above 0.3!')
 
     #start only required modules

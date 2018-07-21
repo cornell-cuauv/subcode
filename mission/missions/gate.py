@@ -31,7 +31,7 @@ class Consistent(Task):
 
 XTarget = lambda x, db: PIDLoop(input_value=x, target=0,
                                 output_function=VelocityY(), negate=True,
-                                p=1.25 if is_castor else 0.4, deadband=db)
+                                p=0.4 if is_castor else 0.4, deadband=db)
 
 #WidthTarget = lambda width: PIDLoop(input_value=get_width, target=width,
 #                                    output_function=VelocityX(), negate=False, p=1.0, deadband=0.03)
@@ -41,22 +41,25 @@ XTarget = lambda x, db: PIDLoop(input_value=x, target=0,
 #charge = Timed(VelocityX(0.3 if is_castor else 0.1), 20)
 
 
+DEPTH_TARGET = 1.2 if is_castor else 1.5
+
+
 #gate = Sequential(target, Log("Targetted"), center, Log("Centered"), charge)
 
 # This is the unholy cross between my (Will's) and Zander's styles of mission-writing
 gate = Sequential(
     Log('Depthing...'),
-    BigDepth(1.5),
+    BigDepth(DEPTH_TARGET),
     Log('Lining up...'),
     ConsistentTask(Concurrent(
-        Depth(1.5),
+        Depth(DEPTH_TARGET),
         XTarget(x=results_groups.gate_center_x.get, db=0.03),
         finite=False
     )),
     Log('Driving forward...'),
     MasterConcurrent(
         Consistent(test=lambda: results_groups.width.get() < 0.5, count=2, total=3, invert=True, result=True),
-        Depth(1.5),
+        Depth(DEPTH_TARGET),
         VelocityX(0.1 if is_castor else 0.1),
         While(task_func=lambda: XTarget(x=results_groups.gate_center_x.get, db=0.018), condition=True),
     ),
@@ -65,11 +68,11 @@ gate = Sequential(
     VelocityX(0),
     Log('Lining up with red side...'),
     ConsistentTask(Concurrent(
-        Depth(1.5),
+        Depth(DEPTH_TARGET),
         XTarget(x=results_groups.gate_center_x.get, db=0.018),
         finite=False,
     )),
     Log('Charging...'),
-    Timed(VelocityX(0.3 if is_castor else 0.2), 12),
+    Timed(VelocityX(0.5 if is_castor else 0.2), 16 if is_castor else 12),
     Log('Through gate!'),
 )

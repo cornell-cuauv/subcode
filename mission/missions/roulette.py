@@ -68,8 +68,9 @@ Full = Retry(
         Log('Starting'),
         Zero(),
         BigDepth(DEPTH_STANDARD),
-        Log('Searching for roulette...'),
-        Search(),
+        # Disabled search for now because if tracker mission sees the table, then we don't need to search
+        #Log('Searching for roulette...'),
+        #Search(),
         Zero(),
         Log('Centering on roulette...'),
         align_roulette_center(db=40, p=0.0005),

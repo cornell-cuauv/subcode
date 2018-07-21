@@ -412,7 +412,7 @@ class OptimizablePinger(Task):
 
 def Full(): return Sequential(
     Log('Changing depth before hydrophones'),
-    Depth(1.13),
+    Depth(1.3),
     OptimizablePinger(),
 )
 
