@@ -1,7 +1,7 @@
 import math
 
 from mission.framework.task import Task
-from mission.framework.combinators import Sequential, MasterConcurrent
+from mission.framework.combinators import Sequential, MasterConcurrent, Either
 from mission.framework.movement import VelocityX, VelocityY
 from mission.framework.movement import Depth
 from mission.framework.timing import Timer, Timed
@@ -12,22 +12,32 @@ import shm
 def interpolate_list(a, b, steps):
     return [a + (b - a) / steps * i for i in range(1, steps + 1)]
 
-def tasks_from_params(task, params):
-    return [task(param) for param in params]
+def tasks_from_params(task, params, tup=False):
+    return [task(*param if tup else param) for param in params]
 
-def tasks_from_param(task, param, length):
-    return [task(param) for i in range(length)]
+def tasks_from_param(task, param, length, tup=False):
+    return [task(*param if tup else param) for i in range(length)]
 
 def interleave(a, b):
     return [val for pair in zip(a, b) for val in pair]
 
+Descend = lambda depth, timeout, pause, deadband: Sequential(
+    Either(
+        Timer(timeout),
+        Depth(depth, deadband=deadband),
+    ),
+    Timer(pause),
+)
+
 # This lets us descend in depth steps rather than all at once
 class BigDepth(Task):
-    def on_first_run(self, depth, largest_step=0.5, timeout=0):
+    def on_first_run(self, depth, largest_step=0.5, timeout=4, pause=0, deadband=0.1):
         init_depth = shm.kalman.depth.get()
         steps = math.ceil(abs(depth - init_depth) / largest_step)
         depth_steps = interpolate_list(init_depth, depth, steps)
-        self.use_task(Sequential(*interleave(tasks_from_params(Depth, depth_steps), tasks_from_param(Timer, timeout, length=steps))))
+        params = [(step, timeout, pause, deadband) for step in depth_steps]
+        #self.use_task(Sequential(*interleave(tasks_from_params(Depth, depth_steps), tasks_from_param(Timer, timeout, length=steps))))
+        self.use_task(Sequential(*tasks_from_params(Descend, params, tup=True)))
 
 FakeMoveX = lambda dist, speed: Sequential(
     MasterConcurrent(Timer(abs(dist / speed)), VelocityX(-speed if dist < 0 else speed)),
