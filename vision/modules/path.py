@@ -100,13 +100,15 @@ class Pipes(ModuleBase):
         lab_l_threshed = cv2.inRange(lab_l, self.options['lab_l_thresh_min'], self.options['lab_l_thresh_max'])
         lab_b_threshed = cv2.inRange(lab_b, self.options['lab_b_thresh_min'], self.options['lab_b_thresh_max'])
 
-        self.post("lab_a",lab_a_threshed)
-        self.post("lab_l",lab_l_threshed)
-        self.post("lab_b",lab_b_threshed)
+        if self.options['debugging']:
+            self.post("lab_a",lab_a_threshed)
+            self.post("lab_l",lab_l_threshed)
+            self.post("lab_b",lab_b_threshed)
 
         final_threshed = h_threshed & ~lab_a_threshed
 
-        self.post('final_threshed',final_threshed)
+        if self.options['debugging']:
+            self.post('final_threshed',final_threshed)
         
         threshes["hsv_s"] = s_threshed
         threshes["hsv_v"] = v_threshed
@@ -132,7 +134,8 @@ class Pipes(ModuleBase):
         return threshes
 
     def find_lines(self, mat, thresh):
-        self.post("thres_test",thresh)
+        if self.options['debugging']:
+            self.post("thres_test",thresh)
         minLineLength = self.options['min_line_hough_length']
         maxLineGap = 100
 
@@ -159,7 +162,8 @@ class Pipes(ModuleBase):
             cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),10)
 
 
-          self.post("all_houghs",line_image)
+        if self.options['debugging']:
+            self.post("all_houghs",line_image)
 
         return lines
 
@@ -216,7 +220,6 @@ class Pipes(ModuleBase):
       if len(info) >= 1:
         final.append(info[0])
 
-
         for l in info[1:]:
           if self.angle_diff(info[0].angle, l.angle) > 0.5:
             
@@ -260,7 +263,8 @@ class Pipes(ModuleBase):
 
         image_size = mat.shape[0]*mat.shape[1]
 
-        self.post('orig', mat)
+        if self.options['debugging']:
+            self.post('orig', mat)
         threshes = self.threshold(mat)
 
 
@@ -333,7 +337,6 @@ class Pipes(ModuleBase):
           shm.path_results.num_lines.set(0)
 
 
-
         line_image = np.copy(mat)
         for i, line in enumerate(linesI):  
           if flipped:
@@ -345,8 +348,6 @@ class Pipes(ModuleBase):
             cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),5)
           
         self.post("final_final",line_image)
-
-        
 
       except Exception as e:
         print(e)

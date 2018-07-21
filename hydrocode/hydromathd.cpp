@@ -127,16 +127,19 @@ void do_track(){
             float kx = SOUND_SPEED * shm_results_track.diff_phase_x / (NIPPLE_DISTANCE * 2 * M_PI * shm_settings.track_frequency_target);
             float ky = SOUND_SPEED * shm_results_track.diff_phase_y / (NIPPLE_DISTANCE * 2 * M_PI * shm_settings.track_frequency_target);
 
+	    std::cerr << "ky is " << ky << " and kx is " << kx << std::endl;
+
+
+
             float kz_2 = 1 - kx * kx - ky * ky;
             if (kz_2 < 0) {
               std::cerr << "WARNING1: z mag is negative! " << kz_2 << std::endl;
               kz_2 = 0;
             }
 
-
             shm_results_track.daemon_start_time = daemon_start_time;
             shm_results_track.tracked_ping_time = ping_time;
-            shm_results_track.tracked_ping_heading_radians = std::atan2(ky, kx);
+            shm_results_track.tracked_ping_heading_radians = 3.14 + std::atan2(ky, kx); // I apologize for this;
             shm_results_track.tracked_ping_elevation_radians = std::acos(std::sqrt(kz_2));
 
             shm_results_track.tracked_ping_count++;
@@ -233,6 +236,9 @@ void do_spectrum() {
     else {
         //IMPLEMENTE AUTO THRESHOLDING AND ASSOCIATED PING STUFF
     } 
+
+    shm_results_spectrum.coms_magnitude = spectrum_fft_magnitude[111] / total_power;
+    shm_setg(hydrophones_results_spectrum, shm_results_spectrum);
 }
 
 
@@ -282,9 +288,9 @@ int main (int argc, char ** argv) {
 		for (int i = 0; i < 3*CHANNEL_DEPTH; i+=3) {
             windowcf_push(w,    std::complex<float>(spt.data[i+2],0)); //This uses channel B
 
-            windowcf_push(wchA, std::complex<float>(spt.data[i+0],0));
+            windowcf_push(wchA, std::complex<float>(spt.data[i+1],0));
             windowcf_push(wchB, std::complex<float>(spt.data[i+2],0));
-            windowcf_push(wchC, std::complex<float>(spt.data[i+1],0));
+            windowcf_push(wchC, std::complex<float>(spt.data[i+0],0));
         }
         current_sample_count+=CHANNEL_DEPTH;
 		packet_count++;

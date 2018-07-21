@@ -20,7 +20,12 @@ export PYTHONPATH=$ROOT
 # PORT MAPPINGS
 
 # GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Pastor_2_AUV-PASTOR2-if00-port0)
-GX_PORT=$(readlink -f /dev/serial/by-id/usb-FTDI_Quad_RS232-HS-if00-port0)
+SUBMARINE=$CUAUV_VEHICLE
+if [ "$SUBMARINE" = "castor" ]; then
+	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Pastor_2_AUV-PASTOR2-if00-port0)
+elif [ "$SUBMARINE" = "pollux" ]; then
+	GX_PORT=$(readlink -f /dev/serial/by-id/usb-FTDI_Quad_RS232-HS-if00-port0)
+fi
 DVL_PORT=/dev/serial/by-id/usb-CUAUV_PASTOR_4_AUV-PASTOR4-if03-port0
 
 # CONFIGS
@@ -29,13 +34,13 @@ VISION_CONFIG=$ROOT/vision/configs/master.yaml
 
 # SERVICES
 
-SUBMARINE=$CUAUV_VEHICLE
 
 if [ "$SUBMARINE" = "castor" ]; then
-  SERVICES=(seriald gx4d linearizerd dvld kalmand navigated controld3 shmserver ueye
-  logging visiongui cameras webgui hydromathd modules deadman uptime )
+  SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
+  visiongui cameras webgui modules deadman uptime 
+  dvld)
 elif [ "$SUBMARINE" = "pollux" ]; then
-  SERVICES=(seriald gx4d kalmand navigated controld3 shmserver logging
+  SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
   visiongui cameras webgui modules deadman uptime)
 else
   echo "Unsupported submarine! Must be set to one of { artemis, apollo }!"

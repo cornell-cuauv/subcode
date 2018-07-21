@@ -83,24 +83,24 @@ class Amlan:
     def _RemoveTube(self):
         return FunctionTask(lambda: self.shm_tube.set(-1))
 
-AMLANS = [
-    Amlan(
-        downcam_offset=(0.25019, -0.22256),
-        name='left',
-        extend_piston='left_piston_extend',
-        retract_piston='left_piston_retract',
-        shm_tube=shm.recovery_world_grabbers.left_tube,
-        broken=False,
-    ),
-    Amlan(
-        downcam_offset=(0.25019, 0.169672),
-        name='right',
-        extend_piston='right_piston_extend',
-        retract_piston='right_piston_retract',
-        shm_tube=shm.recovery_world_grabbers.right_tube,
-        broken=False,
-    ),
-]
+# AMLANS = [
+#     Amlan(
+#         downcam_offset=(0.25019, -0.22256),
+#         name='left',
+#         extend_piston='left_piston_extend',
+#         retract_piston='left_piston_retract',
+#         shm_tube=shm.recovery_world_grabbers.left_tube,
+#         broken=False,
+#     ),
+#     Amlan(
+#         downcam_offset=(0.25019, 0.169672),
+#         name='right',
+#         extend_piston='right_piston_extend',
+#         retract_piston='right_piston_retract',
+#         shm_tube=shm.recovery_world_grabbers.right_tube,
+#         broken=False,
+#     ),
+# ]
 
 class AlignAmlan(Task):
     """
@@ -353,10 +353,12 @@ class ConsistentTask(Task):
     def on_first_run(self, task, success=18, total=20, *args, **kwargs):
         self.cons_check = ConsistencyCheck(success, total)
 
-    def on_run(self, task, *args, **kwargs):
+    def on_run(self, task, debug=False, *args, **kwargs):
         task()
         if self.cons_check.check(task.finished):
             self.finish()
+        if debug:
+            self.logd("{}/{}/{}".format(sum(x == 1 for x in self.cons_check.results), self.cons_check.count, self.cons_check.total))
 
 class Disjunction(Task):
     """

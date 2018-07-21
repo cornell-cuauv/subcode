@@ -5,6 +5,7 @@ packages=(
     autossh
     bc
     dialog
+    gksu
     gnuplot
     htop
     iotop
@@ -73,6 +74,10 @@ packages=(
 
     # aslam
     liblzma-dev
+
+    #slam
+    libzmq-dev
+    python3-zmq
 )
 
 apt-get install -y software-properties-common # For add-apt-repository

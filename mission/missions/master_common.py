@@ -117,7 +117,7 @@ class Begin(Task):
       FunctionTask(lambda: shm.deadman_settings.enabled.set(False)),
       Log('Disabling Record vision module'),
       FunctionTask(lambda: shm.vision_modules.Record.set(0)),
-      WaitForUnkill(killed=False, wait=.5),
+      #WaitForUnkill(killed=False, wait=.5),
       WaitForUnkill(),
       Log('Zeroing'),
       Zero(),

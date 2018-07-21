@@ -4,6 +4,7 @@
 # Tweaked by Will Smith.
 
 import traceback
+import time
 import sys
 import math
 import itertools
@@ -13,7 +14,11 @@ import shm
 
 from vision.modules.base import ModuleBase
 from vision import options
+
+from vision.modules.will_common import find_best_match
+
 options = [
+    options.BoolOption('debug', False),
     options.IntOption('red_lab_a_min', 129, 0, 255),
     options.IntOption('red_lab_a_max', 255, 0, 255),
     options.IntOption('black_lab_l_min', 0, 0, 255),
@@ -26,7 +31,7 @@ options = [
     options.IntOption('canny_low_thresh', 100, 0, 1000),
     options.IntOption('canny_high_thresh', 200, 0, 1000),
     options.IntOption('hough_lines_rho', 5, 1, 1000),
-    options.IntOption('hough_lines_theta', 10, 1, 1000),
+    options.IntOption('hough_lines_theta', 1, 1, 1000),
     options.IntOption('hough_lines_thresh', 90, 0, 1000),
     options.IntOption('hough_circle_blur_kernel', 10, 0, 255),
     options.IntOption('hough_circles_dp', 1, 0, 255),
@@ -37,6 +42,8 @@ options = [
     options.IntOption('hough_circles_maxRadius', 1000, 0, 1000),
     options.IntOption('contour_min_area', 1000, 0, 100000)
 ]
+
+POST_UMAT = False
 
 ROTATION_PREDICTION_ANGLE = 20
 DOWNWARD_CAM_WIDTH = shm.camera.downward_width.get()
@@ -70,6 +77,11 @@ def calc_diff(new_centers, old_centers):
 def dist(a, b):
     return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2)
 
+def angle_diff(a, b):
+    return math.atan2(math.sin(b - a), math.cos(b - a))
+
+# This is the same as the function in vision/modules/will_common, but I'm too
+# lazy to change this right now
 def assign_bins(contours, bins_data, module_context):
     # Keeps track of which bin is which by sorting all possible lists by the sum of the
     # differences in the old and new centroids
@@ -85,8 +97,7 @@ def assign_bins(contours, bins_data, module_context):
     sorted_diffs = sorted(diffs, key=lambda tup: tup[1])
 
     best_permutation = sorted_diffs[0][0]
-
-    for i in range(len(bins_data)):
+    for i in range(min(len(bins_data), len(best_permutation))):
         bins_data[i].visible = True
         bins_data[i].centroid_x = best_permutation[i][0]
         bins_data[i].centroid_y = best_permutation[i][1]
@@ -98,19 +109,18 @@ class RouletteBoardData:
         self.reset()
 
     def reset(self):
-        self.board_visible = False
+        self.visible = False
         self.center_x = 0
         self.center_y = 0
 
     def commit(self):
         results = self.shm_group.get()
-        results.board_visible = self.board_visible
+        results.board_visible = self.visible
         results.center_x = self.center_x
         results.center_y = self.center_y
         self.shm_group.set(results)
 
 
-# TODO add angles so that we can align heading
 class BinsData:
     def __init__(self, shm_group):
         self.shm_group = shm_group
@@ -123,6 +133,7 @@ class BinsData:
         self.predicted_location = False
         self.predicted_x = 0
         self.predicted_y = 0
+        self.angle = 0
 
     def commit(self):
         results = self.shm_group.get()
@@ -132,6 +143,7 @@ class BinsData:
         results.predicted_location = self.predicted_location
         results.predicted_x = self.predicted_x
         results.predicted_y = self.predicted_y
+        results.angle = self.angle
         self.shm_group.set(results)
 
 
@@ -144,21 +156,33 @@ ALL_SHM = [ROULETTE_BOARD] + ALL_BINS
 
 
 class Roulette(ModuleBase):
+    last_run = 0
 
     def process(self, mat):
         global DOWNWARD_CAM_WIDTH, DOWNWARD_CAM_HEIGHT
 
+        curr_time = time.time()
+        if curr_time - self.last_run < shm.vision_module_settings.time_between_frames.get():
+            return
+        self.last_run = curr_time
+
+
         DOWNWARD_CAM_WIDTH = DOWNWARD_CAM_WIDTH or mat.shape[1]
         DOWNWARD_CAM_HEIGHT = DOWNWARD_CAM_HEIGHT or mat.shape[0]
 
-        mat = cv2.rotate(mat, cv2.ROTATE_90_CLOCKWISE)
+        # With new camera we are no longer rotated
+        #mat = cv2.rotate(mat, cv2.ROTATE_90_CLOCKWISE)
 
         mat = cv2.UMat(mat)
 
+        debug = self.options['debug']
+
         try:
-            # Reset SHM output
+            ## Reset SHM output
+            #for s in ALL_SHM:
+            #    s.reset()
             for s in ALL_SHM:
-                s.reset()
+                s.visible = False
 
             lab = cv2.cvtColor(mat, cv2.COLOR_BGR2LAB)
             lab_split = cv2.split(lab)
@@ -173,29 +197,29 @@ class Roulette(ModuleBase):
                     2 * self.options['erode_kernel'] + 1))
             #self.post('green_threshed', green_threshed)
 
-            # detect red section
-            red_threshed = cv2.inRange(lab_split[1],
-                    self.options['red_lab_a_min'],
-                    self.options['red_lab_a_max'])
-            red_threshed = cv2.erode(red_threshed,
-                    (2 * self.options['erode_kernel'] + 1,
-                    2 * self.options['erode_kernel'] + 1))
-            #self.post('red_threshed', red_threshed)
+            # # detect red section
+            # red_threshed = cv2.inRange(lab_split[1],
+            #         self.options['red_lab_a_min'],
+            #         self.options['red_lab_a_max'])
+            # red_threshed = cv2.erode(red_threshed,
+            #         (2 * self.options['erode_kernel'] + 1,
+            #         2 * self.options['erode_kernel'] + 1))
+            # #self.post('red_threshed', red_threshed)
 
-            # detect black section
-            black_threshed = cv2.inRange(lab_split[0],
-                    self.options['black_lab_l_min'],
-                    self.options['black_lab_l_max'])
-            black_threshed = cv2.erode(black_threshed,
-                    (2 * self.options['erode_kernel'] + 1,
-                    2 * self.options['erode_kernel'] + 1),
-                    iterations=self.options['black_erode_iters'])
-            #self.post('black_threshed', black_threshed)
+            # # detect black section
+            # black_threshed = cv2.inRange(lab_split[0],
+            #         self.options['black_lab_l_min'],
+            #         self.options['black_lab_l_max'])
+            # black_threshed = cv2.erode(black_threshed,
+            #         (2 * self.options['erode_kernel'] + 1,
+            #         2 * self.options['erode_kernel'] + 1),
+            #         iterations=self.options['black_erode_iters'])
+            # #self.post('black_threshed', black_threshed)
 
-            all_threshed = green_threshed | red_threshed | black_threshed
-            all_threshed = cv2.GaussianBlur(all_threshed,
-                    (2 * self.options['hough_circle_blur_kernel'] + 1,
-                    2 * self.options['hough_circle_blur_kernel'] + 1), 0)
+            # all_threshed = green_threshed | red_threshed | black_threshed
+            # all_threshed = cv2.GaussianBlur(all_threshed,
+            #         (2 * self.options['hough_circle_blur_kernel'] + 1,
+            #         2 * self.options['hough_circle_blur_kernel'] + 1), 0)
             #self.post('all_threshed', cv2.UMat.get(all_threshed))
 
             #circle_blurred = cv2.GaussianBlur(all_threshed,
@@ -231,44 +255,121 @@ class Roulette(ModuleBase):
                 edges = cv2.Canny(blurred,
                         threshold1=self.options['canny_low_thresh'],
                         threshold2=self.options['canny_high_thresh'])
-                self.post('edges', edges)
+                if debug and POST_UMAT:
+                    self.post('edges', edges)
                 lines = cv2.HoughLines(edges,
                         self.options['hough_lines_rho'],
                         self.options['hough_lines_theta'] * np.pi / 180,
                         self.options['hough_lines_thresh'])
+
+                thetas = []
+
+                THETA_DIFF = math.radians(20)
+
                 if lines is not None:
-                    lines = [(idx, line[0]) for (idx, line) in enumerate(lines[:2])]
-                    line_equations = []
-                    lines_mat = mat #mat.copy()
-                    for (i, (rho, theta)) in lines:
-                        a = np.cos(theta)
-                        b = np.sin(theta)
-                        x0 = a*rho
-                        y0 = b*rho
-                        x1 = int(x0 + 1000*(-b))
-                        y1 = int(y0 + 1000*(a))
-                        x2 = int(x0 - 1000*(-b))
-                        y2 = int(y0 - 1000*(a))
-                        cv2.line(lines_mat, (x1, y1), (x2, y2), (0, 0, 255), 2)
-                        line_equations.append((float(x1), float(x2), float(y1), float(y2)))
-                    self.post('lines', cv2.UMat.get(lines_mat))
-                    found_center = len(line_equations) >= 2
-                    if found_center:
-                        # calculate intersection of diameters of green section
-                        [x01, x02, y01, y02] = line_equations[0]
-                        [x11, x12, y11, y12] = line_equations[1]
-                        b1 = (y02 - y01) / max(1e-10, x02 - x01)
-                        b2 = (y12 - y11) / max(1e-10, x12 - x11)
-                        intersection_x = int((b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2))
-                        intersection_y = int(b1 * (intersection_x - x01) + y01)
-                        center_x, center_y = intersection_x, intersection_y
+                    # Remove duplicates
+                    lines_unfiltered = set([(line[0][0], line[0][1]) for line in lines])
+
+                    # Group lines into bins
+                    bins = []
+                    for line in lines_unfiltered:
+                        for bin in bins:
+                            # Multiple by 2 because we're in [0, 180], not [0, 360]
+                            if abs(angle_diff(line[1] * 2, bin[0][1] * 2)) < THETA_DIFF * 2:
+                                bin = (bin[0], bin[1] + 1)
+                                break
+                        else:
+                            bins.append((line, 1))
+
+                    # Pick top four - we sometimes get the ends of the bins as lines as well
+                    lines_unpicked = [line for line, count in sorted(bins, key=lambda bin: bin[1], reverse=True)[:4]]
+
+                    if len(lines_unpicked) >= 2:
+                        THIRTY = math.radians(30)
+
+                        # Find two lines that are about 30 degrees apart
+                        # Find the pairing of lines with the angle difference closest to 30 degrees
+                        pairs = itertools.combinations(lines_unpicked, 2)
+                        # We double angles because we're in [0, 180] and not [0, 360]
+                        lines = sorted(pairs, key=lambda pair: abs(THIRTY * 2 - abs(angle_diff(pair[0][1] * 2, pair[1][1] * 2))))[0]
+
+                        delta = math.degrees(abs(THIRTY * 2 - abs(angle_diff(lines[0][1] * 2, lines[1][1] * 2))))
+
+                        if delta <= 15:
+                            line_equations = []
+                            lines_mat = mat #mat.copy()
+                            for (rho, theta) in lines:
+                                thetas.append(theta)
+
+                                a = np.cos(theta)
+                                b = np.sin(theta)
+                                x0 = a*rho
+                                y0 = b*rho
+                                x1 = (x0 + 1500*(-b))
+                                y1 = (y0 + 1500*(a))
+                                x2 = (x0 - 1500*(-b))
+                                y2 = (y0 - 1500*(a))
+                                cv2.line(lines_mat, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+                                line_equations.append((x1, x2, y1, y2))
+
+                            if debug and POST_UMAT:
+                                self.post('lines', cv2.UMat.get(lines_mat))
+
+                            found_center = len(line_equations) >= 2
+                            if found_center:
+                                # calculate intersection of diameters of green section
+                                [x01, x02, y01, y02] = line_equations[0]
+                                [x11, x12, y11, y12] = line_equations[1]
+
+                                # This is stupid but it works
+                                if x02 == x01:
+                                    x01 += 0.01
+                                if x12 == x11:
+                                    x11 += 0.01
+                                b1 = (y02 - y01) / (x02 - x01)
+                                b2 = (y12 - y11) / (x12 - x11)
+
+                                if b1 == b2:
+                                    print('ovelapping')
+                                    found_center = False
+                                else:
+                                    intersection_x = (b1 * x01 - b2 * x11 + y11 - y01) / (b1 - b2)
+
+                                if math.isinf(intersection_x):
+                                    if abs(x02 - x01) < 0.2:
+                                        intersection_x = x02
+                                    elif abs(x12 - x11) < 0.2:
+                                        intersection_x = x12
+
+                                intersection_y = (b1 * (intersection_x - x01) + y01)
+
+                                intersection_x = int(intersection_x)
+                                intersection_y = int(intersection_y)
+
+                                center_x, center_y = intersection_x, intersection_y
+                        else:
+                            found_center = False
 
             if found_center:
                 center_mat = mat # mat.copy()
                 cv2.circle(center_mat, (center_x, center_y), 7, (255, 255, 255), -1)
-                self.post('center', cv2.UMat.get(center_mat))
-                ROULETTE_BOARD.board_visible = True
+                if POST_UMAT:
+                    self.post('center', cv2.UMat.get(center_mat))
+                ROULETTE_BOARD.visible = True
                 (ROULETTE_BOARD.center_x, ROULETTE_BOARD.center_y) = (center_x, center_y)
+
+                if len(thetas) == 2:
+                    x = 0
+                    y = 0
+                    # We multiply angle by 2 for calculating average because
+                    # we want it to be in the range [0,180] instead of [0,360]
+                    for theta in thetas:
+                        if theta > math.pi:
+                            theta -= math.pi*2
+                        x += math.cos(theta*2)
+                        y += math.sin(theta*2)
+                    avg_heading = math.atan2(y, x) * 180 / math.pi / 2
+                    GREEN_BINS[0].angle = avg_heading
 
             # draw centroids of green sections and predict location ~3 seconds later
             _, contours, _ = cv2.findContours(green_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -292,31 +393,34 @@ class Roulette(ModuleBase):
             #    bin_index += 1
 
             assign_bins(contours[:len(GREEN_BINS)], GREEN_BINS, self)
-            self.post('centroids', cv2.UMat.get(mat))
+            if debug and POST_UMAT:
+                self.post('centroids', cv2.UMat.get(mat))
 
-            # draw centroids for red sections and predict location ~3 seconds later
-            _, contours, _ = cv2.findContours(red_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            contours = sorted(contours, key=lambda cont: cv2.contourArea(cont), reverse=True)
-            bin_index = 0
-            for contour in contours[:len(RED_BINS)]:
-                centroid_x, centroid_y = calculate_centroid(contour)
-                cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
-                cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
+            # # draw centroids for red sections and predict location ~3 seconds later
+            # _, contours, _ = cv2.findContours(red_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # contours = sorted(contours, key=lambda cont: cv2.contourArea(cont), reverse=True)
+            # bin_index = 0
+            # for contour in contours[:len(RED_BINS)]:
+            #     centroid_x, centroid_y = calculate_centroid(contour)
+            #     cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
+            #     cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
 
-            assign_bins(contours[:len(RED_BINS)], RED_BINS, self)
-            self.post('centroids', cv2.UMat.get(mat))
+            # assign_bins(contours[:len(RED_BINS)], RED_BINS, self)
+            # if POST_UMAT:
+            #     self.post('centroids', cv2.UMat.get(mat))
 
-            # draw centroids for black sections and predict location ~3 seconds later
-            _, contours, _ = cv2.findContours(black_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            contours = sorted(contours, key=lambda cont: cv2.contourArea(cont), reverse=True)
-            bin_index = 0
-            for contour in contours[:len(BLACK_BINS)]:
-                centroid_x, centroid_y = calculate_centroid(contour)
-                cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
-                cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
+            # # draw centroids for black sections and predict location ~3 seconds later
+            # _, contours, _ = cv2.findContours(black_threshed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # contours = sorted(contours, key=lambda cont: cv2.contourArea(cont), reverse=True)
+            # bin_index = 0
+            # for contour in contours[:len(BLACK_BINS)]:
+            #     centroid_x, centroid_y = calculate_centroid(contour)
+            #     cv2.drawContours(mat, [contour], -1, (0, 255, 0), 2)
+            #     cv2.circle(mat, (centroid_x, centroid_y), 7, (255, 255, 255), -1)
 
-            assign_bins(contours[:len(BLACK_BINS)], BLACK_BINS, self)
-            self.post('centroids', cv2.UMat.get(mat))
+            # assign_bins(contours[:len(BLACK_BINS)], BLACK_BINS, self)
+            # if POST_UMAT:
+                self.post('centroids', cv2.UMat.get(mat))
 
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
