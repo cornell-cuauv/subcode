@@ -30,7 +30,7 @@ class CashInDownward(ModuleBase):
         self.last_run = curr_time
 
         img = img[::2, ::2, :]
-        uimg = cv2.UMat(img)
+        # uimg = cv2.UMat(img)
         h, w, _ = img.shape
 
         shm.camera.downward_height.set(h)

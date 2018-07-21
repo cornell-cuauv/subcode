@@ -11,13 +11,8 @@ from collections import namedtuple
 from cash_in_shared import *
 
 
-module_options = [
-    options.IntOption('min_area', 2000, 1, 2000),
-    options.DoubleOption('min_circularity', .10, 0, 1),
-    options.DoubleOption('max_rectangularity', .75, 0, 1),
-    options.DoubleOption('max_joining_dist', 200, 0, 500),
+module_options = get_shared_options(is_forward=True) + [
 ]
-
 
 
 def get_kernel(size):
@@ -29,6 +24,7 @@ class CashInForward(ModuleBase):
         print("asdf")
         self.img = img
 
+        img = img[::2, ::2, :]
         h, w, _ = img.shape
 
         shm.camera.forward_height.set(h)
@@ -36,28 +32,28 @@ class CashInForward(ModuleBase):
 
         self.post("Original", img)
 
-        set_shared_globals(is_forward=True, options=self.options, post=self.post)
+        set_shared_globals(is_forward=True, options=self.options, post=self.post, img=img)
 
-        preprocessed_image = preprocess(self.img, options=self.options, post=self.post)
-        threshed = threshold(preprocessed_image, options=self.options, post=self.post)
-        contours = find_contours(threshed, options=self.options, post=self.post)
-        bins = find_bins(contours, options=self.options, post=self.post)
+        preprocessed_image = preprocess(img)
+        threshed = threshold(preprocessed_image)
+        contours = find_contours(threshed)
+        funnels = find_funnels(contours)
 
         final = img.copy()
 
-        for name, binn in bins.items():
-            shm_group = shm._eval("recovery_vision_forward_{}".format(name))
-            output = shm_group.get()
+        # for name, binn in bins.items():
+        #     shm_group = shm._eval("recovery_vision_forward_{}".format(name))
+        #     output = shm_group.get()
 
-            output.area = binn.area
-            output.center_x = binn.x
-            output.center_y = binn.y
-            output.probability = binn.probability
+        #     output.area = binn.area
+        #     output.center_x = binn.x
+        #     output.center_y = binn.y
+        #     output.probability = binn.probability
 
-            shm_group.set(output)
+        #     shm_group.set(output)
 
-            cv2.circle(final, (int(binn.x), int(binn.y)), int(math.sqrt(binn.area)), BLUE, 5)
-            cv2.putText(final, name, (int(binn.x), int(binn.y) - 20), cv2.FONT_HERSHEY_SIMPLEX, 1, BLUE, 2)
+        #     cv2.circle(final, (int(binn.x), int(binn.y)), int(math.sqrt(binn.area)), BLUE, 5)
+        #     cv2.putText(final, name, (int(binn.x), int(binn.y) - 20), cv2.FONT_HERSHEY_SIMPLEX, 1, BLUE, 2)
 
         self.post("Final", final)
 
