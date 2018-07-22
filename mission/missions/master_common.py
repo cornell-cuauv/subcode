@@ -32,9 +32,15 @@ from mission.framework.primitive import FunctionTask, HardkillGuarded, \
                                         EnableController, ZeroWithoutHeading, Zero, Succeed, \
                                         Log, Fail
 from mission.constants.region import *
-from sensors.kalman.set_zero_heading import set_zero_heading
 from mission.missions.hydrophones import Full as Hydrophones
+
+from sensors.kalman.set_zero_heading import set_zero_heading
+
+from mission.missions.leds import AllLeds
+
 from collections import namedtuple
+
+MIN_DEPTH = 0.6
 
 class RunTask(Task):
   def on_first_run(self, task, *args, **kwargs):
@@ -47,18 +53,24 @@ class RunTask(Task):
       self.taskCls = task.cls
     self.exceptionCount = 0
     self.maxExceptionCount = 3 #TODO: make settable or more logical
+    self.timeout = task.timeout
+    self.on_exit = task.on_exit
 
 
     self.logi('Starting {} task!'.format(task.name))
 
   def on_run(self, *args, **kwargs):
     #Block non-surfacing tasks from surfacing
-    if not self.task.surfaces and (shm.desires.depth.get() < 0.3 or shm.kalman.depth.get() < .3):
-      Depth(max(0.3, shm.desires.depth.get()))()
-      self.logw('Task attempted to rise above 0.3!')
+    if not self.task.surfaces and (shm.desires.depth.get() < MIN_DEPTH or shm.kalman.depth.get() < MIN_DEPTH):
+      Depth(max(MIN_DEPTH, shm.desires.depth.get()))()
+      self.logw('Task attempted to rise above min depth, {}!'.format(MIN_DEPTH))
 
     #start only required modules
     assertModules(self.task.modules, self.logi)
+
+    if self.timeout is not None and this_run_time - first_run_time > self.timeout:
+      self.logw('Task timed out! Finishing task...'),
+      self.finish()
 
     #actually run the bloody mission
     try:
@@ -80,6 +92,10 @@ class RunTask(Task):
         self.finish()
 
   def on_finish(self):
+    if self.on_exit is not None:
+      self.logv('Running task on_exit...')
+      self.on_exit()
+
     #self.logi("Task {} was finished!".format(self.task.name))
     self.logv('{} task finished in {} seconds!'.format(
             self.task.name,
@@ -89,12 +105,22 @@ class RunTask(Task):
     EnableController()()
     shm.settings_control.quat_pid.set(False)
 
-MissionTask = namedtuple('MissionTask', [
-  'name',
-  'cls',
-  'modules',
-  'surfaces',
-  ])
+# MissionTask = namedtuple('MissionTask', [
+#   'name',
+#   'cls',
+#   'modules',
+#   'surfaces',
+#   'timeout',
+# ])
+
+class MissionTask():
+  def __init__(self, name, cls, modules=None, surfaces=False, timeout=None, on_exit=None):
+    self.name = name
+    self.cls = cls
+    self.modules = modules
+    self.surfaces = surfaces
+    self.timeout = timeout
+    self.on_exit = on_exit
 
 class RunAll(Task):
   def on_first_run(self, tasks, *args, **kwargs):
@@ -120,13 +146,28 @@ class Begin(Task):
       FunctionTask(lambda: shm.deadman_settings.enabled.set(False)),
       Log('Disabling Record vision module'),
       FunctionTask(lambda: shm.vision_modules.Record.set(0)),
-      #WaitForUnkill(killed=False, wait=.5),
-      WaitForUnkill(),
+      AllLeds('orange'),
+
+      Log('Wating for alignment...'),
+      WaitForUnkill(wait=1.0),
+      ZeroHeading(),
+      Log('Aligned heading!'),
+      AllLeds('cyan'),
+
+      Log('Waiting for re-kill...'),
+      WaitForUnkill(killed=False, wait=0.5),
+      AllLeds('blue'),
+
+      Log('Waiting for unkill signal to start mission...'),
+      WaitForUnkill(wait=5.0),
+      Log('Starting mission!'),
+      AllLeds('red'),
+
       Log('Zeroing'),
       Zero(),
       FunctionTask(lambda: shm.switches.soft_kill.set(0)),
       EnableController(),
-      Heading(0),
+      Heading(0), # This will revert to the aligned heading
       Log('Enabling Record vision module'),
       FunctionTask(lambda: shm.vision_modules.Record.set(1)),
     ))
@@ -142,6 +183,7 @@ class End(Task):
       FunctionTask(lambda: shm.deadman_settings.enabled.set(True)),
     ))
 
+# Not used in 2018, perhaps this was 2017?
 class HydrophonesWithVision(Task):
   # TODO use a ConcurrentOr combinator instead?
   def on_first_run(self, vision, *args, **kwargs):
@@ -158,6 +200,46 @@ class HydrophonesWithVision(Task):
       self.logi('Hydrophones finished after seeing mission element in vision')
       self.finish()
 
+VisionFramePeriod = lambda period: FunctionTask(lambda: shm.vision_module_settings.time_between_frames.set(period))
+
+ConfigureHydromath = lambda enable: FunctionTask(lambda: shm.hydrophones_settings.enabled.set(enable))
+
+TrackerGetter = lambda found_roulette, found_cash_in: Sequential(
+  # Reset found task
+  FunctionTask(lambda: find_task(0)),
+  # Turn on hydromathd
+  ConfigureHydromath(True),
+  # Don't kill CPU with vision
+  VisionFramePeriod(0.5),
+  MasterConcurrent(
+    Conditional(
+      # Find either roulette or cash-in
+      Either(
+        Consistent(test=lambda: shm.bins_vision.board_visible.get(),
+                   count=4, total=5, invert=False, result=True),
+        Consistent(test=lambda: shm.recovery_vision_downward_bin_red.probability.get() > 0,
+                   count=4, total=5, invert=False, result=False),
+      ),
+      # Success is roulette
+      on_success=found_roulette,
+      # Failure is cash-in
+      on_fail=found_cash_in,
+    ),
+    # Track with hydrophones
+    Hydrophones(),
+  ),
+  Zero(),
+  # This should end up getting run twice because we call it in on_exit... but just in case
+  TrackerCleanup(),
+)
+
+TrackerCleanup = lambda: Sequential(
+  # Turn off hydromathd
+  ConfigureHydromath(False),
+  # Go back to normal vision settings
+  VisionFramePeriod(0.1),
+)
+
 BeginMission = MissionTask(
   name = 'BeginMission', #DON'T CHANGE THIS!!!!
   cls = Begin,
@@ -171,3 +253,5 @@ EndMission = MissionTask(
   modules = None,
   surfaces = True
 )
+
+ZeroHeading = lambda: FunctionTask(set_zero_heading)

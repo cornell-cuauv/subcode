@@ -7,7 +7,7 @@ from mission.framework.task import Task
 from mission.framework.combinators import Sequential, MasterConcurrent, Conditional, Either
 from mission.framework.primitive import FunctionTask, Zero, NoOp
 
-from mission.missions.master_common import RunAll, MissionTask
+from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup
 
 from mission.missions.will_common import BigDepth, Consistent, FakeMoveX
 
@@ -22,18 +22,22 @@ DriveToSecondPath = Sequential(
     BigDepth(1.2),
 )
 
+# ------
+
 gate = MissionTask(
     name='Gate',
     cls=Gate,
     modules=[shm.vision_modules.BicolorGate],
     surfaces=False,
+    timeout=None,
 )
 
-path1 = MissionTask(
+path = lambda: MissionTask(
     name='Path1',
     cls=PathGetter(),
     modules=[shm.vision_modules.Pipes],
     surfaces=False,
+    timeout=None,
 )
 
 highway = MissionTask(
@@ -41,13 +45,7 @@ highway = MissionTask(
     cls=DriveToSecondPath,
     modules=None,
     surfaces=False,
-)
-
-path2 = MissionTask(
-    name='Path2',
-    cls=PathGetter(),
-    modules=[shm.vision_modules.Pipes],
-    surfaces=False,
+    timeout=None,
 )
 
 roulette = MissionTask(
@@ -55,6 +53,7 @@ roulette = MissionTask(
     cls=Roulette,
     modules=[shm.vision_modules.Roulette],
     surfaces=False,
+    timeout=None,
 )
 
 cash_in = MissionTask(
@@ -62,6 +61,7 @@ cash_in = MissionTask(
     cls=NoOp(),
     modules=[shm.vision_modules.CashInDownward, shm.vision_modules.CashInForward],
     surfaces=True,
+    timeout=None,
 )
 
 # Which task have we found at random pinger?
@@ -82,64 +82,27 @@ def get_found_task():
     else:
         return MissionTask(name="Failure", cls=NoOp(), modules=None, surfaces=False)
 
-VisionFramePeriod = lambda period: FunctionTask(lambda: shm.vision_module_settings.time_between_frames.set(period))
-
-ConfigureHydromath = lambda enable: FunctionTask(lambda: shm.hydrophones_settings.enabled.set(enable))
-
-TrackerGetter = lambda: Sequential(
-    # Reset found task
-    FunctionTask(lambda: find_task(0)),
-    # Turn on hydromathd
-    ConfigureHydromath(True),
-    # Don't kill CPU with vision
-    VisionFramePeriod(0.5),
-    MasterConcurrent(
-        Conditional(
-            # Find either roulette or cash-in
-            Either(
-                Consistent(test=lambda: shm.bins_vision.board_visible.get(),
-                           count=4, total=5, invert=False, result=True),
-                Consistent(test=lambda: shm.recovery_vision_downward_bin_red.probability.get() > 0,
-                           count=4, total=5, invert=False, result=False),
-            ),
-            # Success is roulette
-            on_success=FunctionTask(lambda: find_task(ROULETTE)),
-            # Failure is cash-in
-            on_fail=FunctionTask(lambda: find_task(CASH_IN)),
-        ),
-        # Track with hydrophones
-        Hydrophones(),
+track = lambda: MissionTask(
+    name="Track",
+    cls=TrackerGetter(
+        found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
+        found_cash_in=FunctionTask(lambda: find_task(CASH_IN)),
     ),
-    Zero(),
-    # Turn off hydromathd
-    ConfigureHydromath(False),
-    # Go back to normal vision settings
-    VisionFramePeriod(0.1),
-)
-
-track1 = MissionTask(
-    name="Track1",
-    cls=TrackerGetter(),
     modules=[shm.vision_modules.CashInDownward, shm.vision_modules.Roulette],
     surfaces=False,
-)
-
-track2 = MissionTask(
-    name="Track2",
-    cls=TrackerGetter(),
-    modules=[shm.vision_modules.CashInDownward, shm.vision_modules.Roulette],
-    surfaces=False,
+    timeout=None,
+    on_exit=TrackerCleanup()
 )
 
 tasks = [
     gate,
-    #path1,
+    path,
     highway,
-    #path2,
-    track1,
+    path,
+    track,
     get_found_task,
-    #track2,
-    #get_found_task,
+    track,
+    get_found_task,
 ]
 
 Master = RunAll(tasks)
