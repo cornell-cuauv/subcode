@@ -1,3 +1,5 @@
+import struct
+
 import shm
 
 from mission.framework.primitive import FunctionTask
@@ -9,7 +11,11 @@ def get_decimal_color(color):
     # It might be a name
     if color in colors:
         color = colors[color]
-    return struct.pack('f', struct.unpack('i', int(color, 16)))
+
+    #color = ((256 << 16) + (256 << 8) + (256 << 0)) << 32
+    #print(color)
+    #return struct.unpack('>d', struct.pack('>q', color))[0]
+    return 55555555
 
 def leds_color(port, star, aft):
     leds = shm.leds.get()
@@ -38,3 +44,4 @@ colors = {
 TestRed = AllLeds('red')
 TestCyan = AllLeds('cyan')
 TestOrange = AllLeds('orange')
+TestWhite = AllLeds('white')
