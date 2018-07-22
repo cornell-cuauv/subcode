@@ -41,19 +41,19 @@ class CashInForward(ModuleBase):
 
         final = img.copy()
 
-        # for name, binn in bins.items():
-        #     shm_group = shm._eval("recovery_vision_forward_{}".format(name))
-        #     output = shm_group.get()
+        for name, funnel in funnels.items():
+            shm_group = shm._eval("recovery_vision_forward_{}".format(name))
+            output = shm_group.get()
 
-        #     output.area = binn.area
-        #     output.center_x = binn.x
-        #     output.center_y = binn.y
-        #     output.probability = binn.probability
+            output.area = funnel.area
+            output.center_x = funnel.x
+            output.center_y = funnel.y
+            output.probability = funnel.probability
 
-        #     shm_group.set(output)
+            shm_group.set(output)
 
-        #     cv2.circle(final, (int(binn.x), int(binn.y)), int(math.sqrt(binn.area)), BLUE, 5)
-        #     cv2.putText(final, name, (int(binn.x), int(binn.y) - 20), cv2.FONT_HERSHEY_SIMPLEX, 1, BLUE, 2)
+            cv2.circle(final, (int(funnel.x), int(funnel.y)), int(math.sqrt(funnel.area)), COLORS["BLUE"], 5)
+            cv2.putText(final, name, (int(funnel.x), int(funnel.y) - 20), cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS["BLUE"], 2)
 
         self.post("Final", final)
 

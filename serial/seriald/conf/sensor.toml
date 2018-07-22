@@ -6,6 +6,6 @@ TemperatureReadVar = "temperature.hull"
 
 LightShowWriteVar = "leds.light_show"
 ## Disabled currrently since they are int32s packed as floates
-# ForeColorWriteVar = "leds.aft_color"
-# PortColorWriteVar = "leds.port_color"
-# StarboardColorWriteVar = "leds.starboard_color"
+ForeColorWriteVar = "leds.aft_color"
+PortColorWriteVar = "leds.port_color"
+StarboardColorWriteVar = "leds.starboard_color"

@@ -15,11 +15,11 @@ def get_shared_options(is_forward):
     return [
         # Global
         options.BoolOption('in_simulator', False),
-        options.BoolOption('preprocess_debug', True),
-        options.BoolOption('thresh_debug', True),
-        options.BoolOption('contour_debug', True),
-        options.BoolOption('bins_debug', True),
-        options.BoolOption('funnels_debug', True),
+        options.BoolOption('preprocess_debug', False),
+        options.BoolOption('thresh_debug', False),
+        options.BoolOption('contour_debug', False),
+        options.BoolOption('bins_debug', False),
+        options.BoolOption('funnels_debug', False),
 
         # Preprocess
         options.IntOption('gaussian_kernel', (2, 5)[is_forward], 1, 40),
@@ -28,16 +28,19 @@ def get_shared_options(is_forward):
         # Threshing
         options.IntOption('erode_size', (2, 5)[is_forward], 1, 40),
         options.IntOption('thresh_size', (15, 15)[is_forward], 1, 100),
-        options.IntOption("lab_a_min_red_funnel", 145, 0, 255),
+        options.IntOption("lab_a_min_red_funnel", 137, 0, 255),
         options.IntOption("lab_a_max_red_funnel", 250, 0, 255),
+        options.IntOption("color_dist_min_red_funnel", 137, 0, 255),
+        options.IntOption("color_dist_max_red_funnel", 250, 0, 255),
 
         # Contouring
-        options.IntOption('min_area', (10, 200)[is_forward], 1, 2000),
+        options.IntOption('min_area', (10, 100)[is_forward], 1, 2000),
+        options.IntOption('min_y', (0, 70)[is_forward], 0, 2000),
         options.DoubleOption('min_circularity', (0.4, 0.1)[is_forward], 0, 1),
         options.DoubleOption('max_rectangularity', 0.9, 0, 1),
 
         # Binning
-        options.DoubleOption('max_joining_dist', 200, 0, 500),
+        options.DoubleOption('max_joining_dist', 120, 0, 500),
     ]
 
 def copy_mat(mat):
@@ -96,9 +99,6 @@ def avg_fc(*fcs):
     return FeaturedContour(x, y, area, None, None)
 
 
-
-
-
 def preprocess(img):
     debug = shared.options["preprocess_debug"]
 
@@ -110,7 +110,6 @@ def preprocess(img):
         shared.post("preprocessed", blurred)
 
     return blurred
-
 
 
 def threshold(img):
@@ -233,6 +232,20 @@ def threshold(img):
             #     3,
             # )
 
+            dist_from_red = np.linalg.norm(img.astype(int) - [147, 0, 31], axis=2).astype(int)
+            print(dist_from_red.dtype)
+
+            rf = threshes["red_funnel"] = cv2.inRange(
+                dist_from_red,
+                shared.options["color_dist_min_red_funnel"],
+                shared.options["color_dist_max_red_funnel"],
+            )
+
+            funnel = np.sum(rf != 0) / (rf.shape[0] * rf.shape[1])
+
+            shm.recovery_vision_downward_red.probability.set(funnel)
+
+
             threshes["all_bins"] = cv2.inRange(
                 lab_b,
                 170,
@@ -303,6 +316,9 @@ def find_contours(images):
             moments = cv2.moments(contour)
             x = int(moments['m10']/moments['m00'])
             y = int(moments['m01']/moments['m00'])
+
+            if y < shared.options["min_y"]:
+                continue
 
             cs.append(FeaturedContour(x, y, area, contour, circularity))
 
