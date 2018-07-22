@@ -37,11 +37,12 @@ VISION_CONFIG=$ROOT/vision/configs/master.yaml
 
 if [ "$SUBMARINE" = "castor" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
-  visiongui cameras webgui modules deadman uptime 
+  visiongui cameras webgui modules deadman uptime
   dvld hydromathd)
 elif [ "$SUBMARINE" = "pollux" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
-  visiongui cameras webgui modules deadman uptime)
+  visiongui cameras webgui modules deadman uptime
+  hydromathd)
 else
   echo "Unsupported submarine! Must be set to one of { artemis, apollo }!"
 fi
