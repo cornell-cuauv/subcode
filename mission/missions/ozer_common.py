@@ -358,7 +358,16 @@ class ConsistentTask(Task):
         if self.cons_check.check(task.finished):
             self.finish()
         if debug:
-            self.logd("{}/{}/{}".format(sum(x == 1 for x in self.cons_check.results), self.cons_check.count, self.cons_check.total))
+            success_char = ["x", "^"][self.cons_check.results[-1] == 1]
+            dropped_char = ["x", "^"][self.cons_check.results[0] == 1]
+
+            self.logd("{}/{}/{}/{}/{}".format(
+                success_char,
+                sum(x == 1 for x in self.cons_check.results),
+                self.cons_check.count,
+                self.cons_check.total,
+                dropped_char,
+            ))
 
 class Disjunction(Task):
     """
