@@ -9,6 +9,7 @@ import sys
 import time
 from time import sleep
 import colorsys
+import numpy as np
 import shm
 from shm import leds as s_led
 from shm import watchers, switches
@@ -153,6 +154,30 @@ def pressure():
         sleep(.1)
 
 
+def trim():
+    while True:
+        p = shm.kalman.pitch.get()
+        r = shm.kalman.roll.get()
+
+        GOOD = np.array((0, 255, 0))
+        BAD = np.array((255, 0, 0))
+
+        p_rating = 1 - np.clip(abs(p) - 1, 0, 9) / 9
+        r_rating = 1 - np.clip(abs(r) - 1, 0, 9) / 9
+
+        p_color = p_rating * GOOD + (1 - p_rating) * BAD
+        r_color = r_rating * GOOD + (1 - r_rating) * BAD
+
+        for side, color in zip(LEDS.values(), (r_color, p_color)):
+            r, g, b = color
+            side["red"].set(int(r))
+            side["green"].set(int(g))
+            side["blue"].set(int(b))
+
+        sleep(.1)
+        print(r_rating, p_rating)
+
+
 def daemon():
     watcher = watchers.watcher()
     watcher.watch(switches)
@@ -188,6 +213,7 @@ options = {
     "fade": fade,
     "rainbow": rainbow,
     "pressure": pressure,
+    "trim": trim,
 }
 
 if __name__ == "__main__":
