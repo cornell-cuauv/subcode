@@ -89,7 +89,6 @@ class System(Test):
         service_down_color = '[1;31m'
         return service_down_color not in str(shell('trogdor').stdout)
 
-@vehicle(CASTOR)
 class Hydrophones(Test):
     def board_talking():
         return is_changing(shm.hydrophones_status.packet_count.get)

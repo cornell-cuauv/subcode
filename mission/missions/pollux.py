@@ -4,10 +4,11 @@
 import shm
 
 from mission.framework.combinators import Sequential
+from mission.framework.timing import Timer
 
 from mission.missions.will_common import BigDepth, FakeMoveX
 
-from mission.missions.master_common import RunAll, MissionTask
+from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup
 
 from mission.missions.gate import gate as Gate
 from mission.missions.path import get_path as PathGetter
@@ -19,6 +20,26 @@ GoToSecondPath = Sequential(
     BigDepth(1.2),
 )
 
+def time_left():
+    # TODO test this?
+    time_in = Master.this_run_time - Master.first_run_time
+    return 20 * 60 - time_in
+
+WaitForTime = Sequential(
+    Zero(),
+    Log('Waiting until five minutes left...'),
+    Log('Time left: {}, so waiting {} seconds.'.format(time_left(), max(time_left - 5 * 60, 0))),
+    # Wait until five minutes left
+    lambda: Timer(max(time_left() - 5 * 60, 0)),
+)
+
+SurfaceAtCashIn = Sequential(
+    Log('Surfacing at cash-in!'),
+    BigDepth(0),
+)
+
+# --------
+
 gate = MissionTask(
     name='Gate',
     cls=Gate,
@@ -26,8 +47,8 @@ gate = MissionTask(
     surfaces=False,
 )
 
-path1 = MissionTask(
-    name='Path1',
+path = MissionTask(
+    name='Path',
     cls=PathGetter(),
     modules=[shm.vision_modules.Pipes],
     surfaces=False,
@@ -47,19 +68,40 @@ highway = MissionTask(
     surfaces=False,
 )
 
-path2 = MissionTask(
-    name='Path2',
-    cls=PathGetter(),
-    modules=[shm.vision_modules.Pipes],
+wait_for_track = MissionTask(
+    name='StuckInTraffic',
+    cls=WaitForTime,
+    modules=None,
     surfaces=False,
+)
+
+track = MissionTask(
+    name='Track',
+    cls=TrackerGetter(
+        # We can't actually find roulette because the vision module is disabled
+        found_roulette=NoOp(),
+        found_cash_in=NoOp(),
+    ),
+    modules=[shm.vision_modules.CashInDownward],
+    surfaces=False,
+    on_exit=TrackerCleanup(),
+)
+
+surface_cash_in = MissionTask(
+    name='SurfaceCashIn',
+    cls=SurfaceAtCashIn,
+    modules=None,
+    surfaces=True,
 )
 
 tasks = [
     gate,
-    path1,
+    path,
     dice,
     highway,
-    path2,
+    path,
+    wait_for_track,
+    surface_cash_in,
 ]
 
 Master = RunAll(tasks)
