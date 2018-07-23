@@ -24,6 +24,9 @@ from mission.framework.task import Task
 from mission.framework.stateful_tasks import StatefulTask
 from mission.constants.config import recovery
 
+from conf.vehicle import VEHICLE
+
+is_mainsub = VEHICLE == 'castor'
 
 # WILL ITS THIS ONE!
 STOP_OVER_PINGER = False
@@ -68,13 +71,13 @@ PingData = collections.namedtuple("PingData", ["phases", "heading",
 PINGS_LISTEN = 10
 MIN_CONSISTENT_PINGS = 3
 
-TRACK_MAG_THRESH = 11000#600
+TRACK_MAG_THRESH = 20000 # changed for Pollux, potentially not correct?
 PINGER_PERIOD = 1.0
 
 MAX_FOLLOW_HEADING_DEVIATION = 10
 SLOW_DOWN_DISTANCE = 5
 MIN_DEVIATING_PING_ELEVATION = 65
-MAX_FOLLOW_SPEED = 0.3
+MAX_FOLLOW_SPEED = 0.3 if is_mainsub else 0.2
 MIN_FOLLOW_SPEED = 0.1
 MAX_ONTOP_OF_PINGER_ELEVATION = 10 # Try 15 in real life
 

@@ -13,6 +13,8 @@ from misc.utils import watch_thread_wrapper
 from mission.framework.helpers import get_sub_position, get_sub_quaternion
 from mission.framework.primitive import NoOp
 
+from conf.vehicle import VEHICLE
+
 PINGER_FREQ = 39500
 TRACK_MAG_THRESH = 11000
 
@@ -24,6 +26,8 @@ NIPPLE_DISTANCE = 0.013
 # Directional vector in body frame between first and second transducers.
 trans_vec = np.array((1, 0, 0))
 trans_vec2 = np.array((0, -1, 0))
+
+is_mainsub = VEHICLE == 'castor'
 
 class Localizer:
   def __init__(self, frequency):
@@ -45,7 +49,7 @@ class Localizer:
     if kz_2 < 0:
       kz_2 = 0
 
-    heading = 3.14 + math.atan2(ky, kx) # Oopsy daisys, I did it againsy!
+    heading = (3.14 if is_mainsub else 0) + math.atan2(ky, kx) # Oopsy daisys, I did it againsy!
     # > hi every1 im new!!!!!!!
     # > holds up spork my name is katy but u can call me t3h PeNgU1N oF d00m!!!!!!!!
     # > lol?as u can see im very random!!!!

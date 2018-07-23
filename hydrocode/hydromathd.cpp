@@ -131,13 +131,11 @@ void do_track(){
       float kx = SOUND_SPEED * shm_results_track.diff_phase_x / (NIPPLE_DISTANCE * 2 * M_PI * shm_settings.track_frequency_target);
       float ky = SOUND_SPEED * shm_results_track.diff_phase_y / (NIPPLE_DISTANCE * 2 * M_PI * shm_settings.track_frequency_target);
 
-      std::cerr << "ky is " << ky << " and kx is " << kx << std::endl;
-
-
+      // std::cerr << "ky is " << ky << " and kx is " << kx << std::endl;
 
       float kz_2 = 1 - kx * kx - ky * ky;
       if (kz_2 < 0) {
-        std::cerr << "WARNING1: z mag is negative! " << kz_2 << std::endl;
+          // std::cerr << "WARNING1: z mag is negative! " << kz_2 << std::endl;
         kz_2 = 0;
       }
 
