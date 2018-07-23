@@ -143,12 +143,7 @@ void do_track(){
 
       shm_results_track.daemon_start_time = daemon_start_time;
       shm_results_track.tracked_ping_time = ping_time;
-      if (is_mainsub) {
-          shm_results_track.tracked_ping_heading_radians = 3.14 + std::atan2(ky, kx); // I apologize for this;
-      } else {
-          // Pollux has hydrophones mounted 180 degrees off from Castor. I also apologize for this.
-          shm_results_track.tracked_ping_heading_radians = std::fmod(std::atan2(ky, kx) + 6.28, 6.28);
-      }
+      shm_results_track.tracked_ping_heading_radians = (is_mainsub ? 3.14 : 0) + std::atan2(ky, kx);
       shm_results_track.tracked_ping_elevation_radians = std::acos(std::sqrt(kz_2));
 
       shm_results_track.tracked_ping_count++;
@@ -308,6 +303,8 @@ int main (int argc, char ** argv) {
     if (!shm_settings.enabled) {
       continue;
     }
+
+    // std::cerr << element_a << ", " << element_b << ", " << element_c << std::endl;
 
     for (int i = 0; i < 3*CHANNEL_DEPTH; i+=3) {
       windowcf_push(w,    std::complex<float>(spt.data[i+element_b],0)); //This uses channel B
