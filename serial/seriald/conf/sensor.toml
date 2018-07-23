@@ -5,7 +5,10 @@ PressureReadVar = "pressure.hull"
 TemperatureReadVar = "temperature.hull"
 
 LightShowWriteVar = "leds.light_show"
-## Disabled currrently since they are int32s packed as floates
-ForeColorWriteVar = "leds.aft_color"
-PortColorWriteVar = "leds.port_color"
-StarboardColorWriteVar = "leds.starboard_color"
+# Green and blue are flipped
+PortColorRedWriteVar = "leds.port_color_red"
+PortColorGreenWriteVar = "leds.port_color_blue"
+PortColorBlueWriteVar = "leds.port_color_green"
+StarboardColorRedWriteVar = "leds.starboard_color_red"
+StarboardColorGreenWriteVar = "leds.starboard_color_blue"
+StarboardColorBlueWriteVar = "leds.starboard_color_green"

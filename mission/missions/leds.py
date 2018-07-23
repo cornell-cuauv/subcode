@@ -12,22 +12,27 @@ def get_decimal_color(color):
     if color in colors:
         color = colors[color]
 
-    #color = ((256 << 16) + (256 << 8) + (256 << 0)) << 32
-    #print(color)
-    #return struct.unpack('>d', struct.pack('>q', color))[0]
-    return 55555555
+    i = int(color, 16)
+    mask = int('FF', 16)
 
-def leds_color(port, star, aft):
+    return ((i >> 16) & mask, (i >> 8) & mask, i & mask)
+
+def leds_color(port_color, star_color):
     leds = shm.leds.get()
-    leds.port_color = get_decimal_color(port)
-    leds.starboard_color = get_decimal_color(star)
-    leds.aft_color = get_decimal_color(aft)
+    port = get_decimal_color(port_color)
+    star = get_decimal_color(star_color)
+    leds.port_color_red = port[0]
+    leds.port_color_green = port[1]
+    leds.port_color_blue = port[2]
+    leds.starboard_color_red = star[0]
+    leds.starboard_color_green = star[1]
+    leds.starboard_color_blue = star[2]
     shm.leds.set(leds)
 
 LightShow = lambda num: FunctionTask(lambda: light_show(num))
 
-Leds = lambda port, star, aft: FunctionTask(lambda: leds_color(port, star, aft))
-AllLeds = lambda color: Leds(color, color, color)
+Leds = lambda port, star: FunctionTask(lambda: leds_color(port, star))
+AllLeds = lambda color: Leds(color, color)
 
 colors = {
     'black': '000000',
@@ -38,10 +43,15 @@ colors = {
     'cyan': '00FFFF',
     'purple': 'FF00FF',
     'white': 'FFFFFF',
-    'orange': 'FF8000',
+    'orange': 'FF3000',
+    'pink': 'FF4545',
+    'magenta': 'FF00FF',
 }
 
 TestRed = AllLeds('red')
 TestCyan = AllLeds('cyan')
 TestOrange = AllLeds('orange')
 TestWhite = AllLeds('white')
+TestMagenta = AllLeds('magenta')
+
+TestBothSides = Leds('red', 'blue')

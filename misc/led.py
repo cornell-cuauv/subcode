@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """
 LED routines.
@@ -6,19 +6,22 @@ Run with "auv-led <routine>"
 """
 
 import sys
+import time
 from time import sleep
-from shm import led as s_led
+import colorsys
+import shm
+from shm import leds as s_led
 from shm import watchers, switches
 
 LEDS = {'port': {
-            'red': s_led.port_red,
-            'green': s_led.port_green,
-            'blue': s_led.port_blue
+            'red': s_led.port_color_red,
+            'green': s_led.port_color_green,
+            'blue': s_led.port_color_blue
                 },
         'starboard': {
-            'red': s_led.starboard_red,
-            'green': s_led.starboard_green,
-            'blue': s_led.starboard_blue
+            'red': s_led.starboard_color_red,
+            'green': s_led.starboard_color_green,
+            'blue': s_led.starboard_color_blue
                 },
         }
 
@@ -40,7 +43,7 @@ def fade_group(pins, start, to, duration):
     for i in range(abs(delta)):
         sleep(timestep)
         cur_val += step
-        set_group(pins, cur_val)
+        set_group(pins, int(cur_val))
     set_group(pins, to)
 
 int1 = 0.03
@@ -69,12 +72,13 @@ def flash():
 def beacon():
     DEPTH_THRESH = 2.0
     while 1:
-        for led in LEDS.values():
-            blink([led], 3)
-            blink([led], 4)
-            blink([led], 5)
+        for side in LEDS.values():
+            for led in side.values():
+                blink([led], 3)
+                blink([led], 4)
+                blink([led], 5)
 
-        if shared_vars["depth"].get() < DEPTH_THRESH:
+        if shm.depth.depth.get() - shm.depth.offset.get() < DEPTH_THRESH:
             sleep(0.6)
         else:
             sleep(8) #Nobody can see the sub anyway
@@ -86,6 +90,8 @@ def police():
     LEDS_USED = [LED1, LED2]
     def quint():
         blink(LEDS_USED, 5)
+
+
 
     while 1:
         for j in range(5):
@@ -111,6 +117,42 @@ def strobe():
         set_all(0)
         sleep(int2)
 
+
+def rainbow():
+    while True:
+        hue_port = (time.time() / 5) % 1
+        hue_star = (time.time() / 5 + 2.5) % 1
+
+        for side, hue in zip(LEDS.values(), (hue_port, hue_star)):
+            r, g, b = colorsys.hsv_to_rgb(hue, 1, 1)
+            side["red"].set(int(r * 255))
+            side["green"].set(int(g * 255))
+            side["blue"].set(int(b * 255))
+
+
+def pressure():
+    while True:
+        p = shm.pressure.hull.get()
+
+        p_low = .7
+        p_high = .89
+
+        if p_low < p < p_high:
+            h = .5 - (p - p_low) / (p_high - p_low) / 2
+            r, g, b = colorsys.hsv_to_rgb(h, 1, 1)
+            for side in LEDS.values():
+                side["red"].set(int(r * 255))
+                side["green"].set(int(g * 255))
+                side["blue"].set(int(b * 255))
+        else:
+            for side in LEDS.values():
+                side["red"].set(255)
+                side["green"].set(0)
+                side["blue"].set(0)
+
+        sleep(.1)
+
+
 def daemon():
     watcher = watchers.watcher()
     watcher.watch(switches)
@@ -135,23 +177,27 @@ def daemon():
             blink([LEDS["port"]["blue"], LEDS["starboard"]["blue"]], 3)
         last_sk = sk
 
-options = { "beacon" : beacon, \
-            "flash" : flash, \
-            "off" : lambda: set_all(0), \
-            "on" : lambda: set_all(255), \
-            "police" : police, \
-            "strobe" : strobe, \
-            "daemon" : daemon, \
-            "fade": fade }
+options = {
+    "beacon" : beacon,
+    "flash" : flash,
+    "off" : lambda: set_all(0),
+    "on" : lambda: set_all(255),
+    "police" : police,
+    "strobe" : strobe,
+    "daemon" : daemon,
+    "fade": fade,
+    "rainbow": rainbow,
+    "pressure": pressure,
+}
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2 or not options.has_key(sys.argv[1]):
-        print "Please supply one argument:"
-        print "\n".join(options.keys())
+    if len(sys.argv) != 2 or not sys.argv[1] in options:
+        print("Please supply one argument:")
+        print("\n".join(options.keys()))
         sys.exit(1)
 
     try:
         options[sys.argv[1]]()
     except KeyboardInterrupt:
-        print "done."
+        print("done.")
         set_all(0)
