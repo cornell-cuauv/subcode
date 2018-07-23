@@ -23,7 +23,7 @@ PATH_FOLLOW_DEPTH = 1.2
 
 is_castor = VEHICLE == 'castor'
 
-SearchTask = lambda: SearchFor(VelocitySwaySearch(forward=(6 if is_castor else 2), stride=(10 if is_castor else 6), speed=0.1, rightFirst=True),
+SearchTask = lambda: SearchFor(VelocitySwaySearch(forward=(6 if is_castor else 2), stride=(10 if is_castor else 8), speed=0.1, rightFirst=True),
                                 lambda: shm.path_results.num_lines.get() == 2,
                                 consistent_frames=(60, 90))
 

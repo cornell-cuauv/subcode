@@ -3,15 +3,16 @@
 
 import shm
 
-from mission.framework.combinators import Sequential
+from mission.framework.combinators import MasterConcurrent, Sequential
 from mission.framework.timing import Timer
+from mission.framework.primitive import Log, Zero, NoOp
 
 from mission.missions.will_common import BigDepth, FakeMoveX
 
 from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup
 
 from mission.missions.gate import gate as Gate
-from mission.missions.path import get_path as PathGetter
+from mission.missions.path import path as Path
 from mission.missions.dice import Full as Dice
 
 GoToSecondPath = Sequential(
@@ -22,15 +23,15 @@ GoToSecondPath = Sequential(
 
 def time_left():
     # TODO test this?
-    time_in = Master.this_run_time - Master.first_run_time
-    return 20 * 60 - time_in
+    #time_in = Master.this_run_time - Master.first_run_time
+    return 0 #20 * 60 - time_in
 
 WaitForTime = Sequential(
     Zero(),
     Log('Waiting until five minutes left...'),
-    Log('Time left: {}, so waiting {} seconds.'.format(time_left(), max(time_left - 5 * 60, 0))),
+    Log('Time left: {}, so waiting {} seconds.'.format(time_left(), max(time_left() - 5 * 60, 0))),
     # Wait until five minutes left
-    lambda: Timer(max(time_left() - 5 * 60, 0)),
+    Timer(max(time_left() - 5 * 60, 0)),
 )
 
 SurfaceAtCashIn = Sequential(
@@ -47,9 +48,9 @@ gate = MissionTask(
     surfaces=False,
 )
 
-path = MissionTask(
+path = lambda: MissionTask(
     name='Path',
-    cls=PathGetter(),
+    cls=Path,
     modules=[shm.vision_modules.Pipes],
     surfaces=False,
 )

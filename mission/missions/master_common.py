@@ -22,7 +22,7 @@ import traceback
 
 from mission.framework.task import Task
 from mission.opt_aux.aux import *
-from mission.framework.combinators import Sequential, Retry, Concurrent
+from mission.framework.combinators import MasterConcurrent, Sequential, Retry, Concurrent, Conditional, Either
 from mission.missions.opt import Opt, assertModules, killAllModules
 from mission.missions.start import WaitForUnkill
 from mission.framework.movement import *
@@ -33,6 +33,8 @@ from mission.framework.primitive import FunctionTask, HardkillGuarded, \
                                         Log, Fail
 from mission.constants.region import *
 from mission.missions.hydrophones import Full as Hydrophones
+
+from mission.missions.will_common import Consistent
 
 from sensors.kalman.set_zero_heading import set_zero_heading
 
@@ -154,9 +156,10 @@ class Begin(Task):
       Log('Aligned heading!'),
       AllLeds('cyan'),
 
-      Log('Waiting for re-kill...'),
-      WaitForUnkill(killed=False, wait=0.5),
-      AllLeds('blue'),
+      # Need a swimmer to do this
+      #Log('Waiting for re-kill...'),
+      #WaitForUnkill(killed=False, wait=0.5),
+      #AllLeds('blue'),
 
       Log('Waiting for unkill signal to start mission...'),
       WaitForUnkill(wait=5.0),

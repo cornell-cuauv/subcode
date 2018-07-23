@@ -68,7 +68,7 @@ def align_buoy(num, db, mult=1):
 SearchBuoy = lambda num, count, total: Sequential(
     BigDepth(BUOY_DEPTH),
     SearchFor(
-        ForwardSearch(forward=4, stride=8, speed=0.1),
+        ForwardSearch(forward=3, stride=8, speed=0.1),
         shm_vars[num].visible.get,
         consistent_frames=(count * 60, total * 60) # multiple by 60 to specify in seconds
     ),
