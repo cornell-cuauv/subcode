@@ -3,6 +3,8 @@
 #include "liquid.h"//also installed fftw.hpp for faster fft (inherited dependency)
 #include "udp_receiver.hpp"
 #include <sys/time.h>
+#include <cstdlib>
+#include <cmath>
 
 //received UDP packet from uC
 superdongle_packet_t spt;
@@ -37,6 +39,8 @@ float spectrum_fft_magnitude [SPECTRUM_FFT_LENGTH/2];
 int daemon_start_time;
 timeval tv_daemon_start_time, tv_ping_time;
 double next_ping_time;
+
+bool is_mainsub;
 
 void do_track(){
 
@@ -139,7 +143,12 @@ void do_track(){
 
       shm_results_track.daemon_start_time = daemon_start_time;
       shm_results_track.tracked_ping_time = ping_time;
-      shm_results_track.tracked_ping_heading_radians = 3.14 + std::atan2(ky, kx); // I apologize for this;
+      if (is_mainsub) {
+          shm_results_track.tracked_ping_heading_radians = 3.14 + std::atan2(ky, kx); // I apologize for this;
+      } else {
+          // Pollux has hydrophones mounted 180 degrees off from Castor. I also apologize for this.
+          shm_results_track.tracked_ping_heading_radians = std::fmod(std::atan2(ky, kx) + 6.28, 6.28);
+      }
       shm_results_track.tracked_ping_elevation_radians = std::acos(std::sqrt(kz_2));
 
       shm_results_track.tracked_ping_count++;
@@ -243,6 +252,8 @@ void do_spectrum() {
 
 
 int main (int argc, char ** argv) {
+  is_mainsub = strcmp(std::getenv("CUAUV_VEHICLE_TYPE"), "mainsub") == 0;
+
   w=windowcf_create(SPECTRUM_FFT_LENGTH);
   wchA = windowcf_create(TRACK_LENGTH);
   wchB = windowcf_create(TRACK_LENGTH);
@@ -282,6 +293,10 @@ int main (int argc, char ** argv) {
   daemon_start_time = (int) tv_daemon_start_time.tv_sec;
   next_ping_time = 2.0;
 
+  int element_a = is_mainsub ? 1 : 1;
+  int element_b = is_mainsub ? 2 : 0;
+  int element_c = is_mainsub ? 0 : 2;
+
   shm_getg(hydrophones_status, shm_status);
   while (loop(&spt) == 0) {
     shm_getg(hydrophones_settings, shm_settings);
@@ -295,11 +310,11 @@ int main (int argc, char ** argv) {
     }
 
     for (int i = 0; i < 3*CHANNEL_DEPTH; i+=3) {
-      windowcf_push(w,    std::complex<float>(spt.data[i+2],0)); //This uses channel B
+      windowcf_push(w,    std::complex<float>(spt.data[i+element_b],0)); //This uses channel B
 
-      windowcf_push(wchA, std::complex<float>(spt.data[i+1],0));
-      windowcf_push(wchB, std::complex<float>(spt.data[i+2],0));
-      windowcf_push(wchC, std::complex<float>(spt.data[i+0],0));
+      windowcf_push(wchA, std::complex<float>(spt.data[i+element_a],0));
+      windowcf_push(wchB, std::complex<float>(spt.data[i+element_b],0));
+      windowcf_push(wchC, std::complex<float>(spt.data[i+element_c],0));
     }
 
     current_sample_count+=CHANNEL_DEPTH;
