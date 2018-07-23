@@ -9,8 +9,8 @@ import shm
 
 # We have three dropper mechanisms
 PISTONS = {
-    'green': (shm.actuator_desires.trigger_00, shm.actuator_desires.trigger_05),
-    'red': (shm.actuator_desires.trigger_03, shm.actuator_desires.trigger_07),
+    'red': (shm.actuator_desires.trigger_00, shm.actuator_desires.trigger_05),
+    'green': (shm.actuator_desires.trigger_03, shm.actuator_desires.trigger_07),
     'blue': (shm.actuator_desires.trigger_09, shm.actuator_desires.trigger_01),
 }
 
