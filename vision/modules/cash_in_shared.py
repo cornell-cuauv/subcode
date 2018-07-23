@@ -30,12 +30,12 @@ def get_shared_options(is_forward):
         options.IntOption('thresh_size', (15, 15)[is_forward], 1, 100),
         options.IntOption("lab_a_min_red_funnel", 137, 0, 255),
         options.IntOption("lab_a_max_red_funnel", 250, 0, 255),
-        options.IntOption("color_dist_min_red_funnel", 137, 0, 255),
-        options.IntOption("color_dist_max_red_funnel", 250, 0, 255),
+        options.IntOption("color_dist_min_red_funnel", (137, 0)[is_forward], 0, 255),
+        options.IntOption("color_dist_max_red_funnel", (250, 35)[is_forward], 0, 255),
 
         # Contouring
         options.IntOption('min_area', (10, 100)[is_forward], 1, 2000),
-        options.IntOption('min_y', (0, 70)[is_forward], 0, 2000),
+        options.IntOption('min_y', (0, 200)[is_forward], 0, 2000),
         options.DoubleOption('min_circularity', (0.4, 0.1)[is_forward], 0, 1),
         options.DoubleOption('max_rectangularity', 0.9, 0, 1),
 
@@ -196,10 +196,25 @@ def threshold(img):
             #     -3,
             # )
 
-            threshes["red"] = cv2.inRange(
-                lab_a,
-                shared.options["lab_a_min_red_funnel"],
-                shared.options["lab_a_max_red_funnel"],
+            # threshes["red"] = cv2.inRange(
+            #     lab_a,
+            #     shared.options["lab_a_min_red_funnel"],
+            #     shared.options["lab_a_max_red_funnel"],
+            # )
+
+            # shared.post("l", lab)
+
+            dist_from_red_top = np.linalg.norm(lab[:, :, :].astype(int) - [150, 171, 151], axis=2).astype(int)
+            dist_from_red_bottom = np.linalg.norm(lab[:, :, :].astype(int) - [107, 134, 130], axis=2).astype(int)
+
+            rf = threshes["red"] = cv2.inRange(
+                dist_from_red_top,
+                shared.options["color_dist_min_red_funnel"],
+                shared.options["color_dist_max_red_funnel"],
+            ) | cv2.inRange(
+                dist_from_red_bottom,
+                shared.options["color_dist_min_red_funnel"],
+                shared.options["color_dist_max_red_funnel"],
             )
 
         else:
@@ -233,7 +248,6 @@ def threshold(img):
             # )
 
             dist_from_red = np.linalg.norm(img.astype(int) - [147, 0, 31], axis=2).astype(int)
-            print(dist_from_red.dtype)
 
             rf = threshes["red_funnel"] = cv2.inRange(
                 dist_from_red,

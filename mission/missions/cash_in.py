@@ -85,7 +85,13 @@ from mission.missions.ozer_common import (
     Infinite,
     Except,
 )
-from mission.framework.search import SearchFor, VelocitySwaySearch
+from mission.framework.search import (
+    SearchFor,
+    VelocitySwaySearch,
+)
+from mission.missions.actuate import (
+    FireGreen,
+)
 
 
 
@@ -158,20 +164,26 @@ class ApproachAndTargetFunnel(Task):
     def on_first_run(self, shm_group, *args, **kwargs):
         FUNNEL_DEPTH = 0.35
 
+        forward_target_task = ForwardTarget(
+            point=(shm_group.center_x.get, shm_group.center_y.get),
+            target=norm_to_vision_forward(0.0, 0.4),
+            depth_bounds=(.3, 1.0),
+            deadband=norm_to_vision_forward(-0.9, -0.9),
+            px=0.0004,
+            py=0.0008,
+            max_out=.05,
+        )
+
         self.use_task(
             Sequential(
                 cons(Depth(FUNNEL_DEPTH)),
                 cons(
+                    forward_target_task,
+                    debug=True
+                ),
+                cons(
                     Concurrent(
-                        ForwardTarget(
-                            point=(shm_group.center_x.get, shm_group.center_y.get),
-                            target=norm_to_vision_forward(0.0, 0.4),
-                            depth_bounds=(.3, 1.0),
-                            deadband=norm_to_vision_forward(-0.9, -0.9),
-                            px=0.0004,
-                            py=0.0008,
-                            max_out=.1,
-                        ),
+                        forward_target_task,
                         PIDLoop(
                             input_value=shm_group.area.get,
                             target=9000,
@@ -179,7 +191,7 @@ class ApproachAndTargetFunnel(Task):
                             output_function=VelocityX(),
                             reverse=True,
                             p=0.00008,
-                            max_out=.1,
+                            max_out=.05,
                         ),
                         finite=False,
                     ),
@@ -194,14 +206,19 @@ class ApproachAndTargetFunnel(Task):
 class DropInFunnel(Task):
     def on_first_run(self, shm_group, is_left, *args, **kwargs):
         APPROACH_DIST = 0.2
-        DVL_FORWARD_CORRECT_DIST = 0.05
+        DVL_FORWARD_CORRECT_DIST = 0.07
 
         turn_task = RelativeToInitialHeading(90 if is_left else -90)
         reset_heading_task = RelativeToInitialHeading(0)
         reset_heading_task()
-        reset_pos_task = MoveXYRough((0, 0))
-        reset_pos_task()
+        # reset_pos_task = MoveXYRough((0, 0))
+        # reset_pos_task()
+        self.reset_pos_target = None
 
+        drop_task = FireRed if is_left else FireGreen
+
+        def record_pos():
+            self.reset_pos_target = (shm.kalman.north.get(), shm.kalman.east.get())
 
         Y_DIST = -APPROACH_DIST if is_left else APPROACH_DIST
 
@@ -212,6 +229,8 @@ class DropInFunnel(Task):
                     cons(Depth(0.35))
                 ),
                 ApproachAndTargetFunnel(shm_group),
+                stop(),
+                FunctionTask(record_pos),
                 VisionSelector(downward=True),
                 WithPositionalControl(
                     Sequential(
@@ -219,7 +238,7 @@ class DropInFunnel(Task):
                         Log("Turning..."),
                         cons(turn_task),
                         Log("Surfacing..."),
-                        cons(Depth(-.1)),
+                        cons(Depth(-.05)),
                         Log("Moving..."),
                         cons(MoveXYRough((DVL_FORWARD_CORRECT_DIST, Y_DIST)), debug=True),
                         WithPositionalControl(
@@ -239,7 +258,8 @@ class DropInFunnel(Task):
                         ),
                         stop(),
                         Log("Over, dropping!..."),
-                        Timer(3),
+                        drop_task(),
+                        # Timer(3),
                         Log("Moving back..."),
                         WithPositionalControl(
                             Sequential(
@@ -248,7 +268,7 @@ class DropInFunnel(Task):
                             ),
                             enable=False
                         ),
-                        cons(reset_pos_task, debug=True),
+                        cons(GoToPositionRough(lambda: self.reset_pos_target[0], lambda: self.reset_pos_target[1]), debug=True),
                         Log("Diving..."),
                         cons(Depth(.5)),
                         Log("Turning back..."),
