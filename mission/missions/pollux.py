@@ -12,7 +12,7 @@ from mission.missions.will_common import BigDepth, FakeMoveX
 from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup, DriveToSecondPath
 
 from mission.missions.gate import gate as Gate
-from mission.missions.path import path as Path
+from mission.missions.path import get_path as PathGetter
 from mission.missions.dice import Full as Dice
 
 def time_left():
@@ -44,7 +44,7 @@ gate = MissionTask(
 
 path = lambda: MissionTask(
     name='Path',
-    cls=Path,
+    cls=PathGetter(),
     modules=[shm.vision_modules.Pipes],
     surfaces=False,
 )
@@ -77,7 +77,7 @@ track = MissionTask(
         found_roulette=NoOp(),
         found_cash_in=NoOp(),
     ),
-    modules=[shm.vision_modules.CashInDownward],
+    modules=[shm.vision_modules.Roulette], #CashInDownward], # TODO switch back to cash-in
     surfaces=False,
     on_exit=TrackerCleanup(),
 )
@@ -96,6 +96,7 @@ tasks = [
     highway,
     path,
     wait_for_track,
+    track,
     surface_cash_in,
 ]
 

@@ -49,7 +49,7 @@ gate = Sequential(
     )),
     Log('Driving forward...'),
     MasterConcurrent(
-        Consistent(test=lambda: results_groups.width.get() < settings.gate_width_threshold, count=2, total=3, invert=True, result=True),
+        Consistent(test=lambda: results_groups.width.get() < settings.gate_width_threshold, count=0.2, total=0.3, invert=True, result=True),
         Depth(DEPTH_TARGET),
         VelocityX(0.1 if is_mainsub() else 0.1),
         While(task_func=lambda: XTarget(x=results_groups.gate_center_x.get, db=0.018), condition=True),
@@ -60,7 +60,7 @@ gate = Sequential(
     Log('Lining up with red side...'),
     ConsistentTask(Concurrent(
         Depth(DEPTH_TARGET),
-        XTarget(x=results_groups.gate_center_x.get, db=0.018),
+        XTarget(x=results_groups.gate_center_x.get, db=0.05),
         finite=False,
     )),
     Log('Charging...'),

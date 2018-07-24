@@ -19,8 +19,8 @@ from will_common import find_best_match
 options = [
     options.BoolOption('debug', False),
     options.IntOption('hsv_thresh_c', 35, 0, 100),
-    options.IntOption('canny_a', 110, 0, 255),
-    options.IntOption('canny_b', 140, 0, 255),
+    options.IntOption('canny_a', 50, 0, 255),
+    options.IntOption('canny_b', 110, 0, 255),
     options.DoubleOption('perim_thresh', 1.5, 1, 10),
     options.DoubleOption('circle_thresh', 5, 1, 10),
     options.DoubleOption('ellipse_thresh', 1.2, 1, 10),

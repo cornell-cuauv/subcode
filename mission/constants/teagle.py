@@ -5,18 +5,18 @@ from mission.missions.will_common import is_mainsub
 HYDROPHONES_PINGER_DEPTH = 3.0
 
 gate = Gate(
-    depth=1.2 if is_mainsub() else 1.5,
-    gate_width_threshold=0.5,
-    charge_dist=16 if is_mainsub() else 12
+    depth=1.2,
+    gate_width_threshold=0.4,
+    charge_dist=16 if is_mainsub() else 10
 )
 
 path = Path(
-    depth=1.2,
+    depth=1.0,
     search_forward=6 if is_mainsub() else 2,
     search_stride = 10 if is_mainsub() else 8,
     search_right_first=True,
     search_speed=0.1,
-    post_dist=3,
+    post_dist=2.5,
 )
 
 dice = Dice(
@@ -26,7 +26,7 @@ dice = Dice(
     search_stride=8,
     search_speed=0.1,
     min_dot_radius=0.03,
-    ram_dist=1.2,
+    ram_dist=1.0,
     rammed_back_up_timeout=25,
     lost_sight_back_up_timeout=10,
 )

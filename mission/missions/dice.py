@@ -59,7 +59,7 @@ def align_buoy(num, db, mult=1):
     else:
         return ForwardTarget(point=lambda: (shm_vars[pick_correct_buoy(num)].center_x.get(),
                                             shm_vars[pick_correct_buoy(num)].center_y.get()),
-                             target=(0, 0.1), deadband=(db, db), px=0.08*mult, py=0.05*mult,
+                             target=(0, 0.1), deadband=(db, db), px=0.08*mult, py=0.08*mult, # y is depth
                              depth_bounds=(1, MAX_DEPTH))
 
 # num here refers to the shm group, not the tracked num
@@ -170,5 +170,6 @@ Full = Sequential(
     Log('Searching for buoys...'),
     SearchBuoy(num=1, count=4, total=5), # if we see the second buoy then we see both
     Succeed(RamBuoy(num=0)),
+    RelativeToInitialHeading(10),
     Succeed(RamBuoy(num=1)),
 )

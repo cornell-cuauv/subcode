@@ -134,7 +134,7 @@ class RunAll(Task):
     self.use_task(Retry(lambda: Sequential(
       RunTask(BeginMission),
       Concurrent(
-        Fail(Sequential(subtasks=[RunTask(t) for t in tasks],)),
+        Sequential(subtasks=[RunTask(t) for t in tasks],),
         Fail(WaitForUnkill(killed=False, wait=1)),
 
       ),
@@ -210,8 +210,6 @@ VisionFramePeriod = lambda period: FunctionTask(lambda: shm.vision_module_settin
 ConfigureHydromath = lambda enable: FunctionTask(lambda: shm.hydrophones_settings.enabled.set(enable))
 
 TrackerGetter = lambda found_roulette, found_cash_in: Sequential(
-  # Reset found task
-  FunctionTask(lambda: find_task(0)),
   # Turn on hydromathd
   ConfigureHydromath(True),
   # Don't kill CPU with vision
