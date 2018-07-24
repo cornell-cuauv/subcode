@@ -28,8 +28,8 @@ def get_shared_options(is_forward):
         # Threshing
         options.IntOption('erode_size', (2, 5)[is_forward], 1, 40),
         options.IntOption('thresh_size', (15, 15)[is_forward], 1, 100),
-        options.IntOption("lab_a_min_red_funnel", 137, 0, 255),
-        options.IntOption("lab_a_max_red_funnel", 250, 0, 255),
+        options.IntOption("lab_b_min_red_bin", 137, 0, 255),
+        options.IntOption("lab_b_max_red_bin", 250, 0, 255),
         options.IntOption("color_dist_min_red_funnel", (137, 0)[is_forward], 0, 255),
         options.IntOption("color_dist_max_red_funnel", (250, 35)[is_forward], 0, 255),
 
@@ -178,30 +178,6 @@ def threshold(img):
 
     else:
         if shared.is_forward:
-            # threshes["green"] = cv2.adaptiveThreshold(
-            #     luv_l,
-            #     255,
-            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            #     cv2.THRESH_BINARY_INV,
-            #     shared.options["thresh_size"] * 2 + 1,
-            #     9
-            # )
-
-            # threshes["red"] = cv2.adaptiveThreshold(
-            #     luv_u,
-            #     255,
-            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            #     cv2.THRESH_BINARY,
-            #     shared.options["thresh_size"] * 2 + 1,
-            #     -3,
-            # )
-
-            # threshes["red"] = cv2.inRange(
-            #     lab_a,
-            #     shared.options["lab_a_min_red_funnel"],
-            #     shared.options["lab_a_max_red_funnel"],
-            # )
-
             # shared.post("l", lab)
 
             dist_from_red_top = np.linalg.norm(lab[:, :, :].astype(int) - [150, 171, 151], axis=2).astype(int)
@@ -218,25 +194,6 @@ def threshold(img):
             )
 
         else:
-            # threshes["bin_green"] = cv2.adaptiveThreshold(
-            #     luv_l,
-            #     255,
-            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            #     cv2.THRESH_BINARY_INV,
-            #     shared.options["thresh_size"] * 2 + 1,
-            #     9
-            # )
-
-            # threshes["bin_green"] = cv2.Canny(lab_b.copy(), 5, 40)
-
-            # threshes["bin_red"] = cv2.adaptiveThreshold(
-            #     luv_u,
-            #     255,
-            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            #     cv2.THRESH_BINARY,
-            #     shared.options["thresh_size"] * 2 + 1,
-            #     -3,
-            # )
 
             # threshes["bin_red"] = cv2.adaptiveThreshold(
             #     lab_a,
@@ -262,8 +219,8 @@ def threshold(img):
 
             threshes["all_bins"] = cv2.inRange(
                 lab_b,
-                170,
-                255
+                shared.options["lab_b_min_red_bin"],
+                shared.options["lab_b_max_red_bin"],
             )
 
 
@@ -494,9 +451,9 @@ def find_bins(images):
         output1.probability = binn.probability
 
     else:
-        output1.area = 0
-        output1.center_x = 0
-        output1.center_y = 0
+        # output1.area = 0
+        # output1.center_x = 0
+        # output1.center_y = 0
         output1.probability = 0
 
     if len(bins) >= 2:
@@ -508,9 +465,9 @@ def find_bins(images):
         output2.probability = binn.probability
 
     else:
-        output2.area = 0
-        output2.center_x = 0
-        output2.center_y = 0
+        # output2.area = 0
+        # output2.center_x = 0
+        # output2.center_y = 0
         output2.probability = 0
 
     shm_groups[0].set(output1)
@@ -532,6 +489,3 @@ def find_bins(images):
             cv2.circle(image, (int(binn.x), int(binn.y)), int(binn.area), COLORS["BLUE"], 5)
 
         shared.post("contours_all", image)
-
-
-    pass

@@ -47,12 +47,14 @@ Roulette = namedtuple('Roulette', [
     'depth_search',
     'depth_realign',
     'depth_drop',
+    'heading_offset',
 ])
 
 CashIn = namedtuple('CashIn', [
     'approach_funnel_depth',
     'drop_approach_dist',
     'drop_dvl_forward_correct_dist',
+    'drop_heading_correct',
     'pick_up_both_depth',
     'pick_up_search_depth_1',
     'pick_up_search_depth_2',

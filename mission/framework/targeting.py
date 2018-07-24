@@ -40,11 +40,16 @@ class CameraTarget(Task):
         if py is None:
             py = self.py_default
 
+        try:
+            max_out_x, max_out_y = call_if_function(max_out)
+        except:
+            max_out_x = max_out_y = call_if_function(max_out)
+
         if valid:
             point = call_if_function(point)
             target = call_if_function(target)
-            self.pid_loop_x(input_value=point[0], p=px, i=ix, d=dx, target=target[0], deadband=deadband[0], max_out=max_out, min_target=min_target_x, max_target=max_target_x)
-            self.pid_loop_y(input_value=point[1], p=py, i=iy, d=dy, target=target[1], deadband=deadband[1], max_out=max_out, min_target=min_target_y, max_target=max_target_y)
+            self.pid_loop_x(input_value=point[0], p=px, i=ix, d=dx, target=target[0], deadband=deadband[0], max_out=max_out_x, min_target=min_target_x, max_target=max_target_x)
+            self.pid_loop_y(input_value=point[1], p=py, i=iy, d=dy, target=target[1], deadband=deadband[1], max_out=max_out_x, min_target=min_target_y, max_target=max_target_y)
         else:
            self.stop()
 

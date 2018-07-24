@@ -24,7 +24,7 @@ options = [
     options.IntOption('black_lab_l_min', 0, 0, 255),
     options.IntOption('black_lab_l_max', 110, 0, 255),
     options.IntOption('green_lab_a_min', 0, 0, 255),
-    options.IntOption('green_lab_a_max', 88, 0, 255),
+    options.IntOption('green_lab_a_max', 113, 0, 255),
     options.IntOption('blur_kernel', 8, 0, 255),
     options.IntOption('erode_kernel', 2, 0, 255),
     options.IntOption('black_erode_iters', 5, 0, 100),
@@ -165,7 +165,6 @@ class Roulette(ModuleBase):
         if curr_time - self.last_run < shm.vision_module_settings.time_between_frames.get():
             return
         self.last_run = curr_time
-
 
         DOWNWARD_CAM_WIDTH = DOWNWARD_CAM_WIDTH or mat.shape[1]
         DOWNWARD_CAM_HEIGHT = DOWNWARD_CAM_HEIGHT or mat.shape[0]

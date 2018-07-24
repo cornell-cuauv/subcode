@@ -54,10 +54,12 @@ BIN_CENTER = [shm.bins_vision.center_x, shm.bins_vision.center_y]
 GREEN_CENTER = BIN_CENTER
 GREEN_ANGLE = shm.bins_green0.angle
 
-align_roulette_center = lambda db=20, p=0.0005: DownwardTarget((BIN_CENTER[0].get, BIN_CENTER[1].get), target=CAM_CENTER, px=p, py=p, deadband=(db, db))
-align_green_angle = lambda db=10, p=0.8: DownwardAlign(GREEN_ANGLE.get, target=0, deadband=db, p=p)
+HEADING_OFFSET = settings.heading_offset
 
-DropBall = lambda: FireRed()
+align_roulette_center = lambda db=20, p=0.0005: DownwardTarget((BIN_CENTER[0].get, BIN_CENTER[1].get), target=CAM_CENTER, px=p, py=p, deadband=(db, db))
+align_green_angle = lambda db=10, p=0.8: DownwardAlign(lambda: GREEN_ANGLE.get() + HEADING_OFFSET, target=0, deadband=db, p=p)
+
+DropBall = lambda: FireBlue()
 
 # Search = lambda: SearchFor(
 #     VelocitySwaySearch(forward=2, stride=2, speed=0.2),
@@ -87,6 +89,12 @@ Full = Retry(
         MasterConcurrent(
             align_green_angle(db=5, p=0.5),
             align_roulette_center(db=0.000001, p=0.0001),
+        ),
+        Zero(),
+        Log('Aligning with table again again...'),
+        MasterConcurrent(
+            align_roulette_center(db=50, p=0.0001),
+            align_green_angle(db=0.0001, p=0.5),
         ),
         Zero(),
         Log('Descending on table...'),

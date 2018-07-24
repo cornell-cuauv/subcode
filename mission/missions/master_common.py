@@ -146,6 +146,7 @@ class Begin(Task):
     self.killed = shm.switches.hard_kill.get()
 
     self.use_task(Sequential(
+      VisionFramePeriod(0.1), # reset this
       FunctionTask(lambda: shm.switches.soft_kill.set(1)),
       FunctionTask(lambda: shm.deadman_settings.enabled.set(False)),
       Log('Disabling Record vision module'),
@@ -219,9 +220,9 @@ TrackerGetter = lambda found_roulette, found_cash_in: Sequential(
       # Find either roulette or cash-in
       Either(
         Consistent(test=lambda: shm.bins_vision.board_visible.get(),
-                   count=4, total=5, invert=False, result=True),
+                   count=1, total=1.5, invert=False, result=True),
         Consistent(test=lambda: shm.recovery_vision_downward_bin_red.probability.get() > 0,
-                   count=4, total=5, invert=False, result=False),
+                   count=1, total=1.5, invert=False, result=False),
       ),
       # Success is roulette
       on_success=found_roulette,

@@ -39,7 +39,7 @@ highway = Highway(
 )
 
 track = Track(
-    depth=1.3,
+    depth=1.0,
     track_mag_thresh=20000,
     slow_down_dist=5,
     max_speed=0.3 if is_mainsub() else 0.2,
@@ -49,14 +49,17 @@ track = Track(
 
 roulette = Roulette(
     depth_search=1.0,
-    depth_realign=2.5,
-    depth_drop=3.0,
+    depth_realign=2.2,
+    depth_drop=2.8,
+    heading_offset=10,
 )
 
 cash_in = CashIn(
-    approach_funnel_depth=0.35,
+    approach_funnel_depth=0.5,
     drop_approach_dist=0.2,
-    drop_dvl_forward_correct_dist=0.07,
+    # (right, left)
+    drop_dvl_forward_correct_dist=(0.07, -0.13),
+    drop_heading_correct=(0, -7),
     pick_up_both_depth=0.5,
     pick_up_search_depth_1=2.0,
     pick_up_search_depth_2=2.25,

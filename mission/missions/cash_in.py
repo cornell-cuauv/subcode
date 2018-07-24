@@ -6,8 +6,6 @@ import itertools
 import numpy as np
 
 import shm
-from mission.constants.config import recovery as constants
-from mission.constants.region import WALL_TOWER_HEADING
 from shm.watchers import watcher
 from mission.framework.task import Task
 from mission.framework.search import SearchFor, SpiralSearch, VelocitySwaySearch
@@ -59,6 +57,7 @@ from mission.framework.position import (
 from mission.framework.targeting import (
     DownwardTarget,
     ForwardTarget,
+    HeadingTarget,
     PIDLoop,
 )
 from mission.framework.track import (
@@ -91,6 +90,7 @@ from mission.framework.search import (
 )
 from mission.missions.actuate import (
     FireGreen,
+    FireRed,
 )
 
 from mission.constants.config import cash_in as settings
@@ -138,7 +138,7 @@ def norm_to_vision_forward(x, y=None):
     return ((x / 2 + 0.5) * w, (y / 2 + 0.5) * h)
 
 
-def cons(task, total=3*60, success=3*60*0.85, debug=False):
+def cons(task, total=2.5*60, success=2.5*60*0.85, debug=False):
     return ConsistentTask(task, total=total, success=success, debug=debug)
 
 
@@ -167,18 +167,28 @@ class ApproachAndTargetFunnel(Task):
         forward_target_task = ForwardTarget(
             point=(shm_group.center_x.get, shm_group.center_y.get),
             target=norm_to_vision_forward(0.0, 0.4),
-            depth_bounds=(.3, 1.0),
+            depth_bounds=(.45, 1.0),
             deadband=norm_to_vision_forward(-0.9, -0.9),
             px=0.0004,
             py=0.0008,
             max_out=.05,
         )
 
+        heading_target_task = HeadingTarget(
+            point=(shm_group.center_x.get, shm_group.center_y.get),
+            target=norm_to_vision_forward(0.0, 0.4),
+            depth_bounds=(.45, 1.0),
+            deadband=norm_to_vision_forward(-0.9, -0.9),
+            px=0.04,
+            py=0.0008,
+            max_out=(5, 0.05),
+        )
+
         self.use_task(
             Sequential(
                 cons(Depth(FUNNEL_DEPTH)),
                 cons(
-                    forward_target_task,
+                    heading_target_task,
                     debug=True
                 ),
                 cons(
@@ -195,8 +205,8 @@ class ApproachAndTargetFunnel(Task):
                         ),
                         finite=False,
                     ),
-                    total=3*60,
-                    success=3*60*0.9,
+                    total=2.5*60,
+                    success=2.5*60*0.9,
                     debug=True,
                 ),
             )
@@ -206,7 +216,9 @@ class ApproachAndTargetFunnel(Task):
 class DropInFunnel(Task):
     def on_first_run(self, shm_group, is_left, *args, **kwargs):
         APPROACH_DIST = settings.drop_approach_dist
-        DVL_FORWARD_CORRECT_DIST = settings.drop_dvl_foward_correct_dist
+        DVL_FORWARD_CORRECT_DIST = settings.drop_dvl_forward_correct_dist[is_left]
+        DVL_ANGLE_CORRECT = settings.drop_heading_correct[is_left]
+        APPROACH_FUNNEL_DEPTH = settings.approach_funnel_depth
 
         turn_task = RelativeToInitialHeading(90 if is_left else -90)
         reset_heading_task = RelativeToInitialHeading(0)
@@ -226,7 +238,7 @@ class DropInFunnel(Task):
             Sequential(
                 VisionSelector(forward=True),
                 WithPositionalControl(
-                    cons(Depth(0.35))
+                    cons(Depth(APPROACH_FUNNEL_DEPTH))
                 ),
                 ApproachAndTargetFunnel(shm_group),
                 stop(),
@@ -240,7 +252,13 @@ class DropInFunnel(Task):
                         Log("Surfacing..."),
                         cons(Depth(-.05)),
                         Log("Moving..."),
-                        cons(MoveXYRough((DVL_FORWARD_CORRECT_DIST, Y_DIST)), debug=True),
+                        cons(
+                            Concurrent(
+                                MoveXYRough((DVL_FORWARD_CORRECT_DIST, Y_DIST)),
+                                RelativeToInitialHeading(DVL_ANGLE_CORRECT),
+                                finite=False
+                            ),
+                            debug=True),
                         WithPositionalControl(
                             MasterConcurrent(
                                 cons(
@@ -313,13 +331,14 @@ class PickupFromBin(Task):
 
         self.use_task(
             Sequential(
+                VisionSelector(downward=True),
                 cons(Depth(BOTH_DEPTH)),
                 cons(downward_target_task(max_out=0.1)),
                 stop(),
                 cons(Depth(SEARCH_DEPTH_1)),
                 search_at_depth(SEARCH_DEPTH_1, "top", deadband=(0.1, 0.1), depth_timeout=15),
                 # search_at_depth(SEARCH_DEPTH_2, "mid", deadband=(0.05, 0.05), depth_timeout=10),
-                search_at_depth(SEARCH_DEPTH_3, "bot", target=bottom_target, deadband=(0.04, 0.04)),
+                search_at_depth(SEARCH_DEPTH_3, "bot", target=bottom_target, deadband=(0.05, 0.05)),
                 Sequential(
                     *(timed(Depth(depth)) for depth in np.arange(SEARCH_DEPTH_3, START_PICKUP_DEPTH + 0.1, 0.1))
                 ),
@@ -347,32 +366,6 @@ class PickupFromBin(Task):
         )
 
 
-class AttemptColor(Task):
-    def on_first_run(self, approach_task, pickup_task, *args, **kwargs):
-        SURFACE_DEPTH = settings.attempt_surface_depth
-        FUNNEL_DEPTH = settings.attempt_funnel_depth
-
-        self.use_task(
-            Sequential(
-                pickup_task,
-                Log("Picked up!"),
-                cons(Depth(SURFACE_DEPTH)),
-                Log("Surfaced"),
-                cons(Depth(FUNNEL_DEPTH)),
-                Log("Prepared to drop"),
-                approach_task,
-                Log("Dropped"),
-                Timed(VelocityX(-.3), 2),
-            )
-        )
-
-
-class CashIn(Task):
-    def on_run(self, *args, **kwargs):
-        self.log("Cash In!", level="CASH")
-        self.finish()
-
-
 class ResetDepthPIDs(Task):
     def on_run(self, *args, **kwargs):
         from conf.vehicle import control_settings
@@ -396,10 +389,14 @@ class MakeControlGreatAgain2018(Task):
 
 
 def SearchBin(shm_group_getter, count=1.5, total=2):
-    return SearchFor(
-        VelocitySwaySearch(),
-        lambda: shm_group_getter().probability.get() >= 0.5,
-        consistent_frames=(count * 60, total * 60) # multiple by 60 to specify in seconds
+    return Sequential(
+        VisionSelector(downward=True),
+        SearchFor(
+            VelocitySwaySearch(),
+            lambda: shm_group_getter().probability.get() >= 0.5,
+            consistent_frames=(count * 60, total * 60) # multiple by 60 to specify in seconds
+        ),
+        stop(),
     )
 
 
@@ -458,10 +455,27 @@ pickup_right = PickupFromBin(make_bin_chooser(False), is_left=False)
 
 pickup_all = Sequential(
     pickup_left,
+    Log("Picked Up Left"),
     Timed(VelocityY(0.2), 2),
     VelocityY(0),
     pickup_right,
+    Log("Picked Up Right"),
 )
 
-# attempt_red = AttemptColor(approach_red, pickup_red)
-# attempt_green = AttemptColor(approach_green, pickup_green)
+drop_all = Sequential(
+    drop_right,
+    Log("Dropped Right"),
+    drop_left,
+    Log("Dropped Left"),
+)
+
+do_it_all = Sequential(
+    search_left,
+    Log("Found"),
+    pickup_all,
+    Log("Picked Up"),
+    cons(Heading(70)),
+    Log("Turned to hardcoded heading"),
+    drop_all,
+    Log("Dropped"),
+)
