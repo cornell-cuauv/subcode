@@ -6,6 +6,7 @@ import shm
 from mission.framework.combinators import MasterConcurrent, Sequential
 from mission.framework.timing import Timer
 from mission.framework.primitive import Log, Zero, NoOp
+from mission.framework.targeting import DownwardTarget
 
 from mission.missions.will_common import BigDepth, FakeMoveX
 
@@ -28,7 +29,18 @@ WaitForTime = Sequential(
     Timer(max(time_left() - 5 * 60, 0)),
 )
 
+CASH_IN_GROUPS = [(group.center_x, group.center_y) for group in [shm.recovery_vision_downward_bin_red, shm.recovery_vision_downward_bin_green]]
+
+cash_in_center = lambda: tuple(sum([val.get() for val in dimen]) for dimen in CASH_IN_GROUPS)
+
+# TODO test this
 SurfaceAtCashIn = Sequential(
+    Log('Aligning with cash-in'),
+    DownwardTarget(
+        cash_in_center,
+        target=(0, 0),
+        deadband=(0.2, 0.2),
+        px=0.0005, py=0.001
     Log('Surfacing at cash-in!'),
     BigDepth(0),
 )
