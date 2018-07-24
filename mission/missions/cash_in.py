@@ -93,7 +93,7 @@ from mission.missions.actuate import (
     FireGreen,
 )
 
-
+from mission.constants.config import cash_in as settings
 
 def vision_to_norm_downward(x, y=None):
     if y is None:
@@ -162,7 +162,7 @@ def VisionSelector(forward=False, downward=False):
 
 class ApproachAndTargetFunnel(Task):
     def on_first_run(self, shm_group, *args, **kwargs):
-        FUNNEL_DEPTH = 0.35
+        FUNNEL_DEPTH = settings.approach_funnel_depth
 
         forward_target_task = ForwardTarget(
             point=(shm_group.center_x.get, shm_group.center_y.get),
@@ -205,8 +205,8 @@ class ApproachAndTargetFunnel(Task):
 
 class DropInFunnel(Task):
     def on_first_run(self, shm_group, is_left, *args, **kwargs):
-        APPROACH_DIST = 0.2
-        DVL_FORWARD_CORRECT_DIST = 0.07
+        APPROACH_DIST = settings.drop_approach_dist
+        DVL_FORWARD_CORRECT_DIST = settings.drop_dvl_foward_correct_dist
 
         turn_task = RelativeToInitialHeading(90 if is_left else -90)
         reset_heading_task = RelativeToInitialHeading(0)
@@ -281,11 +281,11 @@ class DropInFunnel(Task):
 
 class PickupFromBin(Task):
     def on_first_run(self, shm_group_getter, is_left, *args, **kwargs):
-        BOTH_DEPTH = 0.5
-        SEARCH_DEPTH_1 = 2.0
-        SEARCH_DEPTH_2 = 2.25
-        SEARCH_DEPTH_3 = 2.5
-        START_PICKUP_DEPTH = 3.2
+        BOTH_DEPTH = settings.pick_up_both_depth
+        SEARCH_DEPTH_1 = settings.pick_up_search_depth_1
+        SEARCH_DEPTH_2 = settings.pick_up_search_depth_2
+        SEARCH_DEPTH_3 = settings.pick_up_search_depth_3
+        START_PICKUP_DEPTH = settings.pick_up_start_follow_depth
 
         def downward_target_task(pt=(0, 0), deadband=(0.1, 0.1), max_out=0.04):
             return DownwardTarget(
@@ -349,8 +349,8 @@ class PickupFromBin(Task):
 
 class AttemptColor(Task):
     def on_first_run(self, approach_task, pickup_task, *args, **kwargs):
-        SURFACE_DEPTH = -1
-        FUNNEL_DEPTH = 0
+        SURFACE_DEPTH = settings.attempt_surface_depth
+        FUNNEL_DEPTH = settings.attempt_funnel_depth
 
         self.use_task(
             Sequential(

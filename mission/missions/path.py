@@ -17,13 +17,11 @@ from mission.framework.task import Task
 from mission.framework.timing import Timer, Timed
 from mission.framework.jank import TrackMovementY, RestorePosY
 
-from mission.missions.will_common import BigDepth
+from mission.constants.config import path as settings
 
-PATH_FOLLOW_DEPTH = 1.2
+from mission.missions.will_common import BigDepth, is_mainsub
 
-is_castor = VEHICLE == 'castor'
-
-SearchTask = lambda: SearchFor(VelocitySwaySearch(forward=(6 if is_castor else 2), stride=(10 if is_castor else 8), speed=0.1, rightFirst=True),
+SearchTask = lambda: SearchFor(VelocitySwaySearch(forward=settings.search_forward, stride=settings.search_stride, speed=settings.search_speed, rightFirst=settings.search_right_first),
                                 lambda: shm.path_results.num_lines.get() == 2,
                                 consistent_frames=(60, 90))
 
@@ -62,11 +60,11 @@ FollowPipe = lambda h1, h2: Sequential(PipeAlign(h1),
 				       Timer(4),
                                        Log("Facing new direction!"),
                                        Zero(),
-                                       Timed(VelocityX(.1), 3), # maybe remove?
+                                       Timed(VelocityX(.1), settings.post_dist),
                                        Log("Done!"),
                                        Zero())
 
-FullPipe = lambda: Sequential(BigDepth(PATH_FOLLOW_DEPTH),
+FullPipe = lambda: Sequential(BigDepth(settings.depth),
                               Zero(),
                               Log("At right depth!"),
                               SearchTask(),

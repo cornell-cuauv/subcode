@@ -11,7 +11,8 @@ import shm
 
 from conf.vehicle import VEHICLE
 
-is_mainsub = VEHICLE == 'castor'
+def is_mainsub():
+    return VEHICLE == 'castor'
 
 def interpolate_list(a, b, steps):
     return [a + (b - a) / steps * i for i in range(1, steps + 1)]

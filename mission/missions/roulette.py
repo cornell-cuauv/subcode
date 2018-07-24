@@ -39,11 +39,13 @@ from mission.missions.will_common import BigDepth
 
 from conf.vehicle import cameras
 
+from mission.constants.config import roulette as settings
+
 # These values are for Teagle
 # Perhaps we should instead do this by determining the size in the camera
-DEPTH_STANDARD = 1.0
-DEPTH_TARGET_ALIGN_BIN = 2.5
-DEPTH_TARGET_DROP = 3
+DEPTH_STANDARD = settings.depth_search
+DEPTH_TARGET_ALIGN_BIN = settings.depth_realign
+DEPTH_TARGET_DROP = settings.depth_drop
 
 CAM_CENTER = (cameras['downward']['width']/2, cameras['downward']['height']/2)
 
@@ -57,11 +59,11 @@ align_green_angle = lambda db=10, p=0.8: DownwardAlign(GREEN_ANGLE.get, target=0
 
 DropBall = lambda: FireRed()
 
-Search = lambda: SearchFor(
-    VelocitySwaySearch(forward=2, stride=2, speed=0.2),
-    shm.bins_vision.board_visible.get,
-    consistent_frames=(4*60, 5*60) # multiply by 60 to specify in seconds
-)
+# Search = lambda: SearchFor(
+#     VelocitySwaySearch(forward=2, stride=2, speed=0.2),
+#     shm.bins_vision.board_visible.get,
+#     consistent_frames=(4*60, 5*60) # multiply by 60 to specify in seconds
+# )
 
 Full = Retry(
     lambda: Sequential(

@@ -12,8 +12,7 @@ import shm
 from auv_math.math_utils import rotate
 from misc.hydro2trans import Localizer
 from mission.constants.config import HYDROPHONES_PINGER_DEPTH
-#from mission.constants.region import PINGER_FREQUENCY
-PINGER_FREQUENCY = 39500
+from mission.constants.region import PINGER_FREQUENCY
 from mission.framework.combinators import Sequential
 from mission.framework.helpers import get_sub_position, get_sub_quaternion, \
                                       ConsistencyCheck
@@ -22,11 +21,12 @@ from mission.framework.movement import Depth, Heading, VelocityX, VelocityY
 from mission.framework.primitive import Zero, Log
 from mission.framework.task import Task
 from mission.framework.stateful_tasks import StatefulTask
-from mission.constants.config import recovery
 
-from conf.vehicle import VEHICLE
+from hydrocode.scripts.udp_set_gain import set_gain
 
-is_mainsub = VEHICLE == 'castor'
+from mission.constants.config import track as settings
+
+from mission.missions.will_common import is_mainsub
 
 # WILL ITS THIS ONE!
 STOP_OVER_PINGER = False
@@ -71,14 +71,14 @@ PingData = collections.namedtuple("PingData", ["phases", "heading",
 PINGS_LISTEN = 10
 MIN_CONSISTENT_PINGS = 3
 
-TRACK_MAG_THRESH = 20000 # changed for Pollux, potentially not correct?
+TRACK_MAG_THRESH = settings.track_mag_thresh
 PINGER_PERIOD = 1.0
 
 MAX_FOLLOW_HEADING_DEVIATION = 10
-SLOW_DOWN_DISTANCE = 5
+SLOW_DOWN_DISTANCE = settings.slow_down_dist
 MIN_DEVIATING_PING_ELEVATION = 65
-MAX_FOLLOW_SPEED = 0.3 if is_mainsub else 0.2
-MIN_FOLLOW_SPEED = 0.1
+MAX_FOLLOW_SPEED = settings.max_speed
+MIN_FOLLOW_SPEED = settings.min_speed
 MAX_ONTOP_OF_PINGER_ELEVATION = 10 # Try 15 in real life
 
 # There are two states:
@@ -121,6 +121,8 @@ class FindPinger(StatefulTask):
 
     self.follow_task = None
     self.heading_to_pinger = None
+
+    set_gain()
 
     shm.hydrophones_settings.track_frequency_target.set(PINGER_FREQUENCY)
     shm.hydrophones_settings.track_magnitude_threshold.set(TRACK_MAG_THRESH)
@@ -415,7 +417,7 @@ class OptimizablePinger(Task):
 
 def Full(): return Sequential(
     Log('Changing depth before hydrophones'),
-    Depth(1.3),
+    Depth(settings.depth),
     OptimizablePinger(),
 )
 

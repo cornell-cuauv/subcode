@@ -11,13 +11,13 @@ from mission.framework.helpers import ConsistencyCheck, call_if_function
 
 from .ozer_common import ConsistentTask
 
-from mission.missions.will_common import BigDepth
+from mission.missions.will_common import BigDepth, is_mainsub
+
+from mission.constants.config import gate as settings
 
 import shm
 
 results_groups = shm.bicolor_gate_vision
-
-is_castor = VEHICLE == 'castor'
 
 class Consistent(Task):
     def on_first_run(self, test, count, total, invert, result):
@@ -31,18 +31,9 @@ class Consistent(Task):
 
 XTarget = lambda x, db: PIDLoop(input_value=x, target=0,
                                 output_function=VelocityY(), negate=True,
-                                p=0.4 if is_castor else 0.4, deadband=db)
+                                p=0.4 if is_mainsub() else 0.4, deadband=db)
 
-#WidthTarget = lambda width: PIDLoop(input_value=get_width, target=width,
-#                                    output_function=VelocityX(), negate=False, p=1.0, deadband=0.03)
-
-#target = ConsistentTask(Concurrent(Depth(1.5), XTarget(), finite=False))
-#center = ConsistentTask(Concurrent(Depth(1.5), XTarget(), WidthTarget(0.6), finite=False))
-#charge = Timed(VelocityX(0.3 if is_castor else 0.1), 20)
-
-
-DEPTH_TARGET = 1.2 if is_castor else 1.5
-
+DEPTH_TARGET = settings.depth
 
 #gate = Sequential(target, Log("Targetted"), center, Log("Centered"), charge)
 
@@ -58,13 +49,13 @@ gate = Sequential(
     )),
     Log('Driving forward...'),
     MasterConcurrent(
-        Consistent(test=lambda: results_groups.width.get() < 0.5, count=2, total=3, invert=True, result=True),
+        Consistent(test=lambda: results_groups.width.get() < settings.gate_width_threshold, count=2, total=3, invert=True, result=True),
         Depth(DEPTH_TARGET),
-        VelocityX(0.1 if is_castor else 0.1),
+        VelocityX(0.1 if is_mainsub() else 0.1),
         While(task_func=lambda: XTarget(x=results_groups.gate_center_x.get, db=0.018), condition=True),
     ),
     # Jank
-    Timed(VelocityX(0 if is_castor else -0.1), 2),
+    Timed(VelocityX(0 if is_mainsub() else -0.1), 2),
     VelocityX(0),
     Log('Lining up with red side...'),
     ConsistentTask(Concurrent(
@@ -73,6 +64,6 @@ gate = Sequential(
         finite=False,
     )),
     Log('Charging...'),
-    Timed(VelocityX(0.5 if is_castor else 0.2), 16 if is_castor else 12),
+    Timed(VelocityX(0.5 if is_mainsub() else 0.2), settings.charge_dist),
     Log('Through gate!'),
 )

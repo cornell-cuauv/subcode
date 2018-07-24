@@ -7,20 +7,7 @@ from mission.framework.primitive import FunctionTask, Log
 
 import shm
 
-# We have three dropper mechanisms
-PISTONS = {
-    'red': (shm.actuator_desires.trigger_00, shm.actuator_desires.trigger_05),
-    'green': (shm.actuator_desires.trigger_03, shm.actuator_desires.trigger_07),
-    'blue': (shm.actuator_desires.trigger_09, shm.actuator_desires.trigger_01),
-}
-
-TORPEDOES = [
-    shm.actuator_desires.trigger_11,
-    # Don't know the second one yet
-]
-
-PISTON_DELAY = 1
-TORPEDO_DELAY = 1
+from mission.constants.sub import PISTONS, TORPEDOES, PISTON_DELAY, TORPEDO_DELAY
 
 Actuate = lambda channel, value: FunctionTask(lambda: channel.set(value))
 

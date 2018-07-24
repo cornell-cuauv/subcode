@@ -7,7 +7,7 @@ from mission.framework.task import Task
 from mission.framework.combinators import Sequential, MasterConcurrent, Conditional, Either
 from mission.framework.primitive import FunctionTask, Zero, NoOp
 
-from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup
+from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup, DriveToSecondPath
 
 from mission.missions.will_common import BigDepth, Consistent, FakeMoveX
 
@@ -15,14 +15,6 @@ from mission.missions.gate import gate as Gate
 from mission.missions.path import path as Path
 from mission.missions.hydrophones import Full as Hydrophones
 from mission.missions.roulette import Full as Roulette
-
-DriveToSecondPath = Sequential(
-    BigDepth(1.0),
-    FakeMoveX(dist=6, speed=0.4),
-    BigDepth(1.2),
-)
-
-# ------
 
 gate = MissionTask(
     name='Gate',

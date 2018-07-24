@@ -34,11 +34,13 @@ from mission.framework.primitive import FunctionTask, HardkillGuarded, \
 from mission.constants.region import *
 from mission.missions.hydrophones import Full as Hydrophones
 
-from mission.missions.will_common import Consistent
+from mission.missions.will_common import Consistent, BigDepth, FakeMoveX
 
 from sensors.kalman.set_zero_heading import set_zero_heading
 
 from mission.missions.leds import AllLeds
+
+from mission.constants.config import highway as highway_settings, track as track_settings
 
 from collections import namedtuple
 
@@ -213,7 +215,7 @@ TrackerGetter = lambda found_roulette, found_cash_in: Sequential(
   # Turn on hydromathd
   ConfigureHydromath(True),
   # Don't kill CPU with vision
-  VisionFramePeriod(0.5),
+  VisionFramePeriod(track_settings.vision_frame_period),
   MasterConcurrent(
     Conditional(
       # Find either roulette or cash-in
@@ -240,7 +242,13 @@ TrackerCleanup = lambda: Sequential(
   # Turn off hydromathd
   ConfigureHydromath(False),
   # Go back to normal vision settings
-  VisionFramePeriod(0.1),
+  VisionFramePeriod(0.1), # this should be default
+)
+
+DriveToSecondPath = Sequential(
+    BigDepth(highway_settings.high_depth),
+    FakeMoveX(dist=highway_settings.dist, speed=highway_settings.speed),
+    BigDepth(highway_settings.low_depth),
 )
 
 BeginMission = MissionTask(

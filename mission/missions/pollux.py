@@ -9,17 +9,11 @@ from mission.framework.primitive import Log, Zero, NoOp
 
 from mission.missions.will_common import BigDepth, FakeMoveX
 
-from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup
+from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup, DriveToSecondPath
 
 from mission.missions.gate import gate as Gate
 from mission.missions.path import path as Path
 from mission.missions.dice import Full as Dice
-
-GoToSecondPath = Sequential(
-    BigDepth(1.0),
-    FakeMoveX(dist=2, speed=0.2),
-    BigDepth(1.2),
-)
 
 def time_left():
     # TODO test this?
@@ -64,7 +58,7 @@ dice = MissionTask(
 
 highway = MissionTask(
     name='Highway',
-    cls=GoToSecondPath,
+    cls=DriveToSecondPath,
     modules=None,
     surfaces=False,
 )
