@@ -21,10 +21,11 @@ from mission.constants.config import path as settings
 
 from mission.missions.will_common import Consistent, BigDepth, is_mainsub, FakeMoveX
 
-visible_test = lambda: shm.path_results.num_lines.get() == 2
+def visible_test(count):
+    return lambda: shm.path_results.num_lines.get() >= count
 
 SearchTask = lambda: SearchFor(VelocitySwaySearch(forward=settings.search_forward, stride=settings.search_stride, speed=settings.search_speed, rightFirst=settings.search_right_first),
-                                visible_test,
+                                visible_test(2),
                                 consistent_frames=(60, 90))
 
 class FirstPipeGroupFirst(Task):
@@ -68,6 +69,8 @@ FollowPipe = lambda h1, h2: Sequential(
 )
 
 FullPipe = lambda: Sequential(
+    # Don't do anything stupid
+    FunctionTask(lambda: shm.path_results.num_lines.set(0)),
     BigDepth(settings.depth),
     Zero(),
     Log("At right depth!"),
@@ -82,7 +85,8 @@ FullPipe = lambda: Sequential(
                     Sequential(
                         # Don't lose sight in the first second
                         Timer(1.0),
-                        Consistent(visible_test, count=1, total=1.5, result=False, invert=True),
+                        # Require a really high fail rate - path vision can be finicky
+                        Consistent(visible_test(1), count=2.5, total=3, result=False, invert=True),
                     ),
                     Conditional(FirstPipeGroupFirst(),
                                 on_success=FollowPipe(shm.path_results.angle_1, shm.path_results.angle_2),

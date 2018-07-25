@@ -87,14 +87,14 @@ track = lambda: MissionTask(
 )
 
 tasks = [
-    gate,
-    path,
-    highway,
-    path,
+    #gate,
+    #path,
+    #highway,
+    #path,
     track,
     get_found_task,
-    #track,
-    #get_found_task,
+    track,
+    get_found_task,
 ]
 
 Master = RunAll(tasks)

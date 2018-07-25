@@ -7,7 +7,7 @@ HYDROPHONES_PINGER_DEPTH = 3.0
 gate = Gate(
     depth=1.0,
     gate_width_threshold=0.4,
-    charge_dist=16 if is_mainsub() else 10
+    charge_dist=16 if is_mainsub() else 12
 )
 
 path = Path(
@@ -17,8 +17,8 @@ path = Path(
     search_right_first=True,
     search_speed=0.1,
     post_dist=2.5,
-    failure_back_up_dist=0.5 if is_mainsub() else 0.2,
-    failure_back_up_speed=0.2 if is_mainsub() else 0.2,
+    failure_back_up_dist=0.5 if is_mainsub() else 0.1,
+    failure_back_up_speed=0.2 if is_mainsub() else 0.1,
 )
 
 dice = Dice(
@@ -29,8 +29,8 @@ dice = Dice(
     search_speed=0.1,
     min_dot_radius=0.03,
     ram_dist=1.0,
-    rammed_back_up_timeout=25,
-    lost_sight_back_up_timeout=10,
+    rammed_back_up_timeout=20,
+    lost_sight_back_up_timeout=5,
 )
 
 highway = Highway(
@@ -41,7 +41,7 @@ highway = Highway(
 )
 
 track = Track(
-    depth=1.0,
+    depth=1.3,
     track_mag_thresh=20000,
     slow_down_dist=5,
     max_speed=0.3 if is_mainsub() else 0.2,

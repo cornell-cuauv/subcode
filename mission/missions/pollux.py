@@ -40,7 +40,8 @@ SurfaceAtCashIn = Sequential(
         cash_in_center,
         target=(0, 0),
         deadband=(0.2, 0.2),
-        px=0.0005, py=0.001
+        px=0.0005, py=0.001,
+    ),
     Log('Surfacing at cash-in!'),
     BigDepth(0),
 )
@@ -89,7 +90,7 @@ track = MissionTask(
         found_roulette=NoOp(),
         found_cash_in=NoOp(),
     ),
-    modules=[shm.vision_modules.Roulette], #CashInDownward], # TODO switch back to cash-in
+    modules=[shm.vision_modules.CashInDownward],
     surfaces=False,
     on_exit=TrackerCleanup(),
 )

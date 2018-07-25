@@ -1,7 +1,7 @@
 # Written by Will Smith.
 
 from mission.framework.task import Task
-from mission.framework.combinators import Sequential, Concurrent, MasterConcurrent, Retry, Conditional, While, Either
+from mission.framework.combinators import Sequential, Concurrent, MasterConcurrent, Retry, Conditional, While, Either, Defer
 from mission.framework.movement import Heading, RelativeToInitialHeading, VelocityX, VelocityY, Depth, RelativeToCurrentHeading, RelativeToCurrentDepth
 from mission.framework.primitive import Log, NoOp, Zero, Succeed, Fail, FunctionTask
 from mission.framework.targeting import ForwardTarget, HeadingTarget, CameraTarget, PIDLoop
@@ -12,6 +12,8 @@ from mission.framework.search import SearchFor, VelocitySwaySearch
 from mission.constants.config import dice as settings
 
 from mission.missions.will_common import BigDepth, ForwardSearch, Consistent, FakeMoveX
+
+import time
 
 import shm
 
@@ -73,9 +75,9 @@ SearchBuoy = lambda num, count, total: Sequential(
 )
 
 BackUpUntilVisible = lambda num, speed, timeout: Conditional(
-    Sequential(
-        Timeout(
-            task=Sequential(
+    Defer(
+        main_task=Either(
+            Sequential(
                 # Get at least a little bit away first
                 FakeMoveX(dist=-0.3, speed=0.2),
                 MasterConcurrent(
@@ -84,14 +86,27 @@ BackUpUntilVisible = lambda num, speed, timeout: Conditional(
                     VelocityX(-speed),
                 ),
             ),
-            time=timeout # don't back up too far
+            Fail(
+                Timer(timeout), # don't back up too far
+            ),
         ),
-        VelocityX(0),
+        deferred=Sequential(
+            VelocityX(0),
+        ),
     ),
-    on_success=Succeed(NoOp()),
-    on_fail=Sequential(
-        Log('Timed out, searching for buoy again'),
-        SearchBuoy(num=num, count=1, total=3),
+    on_success=Succeed(
+        Sequential(
+            NoOp(),
+        ),
+    ),
+    on_fail=Conditional(
+        FunctionTask(lambda: num == 0),
+        on_success=Sequential(
+            Log('Timed out, searching for buoy again'),
+            SearchBuoy(num=num, count=4, total=5),
+        ),
+        # If this is the second buoy, then don't search again goddamit
+        on_fail=NoOp(),
     )
 )
 
@@ -118,7 +133,7 @@ RamBuoyAttempt = lambda num: Sequential(
                     Sequential(
                         Zero(),
                         Log('Aligning...'),
-                        align_buoy(num=num, db=0.1, mult=5),
+                        align_buoy(num=num, db=0.05, mult=5),
                         Log('Driving forward...'),
                         Concurrent(
                             VelocityX(0.06),
@@ -128,7 +143,7 @@ RamBuoyAttempt = lambda num: Sequential(
                 ),
                 Zero(),
                 Log('Aligning one more time...'),
-                align_buoy(num=num, db=0.1, mult=3),
+                align_buoy(num=num, db=0.1, mult=5),
             ),
         ),
         on_success=Sequential(
@@ -163,13 +178,11 @@ RamBuoy = lambda num: Sequential(
     TrackBuoy(num + 1, BackUp()),
 )
 
-# TODO if it doesn't find the buoy the second time backing up it will start searching again
-# don't do that - we just want to end the mission
-
 Full = Sequential(
     Log('Searching for buoys...'),
     SearchBuoy(num=1, count=4, total=5), # if we see the second buoy then we see both
     Succeed(RamBuoy(num=0)),
-    RelativeToInitialHeading(10),
+    RelativeToInitialHeading(10, deadband=5), # sometimes mission hangs here - due to poorly tuned heading
     Succeed(RamBuoy(num=1)),
+    RelativeToInitialHeading(-10, deadband=5),
 )

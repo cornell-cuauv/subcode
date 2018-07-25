@@ -35,7 +35,7 @@ vision_options = {
         gui_options.IntOption('lab_b_thresh_min', 0, 0, 255),
         gui_options.IntOption('lab_b_thresh_max', 143, 0, 255),
         gui_options.IntOption('hsv_h_min', 150, 0, 255),
-        gui_options.IntOption('hsv_h_max', 244, 0, 255),
+        gui_options.IntOption('hsv_h_max', 255, 0, 255),
         gui_options.IntOption('erode_size', 4, 0, 50),
         gui_options.IntOption('dilate_size', 4, 0, 50),
         gui_options.DoubleOption('min_percent_frame', 0.01, 0, 0.1),
@@ -263,7 +263,7 @@ class Pipes(ModuleBase):
         final.append(info[0])
 
         for l in info[1:]:
-          if self.angle_diff(info[0].angle, l.angle) > 0.5:
+          if radians(20) < self.angle_diff(info[0].angle, l.angle) < radians(70):
 
             final.append(l)
             break
