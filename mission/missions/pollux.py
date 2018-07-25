@@ -16,6 +16,8 @@ from mission.missions.gate import gate as Gate
 from mission.missions.path import get_path as PathGetter
 from mission.missions.dice import Full as Dice
 
+from mission.missions.cash_in import norm_to_vision_downward
+
 def time_left():
     # TODO test this?
     #time_in = Master.this_run_time - Master.first_run_time
@@ -35,13 +37,15 @@ cash_in_center = lambda: tuple(sum([val.get() for val in dimen]) for dimen in CA
 
 # TODO test this
 SurfaceAtCashIn = Sequential(
+    Zero(),
+    Timer(3),
     Log('Aligning with cash-in'),
-    DownwardTarget(
-        cash_in_center,
-        target=(0, 0),
-        deadband=(0.2, 0.2),
-        px=0.0005, py=0.001,
-    ),
+    #DownwardTarget(
+    #    cash_in_center,
+    #    target=norm_to_vision_downward(0, 0),
+    #    deadband=norm_to_vision_downward(-0.5, -0.5),
+    #    px=0.0005, py=0.001,
+    #),
     Log('Surfacing at cash-in!'),
     BigDepth(0),
 )
@@ -98,7 +102,7 @@ track = MissionTask(
 surface_cash_in = MissionTask(
     name='SurfaceCashIn',
     cls=SurfaceAtCashIn,
-    modules=None,
+    modules=[shm.vision_modules.CashInDownward],
     surfaces=True,
 )
 
@@ -114,3 +118,4 @@ tasks = [
 ]
 
 Master = RunAll(tasks)
+

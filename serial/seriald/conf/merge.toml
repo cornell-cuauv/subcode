@@ -5,7 +5,7 @@ MissionLED = "merge.mission_led"
 MissionStart = "merge_status.mission_start"
 SubRestart = "merge.arm_for_shutdown"
 listenKill = "merge.hardkill_switch_present_please_dont_change"
-# HardKill = "switches.hard_kill"
+HardKill = "switches.hard_kill"
 
 [devices.merge.options]
-# canHardKill = true
+canHardKill = true

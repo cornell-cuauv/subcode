@@ -159,9 +159,9 @@ class Begin(Task):
       AllLeds('cyan'),
 
       # Need a swimmer to do this
-      #Log('Waiting for re-kill...'),
-      #WaitForUnkill(killed=False, wait=0.5),
-      #AllLeds('blue'),
+      Log('Waiting for re-kill...'),
+      WaitForUnkill(killed=False, wait=0.5),
+      AllLeds('blue'),
 
       Log('Waiting for unkill signal to start mission...'),
       WaitForUnkill(wait=5.0),
