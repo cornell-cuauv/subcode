@@ -12,7 +12,7 @@ from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, T
 from mission.missions.will_common import BigDepth, Consistent, FakeMoveX
 
 from mission.missions.gate import gate as Gate
-from mission.missions.path import path as Path
+from mission.missions.path import get_path as PathGetter
 from mission.missions.hydrophones import Full as Hydrophones
 from mission.missions.roulette import Full as Roulette
 
@@ -25,8 +25,8 @@ gate = MissionTask(
 )
 
 path = lambda: MissionTask(
-    name='Path1',
-    cls=Path,
+    name='Path',
+    cls=PathGetter(),
     modules=[shm.vision_modules.Pipes],
     surfaces=False,
     timeout=None,

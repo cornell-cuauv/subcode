@@ -5,7 +5,7 @@ from mission.missions.will_common import is_mainsub
 HYDROPHONES_PINGER_DEPTH = 3.0
 
 gate = Gate(
-    depth=1.2,
+    depth=1.0,
     gate_width_threshold=0.4,
     charge_dist=16 if is_mainsub() else 10
 )
@@ -17,6 +17,8 @@ path = Path(
     search_right_first=True,
     search_speed=0.1,
     post_dist=2.5,
+    failure_back_up_dist=0.5 if is_mainsub() else 0.2,
+    failure_back_up_speed=0.2 if is_mainsub() else 0.2,
 )
 
 dice = Dice(
@@ -49,9 +51,9 @@ track = Track(
 
 roulette = Roulette(
     depth_search=1.0,
-    depth_realign=2.2,
-    depth_drop=2.8,
-    heading_offset=10,
+    depth_realign=2.5,
+    depth_drop=3.0,
+    heading_offset=30,
 )
 
 cash_in = CashIn(

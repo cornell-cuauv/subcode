@@ -136,7 +136,6 @@ class RunAll(Task):
       Concurrent(
         Sequential(subtasks=[RunTask(t) for t in tasks],),
         Fail(WaitForUnkill(killed=False, wait=1)),
-
       ),
       ), float('inf'))
     )

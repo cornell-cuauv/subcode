@@ -13,6 +13,8 @@ Path = namedtuple('Path', [
     'search_right_first',
     'search_speed',
     'post_dist',
+    'failure_back_up_dist',
+    'failure_back_up_speed',
 ])
 
 Dice = namedtuple('Dice', [

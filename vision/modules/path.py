@@ -70,7 +70,7 @@ vision_options = {
         gui_options.IntOption('lab_l_thresh_max', 152, 0, 255),
         gui_options.IntOption('lab_b_thresh_min', 0, 0, 255),
         gui_options.IntOption('lab_b_thresh_max', 143, 0, 255),
-        gui_options.IntOption('hsv_h_min', 164, 0, 255),
+        gui_options.IntOption('hsv_h_min', 150, 0, 255),
         gui_options.IntOption('hsv_h_max', 244, 0, 255),
         gui_options.IntOption('erode_size', 4, 0, 50),
         gui_options.IntOption('dilate_size', 4, 0, 50),
@@ -102,6 +102,10 @@ line_info = namedtuple("line_info", ["x1", "y1", "x2", "y2", "angle", "length", 
 
 INVALID_ERROR = 1e99
 
+from conf.vehicle import VEHICLE
+
+is_mainsub = VEHICLE == 'castor'
+
 class Pipes(ModuleBase):
     tracked_lines = []
 
@@ -123,8 +127,8 @@ class Pipes(ModuleBase):
         mat = cv2.GaussianBlur(mat, (k_size * 2 + 1, k_size * 2 + 1), k_std, k_std)
 
 
-        if self.options['debugging']:
-            self.post("preprocessed", mat)
+        #if self.options['debugging']:
+        #    self.post("preprocessed", mat)
 
         hsv = cv2.cvtColor(mat, cv2.COLOR_RGB2HSV)
         hsv_h, hsv_s, hsv_v = cv2.split(hsv)
@@ -140,11 +144,13 @@ class Pipes(ModuleBase):
         # lab_l_threshed = cv2.inRange(lab_l, self.options['lab_l_thresh_min'], self.options['lab_l_thresh_max'])
         # lab_b_threshed = cv2.inRange(lab_b, self.options['lab_b_thresh_min'], self.options['lab_b_thresh_max'])
 
-
-        final_threshed = h_threshed & ~lab_a_threshed
-
         if self.options['debugging']:
-            self.post('final_threshed',final_threshed)
+            self.post('lab_a_thresh', lab_a_threshed)
+
+        final_threshed = (~h_threshed if is_mainsub else h_threshed) & ~lab_a_threshed
+
+        #if self.options['debugging']:
+        #    self.post('final_threshed',final_threshed)
 
         # threshes["hsv_s"] = s_threshed
         # threshes["hsv_v"] = v_threshed
@@ -170,8 +176,8 @@ class Pipes(ModuleBase):
         return threshes
 
     def find_lines(self, mat, thresh):
-        if self.options['debugging']:
-            self.post("thres_test",thresh)
+        #if self.options['debugging']:
+        #    self.post("thres_test",thresh)
         minLineLength = self.options['min_line_hough_length']
         maxLineGap = 100
 
@@ -273,7 +279,7 @@ class Pipes(ModuleBase):
             cv2.line(line_image,(x1,y1),(x2,y2),(0, 255, 0),5)
 
 
-          self.post("final_lines",line_image)
+          #self.post("final_lines",line_image)
 
       return final
 
@@ -299,8 +305,8 @@ class Pipes(ModuleBase):
 
         image_size = mat.shape[0]*mat.shape[1]
 
-        if self.options['debugging']:
-            self.post('orig', mat)
+        #if self.options['debugging']:
+        #    self.post('orig', mat)
         threshes = self.threshold(mat)
 
 
