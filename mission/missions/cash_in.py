@@ -321,13 +321,15 @@ class PickupFromBin(Task):
                 timed(cons(Depth(depth)), depth_timeout),
                 cons(
                     downward_target_task(target, deadband=deadband),
+                    success=0.80 * 2.5 * 60,
+                    total=2.5 * 60,
                     debug=True,
                 ),
                 stop(),
                 Log("Found at {} (depth={})".format(msg, depth)),
             )
 
-        bottom_target = (0.6, -0.2) if is_left else (-0.75, 0.1)
+        bottom_target = (-0.7, -0.4) if is_left else (0.8, -0.2)
 
         self.use_task(
             Sequential(
@@ -474,7 +476,7 @@ do_it_all = Sequential(
     Log("Found"),
     pickup_all,
     Log("Picked Up"),
-    cons(Heading(70)),
+    cons(Heading(45)),
     Log("Turned to hardcoded heading"),
     drop_all,
     Log("Dropped"),

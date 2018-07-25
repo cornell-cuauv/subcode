@@ -188,15 +188,15 @@ def daemon():
         set_all(0)
         sk = switches.soft_kill.get()
         if sk and not last_sk:
-            blink([LEDS["port"]["red"]], 3)
+            blink([LEDS["port"]["red"], LEDS["starboard"]["red"]], 3)
         if switches.hard_kill.get():
             while switches.hard_kill.get():
                 LEDS["port"]["red"].set(255)
                 sleep(0.5)
                 LEDS["port"]["red"].set(0)
-                set_group(LEDS["starboard"].values(), 255)
+                LEDS["starboard"]["red"].set(255)
                 sleep(0.5)
-                set_group(LEDS["starboard"].values(), 0)
+                LEDS["starboard"]["red"].set(0)
             blink([LEDS["port"]["green"], LEDS["starboard"]["green"]], 3)
         if not sk and last_sk:
             blink([LEDS["port"]["blue"], LEDS["starboard"]["blue"]], 3)
@@ -223,7 +223,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     try:
-        options[sys.argv[1]]()
+        function = options[sys.argv[1]]
+        shm.leds.light_show.set(1)
+        function()
     except KeyboardInterrupt:
         print("done.")
         set_all(0)

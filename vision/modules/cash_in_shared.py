@@ -28,7 +28,7 @@ def get_shared_options(is_forward):
         # Threshing
         options.IntOption('erode_size', (2, 5)[is_forward], 1, 40),
         options.IntOption('thresh_size', (15, 15)[is_forward], 1, 100),
-        options.IntOption("lab_b_min_red_bin", 137, 0, 255),
+        options.IntOption("lab_b_min_red_bin", 140, 0, 255),
         options.IntOption("lab_b_max_red_bin", 250, 0, 255),
         options.IntOption("color_dist_min_red_funnel", (137, 0)[is_forward], 0, 255),
         options.IntOption("color_dist_max_red_funnel", (250, 35)[is_forward], 0, 255),
@@ -123,6 +123,9 @@ def threshold(img):
 
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     (lab_l, lab_a, lab_b) = cv2.split(lab)
+
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    (hsv_h, hsv_s, hsv_v) = cv2.split(hsv)
 
     debugs["luv_u"] = luv_u
     debugs["luv_l"] = luv_l
@@ -219,6 +222,7 @@ def threshold(img):
 
             threshes["all_bins"] = cv2.inRange(
                 lab_b,
+                # hsv_s,
                 shared.options["lab_b_min_red_bin"],
                 shared.options["lab_b_max_red_bin"],
             )
@@ -488,4 +492,6 @@ def find_bins(images):
             # cv2.putText(image, str(binn), (int(binn.x), int(binn.y)), cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS["MAGENTA"], 2)
             cv2.circle(image, (int(binn.x), int(binn.y)), int(binn.area), COLORS["BLUE"], 5)
 
-        shared.post("contours_all", image)
+        shared.post("bins_all", image)
+
+    return bins

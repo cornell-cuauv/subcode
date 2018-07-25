@@ -209,18 +209,19 @@ VisionFramePeriod = lambda period: FunctionTask(lambda: shm.vision_module_settin
 
 ConfigureHydromath = lambda enable: FunctionTask(lambda: shm.hydrophones_settings.enabled.set(enable))
 
-TrackerGetter = lambda found_roulette, found_cash_in: Sequential(
+TrackerGetter = lambda found_roulette, found_cash_in, enable_roulette=True, enable_cash_in=True: Sequential(
   # Turn on hydromathd
   ConfigureHydromath(True),
   # Don't kill CPU with vision
   VisionFramePeriod(track_settings.vision_frame_period),
+  Log('Roulette: ' + str(enable_roulette) + ', Cash-in:' + str(enable_cash_in)),
   MasterConcurrent(
     Conditional(
       # Find either roulette or cash-in
       Either(
-        Consistent(test=lambda: shm.bins_vision.board_visible.get(),
+        Consistent(test=lambda: shm.bins_vision.board_visible.get() if enable_roulette else False,
                    count=1, total=1.5, invert=False, result=True),
-        Consistent(test=lambda: shm.recovery_vision_downward_bin_red.probability.get() > 0,
+        Consistent(test=lambda: shm.recovery_vision_downward_bin_red.probability.get() > 0 if enable_cash_in else False,
                    count=1, total=1.5, invert=False, result=False),
       ),
       # Success is roulette

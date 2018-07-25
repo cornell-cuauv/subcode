@@ -6,6 +6,7 @@ import shm
 from mission.framework.task import Task
 from mission.framework.combinators import Sequential, MasterConcurrent, Conditional, Either
 from mission.framework.primitive import FunctionTask, Zero, NoOp
+from mission.framework.timing import Timer
 
 from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup, DriveToSecondPath
 
@@ -50,7 +51,7 @@ roulette = MissionTask(
 
 cash_in = MissionTask(
     name='CashIn',
-    cls=NoOp(),
+    cls=Timer(30),
     modules=[shm.vision_modules.CashInDownward, shm.vision_modules.CashInForward],
     surfaces=True,
     timeout=None,
@@ -79,6 +80,8 @@ track = lambda: MissionTask(
     cls=TrackerGetter(
         found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
         found_cash_in=FunctionTask(lambda: find_task(CASH_IN)),
+        enable_roulette=not found_task == ROULETTE,
+        enable_cash_in=not found_task == CASH_IN,
     ),
     modules=[shm.vision_modules.CashInDownward, shm.vision_modules.Roulette],
     surfaces=False,
@@ -87,10 +90,10 @@ track = lambda: MissionTask(
 )
 
 tasks = [
-    #gate,
-    #path,
-    #highway,
-    #path,
+    gate,
+    path,
+    highway,
+    path,
     track,
     get_found_task,
     track,

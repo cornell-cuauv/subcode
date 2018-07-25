@@ -93,6 +93,7 @@ track = MissionTask(
         # We can't actually find roulette because the vision module is disabled
         found_roulette=NoOp(),
         found_cash_in=NoOp(),
+        enable_roulette=False,
     ),
     modules=[shm.vision_modules.CashInDownward],
     surfaces=False,

@@ -48,21 +48,19 @@ class CashInDownward(ModuleBase):
 
         final = img.copy()
 
-        # for name, binn in bins.items():
-        for name, binn in []:
-            break
-            shm_group = shm._eval("recovery_vision_downward_{}".format(name))
-            output = shm_group.get()
+        for binn in bins:
+            # shm_group = shm._eval("recovery_vision_downward_{}".format(name))
+            # output = shm_group.get()
 
-            output.area = binn.area
-            output.center_x = binn.x
-            output.center_y = binn.y
-            output.probability = binn.probability
+            # output.area = binn.area
+            # output.center_x = binn.x
+            # output.center_y = binn.y
+            # output.probability = binn.probability
 
-            shm_group.set(output)
+            # shm_group.set(output)
 
-            cv2.circle(final, (int(binn.x), int(binn.y)), int(math.sqrt(binn.area)), COLORS["BLUE"], 5)
-            cv2.putText(final, name, (int(binn.x), int(binn.y) - 20), cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS["BLUE"], 2)
+            cv2.circle(final, (int(binn.x), int(binn.y)), int(binn.area), COLORS["BLUE"], 5)
+            # cv2.putText(final, name, (int(binn.x), int(binn.y) - 20), cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS["BLUE"], 2)
 
         self.post("Final", final)
 

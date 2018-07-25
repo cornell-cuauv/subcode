@@ -37,12 +37,12 @@ VISION_CONFIG=$ROOT/vision/configs/master.yaml
 
 if [ "$SUBMARINE" = "castor" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
-  visiongui cameras webgui modules deadman uptime
-  dvld hydromathd)
+  visiongui cameras webgui modules deadman uptime hydromathd
+  dvld leds)
 elif [ "$SUBMARINE" = "pollux" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
-  visiongui cameras webgui modules deadman uptime
-  hydromathd)
+  visiongui cameras webgui modules deadman uptime hydromathd
+  )
 else
   echo "Unsupported submarine! Must be set to one of { artemis, apollo }!"
 fi
@@ -157,6 +157,7 @@ case $COMMAND in
             hydromathd) fork "auv-hydromathd" "hydromathd" ;;
             cameras) fork "auv-start-cameras" "start-cameras" ;;
             modules) fork "auv-start-modules" "start-modules" ;;
+            led|leds) fork "auv-led daemon" "led" ;;
             *) log "Service \"$SERVICE\" not found; aborting." ;;
         esac
     ;;
@@ -183,6 +184,7 @@ case $COMMAND in
             hydromathd) pkill "auv-hydromathd" ;;
             cameras) pkill "auv-start-cameras" ;;
             modules) pkill "auv-start-modules" ;;
+            led|leds) pkill "auv-led" ;;
             *) log "Service \"$SERVICE\" not found; aborting." ;;
         esac
     ;;
@@ -223,6 +225,7 @@ case $COMMAND in
             hydromathd) servicestatus "auv-hydromathd" "hydromathd" ;;
             cameras) servicestatus "auv-start-cameras" "cameras" ;;
             modules) servicestatus "auv-start-modules" "modules" ;;
+            led|leds) servicestatus "auv-led" "led" ;;
             *) log "Service \"$SERVICE\" not found; aborting." ;;
         esac
     ;;
@@ -248,6 +251,7 @@ case $COMMAND in
             hydromathd) assertservice "hydromathd" "auv-hydromathd" ;;
             cameras) assertservice "cameras" "auv-start-cameras" ;;
             modules) assertservice "modules" "auv-start-modules" ;;
+            led|leds) fork "auv-led daemon" "led";;
             ueye)
                 if [ -z "`pids ueyeethd`" ]; then
                     trogdor stop ueye
