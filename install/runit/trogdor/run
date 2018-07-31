@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /home/software/cuauv/workspaces/worktrees/master/trogdor/trogdor_boot.sh
+su -c "exec /home/software/cuauv/workspaces/worktrees/master/trogdor/trogdor_boot.sh" software
