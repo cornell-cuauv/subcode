@@ -8,7 +8,7 @@ import cv2 as cv2
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
-ENABLE_UMAT_POST = False
+ENABLE_UMAT_POST = True
 
 black_left = True
 gate_shm_group = shm.bicolor_gate_vision
