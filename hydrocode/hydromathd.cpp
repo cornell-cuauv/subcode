@@ -313,7 +313,7 @@ int main (int argc, char ** argv) {
     }
 
     current_sample_count+=CHANNEL_DEPTH;
-    do_spectrum();
+    //do_spectrum();
     do_track();
   }
 
