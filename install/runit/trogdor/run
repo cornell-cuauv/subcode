@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /home/software/cuauv/workspaces/worktrees/master/trogdor/trogdor_boot.sh
