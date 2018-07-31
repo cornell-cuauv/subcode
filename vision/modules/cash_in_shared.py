@@ -16,7 +16,7 @@ def get_shared_options(is_forward):
         # Global
         options.BoolOption('in_simulator', False),
         options.BoolOption('preprocess_debug', False),
-        options.BoolOption('thresh_debug', False),
+        options.BoolOption('thresh_debug', True),
         options.BoolOption('contour_debug', False),
         options.BoolOption('bins_debug', False),
         options.BoolOption('funnels_debug', False),
@@ -126,6 +126,9 @@ def threshold(img):
 
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     (hsv_h, hsv_s, hsv_v) = cv2.split(hsv)
+
+    debugs["luv"] = luv
+    debugs["lab"] = lab
 
     debugs["luv_u"] = luv_u
     debugs["luv_l"] = luv_l
