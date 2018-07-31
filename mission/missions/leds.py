@@ -54,6 +54,7 @@ InitLeds = Sequential(
     AllLeds('magenta'),
 )
 
+TestBlack = AllLeds('black')
 TestRed = AllLeds('red')
 TestCyan = AllLeds('cyan')
 TestOrange = AllLeds('orange')

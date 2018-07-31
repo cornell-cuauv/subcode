@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+import colorsys
+import itertools
+import multiprocessing
 import sys
 import time
-import colorsys
-import multiprocessing
 
 import numpy as np
 import shm
@@ -29,8 +30,8 @@ LEDS = {
 
 COLORS = {
     "WHITE": (255, 255, 255),
-    "RED": (0, 0, 255),
-    "BLUE": (255, 0, 0),
+    "RED": (255, 0, 0),
+    "BLUE": (0, 0, 255),
     "GREEN": (0, 255, 0),
     "ORANGE": (255, 165, 0),
     "CYAN": (0, 255, 255),
@@ -93,12 +94,12 @@ def passthrough():
     leds = shm.leds.get()
     leds_internal = shm.leds_internal.get()
 
-    leds_internal.port_color_red = leds.port_color_red % 255
-    leds_internal.port_color_green = leds.port_color_green % 255
-    leds_internal.port_color_blue = leds.port_color_blue % 255
-    leds_internal.starboard_color_red = leds.starboard_color_red % 255
-    leds_internal.starboard_color_green = leds.starboard_color_green % 255
-    leds_internal.starboard_color_blue = leds.starboard_color_blue % 255
+    leds_internal.port_color_red = leds.port_color_red % 256
+    leds_internal.port_color_green = leds.port_color_green % 256
+    leds_internal.port_color_blue = leds.port_color_blue % 256
+    leds_internal.starboard_color_red = leds.starboard_color_red % 256
+    leds_internal.starboard_color_green = leds.starboard_color_green % 256
+    leds_internal.starboard_color_blue = leds.starboard_color_blue % 256
 
     shm.leds_internal.set(leds_internal)
 
@@ -132,13 +133,19 @@ def pressure():
         )
     )
 
+last_time = time.time()
+
 def trim():
+    bad_angle = 7
+    mid_angle = 3
+    good_angle = 1
+
     set_side_rgb(
         LEDS["port"],
         *interp_color(
-            shm.kalman.roll.get(),
-            [-5, -1.5, 1.5, 5],
-            [COLORS["ORANGE"], COLORS["GREEN"], COLORS["GREEN"], COLORS["ORANGE"]],
+            shm.gx4.roll.get(),
+            [-bad_angle, -mid_angle, -good_angle, good_angle, mid_angle, bad_angle],
+            [COLORS["RED"], COLORS["ORANGE"], COLORS["GREEN"], COLORS["GREEN"], COLORS["ORANGE"], COLORS["RED"]],
             left=COLORS["RED"],
             right=COLORS["RED"],
         )
@@ -147,9 +154,9 @@ def trim():
     set_side_rgb(
         LEDS["starboard"],
         *interp_color(
-            shm.kalman.pitch.get(),
-            [-5, -1.5, 1.5, 5],
-            [COLORS["ORANGE"], COLORS["GREEN"], COLORS["GREEN"], COLORS["ORANGE"]],
+            shm.gx4.pitch.get(),
+            [-bad_angle, -mid_angle, -good_angle, good_angle, mid_angle, bad_angle],
+            [COLORS["RED"], COLORS["ORANGE"], COLORS["GREEN"], COLORS["GREEN"], COLORS["ORANGE"], COLORS["RED"]],
             left=COLORS["RED"],
             right=COLORS["RED"],
         )
@@ -160,66 +167,111 @@ def feedback():
     leds = shm.leds.get()
     leds_internal = shm.leds_internal.get()
 
-    leds_internal.port_color_red = leds.port_color_red % 255
-    leds_internal.port_color_green = leds.port_color_green % 255
-    leds_internal.port_color_blue = leds.port_color_blue % 255
-    leds_internal.starboard_color_red = leds.port_color_red % 255
-    leds_internal.starboard_color_green = leds.port_color_green % 255
-    leds_internal.starboard_color_blue = leds.port_color_blue % 255
+    leds_internal.port_color_red = leds.port_color_red % 256
+    leds_internal.port_color_green = leds.port_color_green % 256
+    leds_internal.port_color_blue = leds.port_color_blue % 256
+    leds_internal.starboard_color_red = leds.port_color_red % 256
+    leds_internal.starboard_color_green = leds.port_color_green % 256
+    leds_internal.starboard_color_blue = leds.port_color_blue % 256
 
     shm.leds_internal.set(leds_internal)
 
 
 def feedback_pulse():
-    for i in itertools.repeat(range(10)):
+    for i in itertools.cycle(range(15)):
         leds = shm.leds.get()
         leds_internal = shm.leds_internal.get()
 
 
-        if 0 <= i < 7:
-            leds_internal.port_color_red = leds.port_color_red % 255
-            leds_internal.port_color_green = leds.port_color_green % 255
-            leds_internal.port_color_blue = leds.port_color_blue % 255
-            leds_internal.starboard_color_red = leds.port_color_red % 255
-            leds_internal.starboard_color_green = leds.port_color_green % 255
-            leds_internal.starboard_color_blue = leds.port_color_blue % 255
+        if 0 <= i < 12:
+            leds_internal.port_color_red = leds.port_color_red % 256
+            leds_internal.port_color_green = leds.port_color_green % 256
+            leds_internal.port_color_blue = leds.port_color_blue % 256
+            leds_internal.starboard_color_red = leds.port_color_red % 256
+            leds_internal.starboard_color_green = leds.port_color_green % 256
+            leds_internal.starboard_color_blue = leds.port_color_blue % 256
         else:
-            leds_internal.port_color_red = leds.starboard_color_red % 255
-            leds_internal.port_color_green = leds.starboard_color_green % 255
-            leds_internal.port_color_blue = leds.starboard_color_blue % 255
-            leds_internal.starboard_color_red = leds.starboard_color_red % 255
-            leds_internal.starboard_color_green = leds.starboard_color_green % 255
-            leds_internal.starboard_color_blue = leds.starboard_color_blue % 255
+            leds_internal.port_color_red = leds.starboard_color_red % 256
+            leds_internal.port_color_green = leds.starboard_color_green % 256
+            leds_internal.port_color_blue = leds.starboard_color_blue % 256
+            leds_internal.starboard_color_red = leds.starboard_color_red % 256
+            leds_internal.starboard_color_green = leds.starboard_color_green % 256
+            leds_internal.starboard_color_blue = leds.starboard_color_blue % 256
 
         shm.leds_internal.set(leds_internal)
 
-        time.slepe(0.1)
+        time.sleep(0.1)
 
 
 def feedback_pulse2():
-    for i in itertools.repeat(range(16)):
+    for i in itertools.cycle(range(21)):
         leds = shm.leds.get()
         leds_internal = shm.leds_internal.get()
 
 
-        if 0 <= i < 7 or 10 <= i < 13:
-            leds_internal.port_color_red = leds.port_color_red % 255
-            leds_internal.port_color_green = leds.port_color_green % 255
-            leds_internal.port_color_blue = leds.port_color_blue % 255
-            leds_internal.starboard_color_red = leds.port_color_red % 255
-            leds_internal.starboard_color_green = leds.port_color_green % 255
-            leds_internal.starboard_color_blue = leds.port_color_blue % 255
+        if 0 <= i < 12 or 15 <= i < 18:
+            leds_internal.port_color_red = leds.port_color_red % 256
+            leds_internal.port_color_green = leds.port_color_green % 256
+            leds_internal.port_color_blue = leds.port_color_blue % 256
+            leds_internal.starboard_color_red = leds.port_color_red % 256
+            leds_internal.starboard_color_green = leds.port_color_green % 256
+            leds_internal.starboard_color_blue = leds.port_color_blue % 256
         else:
-            leds_internal.port_color_red = leds.starboard_color_red % 255
-            leds_internal.port_color_green = leds.starboard_color_green % 255
-            leds_internal.port_color_blue = leds.starboard_color_blue % 255
-            leds_internal.starboard_color_red = leds.starboard_color_red % 255
-            leds_internal.starboard_color_green = leds.starboard_color_green % 255
-            leds_internal.starboard_color_blue = leds.starboard_color_blue % 255
+            leds_internal.port_color_red = leds.starboard_color_red % 256
+            leds_internal.port_color_green = leds.starboard_color_green % 256
+            leds_internal.port_color_blue = leds.starboard_color_blue % 256
+            leds_internal.starboard_color_red = leds.starboard_color_red % 256
+            leds_internal.starboard_color_green = leds.starboard_color_green % 256
+            leds_internal.starboard_color_blue = leds.starboard_color_blue % 256
 
         shm.leds_internal.set(leds_internal)
 
-        time.slepe(0.1)
+        time.sleep(0.1)
+
+
+def morse():
+    TIMES = {
+        ".": 0.1,
+        "-": 0.2,
+        " ": 0.2,
+        "": 0.1,
+        "/": 0.5,
+    }
+
+    full_stop = 0.5
+
+    MORSE_CODE_DICT = {
+        'A':'.-', 'B':'-...',
+        'C':'-.-.', 'D':'-..', 'E':'.',
+        'F':'..-.', 'G':'--.', 'H':'....',
+        'I':'..', 'J':'.---', 'K':'-.-',
+        'L':'.-..', 'M':'--', 'N':'-.',
+        'O':'---', 'P':'.--.', 'Q':'--.-',
+        'R':'.-.', 'S':'...', 'T':'-',
+        'U':'..-', 'V':'...-', 'W':'.--',
+        'X':'-..-', 'Y':'-.--', 'Z':'--..',
+        '1':'.----', '2':'..---', '3':'...--',
+        '4':'....-', '5':'.....', '6':'-....',
+        '7':'--...', '8':'---..', '9':'----.',
+        '0':'-----', ', ':'--..--', '.':'.-.-.-',
+        '?':'..--..', '/':'-..-.', '-':'-....-',
+        '(':'-.--.', ')':'-.--.-', ' ': ' ',
+    }
+
+    while True:
+        message = shm.lcd.message.get()
+
+        for c in message:
+            print(c)
+
+            code = MORSE_CODE_DICT[c.upper()]
+            for sym in code:
+                set_all(255)
+                time.sleep(TIMES[sym])
+                set_all(0)
+                time.sleep(TIMES[""])
+
+        time.sleep(TIMES["/"])
 
 
 def on():
@@ -241,6 +293,7 @@ modes = {
     "feedback": feedback,
     "feedback_pulse": feedback_pulse,
     "feedback_pulse2": feedback_pulse2,
+    "morse": morse,
 }
 
 
