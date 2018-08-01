@@ -42,7 +42,7 @@ highway = Highway(
 
 track = Track(
     depth=1.6,
-    track_mag_thresh=20000,
+    track_mag_thresh=10000,
     slow_down_dist=5,
     max_speed=0.3 if is_mainsub() else 0.2,
     min_speed=0.1,
