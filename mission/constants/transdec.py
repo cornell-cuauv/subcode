@@ -65,11 +65,11 @@ cash_in = CashIn(
     # (right, left)
     drop_dvl_forward_correct_dist=(0.1, -0.13),
     drop_heading_correct=(0, -7),
-    pick_up_both_depth=1.0,
-    pick_up_search_depth_1=2.0,
-    pick_up_search_depth_2=2.25,
-    pick_up_search_depth_3=2.5,
-    pick_up_start_follow_depth=3.2,
+    pick_up_both_depth=2.0,
+    pick_up_search_depth_1=3.0,
+    pick_up_search_depth_2=3.25,
+    pick_up_search_depth_3=3.5,
+    pick_up_start_follow_depth=3.9,
     attempt_surface_depth=-1,
     attempt_funnel_depth=0,
 )

@@ -481,3 +481,25 @@ do_it_all = Sequential(
     drop_all,
     Log("Dropped"),
 )
+
+
+left = make_bin_chooser(True)
+right = make_bin_chooser(False)
+
+center_left = DownwardTarget(
+    point=(lambda: left().center_x.get(), lambda: left().center_y.get()),
+    target=norm_to_vision_downward(0, 0),
+    deadband=norm_to_vision_downward(-9, -9),
+    px=0.0005,
+    py=0.001,
+    max_out=0.5,
+)
+
+center_right = DownwardTarget(
+    point=(lambda: right().center_x.get(), lambda: right().center_y.get()),
+    target=norm_to_vision_downward(0, 0),
+    deadband=norm_to_vision_downward(-9, -9),
+    px=0.0005,
+    py=0.001,
+    max_out=0.5,
+)
