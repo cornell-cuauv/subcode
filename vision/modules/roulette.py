@@ -18,7 +18,7 @@ from vision import options
 from vision.modules.will_common import find_best_match
 
 options = [
-    options.BoolOption('debug', False),
+    options.BoolOption('debug', True),
     options.IntOption('red_lab_a_min', 140, 0, 255),
     options.IntOption('red_lab_a_max', 255, 0, 255),
     options.IntOption('black_lab_l_min', 0, 0, 255),
@@ -204,7 +204,8 @@ class Roulette(ModuleBase):
             red_threshed = cv2.erode(red_threshed,
                     (2 * self.options['erode_kernel'] + 1,
                     2 * self.options['erode_kernel'] + 1))
-            self.post('red_threshed', red_threshed)
+            if debug and POST_UMAT:
+                self.post('red_threshed', red_threshed)
 
             # detect black section
             black_threshed = cv2.inRange(lab_split[0],
@@ -214,7 +215,8 @@ class Roulette(ModuleBase):
                     (2 * self.options['erode_kernel'] + 1,
                     2 * self.options['erode_kernel'] + 1),
                     iterations=self.options['black_erode_iters'])
-            self.post('black_threshed', black_threshed)
+            if debug and POST_UMAT:
+                self.post('black_threshed', black_threshed)
 
             comp = red_threshed & ~green_threshed
 
