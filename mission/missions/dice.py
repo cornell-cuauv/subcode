@@ -67,10 +67,18 @@ def align_buoy(num, db, mult=1):
 # num here refers to the shm group, not the tracked num
 SearchBuoy = lambda num, count, total: Sequential(
     BigDepth(BUOY_DEPTH),
-    SearchFor(
-        ForwardSearch(forward=settings.search_forward, stride=settings.search_stride, speed=settings.search_speed),
-        shm_vars[num].visible.get,
-        consistent_frames=(count * 60, total * 60) # multiple by 60 to specify in seconds
+    Either(
+        SearchFor(
+            ForwardSearch(forward=settings.search_forward, stride=settings.search_stride, speed=settings.search_speed),
+            shm_vars[num].visible.get,
+            consistent_frames=(count * 60, total * 60) # multiple by 60 to specify in seconds
+        ),
+        # Time out if we can only see one die
+        Sequential(
+            Timer(settings.search_default_zero_timeout),
+            Consistent(lambda: shm_vars[0].visible.get(),
+                       count=count, total=total, result=True, invert=False),
+        ),
     ),
 )
 

@@ -294,6 +294,8 @@ class Roulette(ModuleBase):
                         else:
                             bins.append((line, 1))
 
+                            (rho, theta) = line
+
                             a = np.cos(theta)
                             b = np.sin(theta)
                             x0 = a*rho

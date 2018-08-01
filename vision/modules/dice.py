@@ -17,13 +17,16 @@ from vision import options
 from will_common import find_best_match
 
 options = [
-    options.BoolOption('debug', False),
+    options.BoolOption('debug', True),
     options.IntOption('hsv_thresh_c', 35, 0, 100),
     options.IntOption('canny_a', 50, 0, 255),
     options.IntOption('canny_b', 110, 0, 255),
+    options.IntOption('contour_area_thresh', 10, 1, 200),
     options.DoubleOption('perim_thresh', 1.5, 1, 10),
-    options.DoubleOption('circle_thresh', 5, 1, 10),
+    options.DoubleOption('circle_thresh', 3, 1, 10),
     options.DoubleOption('ellipse_thresh', 1.2, 1, 10),
+    options.DoubleOption('max_pip_dist_ratio', 4, 0, 10),
+    options.DoubleOption('max_pip_radius_ratio', 1.2, 1, 10),
 ]
 
 FORWARD_CAM_WIDTH = shm.camera.forward_width.get()
@@ -82,7 +85,7 @@ class Dice(ModuleBase):
 
             hsv_v_edges = cv2.Canny(hsv_v, self.options['canny_a'], self.options['canny_b'])
 
-            hsv_v_c = cv2.dilate(hsv_v_edges, self.kernel(1))
+            hsv_v_c = cv2.dilate(hsv_v_edges, self.kernel(0))
             #luv_u_c = cv2.erode(luv_u_thresh, self.kernel(0))
             #luv_v_c = cv2.erode(luv_v_thresh, self.kernel(0))
             #y_cr_c = cv2.erode(y_cr_thresh, self.kernel(0))
@@ -103,7 +106,7 @@ class Dice(ModuleBase):
 
             # Problem is that this depends on the distance
             # When the dice are really far away the dots are tiny
-            min_area = 100
+            min_area = self.options['contour_area_thresh']
 
             for contour in contours:
                 hull = cv2.convexHull(contour)
@@ -131,8 +134,21 @@ class Dice(ModuleBase):
                         except cv2.error:
                             pass
 
+            # Use Hough circles as well
+
+            #circled = mat
+
+            #circles = cv2.HoughCircles(hsv_v, cv2.HOUGH_GRADIENT, 5, 50, param1=100, param2=10, minRadius=3, maxRadius=10)
+
+            #if circles is not None:
+            #    for circle in circles[0,:]:
+            #        print(circle)
+            #        cv2.circle(circled, (circle[0], circle[1]), circle[2], (0, 255, 0), 3)
+
             dotted = mat.copy()
             density_dots = np.zeros(mat.shape, np.uint8)
+
+            #self.post('circled', circled)
 
             for dot in dots:
                 x, y, w, h = cv2.boundingRect(dot[0])
@@ -157,7 +173,7 @@ class Dice(ModuleBase):
                     radius_ratio = max(dot1[2], dot2[2]) / min(dot1[2], dot2[2])
                     avg_radius = (dot1[2] + dot2[2]) / 2
 
-                    if dist < avg_radius * 5 and radius_ratio < 1.5:
+                    if dist < avg_radius * self.options['max_pip_dist_ratio'] and radius_ratio < self.options['max_pip_radius_ratio']:
                         # They should be in the same group
 
                         # Find the two groups
@@ -227,6 +243,7 @@ class Dice(ModuleBase):
                         return np.inf
                     # Distance between centers
                     dist = self.dist(self.norm_xy(new[:2]), old[:2])
+                    
                     return dist
 
                 # Try to line up the data with the old one for consistency

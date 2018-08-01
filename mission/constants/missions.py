@@ -27,6 +27,7 @@ Dice = namedtuple('Dice', [
     'ram_dist',
     'rammed_back_up_timeout',
     'lost_sight_back_up_timeout',
+    'search_default_zero_timeout',
 ])
 
 Highway = namedtuple('Highway', [
