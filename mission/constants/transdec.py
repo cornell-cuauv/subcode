@@ -8,7 +8,7 @@ HYDROPHONES_PINGER_DEPTH = 4.7
 # They need to be updated for Transdec!!
 
 gate = Gate(
-    depth=1.0,
+    depth=2.0,
     gate_width_threshold=0.4,
     charge_dist=16 if is_mainsub() else 12
 )
@@ -45,7 +45,7 @@ highway = Highway(
 
 track = Track(
     depth=1.6,
-    track_mag_thresh=20000,
+    track_mag_thresh=35000,
     slow_down_dist=5,
     max_speed=0.3 if is_mainsub() else 0.2,
     min_speed=0.1,

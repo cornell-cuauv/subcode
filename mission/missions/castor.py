@@ -89,6 +89,18 @@ track = lambda: MissionTask(
     on_exit=TrackerCleanup()
 )
 
+TestTrack = Sequential(
+    TrackerGetter(
+        # found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
+        # found_cash_in=FunctionTask(lambda: find_task(CASH_IN)),
+        found_roulette=FunctionTask(lambda: False),
+        found_cash_in=FunctionTask(lambda: False),
+        enable_roulette=True,
+        enable_cash_in=True,
+    ),
+    # TrackCleanup(),
+)
+
 tasks = [
     gate,
     path,

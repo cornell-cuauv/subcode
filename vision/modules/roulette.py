@@ -19,12 +19,12 @@ from vision.modules.will_common import find_best_match
 
 options = [
     options.BoolOption('debug', False),
-    options.IntOption('red_lab_a_min', 129, 0, 255),
+    options.IntOption('red_lab_a_min', 140, 0, 255),
     options.IntOption('red_lab_a_max', 255, 0, 255),
     options.IntOption('black_lab_l_min', 0, 0, 255),
-    options.IntOption('black_lab_l_max', 110, 0, 255),
+    options.IntOption('black_lab_l_max', 150, 0, 255),
     options.IntOption('green_lab_a_min', 0, 0, 255),
-    options.IntOption('green_lab_a_max', 110, 0, 255),
+    options.IntOption('green_lab_a_max', 120, 0, 255),
     options.IntOption('blur_kernel', 8, 0, 255),
     options.IntOption('erode_kernel', 2, 0, 255),
     options.IntOption('black_erode_iters', 5, 0, 100),
@@ -32,7 +32,7 @@ options = [
     options.IntOption('canny_high_thresh', 200, 0, 1000),
     options.IntOption('hough_lines_rho', 5, 1, 1000),
     options.IntOption('hough_lines_theta', 1, 1, 1000),
-    options.IntOption('hough_lines_thresh', 180, 0, 1000),
+    options.IntOption('hough_lines_thresh', 100, 0, 1000),
     options.IntOption('hough_circle_blur_kernel', 10, 0, 255),
     options.IntOption('hough_circles_dp', 1, 0, 255),
     options.IntOption('hough_circles_minDist', 50, 0, 1000),
@@ -43,7 +43,7 @@ options = [
     options.IntOption('contour_min_area', 1000, 0, 100000)
 ]
 
-POST_UMAT = False
+POST_UMAT = True
 
 ROTATION_PREDICTION_ANGLE = 20
 DOWNWARD_CAM_WIDTH = shm.camera.downward_width.get()
@@ -194,26 +194,36 @@ class Roulette(ModuleBase):
             green_threshed = cv2.erode(green_threshed,
                     (2 * self.options['erode_kernel'] + 1,
                     2 * self.options['erode_kernel'] + 1))
-            #self.post('green_threshed', green_threshed)
+            if debug and POST_UMAT:
+                self.post('green_threshed', green_threshed)
 
-            # # detect red section
-            # red_threshed = cv2.inRange(lab_split[1],
-            #         self.options['red_lab_a_min'],
-            #         self.options['red_lab_a_max'])
-            # red_threshed = cv2.erode(red_threshed,
-            #         (2 * self.options['erode_kernel'] + 1,
-            #         2 * self.options['erode_kernel'] + 1))
-            # #self.post('red_threshed', red_threshed)
+            # detect red section
+            red_threshed = cv2.inRange(lab_split[1],
+                    self.options['red_lab_a_min'],
+                    self.options['red_lab_a_max'])
+            red_threshed = cv2.erode(red_threshed,
+                    (2 * self.options['erode_kernel'] + 1,
+                    2 * self.options['erode_kernel'] + 1))
+            self.post('red_threshed', red_threshed)
 
-            # # detect black section
-            # black_threshed = cv2.inRange(lab_split[0],
-            #         self.options['black_lab_l_min'],
-            #         self.options['black_lab_l_max'])
-            # black_threshed = cv2.erode(black_threshed,
-            #         (2 * self.options['erode_kernel'] + 1,
-            #         2 * self.options['erode_kernel'] + 1),
-            #         iterations=self.options['black_erode_iters'])
-            # #self.post('black_threshed', black_threshed)
+            # detect black section
+            black_threshed = cv2.inRange(lab_split[0],
+                    self.options['black_lab_l_min'],
+                    self.options['black_lab_l_max'])
+            black_threshed = cv2.erode(black_threshed,
+                    (2 * self.options['erode_kernel'] + 1,
+                    2 * self.options['erode_kernel'] + 1),
+                    iterations=self.options['black_erode_iters'])
+            self.post('black_threshed', black_threshed)
+
+            comp = red_threshed & ~green_threshed
+
+            if debug:
+                self.post('comp', comp)
+
+            #green_threshed = green_threshed & ~red_threshed & ~black_threshed
+
+            #self.post('comp', green_threshed)
 
             # all_threshed = green_threshed | red_threshed | black_threshed
             # all_threshed = cv2.GaussianBlur(all_threshed,
@@ -246,7 +256,7 @@ class Roulette(ModuleBase):
                 center_x, center_y = circle[0], circle[1]
             if not found_center:
                 # Fall back to hough lines if cannot find center using hough circles
-                blurred = cv2.GaussianBlur(green_threshed,
+                blurred = cv2.GaussianBlur(comp,
                         (2 * self.options['blur_kernel'] + 1,
                         2 * self.options['blur_kernel'] + 1), 0)
                 #self.post('blurred', blurred)
@@ -269,6 +279,8 @@ class Roulette(ModuleBase):
                     # Remove duplicates
                     lines_unfiltered = set([(line[0][0], line[0][1]) for line in lines])
 
+                    lines_groups_mat = mat
+
                     # Group lines into bins
                     bins = []
                     for line in lines_unfiltered:
@@ -280,11 +292,25 @@ class Roulette(ModuleBase):
                         else:
                             bins.append((line, 1))
 
+                            a = np.cos(theta)
+                            b = np.sin(theta)
+                            x0 = a*rho
+                            y0 = b*rho
+                            x1 = (x0 + 1500*(-b))
+                            y1 = (y0 + 1500*(a))
+                            x2 = (x0 - 1500*(-b))
+                            y2 = (y0 - 1500*(a))
+                            cv2.line(lines_groups_mat, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
+
+                    if debug:
+                        self.post('lines_groups', cv2.UMat.get(lines_groups_mat))
+
                     # Pick top four - we sometimes get the ends of the bins as lines as well
                     lines_unpicked = [line for line, count in sorted(bins, key=lambda bin: bin[1], reverse=True)[:4]]
 
                     if len(lines_unpicked) >= 2:
-                        THIRTY = math.radians(30)
+                        #THIRTY = math.radians(30)
+                        THIRTY = math.radians(75) # switching green to red bins
 
                         # Find two lines that are about 30 degrees apart
                         # Find the pairing of lines with the angle difference closest to 30 degrees
@@ -294,7 +320,7 @@ class Roulette(ModuleBase):
 
                         delta = math.degrees(abs(THIRTY * 2 - abs(angle_diff(lines[0][1] * 2, lines[1][1] * 2))))
 
-                        if delta <= 15:
+                        if delta <= 10:
                             line_equations = []
                             lines_mat = mat #mat.copy()
                             for (rho, theta) in lines:
