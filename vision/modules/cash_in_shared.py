@@ -32,6 +32,8 @@ def get_shared_options(is_forward):
         options.IntOption("lab_b_max_red_bin", 250, 0, 255),
         options.IntOption("color_dist_min_red_funnel", (137, 0)[is_forward], 0, 255),
         options.IntOption("color_dist_max_red_funnel", (250, 35)[is_forward], 0, 255),
+        options.IntOption("color_dist_min_yellow_funnel", (0, -1)[is_forward], 0, 255),
+        options.IntOption("color_dist_max_yellow_funnel", (30, -1)[is_forward], 0, 255),
 
         # Contouring
         options.IntOption('min_area', (10, 100)[is_forward], 1, 2000),
@@ -223,12 +225,20 @@ def threshold(img):
             shm.recovery_vision_downward_red.probability.set(funnel)
 
 
+            dist_from_yellow = np.linalg.norm(lab.astype(int) - [248, 111, 173], axis=2).astype(int)
+
             threshes["all_bins"] = cv2.inRange(
-                lab_b,
-                # hsv_s,
-                shared.options["lab_b_min_red_bin"],
-                shared.options["lab_b_max_red_bin"],
+                dist_from_yellow,
+                shared.options["color_dist_min_yellow_funnel"],
+                shared.options["color_dist_max_yellow_funnel"],
             )
+
+            # threshes["all_bins"] = cv2.inRange(
+            #     lab_b,
+            #     # hsv_s,
+            #     shared.options["lab_b_min_red_bin"],
+            #     shared.options["lab_b_max_red_bin"],
+            # )
 
 
 

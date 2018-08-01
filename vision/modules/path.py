@@ -29,12 +29,12 @@ vision_options = {
         gui_options.IntOption('hsv_s_c_thresh', -77, -200, 100),
         gui_options.IntOption('hsv_v_c_thresh', -27, -200, 100),
         gui_options.IntOption('lab_a_thresh_min', 0, 0, 255),
-        gui_options.IntOption('lab_a_thresh_max', 131, 0, 255),
+        gui_options.IntOption('lab_a_thresh_max', 127, 0, 255),
         gui_options.IntOption('lab_l_thresh_min', 0, 0, 255),
         gui_options.IntOption('lab_l_thresh_max', 152, 0, 255),
         gui_options.IntOption('lab_b_thresh_min', 0, 0, 255),
         gui_options.IntOption('lab_b_thresh_max', 143, 0, 255),
-        gui_options.IntOption('hsv_h_min', 150, 0, 255),
+        gui_options.IntOption('hsv_h_min', 61, 0, 255),
         gui_options.IntOption('hsv_h_max', 255, 0, 255),
         gui_options.IntOption('erode_size', 4, 0, 50),
         gui_options.IntOption('dilate_size', 4, 0, 50),
@@ -148,6 +148,7 @@ class Pipes(ModuleBase):
             self.post('lab_a_thresh', lab_a_threshed)
 
         final_threshed = (~h_threshed if is_mainsub else h_threshed) & ~lab_a_threshed
+        #final_threshed = ~h_threshed & ~lab_a_threshed
 
         #if self.options['debugging']:
         #    self.post('final_threshed',final_threshed)
