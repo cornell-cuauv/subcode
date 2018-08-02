@@ -17,7 +17,7 @@ from vision import options
 from will_common import find_best_match
 
 options = [
-    options.BoolOption('debug', True),
+    options.BoolOption('debug', False),
     options.IntOption('hsv_thresh_c', 35, 0, 100),
     options.IntOption('canny_a', 50, 0, 255),
     options.IntOption('canny_b', 110, 0, 255),
