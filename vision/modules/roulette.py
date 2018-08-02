@@ -26,7 +26,7 @@ options = [
     options.IntOption('green_lab_a_min', 0, 0, 255),
     options.IntOption('green_lab_a_max', 120, 0, 255),
     options.IntOption('color_dist_min_green_funnel', 0, 0, 255),
-    options.IntOption('color_dist_max_green_funnel', 10, 0, 255),
+    options.IntOption('color_dist_max_green_funnel', 50, 0, 255),
     options.IntOption('blur_kernel', 8, 0, 255),
     options.IntOption('erode_kernel', 2, 0, 255),
     options.IntOption('black_erode_iters', 5, 0, 100),
@@ -45,7 +45,7 @@ options = [
     options.IntOption('contour_min_area', 1000, 0, 100000)
 ]
 
-POST_UMAT = False
+POST_UMAT = True
 
 ROTATION_PREDICTION_ANGLE = 20
 DOWNWARD_CAM_WIDTH = shm.camera.downward_width.get()

@@ -5,7 +5,7 @@ from mission.missions.will_common import is_mainsub
 HYDROPHONES_PINGER_DEPTH = 3.0
 
 gate = Gate(
-    depth=1.0,
+    depth=2.0,
     gate_width_threshold=0.4,
     charge_dist=16 if is_mainsub() else 12
 )
@@ -43,7 +43,7 @@ highway = Highway(
 
 track = Track(
     depth=1.6,
-    track_mag_thresh=10000,
+    track_mag_thresh=20000,
     slow_down_dist=5,
     max_speed=0.3 if is_mainsub() else 0.2,
     min_speed=0.1,

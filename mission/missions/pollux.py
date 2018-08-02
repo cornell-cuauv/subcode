@@ -112,10 +112,10 @@ surface_cash_in = MissionTask(
 
 tasks = [
     gate,
-    path(PATH_1_BEND_RIGHT),
+    get_path(PATH_1_BEND_RIGHT),
     dice,
     highway,
-    path(PATH_2_BEND_RIGHT),
+    get_path(PATH_2_BEND_RIGHT),
     wait_for_track,
     track,
     surface_cash_in,
