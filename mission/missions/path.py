@@ -40,9 +40,15 @@ class FirstPipeGroupFirst(Task):
         angle_1 = abs(shm.path_results.angle_1.get())
         angle_2 = abs(shm.path_results.angle_2.get())
 
-        if self.angle_1_checker.check(angle_1 < angle_2):
+        # Map from (0, 180) -> (0, 360)
+        diff = math.atan2(math.sin((angle_2 - angle_1) * 2), math.cos((angle_2 - angle_1) * 2)) / 2
+
+        # TODO this might not be working
+        print(angle_1, angle_2, diff)
+
+        if self.angle_1_checker.check(diff < 0 ^ bend_right):
             self.finish()
-        if self.angle_2_checker.check(angle_2 < angle_1):
+        if self.angle_2_checker.check(diff > 0 ^ bend_right):
             self.finish(success=False)
 PipeAlign = lambda heading: Concurrent(
     DownwardTarget(lambda: (shm.path_results.center_x.get(), shm.path_results.center_y.get()),
