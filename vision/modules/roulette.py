@@ -25,6 +25,8 @@ options = [
     options.IntOption('black_lab_l_max', 150, 0, 255),
     options.IntOption('green_lab_a_min', 0, 0, 255),
     options.IntOption('green_lab_a_max', 120, 0, 255),
+    options.IntOption('color_dist_min_green_funnel', 0, 0, 255),
+    options.IntOption('color_dist_max_green_funnel', 30, 0, 255),
     options.IntOption('blur_kernel', 8, 0, 255),
     options.IntOption('erode_kernel', 2, 0, 255),
     options.IntOption('black_erode_iters', 5, 0, 100),
@@ -188,9 +190,17 @@ class Roulette(ModuleBase):
             #self.post('lab_a_split', lab_split[1])
 
             # detect green section
-            green_threshed = cv2.inRange(lab_split[1],
-                    self.options['green_lab_a_min'],
-                    self.options['green_lab_a_max'])
+            dist_from_green = np.linalg.norm(lab[:, :, 1:].astype(int) - [248, 111, 173][1:], axis=2).astype(int)
+
+            green_threshed = cv2.inRange(
+                dist_from_green,
+                self.options["color_dist_min_green_funnel"],
+                self.options["color_dist_max_green_funnel"],
+            )
+
+            # green_threshed = cv2.inRange(lab_split[1],
+            #         self.options['green_lab_a_min'],
+            #         self.options['green_lab_a_max'])
             green_threshed = cv2.erode(green_threshed,
                     (2 * self.options['erode_kernel'] + 1,
                     2 * self.options['erode_kernel'] + 1))
