@@ -18,7 +18,7 @@ from vision import options
 from vision.modules.will_common import find_best_match
 
 options = [
-    options.BoolOption('debug', True),
+    options.BoolOption('debug', False),
     options.IntOption('red_lab_a_min', 140, 0, 255),
     options.IntOption('red_lab_a_max', 255, 0, 255),
     options.IntOption('black_lab_l_min', 0, 0, 255),
@@ -26,7 +26,7 @@ options = [
     options.IntOption('green_lab_a_min', 0, 0, 255),
     options.IntOption('green_lab_a_max', 120, 0, 255),
     options.IntOption('color_dist_min_green_funnel', 0, 0, 255),
-    options.IntOption('color_dist_max_green_funnel', 30, 0, 255),
+    options.IntOption('color_dist_max_green_funnel', 10, 0, 255),
     options.IntOption('blur_kernel', 8, 0, 255),
     options.IntOption('erode_kernel', 2, 0, 255),
     options.IntOption('black_erode_iters', 5, 0, 100),
@@ -34,7 +34,7 @@ options = [
     options.IntOption('canny_high_thresh', 200, 0, 1000),
     options.IntOption('hough_lines_rho', 5, 1, 1000),
     options.IntOption('hough_lines_theta', 1, 1, 1000),
-    options.IntOption('hough_lines_thresh', 100, 0, 1000),
+    options.IntOption('hough_lines_thresh', 150, 0, 1000),
     options.IntOption('hough_circle_blur_kernel', 10, 0, 255),
     options.IntOption('hough_circles_dp', 1, 0, 255),
     options.IntOption('hough_circles_minDist', 50, 0, 1000),
@@ -45,14 +45,14 @@ options = [
     options.IntOption('contour_min_area', 1000, 0, 100000)
 ]
 
-POST_UMAT = True
+POST_UMAT = False
 
 ROTATION_PREDICTION_ANGLE = 20
 DOWNWARD_CAM_WIDTH = shm.camera.downward_width.get()
 DOWNWARD_CAM_HEIGHT = shm.camera.downward_height.get()
 
 # 30 for green, 75 for red
-TARGET_ANGLE = 75
+TARGET_ANGLE = 30
 
 
 def within_camera(x, y):
@@ -192,8 +192,15 @@ class Roulette(ModuleBase):
             lab_split = cv2.split(lab)
             #self.post('lab_a_split', lab_split[1])
 
+            if False:
+                self.post('lab', lab.get())
+
             # detect green section
-            dist_from_green = np.linalg.norm(lab[:, :, 1:].astype(int) - [248, 111, 173][1:], axis=2).astype(int)
+            #dist_from_green = np.linalg.norm(lab.get()[:, :, 1:].astype(int) - [131, 165, 125][1:], axis=2).astype(int)
+            dist_from_green = np.linalg.norm(lab.get()[:, :, :].astype(int) - [255, 129, 128], axis=2).astype(int)
+
+            if debug:
+                self.post('yellow_dist', np.abs(dist_from_green).astype('uint8'))
 
             green_threshed = cv2.inRange(
                 dist_from_green,
@@ -231,7 +238,8 @@ class Roulette(ModuleBase):
             if debug and POST_UMAT:
                 self.post('black_threshed', black_threshed)
 
-            comp = red_threshed & ~green_threshed
+            #comp = red_threshed & ~green_threshed
+            comp = green_threshed
 
             if debug:
                 self.post('comp', comp)
@@ -336,9 +344,9 @@ class Roulette(ModuleBase):
 
                         delta = math.degrees(abs(target_angle * 2 - abs(angle_diff(lines[0][1] * 2, lines[1][1] * 2))))
 
-                        print(delta, len(lines_unpicked))
+                        MAX_ANGLE_DIFF = 15
 
-                        if delta <= 10:
+                        if delta <= MAX_ANGLE_DIFF:
                             line_equations = []
                             lines_mat = mat #mat.copy()
                             for (rho, theta) in lines:

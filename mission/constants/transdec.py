@@ -57,7 +57,7 @@ roulette = Roulette(
     depth_search=1.0,
     depth_realign=2.5,
     depth_drop=3.0,
-    heading_offset=30,
+    heading_offset=-30,
 )
 
 cash_in = CashIn(
