@@ -18,6 +18,7 @@ from mission.framework.timing import Timer, Timed
 from mission.framework.jank import TrackMovementY, RestorePosY
 
 from mission.constants.config import path as settings
+from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT
 
 from mission.missions.will_common import Consistent, BigDepth, is_mainsub, FakeMoveX
 
@@ -31,11 +32,11 @@ SearchTask = lambda: SearchFor(VelocitySwaySearch(forward=settings.search_forwar
 class FirstPipeGroupFirst(Task):
     # Checks whether the first pipe group in shm is the first pipe we should follow.
     # Succeeds if the first pipe group is consistently the right one, fails otherwise
-    def on_first_run(self): 
+    def on_first_run(self, bend_right): 
         self.angle_1_checker = ConsistencyCheck(6, 8)
         self.angle_2_checker = ConsistencyCheck(6, 8)
 
-    def on_run(self):
+    def on_run(self, bend_right):
         angle_1 = abs(shm.path_results.angle_1.get())
         angle_2 = abs(shm.path_results.angle_2.get())
 
@@ -43,7 +44,6 @@ class FirstPipeGroupFirst(Task):
             self.finish()
         if self.angle_2_checker.check(angle_2 < angle_1):
             self.finish(success=False)
-
 PipeAlign = lambda heading: Concurrent(
     DownwardTarget(lambda: (shm.path_results.center_x.get(), shm.path_results.center_y.get()),
                    target=(0, -.25),
@@ -68,7 +68,7 @@ FollowPipe = lambda h1, h2: Sequential(
     Zero(),
 )
 
-FullPipe = lambda: Sequential(
+FullPipe = lambda bend_right=True: Sequential(
     # Don't do anything stupid
     FunctionTask(lambda: shm.path_results.num_lines.set(0)),
     BigDepth(settings.depth),
@@ -88,7 +88,7 @@ FullPipe = lambda: Sequential(
                         # Require a really high fail rate - path vision can be finicky
                         Consistent(visible_test(1), count=2.5, total=3, result=False, invert=True),
                     ),
-                    Conditional(FirstPipeGroupFirst(),
+                    Conditional(FirstPipeGroupFirst(bend_right),
                                 on_success=FollowPipe(shm.path_results.angle_1, shm.path_results.angle_2),
                                 on_fail=FollowPipe(shm.path_results.angle_2, shm.path_results.angle_1)),
                 ),
@@ -113,4 +113,4 @@ FullPipe = lambda: Sequential(
 
 path = FullPipe()
 
-get_path = lambda: FullPipe()
+get_path = lambda bend_right: FullPipe(bend_right)

@@ -18,6 +18,8 @@ from mission.missions.dice import Full as Dice
 
 from mission.missions.cash_in import norm_to_vision_downward
 
+from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT
+
 def time_left():
     # TODO test this?
     #time_in = Master.this_run_time - Master.first_run_time
@@ -59,11 +61,12 @@ gate = MissionTask(
     surfaces=False,
 )
 
-path = lambda: MissionTask(
+get_path = lambda bend_right: lambda: MissionTask(
     name='Path',
-    cls=PathGetter(),
+    cls=PathGetter(bend_right),
     modules=[shm.vision_modules.Pipes],
     surfaces=False,
+    timeout=None,
 )
 
 dice = MissionTask(
@@ -109,10 +112,10 @@ surface_cash_in = MissionTask(
 
 tasks = [
     gate,
-    path,
+    path(PATH_1_BEND_RIGHT),
     dice,
     highway,
-    path,
+    path(PATH_2_BEND_RIGHT),
     wait_for_track,
     track,
     surface_cash_in,

@@ -17,6 +17,8 @@ from mission.missions.path import get_path as PathGetter
 from mission.missions.hydrophones import Full as Hydrophones
 from mission.missions.roulette import Full as Roulette
 
+from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT
+
 gate = MissionTask(
     name='Gate',
     cls=Gate,
@@ -25,9 +27,9 @@ gate = MissionTask(
     timeout=None,
 )
 
-path = lambda: MissionTask(
+get_path = lambda bend_right: lambda: MissionTask(
     name='Path',
-    cls=PathGetter(),
+    cls=PathGetter(bend_right),
     modules=[shm.vision_modules.Pipes],
     surfaces=False,
     timeout=None,
@@ -103,9 +105,9 @@ TestTrack = Sequential(
 
 tasks = [
     gate,
-    path,
+    get_path(PATH_1_BEND_RIGHT),
     highway,
-    path,
+    get_path(PATH_2_BEND_RIGHT),
     track,
     get_found_task,
     track,

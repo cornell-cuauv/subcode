@@ -49,6 +49,9 @@ ROTATION_PREDICTION_ANGLE = 20
 DOWNWARD_CAM_WIDTH = shm.camera.downward_width.get()
 DOWNWARD_CAM_HEIGHT = shm.camera.downward_height.get()
 
+# 30 for green, 75 for red
+TARGET_ANGLE = 75
+
 
 def within_camera(x, y):
     return 0 <= x < DOWNWARD_CAM_WIDTH and 0 <= y < DOWNWARD_CAM_HEIGHT
@@ -313,16 +316,17 @@ class Roulette(ModuleBase):
                     lines_unpicked = [line for line, count in sorted(bins, key=lambda bin: bin[1], reverse=True)[:4]]
 
                     if len(lines_unpicked) >= 2:
-                        #THIRTY = math.radians(30)
-                        THIRTY = math.radians(75) # switching green to red bins
+                        target_angle = math.radians(TARGET_ANGLE)
 
                         # Find two lines that are about 30 degrees apart
                         # Find the pairing of lines with the angle difference closest to 30 degrees
                         pairs = itertools.combinations(lines_unpicked, 2)
                         # We double angles because we're in [0, 180] and not [0, 360]
-                        lines = sorted(pairs, key=lambda pair: abs(THIRTY * 2 - abs(angle_diff(pair[0][1] * 2, pair[1][1] * 2))))[0]
+                        lines = sorted(pairs, key=lambda pair: abs(target_angle * 2 - abs(angle_diff(pair[0][1] * 2, pair[1][1] * 2))))[0]
 
-                        delta = math.degrees(abs(THIRTY * 2 - abs(angle_diff(lines[0][1] * 2, lines[1][1] * 2))))
+                        delta = math.degrees(abs(target_angle * 2 - abs(angle_diff(lines[0][1] * 2, lines[1][1] * 2))))
+
+                        print(delta, len(lines_unpicked))
 
                         if delta <= 10:
                             line_equations = []
