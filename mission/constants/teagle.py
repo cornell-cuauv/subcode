@@ -22,8 +22,8 @@ path = Path(
 )
 
 dice = Dice(
-    depth=2.0,
-    max_depth=2.7,
+    depth=3.3,
+    max_depth=4,
     search_forward=3,
     search_stride=8,
     search_speed=0.1,

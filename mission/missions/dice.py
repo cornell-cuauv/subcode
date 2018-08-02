@@ -128,8 +128,11 @@ BackUp = lambda: Sequential(
     BackUpUntilVisible(num=1, speed=0.08, timeout=settings.rammed_back_up_timeout),
 )
 
+ResetHeading = RelativeToInitialHeading(0)
+
 RamBuoyAttempt = lambda num: Sequential(
     Log('Ramming buoy {}'.format(num)),
+    ResetHeading(),
     Conditional(
         Either(
             Consistent(lambda: shm_vars[pick_correct_buoy(num)].visible.get(),
@@ -140,6 +143,7 @@ RamBuoyAttempt = lambda num: Sequential(
                                count=0.5, total=1.5, invert=True, result=True),
                     Sequential(
                         Zero(),
+                        ResetHeading(),
                         Log('Aligning...'),
                         align_buoy(num=num, db=0.05, mult=5),
                         Log('Driving forward...'),
@@ -150,12 +154,14 @@ RamBuoyAttempt = lambda num: Sequential(
                     ),
                 ),
                 Zero(),
+                ResetHeading(),
                 Log('Aligning one more time...'),
-                align_buoy(num=num, db=0.1, mult=5),
+                align_buoy(num=num, db=0.05, mult=5),
             ),
         ),
         on_success=Sequential(
             Zero(),
+            ResetHeading(),
             Log('Ramming buoy...'),
             # Ram buoy
             FakeMoveX(dist=settings.ram_dist, speed=0.1),
@@ -164,6 +170,7 @@ RamBuoyAttempt = lambda num: Sequential(
             # We weren't close enough when we lost the buoy - back up and try again
             Sequential(
                 Zero(),
+                ResetHeading(),
                 Log('Lost sight of buoy, backing up...'),
                 BackUpUntilVisible(num=0, speed=0.08, timeout=settings.lost_sight_back_up_timeout), # we only need to see the first buoy
             ),

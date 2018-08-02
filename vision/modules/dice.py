@@ -85,7 +85,7 @@ class Dice(ModuleBase):
 
             hsv_v_edges = cv2.Canny(hsv_v, self.options['canny_a'], self.options['canny_b'])
 
-            hsv_v_c = cv2.dilate(hsv_v_edges, self.kernel(0))
+            hsv_v_c = cv2.dilate(hsv_v_edges, self.kernel(1))
             #luv_u_c = cv2.erode(luv_u_thresh, self.kernel(0))
             #luv_v_c = cv2.erode(luv_v_thresh, self.kernel(0))
             #y_cr_c = cv2.erode(y_cr_thresh, self.kernel(0))
