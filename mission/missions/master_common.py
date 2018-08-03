@@ -40,11 +40,9 @@ from sensors.kalman.set_zero_heading import set_zero_heading
 
 from mission.missions.leds import AllLeds
 
-from mission.constants.config import highway as highway_settings, track as track_settings
+from mission.constants.config import highway as highway_settings, track as track_settings, NONSURFACE_MIN_DEPTH as MIN_DEPTH
 
 from collections import namedtuple
-
-MIN_DEPTH = 0.6
 
 class RunTask(Task):
   def on_first_run(self, task, *args, **kwargs):

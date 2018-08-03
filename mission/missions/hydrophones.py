@@ -12,7 +12,7 @@ import shm
 from auv_math.math_utils import rotate
 from misc.hydro2trans import Localizer
 from mission.constants.config import HYDROPHONES_PINGER_DEPTH
-from mission.constants.region import PINGER_FREQUENCY
+from mission.constants.region import PINGER_FREQUENCY, TRACK_MAG_THRESH
 from mission.framework.combinators import Sequential
 from mission.framework.helpers import get_sub_position, get_sub_quaternion, \
                                       ConsistencyCheck
@@ -71,7 +71,6 @@ PingData = collections.namedtuple("PingData", ["phases", "heading",
 PINGS_LISTEN = 10
 MIN_CONSISTENT_PINGS = 3
 
-TRACK_MAG_THRESH = settings.track_mag_thresh
 PINGER_PERIOD = 1.0
 
 MAX_FOLLOW_HEADING_DEVIATION = 10

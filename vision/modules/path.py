@@ -98,6 +98,7 @@ class Pipes(ModuleBase):
 
     def angle(self, x1, y1, x2, y2):
         a = atan( (x2-x1) / (y2-y1) )
+        #a = atan2(y2-y1, x2-x1)
         return a
 
     def angle_diff(self, a1, a2):
@@ -165,6 +166,10 @@ class Pipes(ModuleBase):
         # morphed = cv2.dilate(morphed, dilate_element)
 
         # threshes["morphed"] = cv2.inRange(final_threshed, 200, 255)
+
+        # hack hack hack for simulator
+        sat = cv2.split(cv2.cvtColor(mat, cv2.COLOR_BGR2HSV))[1]
+        morphed = cv2.inRange(sat, 20, 255)
 
         edges = cv2.Canny(morphed,threshold1=self.options['canny1'],threshold2=self.options['canny2'],apertureSize=3) #self.options['canny_aperture_size'])
         threshes["edges"] = edges

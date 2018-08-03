@@ -4,6 +4,8 @@ from mission.missions.will_common import is_mainsub
 
 HYDROPHONES_PINGER_DEPTH = 4.7
 
+NONSURFACE_MIN_DEPTH = 0.3
+
 # Note: These values are copied straight from the Teagle configuration.
 # They need to be updated for Transdec!!
 
@@ -46,7 +48,6 @@ highway = Highway(
 
 track = Track(
     depth=1.6,
-    track_mag_thresh=35000,
     slow_down_dist=5,
     max_speed=0.3 if is_mainsub() else 0.2,
     min_speed=0.1,

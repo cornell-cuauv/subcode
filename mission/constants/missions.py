@@ -39,7 +39,6 @@ Highway = namedtuple('Highway', [
 
 Track = namedtuple('Track', [
     'depth',
-    'track_mag_thresh',
     'slow_down_dist',
     'max_speed',
     'min_speed',
