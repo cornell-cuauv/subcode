@@ -63,6 +63,17 @@ gate = MissionTask(
     timeout=timeouts['gate'],
 )
 
+gate_dead_reckon = MissionTask(
+    name='GateDead',
+    cls=Sequential(
+        Zero(),
+        BigDepth(2),
+        FakeMoveX(dist=4, speed=0.2),
+    ),
+    modules=None,
+    surfaces=False,
+)
+
 get_path = lambda bend_right: lambda: MissionTask(
     name='Path',
     cls=PathGetter(bend_right),
@@ -116,7 +127,8 @@ surface_cash_in = MissionTask(
 )
 
 tasks = [
-    gate,
+    #gate,
+    gate_dead_reckon,
     get_path(PATH_1_BEND_RIGHT),
     dice,
     highway,
