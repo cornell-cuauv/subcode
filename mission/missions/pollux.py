@@ -19,6 +19,7 @@ from mission.missions.dice import Full as Dice
 from mission.missions.cash_in import norm_to_vision_downward
 
 from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT
+from mission.constants.timeout import timeouts
 
 def time_left():
     # TODO test this?
@@ -59,6 +60,7 @@ gate = MissionTask(
     cls=Gate,
     modules=[shm.vision_modules.BicolorGate],
     surfaces=False,
+    timeout=timeouts['gate'],
 )
 
 get_path = lambda bend_right: lambda: MissionTask(
@@ -66,7 +68,7 @@ get_path = lambda bend_right: lambda: MissionTask(
     cls=PathGetter(bend_right),
     modules=[shm.vision_modules.Pipes],
     surfaces=False,
-    timeout=None,
+    timeout=timeouts['path'],
 )
 
 dice = MissionTask(
@@ -74,6 +76,7 @@ dice = MissionTask(
     cls=Dice,
     modules=[shm.vision_modules.Dice],
     surfaces=False,
+    timeout=timeouts['dice'],
 )
 
 highway = MissionTask(
@@ -81,6 +84,7 @@ highway = MissionTask(
     cls=DriveToSecondPath,
     modules=None,
     surfaces=False,
+    timeout=timeouts['highway'],
 )
 
 wait_for_track = MissionTask(
@@ -101,6 +105,7 @@ track = MissionTask(
     modules=[shm.vision_modules.CashInDownward],
     surfaces=False,
     on_exit=TrackerCleanup(),
+    timeout=timeouts['track'],
 )
 
 surface_cash_in = MissionTask(

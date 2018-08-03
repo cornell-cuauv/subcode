@@ -57,6 +57,10 @@ class RunTask(Task):
     self.maxExceptionCount = 3 #TODO: make settable or more logical
     self.timeout = task.timeout
     self.on_exit = task.on_exit
+    self.on_timeout = task.on_timeout
+    self.timed_out = False
+
+    self.logv('Will timeout after {} seconds'.format(self.timeout))
 
 
     self.logi('Starting {} task!'.format(task.name))
@@ -70,27 +74,36 @@ class RunTask(Task):
     #start only required modules
     assertModules(self.task.modules, self.logi)
 
-    if self.timeout is not None and this_run_time - first_run_time > self.timeout:
-      self.logw('Task timed out! Finishing task...'),
-      self.finish()
-
-    #actually run the bloody mission
-    try:
-      self.taskCls()
-    except Exception as e:
-      self.exceptionCount += 1
-      if self.exceptionCount < self.maxExceptionCount:
-        self.logw('Task {} threw exception: {}! Exception {} of {} before that task is killed!'.format(self.task.name, \
-          e, self.exceptionCount, self.maxExceptionCount))
-        traceback.print_exc()
-      else:
-        self.loge('Task {} threw exception: {}! Task has reached exception threshold, will no longer be attempted!'.format( \
-          self.task.name, e))
+    if not self.timed_out and self.timeout is not None and self.this_run_time - self.first_run_time > self.timeout:
+      if self.on_timeout is None:
+        self.logw('Task timed out! Finishing task...'),
         self.finish()
-    if self.taskCls.finished:
-      if self.task.name == 'EndMission':
-        self.finish(success=False)
       else:
+        self.logw('Task timed out! Running on_timeout task...'),
+        self.timed_out = True
+
+    if not self.timed_out:
+      #actually run the bloody mission
+      try:
+        self.taskCls()
+      except Exception as e:
+        self.exceptionCount += 1
+        if self.exceptionCount < self.maxExceptionCount:
+          self.logw('Task {} threw exception: {}! Exception {} of {} before that task is killed!'.format(self.task.name, e, self.exceptionCount, self.maxExceptionCount))
+          traceback.print_exc()
+        else:
+          self.loge('Task {} threw exception: {}! Task has reached exception threshold, will no longer be attempted!'.format(self.task.name, e))
+          self.finish()
+
+      if self.taskCls.finished:
+        if self.task.name == 'EndMission':
+          self.finish(success=False)
+        else:
+          self.finish()
+    else:
+      self.on_timeout()
+
+      if self.on_timeout.finished:
         self.finish()
 
   def on_finish(self):
@@ -116,13 +129,14 @@ class RunTask(Task):
 # ])
 
 class MissionTask():
-  def __init__(self, name, cls, modules=None, surfaces=False, timeout=None, on_exit=None):
+  def __init__(self, name, cls, modules=None, surfaces=False, timeout=None, on_exit=None, on_timeout=None):
     self.name = name
     self.cls = cls
     self.modules = modules
     self.surfaces = surfaces
     self.timeout = timeout
     self.on_exit = on_exit
+    self.on_timeout = on_timeout
 
 class RunAll(Task):
   def on_first_run(self, tasks, *args, **kwargs):

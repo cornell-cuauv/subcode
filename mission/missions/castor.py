@@ -7,6 +7,7 @@ from mission.framework.task import Task
 from mission.framework.combinators import Sequential, MasterConcurrent, Conditional, Either
 from mission.framework.primitive import FunctionTask, Zero, NoOp
 from mission.framework.timing import Timer
+from mission.framework.movement import RelativeToCurrentHeading
 
 from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup, DriveToSecondPath
 
@@ -18,13 +19,14 @@ from mission.missions.hydrophones import Full as Hydrophones
 from mission.missions.roulette import Full as Roulette
 
 from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT
+from mission.constants.timeout import timeouts
 
 gate = MissionTask(
     name='Gate',
     cls=Gate,
     modules=[shm.vision_modules.BicolorGate],
     surfaces=False,
-    timeout=None,
+    timeout=timeouts['gate'],
 )
 
 get_path = lambda bend_right: lambda: MissionTask(
@@ -32,7 +34,8 @@ get_path = lambda bend_right: lambda: MissionTask(
     cls=PathGetter(bend_right),
     modules=[shm.vision_modules.Pipes],
     surfaces=False,
-    timeout=None,
+    timeout=timeouts['path'],
+    on_timeout=RelativeToInitialHeading(45 if bend_right else -45),
 )
 
 highway = MissionTask(
@@ -40,7 +43,7 @@ highway = MissionTask(
     cls=DriveToSecondPath,
     modules=None,
     surfaces=False,
-    timeout=None,
+    timeout=timeouts['highway'],
 )
 
 roulette = MissionTask(
@@ -48,7 +51,7 @@ roulette = MissionTask(
     cls=Roulette,
     modules=[shm.vision_modules.Roulette],
     surfaces=False,
-    timeout=None,
+    timeout=timeouts['roulette'],
 )
 
 cash_in = MissionTask(
@@ -56,7 +59,7 @@ cash_in = MissionTask(
     cls=Timer(30),
     modules=[shm.vision_modules.CashInDownward, shm.vision_modules.CashInForward],
     surfaces=True,
-    timeout=None,
+    timeout=timeouts['cash_in'],
 )
 
 # Which task have we found at random pinger?
@@ -87,10 +90,11 @@ track = lambda: MissionTask(
     ),
     modules=[shm.vision_modules.CashInDownward, shm.vision_modules.Roulette],
     surfaces=False,
-    timeout=None,
+    timeout=timeouts['track'],
     on_exit=TrackerCleanup()
 )
 
+# This is used for testing, not used in the actual master mission
 TestTrack = Sequential(
     TrackerGetter(
         # found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
