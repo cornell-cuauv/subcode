@@ -56,9 +56,9 @@ track = Track(
 )
 
 roulette = Roulette(
-    depth_search=1.2,
-    depth_realign=2.5,
-    depth_drop=3.0,
+    depth_search=1.5,
+    depth_realign=3.0,
+    depth_drop=3.6,
     heading_offset=-30,
 )
 

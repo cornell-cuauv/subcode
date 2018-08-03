@@ -133,7 +133,7 @@ Dead = RunAll([
     MissionTask(
         name="stupid2",
         cls=stupid_castor_2,
-        modules=[shm.vision_modules.Roulette],
+        modules=[shm.vision_modules.CashInDownward],
         on_exit=Zero()
     ),
     cash_in

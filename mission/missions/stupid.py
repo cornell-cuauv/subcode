@@ -106,7 +106,7 @@ stupid_castor = Sequential(
     Timed(VelocityX(0.4), 45),
     # MoveXRough(20),
     VelocityX(0),
-    RelativeToInitialHeading(50),
+    RelativeToInitialHeading(40),
     Timed(VelocityX(0.4), 52),
     finite=True
 )
