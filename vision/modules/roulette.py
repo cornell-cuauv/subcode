@@ -34,7 +34,7 @@ options = [
     options.IntOption('canny_high_thresh', 200, 0, 1000),
     options.IntOption('hough_lines_rho', 5, 1, 1000),
     options.IntOption('hough_lines_theta', 1, 1, 1000),
-    options.IntOption('hough_lines_thresh', 150, 0, 1000),
+    options.IntOption('hough_lines_thresh', 200, 0, 1000),
     options.IntOption('hough_circle_blur_kernel', 10, 0, 255),
     options.IntOption('hough_circles_dp', 1, 0, 255),
     options.IntOption('hough_circles_minDist', 50, 0, 1000),
