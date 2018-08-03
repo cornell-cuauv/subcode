@@ -45,7 +45,7 @@ options = [
     options.IntOption('contour_min_area', 1000, 0, 100000)
 ]
 
-POST_UMAT = False
+POST_UMAT = True
 
 ROTATION_PREDICTION_ANGLE = 20
 DOWNWARD_CAM_WIDTH = shm.camera.downward_width.get()
