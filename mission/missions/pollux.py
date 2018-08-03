@@ -128,15 +128,14 @@ surface_cash_in = MissionTask(
 
 tasks = [
     #gate,
-    gate_dead_reckon,
+    lambda: gate_dead_reckon,
     get_path(PATH_1_BEND_RIGHT),
-    dice,
-    highway,
+    lambda: dice,
+    lambda: highway,
     get_path(PATH_2_BEND_RIGHT),
-    wait_for_track,
-    track,
-    surface_cash_in,
+    #wait_for_track,
+    #track,
+    #surface_cash_in,
 ]
 
 Master = RunAll(tasks)
-

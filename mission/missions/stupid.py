@@ -96,10 +96,13 @@ from mission.missions.actuate import (
 
 from mission.constants.config import cash_in as settings
 
-rem_heading = RealativeToInitialHeading(0)
+from mission.missions.will_common import BigDepth
+
+rem_heading = RelativeToInitialHeading(0)
 
 stupid_castor = Sequential(
-    rem_heading,
+    #rem_heading, # <-- wrong
+    BigDepth(1.5),
     Timed(VelocityX(0.4), 45),
     # MoveXRough(20),
     VelocityX(0),

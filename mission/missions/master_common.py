@@ -65,11 +65,14 @@ class RunTask(Task):
 
     self.logi('Starting {} task!'.format(task.name))
 
-  def on_run(self, *args, **kwargs):
+  def block_surface(self):
     #Block non-surfacing tasks from surfacing
     if not self.task.surfaces and (shm.desires.depth.get() < MIN_DEPTH or shm.kalman.depth.get() < MIN_DEPTH):
       Depth(max(MIN_DEPTH, shm.desires.depth.get()))()
       self.logw('Task attempted to rise above min depth, {}!'.format(MIN_DEPTH))
+
+  def on_run(self, *args, **kwargs):
+    self.block_surface()
 
     #start only required modules
     assertModules(self.task.modules, self.logi)
@@ -105,6 +108,8 @@ class RunTask(Task):
 
       if self.on_timeout.finished:
         self.finish()
+
+    self.block_surface()
 
   def on_finish(self):
     if self.on_exit is not None:
