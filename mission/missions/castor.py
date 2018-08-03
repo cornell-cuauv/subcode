@@ -18,6 +18,8 @@ from mission.missions.path import get_path as PathGetter
 from mission.missions.hydrophones import Full as Hydrophones
 from mission.missions.roulette import Full as Roulette
 
+from mission.missions.stupid import *
+
 from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT
 from mission.constants.timeout import timeouts
 
@@ -119,3 +121,20 @@ tasks = [
 ]
 
 Master = RunAll(tasks)
+
+Dead = RunAll([
+    MissionTask(
+        name="stupid1",
+        cls=stupid_castor,
+        modules=[shm.vision_modules.Roulette],
+        on_exit=Zero()
+    ),
+    roulette,
+    MissionTask(
+        name="stupid2",
+        cls=stupid_castor_2,
+        modules=[shm.vision_modules.Roulette],
+        on_exit=Zero()
+    ),
+    cash_in
+])

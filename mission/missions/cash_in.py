@@ -329,18 +329,19 @@ class PickupFromBin(Task):
                 Log("Found at {} (depth={})".format(msg, depth)),
             )
 
-        bottom_target = (-0.7, -0.4) if is_left else (0.8, -0.2)
+        bottom_target = (0.8, -0.2) if is_left else (-0.7, -0.4)
 
         self.use_task(
             Sequential(
                 VisionSelector(downward=True),
-                cons(Depth(BOTH_DEPTH)),
-                cons(downward_target_task(max_out=0.1)),
-                stop(),
-                cons(Depth(SEARCH_DEPTH_1)),
-                search_at_depth(SEARCH_DEPTH_1, "top", deadband=(0.1, 0.1), depth_timeout=15),
+                # cons(Depth(BOTH_DEPTH)),
+                # cons(downward_target_task(max_out=0.1)),
+                # stop(),
+                # cons(Depth(SEARCH_DEPTH_1)),
+                # search_at_depth(SEARCH_DEPTH_1, "top", deadband=(0.1, 0.1), depth_timeout=15),
                 # search_at_depth(SEARCH_DEPTH_2, "mid", deadband=(0.05, 0.05), depth_timeout=10),
                 search_at_depth(SEARCH_DEPTH_3, "bot", target=bottom_target, deadband=(0.05, 0.05)),
+                # search_at_depth(3.5, "bot", target=bottom_target, deadband=(0.05, 0.05)),
                 Sequential(
                     *(timed(Depth(depth)) for depth in np.arange(SEARCH_DEPTH_3, START_PICKUP_DEPTH + 0.1, 0.1))
                 ),
@@ -353,7 +354,9 @@ class PickupFromBin(Task):
                 ),
                 Log("PICKING UP??"),
                 timed(Depth(START_PICKUP_DEPTH + 0.3)),
-                timed(Depth(SEARCH_DEPTH_3)),
+                Sequential(
+                    *(timed(Depth(depth), timeout=1) for depth in np.arange(START_PICKUP_DEPTH, SEARCH_DEPTH_1 + 0.1, 0.1))
+                ),
                 timed(
                     cons(
                         Concurrent(
@@ -486,20 +489,26 @@ do_it_all = Sequential(
 left = make_bin_chooser(True)
 right = make_bin_chooser(False)
 
-center_left = DownwardTarget(
-    point=(lambda: left().center_x.get(), lambda: left().center_y.get()),
-    target=norm_to_vision_downward(0, 0),
-    deadband=norm_to_vision_downward(-9, -9),
-    px=0.0005,
-    py=0.001,
-    max_out=0.5,
+center_left = cons (
+    DownwardTarget(
+        point=(lambda: left().center_x.get(), lambda: left().center_y.get()),
+        target=norm_to_vision_downward(0, 0),
+        deadband=norm_to_vision_downward(-0.9, -0.9),
+        px=0.0005,
+        py=0.001,
+        max_out=0.5,
+    ),
+    debug=True
 )
 
-center_right = DownwardTarget(
-    point=(lambda: right().center_x.get(), lambda: right().center_y.get()),
-    target=norm_to_vision_downward(0, 0),
-    deadband=norm_to_vision_downward(-9, -9),
-    px=0.0005,
-    py=0.001,
-    max_out=0.5,
+center_right = cons(
+    DownwardTarget(
+        point=(lambda: right().center_x.get(), lambda: right().center_y.get()),
+        target=norm_to_vision_downward(0, 0),
+        deadband=norm_to_vision_downward(-0.9, -0.9),
+        px=0.0005,
+        py=0.001,
+        max_out=0.5,
+    ),
+    debug=True
 )

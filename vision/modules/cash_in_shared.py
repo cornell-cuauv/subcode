@@ -226,6 +226,8 @@ def threshold(img):
 
 
             dist_from_yellow = np.linalg.norm(lab[:, :, 1:].astype(int) - [248, 111, 173][1:], axis=2).astype(int)
+            # dist_from_yellow = np.linalg.norm(lab[:, :, :2].astype(int) - [149, 115, 170][:2], axis=2).astype(int)
+            # dist_from_yellow = np.linalg.norm(lab[:, :, 0].astype(int) - [248, 111, 173][0], axis=2).astype(int)
 
             threshes["all_bins"] = cv2.inRange(
                 dist_from_yellow,
@@ -437,12 +439,12 @@ def find_bins(images):
     for top in tops:
         children = [all_features[i] for i in childs[top.index] if all_features[i]]
 
-        if 2 <= len(children) <= 4:
+        if 2 <= len(children) <= 7:
             total_area = sum(fc.area for fc in children)
             x = sum(fc.x * fc.area for fc in children) / total_area
             y = sum(fc.y * fc.area for fc in children) / total_area
 
-            dist_multiple = (None, None, 1, 2 + math.sqrt(2), 4 + 2 * math.sqrt(2))
+            dist_multiple = (None, None, 1, 2 + math.sqrt(2), 4 + 2 * math.sqrt(2), 7, 8, 9, 10, 11)
 
             total_dist = 0
 
