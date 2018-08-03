@@ -68,7 +68,7 @@ gate_dead_reckon = MissionTask(
     cls=Sequential(
         Zero(),
         BigDepth(2),
-        FakeMoveX(dist=4, speed=0.2),
+        FakeMoveX(dist=5.2, speed=0.2),
     ),
     modules=None,
     surfaces=False,

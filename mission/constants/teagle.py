@@ -31,6 +31,7 @@ dice = Dice(
     search_speed=0.1,
     min_dot_radius=0.03,
     ram_dist=1.0,
+    ram_speed=0.1,
     rammed_back_up_timeout=20,
     lost_sight_back_up_timeout=5,
     search_default_zero_timeout=60,

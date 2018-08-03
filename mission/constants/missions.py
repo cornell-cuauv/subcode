@@ -25,6 +25,7 @@ Dice = namedtuple('Dice', [
     'search_speed',
     'min_dot_radius',
     'ram_dist',
+    'ram_speed',
     'rammed_back_up_timeout',
     'lost_sight_back_up_timeout',
     'search_default_zero_timeout',

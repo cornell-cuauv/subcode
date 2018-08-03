@@ -164,7 +164,7 @@ RamBuoyAttempt = lambda num: Sequential(
             Succeed(reset_heading),
             Log('Ramming buoy...'),
             # Ram buoy
-            FakeMoveX(dist=settings.ram_dist, speed=0.1),
+            FakeMoveX(dist=settings.ram_dist, speed=settings.ram_speed),
         ),
         on_fail=Fail(
             # We weren't close enough when we lost the buoy - back up and try again
