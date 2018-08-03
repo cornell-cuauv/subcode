@@ -35,7 +35,7 @@ from mission.framework.search import SpiralSearch, VelocitySwaySearch, SearchFor
 from mission.framework.position import PositionalControl
 
 from mission.missions.actuate import FireBlue, FireRed, FireGreen
-from mission.missions.will_common import BigDepth
+from mission.missions.will_common import BigDepth, ForwardSearch
 
 from conf.vehicle import cameras
 
@@ -61,20 +61,20 @@ align_green_angle = lambda db=10, p=0.8: DownwardAlign(lambda: GREEN_ANGLE.get()
 
 DropBall = lambda: FireBlue()
 
-# Search = lambda: SearchFor(
-#     VelocitySwaySearch(forward=2, stride=2, speed=0.2),
-#     shm.bins_vision.board_visible.get,
-#     consistent_frames=(4*60, 5*60) # multiply by 60 to specify in seconds
-# )
+Search = lambda: SearchFor(
+    ForwardSearch(forward=4, stride=10, speed=0.2),
+    shm.bins_vision.board_visible.get,
+    consistent_frames=(1*60, 1.5*60) # multiply by 60 to specify in seconds
+)
 
 Full = Retry(
     lambda: Sequential(
         Log('Starting'),
         Zero(),
-        BigDepth(DEPTH_STANDARD, timeout=8),
+        #BigDepth(DEPTH_STANDARD, timeout=8),
         # Disabled search for now because if tracker mission sees the table, then we don't need to search
-        #Log('Searching for roulette...'),
-        #Search(),
+        Log('Searching for roulette...'),
+        Search(),
         Zero(),
         Log('Centering on roulette...'),
         align_roulette_center(db=40, p=0.0005),

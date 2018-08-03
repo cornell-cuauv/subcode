@@ -98,19 +98,26 @@ from mission.constants.config import cash_in as settings
 
 from mission.missions.will_common import BigDepth
 
-rem_heading = RelativeToInitialHeading(0)
+
+dist1 = 45
+dist2 = 52
+dist3 = dist1 / 2
+
 
 stupid_castor = Sequential(
-    #rem_heading, # <-- wrong
     BigDepth(1.5),
-    Timed(VelocityX(0.4), 45),
+    Timed(VelocityX(0.4), dist1),
     # MoveXRough(20),
     VelocityX(0),
-    RelativeToInitialHeading(40),
-    Timed(VelocityX(0.4), 52),
+    Heading(37),
+    Timed(VelocityX(0.4), dist2),
+    VelocityX(0),
     finite=True
 )
 
 stupid_castor_2 = Sequential(
-
+    Heading(10),
+    Timed(VelocityX(0.4), dist3),
+    VelocityX(0),
+    finite=True
 )
