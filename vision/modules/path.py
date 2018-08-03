@@ -79,8 +79,8 @@ vision_options = [
     gui_options.DoubleOption('min_line_hough_length',45, 0, 500),
     gui_options.IntOption('color_dist_min', 0, 0, 255),
     gui_options.IntOption('color_dist_max', 20, 0, 255),
-    gui_options.IntOption('min_angle_range', 20, 0, 180),
-    gui_options.IntOption('max_angle_range', 70, 0, 180),
+    gui_options.IntOption('min_angle_range', 35, 0, 180),
+    gui_options.IntOption('max_angle_range', 55, 0, 180),
 ]
 
 segment_info = namedtuple("segment_info", ["x1", "y1", "x2", "y2", "angle", "id", "updated"])
