@@ -23,12 +23,40 @@ from mission.missions.stupid import *
 from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT
 from mission.constants.timeout import timeouts
 
+# gate & dead reckon
+dist1 = 45
+dist2 = 10
+
+DeadReckon = Sequential(
+    BigDepth(1.5),
+    Timed(VelocityX(0.4), dist1),
+    # MoveXRough(20),
+    VelocityX(0),
+    Heading(37),
+    Timed(VelocityX(0.4), dist2),
+    VelocityX(0),
+    finite=True
+)
+
+SurfaceCashIn = Sequential(
+    Zero(),
+    Timer(l.3),
+    BigDepth(1.2),
+)
+
 gate = MissionTask(
     name='Gate',
     cls=Gate,
     modules=[shm.vision_modules.BicolorGate],
     surfaces=False,
     timeout=timeouts['gate'],
+)
+
+gate_dead_reckon = MissionTask(
+    name='GateDead',
+    cls=GateDeadReckon,
+    modules=None,
+    surfaces=False,
 )
 
 get_path = lambda bend_right: lambda: MissionTask(
@@ -82,7 +110,7 @@ def get_found_task():
     else:
         return MissionTask(name="Failure", cls=NoOp(), modules=None, surfaces=False)
 
-track = lambda: MissionTask(
+track = lambda roulette=True, cash_in=False: MissionTask(
     name="Track",
     cls=TrackerGetter(
         found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
@@ -114,27 +142,28 @@ tasks = [
     get_path(PATH_1_BEND_RIGHT),
     highway,
     get_path(PATH_2_BEND_RIGHT),
-    track,
+    lambda: track(cash_in=False),
     get_found_task,
-    track,
+    lambda: track(roulette=False),
+    surface_cash_in,
     get_found_task,
 ]
 
 Master = RunAll(tasks)
 
-Dead = RunAll([
-    MissionTask(
-        name="stupid1",
-        cls=stupid_castor,
-        modules=[shm.vision_modules.Roulette],
-        on_exit=Zero()
-    ),
-    roulette,
-    MissionTask(
-        name="stupid2",
-        cls=stupid_castor_2,
-        modules=[shm.vision_modules.CashInDownward],
-        on_exit=Zero()
-    ),
-    cash_in
-])
+# Dead = RunAll([
+#     MissionTask(
+#         name="stupid1",
+#         cls=stupid_castor,
+#         modules=[shm.vision_modules.Roulette],
+#         on_exit=Zero()
+#     ),
+#     roulette,
+#     MissionTask(
+#         name="stupid2",
+#         cls=stupid_castor_2,
+#         modules=[shm.vision_modules.CashInDownward],
+#         on_exit=Zero()
+#     ),
+#     cash_in
+# ])

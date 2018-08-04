@@ -7,6 +7,7 @@ from mission.framework.combinators import MasterConcurrent, Sequential
 from mission.framework.timing import Timer
 from mission.framework.primitive import Log, Zero, NoOp
 from mission.framework.targeting import DownwardTarget
+from mission.framework.movement import RelativeToCurrentHeading
 
 from mission.missions.will_common import BigDepth, FakeMoveX
 
@@ -68,7 +69,7 @@ gate_dead_reckon = MissionTask(
     cls=Sequential(
         Zero(),
         BigDepth(2),
-        FakeMoveX(dist=5.2, speed=0.2),
+        FakeMoveX(dist=5.5, speed=0.2),
     ),
     modules=None,
     surfaces=False,
@@ -80,6 +81,7 @@ get_path = lambda bend_right: lambda: MissionTask(
     modules=[shm.vision_modules.Pipes],
     surfaces=False,
     timeout=timeouts['path'],
+    on_timeout=RelativeToInitialHeading(45 if bend_right else -45),
 )
 
 dice = MissionTask(
@@ -134,8 +136,9 @@ tasks = [
     lambda: highway,
     get_path(PATH_2_BEND_RIGHT),
     #wait_for_track,
-    #track,
-    #surface_cash_in,
+    track,
+    surface_cash_in,
 ]
 
 Master = RunAll(tasks)
+

@@ -18,7 +18,7 @@ gate_shm_group = shm.bicolor_gate_vision
 #  - confidence
 
 module_options = [
-    options.BoolOption('debug', False),
+    options.BoolOption('debug', True),
     #options.IntOption('erode_size', 1, 1, 40),
     #options.IntOption('gaussian_kernel', 1, 1, 40),
     #options.IntOption('gaussian_stdev', 2, 0, 40),
@@ -29,7 +29,7 @@ module_options = [
     #options.IntOption('hls_h_canny_min', 0, 0, 255),
     #options.IntOption('hls_h_canny_max', 255, 0, 255),
     options.IntOption('ycrcb_cr_canny_min', 5, 0, 255),
-    options.IntOption('ycrcb_cr_canny_max', 10, 0, 255),
+    options.IntOption('ycrcb_cr_canny_max', 13, 0, 255),
 
     options.IntOption('min_area', 700, 1, 2000),
     options.IntOption('center_dist', 100, 1, 2000),
@@ -39,7 +39,8 @@ module_options = [
     options.IntOption('rho', 7, 1, 100),
     options.IntOption('bin_dist_threshold', 50, 0, 1000),
     options.IntOption('min_length', 50, 1, 100000),
-    options.IntOption('max_gap', 100, 1, 100000),
+    options.IntOption('max_gap', 50, 1, 100000),
+    options.IntOption('min_y', 0, 0, 1024),
 ]
 
 
@@ -103,13 +104,18 @@ class BicolorGate(ModuleBase):
         #(hls_h, hls_l, hls_s) = cv2.split(cv2.cvtColor(img, cv2.COLOR_BGR2HLS))
         (ycrcb_y, ycrcb_cr, ycrcb_cb) = cv2.split(cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB))
 
-        ycrcb_cr_blur = self.blur(ycrcb_cr, 5, 5)
+        ycrcb_cr_blur = self.blur(ycrcb_cr, 3, 3)
+
+        #ycrcb_cr_trunc = cv2.inRange(ycrcb_cr_blur, 0, 63)
+
+        ycrcb_combined = ycrcb_cr_blur #& ~ycrcb_cr_trunc
 
         if debug:
             #self.postu('luv_u', luv_u)
             #self.postu('hls_h', hls_h)
             self.postu('ycrcb_cr', ycrcb_cr)
             self.postu('ycrcb_cr_blur', ycrcb_cr_blur)
+            #self.postu('trunc', ycrcb_cr_trunc)
 
         #g_b_k = self.options['gaussian_kernel']
         #g_b_sd = self.options['gaussian_stdev']
@@ -126,7 +132,7 @@ class BicolorGate(ModuleBase):
 
         #luv_u_edges = cv2.Canny(self.blur(luv_u, 1, 1), self.options['luv_u_canny_min'], self.options['luv_u_canny_max'])
         #hls_h_edges = cv2.Canny(self.blur(hls_h, 1, 1), self.options['hls_h_canny_min'], self.options['hls_h_canny_max'])
-        ycrcb_cr_edges = cv2.Canny(ycrcb_cr_blur, self.options['ycrcb_cr_canny_min'], self.options['ycrcb_cr_canny_max'])
+        ycrcb_cr_edges = cv2.Canny(ycrcb_combined, threshold1=self.options['ycrcb_cr_canny_min'], threshold2=self.options['ycrcb_cr_canny_max'])
 
         if debug:
             #self.postu('luv_u_edges', luv_u_edges)
@@ -134,6 +140,9 @@ class BicolorGate(ModuleBase):
             self.postu('ycrcb_cr_edges', ycrcb_cr_edges)
 
         comp = cv2.dilate(ycrcb_cr_edges, self.get_kernel(1))
+
+        # Ignore top section of pickles
+        cv2.rectangle(comp, (0, 0), (2000, self.options['min_y']), 0, thickness=-1)
 
         if debug:
             self.postu('comp', comp)
@@ -210,6 +219,27 @@ class BicolorGate(ModuleBase):
 
                 left_color = "black" if black_left else "red"
                 right_color = "red" if black_left else "black"
+
+                bins = []
+                BIN_DIST = 100
+
+                for line in verts:
+                    cx = (line[0] + line[2]) / 2
+                    for bin in bins:
+                        if abs(cx - bin[0]) < BIN_DIST:
+                            bin = ((bin[0] * bin[1] + cx) / (bin[1] + 1), bin[1] + 1)
+                            break
+                    else:
+                        bins.append((cx, 1))
+
+                bins_sorted = sorted(bins, key=lambda bin: -bin[1])
+
+                sortsort = img #.copy()
+
+                for bin in bins_sorted[:2]:
+                    cv2.line(sortsort, (int(bin[0]), 0), (int(bin[0]), 1024), (255, 255, 0), 2)
+
+                self.post('sortsort', sortsort.get())
 
                 if np.ptp(avgs) > width / 3:
                     lefts = avgs[np.where(avgs <= mid)]
