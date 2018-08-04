@@ -17,6 +17,7 @@ from mission.missions.gate import gate as Gate
 from mission.missions.path import get_path as PathGetter
 from mission.missions.hydrophones import Full as Hydrophones
 from mission.missions.roulette import Full as Roulette
+from mission.missions.cash_in import Full as CashIn
 
 from mission.missions.stupid import *
 
@@ -86,7 +87,7 @@ roulette = MissionTask(
 
 cash_in = MissionTask(
     name='CashIn',
-    cls=Timer(30),
+    cls=CashIn,
     modules=[shm.vision_modules.CashInDownward, shm.vision_modules.CashInForward],
     surfaces=True,
     timeout=timeouts['cash_in'],

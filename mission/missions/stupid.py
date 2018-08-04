@@ -88,6 +88,7 @@ from mission.missions.ozer_common import (
 from mission.framework.search import (
     SearchFor,
     VelocitySwaySearch,
+    SaneHeadingSearch,
 )
 from mission.missions.actuate import (
     FireGreen,
@@ -121,3 +122,6 @@ stupid_castor_2 = Sequential(
     VelocityX(0),
     finite=True
 )
+
+
+search = SaneHeadingSearch()

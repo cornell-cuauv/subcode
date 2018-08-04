@@ -17,7 +17,7 @@ from mission.framework.movement import (
     Heading,
 )
 from mission.framework.helpers import call_if_function, ConsistencyCheck
-from mission.framework.search import SpiralSearch
+# from mission.framework.search import SpiralSearch
 from mission.framework.primitive import (
     InvertSuccess,
     Log,
