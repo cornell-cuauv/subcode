@@ -25,7 +25,7 @@ from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT, RIGHT
 from mission.constants.timeout import timeouts
 
 # gate & dead reckon
-dist1 = 45
+dist1 = 50
 dist2 = 10
 
 GateDeadReckon = lambda: Sequential(
