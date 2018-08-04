@@ -152,7 +152,7 @@ TestTrack = Sequential(
 
 tasks = [
     #gate,
-    gate_dead_reckon,
+    lambda: gate_dead_reckon,
     #get_path(PATH_1_BEND_RIGHT),
     #highway,
     #get_path(PATH_2_BEND_RIGHT),
