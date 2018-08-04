@@ -132,6 +132,16 @@ track = MissionTask(
     timeout=timeouts['track'],
 )
 
+# get a little closer to cash-in before we start tracking
+interlude = MissionTask(
+    name='Interlude',
+    cls=Sequential(
+        FakeMoveX(dist=1.6, speed=0.2),
+    ),
+    modules=None,
+    surfaces=False,
+)
+
 surface_cash_in = MissionTask(
     name='SurfaceCashIn',
     cls=SurfaceAtCashIn,
@@ -157,10 +167,11 @@ tasks = [
     lambda: gate_dead_reckon,
     #get_path(PATH_1_BEND_RIGHT),
     fake_path(PATH_1_BEND_RIGHT),
-#    lambda: dice,
+    lambda: dice,
     lambda: highway,
     #get_path(PATH_2_BEND_RIGHT),
     fake_path(PATH_2_BEND_RIGHT),
+    lambda: interlude,
     #wait_for_track,
     track,
     surface_cash_in,

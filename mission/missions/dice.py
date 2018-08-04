@@ -148,7 +148,7 @@ RamBuoyAttempt = lambda num: Sequential(
                         align_buoy(num=num, db=0.05, mult=5),
                         Log('Driving forward...'),
                         Concurrent(
-                            VelocityX(0.06),
+                            VelocityX(0.08),
                             align_buoy(num=num, db=0, mult=3),
                         ),
                     ),
