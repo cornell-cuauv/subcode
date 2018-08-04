@@ -12,7 +12,7 @@ import shm
 from auv_math.math_utils import rotate
 from misc.hydro2trans import Localizer
 from mission.constants.config import HYDROPHONES_PINGER_DEPTH
-from mission.constants.region import PINGER_FREQUENCY, TRACK_MAG_THRESH
+from mission.constants.region import PINGER_FREQUENCY, TRACK_MAG_THRESH, TRACK_COOLDOWN_SAMPLES
 from mission.framework.combinators import Sequential
 from mission.framework.helpers import get_sub_position, get_sub_quaternion, \
                                       ConsistencyCheck
@@ -125,8 +125,7 @@ class FindPinger(StatefulTask):
 
     shm.hydrophones_settings.track_frequency_target.set(PINGER_FREQUENCY)
     shm.hydrophones_settings.track_magnitude_threshold.set(TRACK_MAG_THRESH)
-    #shm.hydrophones_settings.track_cooldown_samples.set(795000)
-    shm.hydrophones_settings.track_cooldown_samples.set(350000)
+    shm.hydrophones_settings.track_cooldown_samples.set(TRACK_COOLDOWN_SAMPLES)
 
     shm.navigation_settings.position_controls.set(1)
     shm.navigation_settings.optimize.set(0)
