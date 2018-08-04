@@ -5,7 +5,7 @@ import shm
 
 from mission.framework.combinators import MasterConcurrent, Sequential
 from mission.framework.timing import Timer
-from mission.framework.primitive import Log, Zero, NoOp
+from mission.framework.primitive import FunctionTask, Log, Zero, NoOp
 from mission.framework.targeting import DownwardTarget
 from mission.framework.movement import RelativeToCurrentHeading
 
@@ -126,6 +126,19 @@ surface_cash_in = MissionTask(
     cls=SurfaceAtCashIn,
     modules=[shm.vision_modules.CashInDownward],
     surfaces=True,
+)
+
+# This is used for testing, not used in the actual master mission
+TestTrack = Sequential(
+    TrackerGetter(
+        # found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
+        # found_cash_in=FunctionTask(lambda: find_task(CASH_IN)),
+        found_roulette=FunctionTask(lambda: False),
+        found_cash_in=FunctionTask(lambda: False),
+        enable_roulette=True,
+        enable_cash_in=True,
+    ),
+    # TrackCleanup(),
 )
 
 tasks = [

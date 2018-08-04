@@ -75,7 +75,7 @@ FollowPipe = lambda h1, h2: Sequential(
     Zero(),
 )
 
-FullPipe = lambda bend_right=True: Sequential(
+FullPipe = lambda bend_right=False: Sequential(
     # Don't do anything stupid
     FunctionTask(lambda: shm.path_results.num_lines.set(0)),
     BigDepth(settings.depth),
