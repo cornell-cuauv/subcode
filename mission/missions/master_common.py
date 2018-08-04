@@ -169,11 +169,11 @@ class Begin(Task):
       FunctionTask(lambda: shm.vision_modules.Record.set(0)),
       AllLeds('orange'),
 
-      Log('Wating for alignment...'),
-      WaitForUnkill(wait=1.0),
-      ZeroHeading(),
-      Log('Aligned heading!'),
-      AllLeds('cyan'),
+      #Log('Wating for alignment...'),
+      #WaitForUnkill(wait=1.0),
+      #ZeroHeading(),
+      #Log('Aligned heading!'),
+      #AllLeds('cyan'),
 
       # Need a swimmer to do this
       Log('Waiting for re-kill...'),

@@ -76,6 +76,16 @@ gate_dead_reckon = MissionTask(
     surfaces=False,
 )
 
+fake_path = lambda bend_right: lambda: MissionTask(
+    name='FakePath',
+    cls=Sequential(
+        FakeMoveX(dist=0.5, speed=0.2),
+        RelativeToInitialHeading(45 if bend_right else -45),
+    ),
+    modules=None,
+    surfaces=False,
+)
+
 get_path = lambda bend_right: lambda: MissionTask(
     name='Path',
     cls=PathGetter(bend_right),
@@ -148,7 +158,8 @@ tasks = [
     get_path(PATH_1_BEND_RIGHT),
     lambda: dice,
     lambda: highway,
-    get_path(PATH_2_BEND_RIGHT),
+    #get_path(PATH_2_BEND_RIGHT),
+    fake_path(PATH_2_BEND_RIGHT),
     #wait_for_track,
     track,
     surface_cash_in,
