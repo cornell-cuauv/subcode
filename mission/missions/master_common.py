@@ -186,6 +186,7 @@ class Begin(Task):
       AllLeds('red'),
 
       Log('Zeroing'),
+      ZeroHeading(),
       Zero(),
       FunctionTask(lambda: shm.switches.soft_kill.set(0)),
       EnableController(),
