@@ -36,9 +36,9 @@ def get_shared_options(is_forward):
         options.IntOption("color_dist_max_yellow_funnel", (25, -1)[is_forward], 0, 255),
 
         # Contouring
-        options.IntOption('min_area', (10, 100)[is_forward], 1, 2000),
+        options.IntOption('min_area', (30, 100)[is_forward], 1, 2000),
         options.IntOption('min_y', (0, 200)[is_forward], 0, 2000),
-        options.DoubleOption('min_circularity', (0.4, 0.1)[is_forward], 0, 1),
+        options.DoubleOption('min_circularity', (0.7, 0.1)[is_forward], 0, 1),
         options.DoubleOption('max_rectangularity', 0.9, 0, 1),
 
         # Binning
@@ -234,6 +234,10 @@ def threshold(img):
                 shared.options["color_dist_min_yellow_funnel"],
                 shared.options["color_dist_max_yellow_funnel"],
             )
+
+            a, b = cv2.threshold(luv_u, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            threshes["otsu"] = b
+            threshes["all_bins"] = b
 
             # threshes["all_bins"] = cv2.inRange(
             #     lab_b,
@@ -455,6 +459,35 @@ def find_bins(images):
             area = total_dist / dist_multiple[len(children)]
 
             bins.append(Bin(x, y, area, 1))
+
+    if len(good_features) > 0:
+        total_area = sum(fc.area for fc in good_features)
+        x = sum(fc.x * fc.area for fc in good_features) / total_area
+        y = sum(fc.y * fc.area for fc in good_features) / total_area
+
+        dots = []
+
+        for gf in good_features:
+            if math.hypot(gf.x - x, gf.y - y) < shared.options["max_joining_dist"]:
+                dots.append(gf)
+
+        if len(dots) >= 3:
+            total_area = sum(fc.area for fc in dots)
+            x = sum(fc.x * fc.area for fc in dots) / total_area
+            y = sum(fc.y * fc.area for fc in dots) / total_area
+
+            dist_multiple = (None, None, 1, 2 + math.sqrt(2), 4 + 2 * math.sqrt(2), 7, 8, 9, 10, 11)
+
+            total_dist = 0
+
+            for i, fc1 in enumerate(dots):
+                for fc2 in dots[i + 1:]:
+                    total_dist += math.hypot(fc1.x - fc2.x, fc1.y - fc2.y)
+
+            area = total_dist / dist_multiple[len(dots)]
+
+            bins.append(Bin(x, y, area, 1))
+
 
 
     shm_groups = [shm.recovery_vision_downward_bin_red, shm.recovery_vision_downward_bin_green]
