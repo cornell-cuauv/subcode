@@ -48,7 +48,7 @@ highway = Highway(
 )
 
 track = Track(
-    depth=1.2,
+    depth=1.6 if is_mainsub() else 2.0,
     slow_down_dist=5,
     max_speed=0.3 if is_mainsub() else 0.2,
     min_speed=0.1,

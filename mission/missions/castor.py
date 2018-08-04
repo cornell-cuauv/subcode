@@ -16,7 +16,7 @@ from mission.missions.will_common import BigDepth, Consistent, FakeMoveX
 from mission.missions.gate import gate as Gate
 from mission.missions.path import get_path as PathGetter
 from mission.missions.hydrophones import Full as Hydrophones
-from mission.missions.roulette import Full as Roulette
+from mission.missions.roulette import Full as Roulette, DropBall as DropRouletteBall
 from mission.missions.cash_in import Full as CashIn
 
 from mission.missions.stupid import *
@@ -88,6 +88,10 @@ roulette = MissionTask(
     modules=[shm.vision_modules.Roulette],
     surfaces=False,
     timeout=timeouts['roulette'],
+    on_timeout=Sequential(
+        Log('Timed out. Dropping balls.'),
+        DropRouletteBall(),
+    ),
 )
 
 surface_cash_in = MissionTask(

@@ -31,7 +31,7 @@ from mission.framework.primitive import (
     FunctionTask,
     NoOp,
 )
-from mission.framework.search import SpiralSearch, VelocitySwaySearch, SearchFor
+from mission.framework.search import SpiralSearch, VelocitySwaySearch, SearchFor, SaneHeadingSearch
 from mission.framework.position import PositionalControl
 
 from mission.missions.actuate import FireBlue, FireRed, FireGreen
@@ -62,7 +62,7 @@ align_green_angle = lambda db=10, p=0.8: DownwardAlign(lambda: GREEN_ANGLE.get()
 DropBall = lambda: FireBlue()
 
 Search = lambda: SearchFor(
-    ForwardSearch(forward=4, stride=10, speed=0.2),
+    SaneHeadingSearch(),
     shm.bins_vision.board_visible.get,
     consistent_frames=(1*60, 1.5*60) # multiply by 60 to specify in seconds
 )

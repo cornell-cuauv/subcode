@@ -4,6 +4,6 @@ timeouts = {
     'dice': 900,
     'track': None,
     'highway': None,
-    'roulette': None,
+    'roulette': 90,
     'cash_in': None,
 }
