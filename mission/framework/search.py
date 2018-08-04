@@ -315,3 +315,34 @@ class VelocityHeadingSearch(Task):
             HeadingSearch.Scan(initial_heading - heading_amplitude),
             Heading(initial_heading),
         ), True))
+
+
+def cons(task, total=2.5*60, success=2.5*60*0.85, debug=False):
+    return ConsistentTask(task, total=total, success=success, debug=debug)
+
+
+class SaneHeadingSearch(Task):
+    def on_first_run(self, *args, **kwargs):
+        self.target_heading = 0
+        self.side = 0
+        self.loop = 1
+        self.heading_task = cons(RealiveToInitialHeading(lambda: self.side * self.target_heading))
+        self.heading_task()
+        self.movement_task = None
+        self.stop_task = VelocityX(0)
+        self.state = "h"
+
+
+    def on_run(self, *args, **kwargs):
+        if state == "h":
+            self.heading_task()
+            if self.heading_task.finished:
+                self.state = "x"
+                self.movement_task = Timed(VelocityX(0.3), (self.loop + (self.side == 0)) * 5)
+        elif state == "x":
+            self.movement_task()
+            if self.movement_task.finished:
+                self.side = (self.side + 1) % 4
+                if self.side == 0:
+                    self.loop += 1
+            self.state = "h"

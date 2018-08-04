@@ -306,7 +306,7 @@ class FindPinger(StatefulTask):
     self.logi("Following a heading of %0.3f" % self.heading_to_pinger)
 
     self.follow_change_heading = Heading()
-    self.follow_inital_heading = Heading(self.heading_to_pinger)
+    self.follow_inital_heading = Heading(self.heading_to_pinger + 180)
     self.follow_vel_x = VelocityX()
     self.follow_vel_y = VelocityY()
 
@@ -363,7 +363,7 @@ class FindPinger(StatefulTask):
       self.logi("Going straight for the pinger!")
       self.follow_vel_x(speed)
       self.follow_vel_y(0.0)
-      self.follow_change_heading(self.heading_to_pinger)
+      self.follow_change_heading(self.heading_to_pinger + 180)
     else:
       velocity = rotate([speed, 0], new_ping.heading)
       self.logi("We are close! Translating to pinger: Velocity (%0.3f, "
