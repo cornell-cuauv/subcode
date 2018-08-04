@@ -21,27 +21,32 @@ from mission.missions.cash_in import Full as CashIn
 
 from mission.missions.stupid import *
 
-from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT
+from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT, RIGHT_HANDED
 from mission.constants.timeout import timeouts
 
 # gate & dead reckon
 dist1 = 45
 dist2 = 10
 
-DeadReckon = Sequential(
+GateDeadReckon = lambda: Sequential(
+    Log('Depthing for gate...'),
     BigDepth(1.5),
+    Log('Dead reckoning through gate...'),
     Timed(VelocityX(0.4), dist1),
     # MoveXRough(20),
     VelocityX(0),
-    Heading(37),
+    Log('Turning toward pinger tasks...'),
+    Heading(37 if RIGHT_HANDED else -37),
+    Log('Dead reckoning a little bit toward pinger tasks...'),
     Timed(VelocityX(0.4), dist2),
     VelocityX(0),
     finite=True
 )
 
-SurfaceCashIn = Sequential(
+SurfaceCashIn = lambda: Sequential(
     Zero(),
-    Timer(l.3),
+    Log('Surfacing at cash-in'),
+    Timer(1.3),
     BigDepth(1.2),
 )
 
@@ -55,7 +60,7 @@ gate = MissionTask(
 
 gate_dead_reckon = MissionTask(
     name='GateDead',
-    cls=GateDeadReckon,
+    cls=GateDeadReckon(),
     modules=None,
     surfaces=False,
 )
@@ -83,6 +88,13 @@ roulette = MissionTask(
     modules=[shm.vision_modules.Roulette],
     surfaces=False,
     timeout=timeouts['roulette'],
+)
+
+surface_cash_in = MissionTask(
+    name="SurfaceCashIn",
+    cls=SurfaceCashIn(),
+    modules=None,
+    surfaces=True,
 )
 
 cash_in = MissionTask(
@@ -116,8 +128,8 @@ track = lambda roulette=True, cash_in=False: MissionTask(
     cls=TrackerGetter(
         found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
         found_cash_in=FunctionTask(lambda: find_task(CASH_IN)),
-        enable_roulette=not found_task == ROULETTE,
-        enable_cash_in=not found_task == CASH_IN,
+        enable_roulette=roulette and not found_task == ROULETTE,
+        enable_cash_in=cash_in and not found_task == CASH_IN,
     ),
     modules=[shm.vision_modules.CashInDownward, shm.vision_modules.Roulette],
     surfaces=False,
@@ -139,13 +151,14 @@ TestTrack = Sequential(
 )
 
 tasks = [
-    gate,
-    get_path(PATH_1_BEND_RIGHT),
-    highway,
-    get_path(PATH_2_BEND_RIGHT),
-    lambda: track(cash_in=False),
+    #gate,
+    gate_dead_reckon,
+    #get_path(PATH_1_BEND_RIGHT),
+    #highway,
+    #get_path(PATH_2_BEND_RIGHT),
+    lambda: track(cash_in=False), # just roulette
     get_found_task,
-    lambda: track(roulette=False),
+    lambda: track(roulette=False), # just cash-in
     surface_cash_in,
     get_found_task,
 ]

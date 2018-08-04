@@ -7,7 +7,7 @@ from mission.framework.combinators import MasterConcurrent, Sequential
 from mission.framework.timing import Timer
 from mission.framework.primitive import Log, Zero, NoOp
 from mission.framework.targeting import DownwardTarget
-from mission.framework.movement import RelativeToCurrentHeading
+from mission.framework.movement import RelativeToCurrentHeading, RelativeToInitialHeading
 
 from mission.missions.will_common import BigDepth, FakeMoveX
 
@@ -68,6 +68,7 @@ gate_dead_reckon = MissionTask(
     name='GateDead',
     cls=Sequential(
         Zero(),
+        Log('Dead reckoning through gate...'),
         BigDepth(2),
         FakeMoveX(dist=5.5, speed=0.2),
     ),
@@ -141,4 +142,3 @@ tasks = [
 ]
 
 Master = RunAll(tasks)
-
