@@ -311,7 +311,7 @@ class FindPinger(StatefulTask):
     self.follow_vel_y = VelocityY()
 
     distance_to_pinger = self.elevation_to_distance(self.follow_elevation)
-    self.follow_vel_x(self.get_follow_speed(distance_to_pinger))
+    self.follow_vel_x(-self.get_follow_speed(distance_to_pinger))
     self.follow_vel_y(0.0)
 
   # Proportional control to slow down near the pinger
@@ -361,7 +361,7 @@ class FindPinger(StatefulTask):
         return "listen"
 
       self.logi("Going straight for the pinger!")
-      self.follow_vel_x(speed)
+      self.follow_vel_x(-speed)
       self.follow_vel_y(0.0)
       self.follow_change_heading(self.heading_to_pinger + 180)
     else:

@@ -511,3 +511,14 @@ center_right = cons(
     ),
     debug=True
 )
+
+Full = Sequential(
+    Depth(0),
+    Depth(1.5),
+    pickup_all,
+    Depth(0),
+    Depth(1.5),
+    FireGreen(),
+    FireRed(),
+    finite=True
+)

@@ -8,13 +8,16 @@ from auv_math.quat import quat_from_axis_angle
 from auv_python_helpers.angles import abs_heading_sub_degrees
 from mission.framework.combinators import Sequential, While
 from mission.framework.helpers import call_if_function, ConsistencyCheck
-from mission.framework.movement import Heading, Pitch, Roll, \
-                                       RelativeToInitialHeading, VelocityX, \
-                                       RelativeToCurrentHeading, VelocityY
+from mission.framework.movement import (
+    Heading, Pitch, Roll,
+    RelativeToInitialHeading, VelocityX,
+    RelativeToCurrentHeading, VelocityY
+)
 from mission.framework.position import MoveXRough, MoveYRough, GoToPosition
 from mission.framework.task import Task
 from mission.framework.timing import Timer, Timed
 from mission.framework.primitive import Zero
+from mission.missions.ozer_common import ConsistentTask
 from auv_python_helpers.angles import heading_sub_degrees
 
 def _sub_position():
@@ -317,16 +320,29 @@ class VelocityHeadingSearch(Task):
         ), True))
 
 
-def cons(task, total=2.5*60, success=2.5*60*0.85, debug=False):
+def cons(task, total=1*60, success=1*60*0.85, debug=False):
     return ConsistentTask(task, total=total, success=success, debug=debug)
 
 
 class SaneHeadingSearch(Task):
+    def make_turn(self):
+        h = self.base_heading + (self.side * 90)
+        h %= 360
+        print("Turning to {}".format(h))
+        return cons(Heading(h))
+
+
+    def make_move(self):
+        t = (self.loop + (self.side == 3)) * 6
+        print("Moving for {}".format(t))
+        return Timed(VelocityX(0.3), t)
+
+
     def on_first_run(self, *args, **kwargs):
-        self.target_heading = 0
+        self.base_heading = shm.kalman.heading.get()
         self.side = 0
         self.loop = 1
-        self.heading_task = cons(RealiveToInitialHeading(lambda: self.side * self.target_heading))
+        self.heading_task = self.make_turn()
         self.heading_task()
         self.movement_task = None
         self.stop_task = VelocityX(0)
@@ -334,15 +350,19 @@ class SaneHeadingSearch(Task):
 
 
     def on_run(self, *args, **kwargs):
-        if state == "h":
+        if self.state == "h":
             self.heading_task()
             if self.heading_task.finished:
                 self.state = "x"
-                self.movement_task = Timed(VelocityX(0.3), (self.loop + (self.side == 0)) * 5)
-        elif state == "x":
+                self.movement_task = self.make_move()
+                self.logw("Turned")
+        elif self.state == "x":
             self.movement_task()
             if self.movement_task.finished:
+                self.stop_task()
                 self.side = (self.side + 1) % 4
                 if self.side == 0:
                     self.loop += 1
-            self.state = "h"
+                self.heading_task = self.make_turn()
+                self.state = "h"
+                self.logw("Moved")
