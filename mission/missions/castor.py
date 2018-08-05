@@ -104,7 +104,10 @@ surface_cash_in = MissionTask(
 
 cash_in = MissionTask(
     name='CashIn',
-    cls=CashIn,
+    cls=Sequential(
+        CashIn,
+        SurfaceCashIn(),
+    ),
     modules=[shm.vision_modules.CashInDownward, shm.vision_modules.CashInForward],
     surfaces=True,
     timeout=timeouts['cash_in'],
