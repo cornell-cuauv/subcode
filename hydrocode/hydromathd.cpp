@@ -2,6 +2,7 @@
 #include "track_iir.hpp"
 #include "liquid.h"//also installed fftw.hpp for faster fft (inherited dependency)
 #include "udp_receiver.hpp"
+#include <libshm/c/vars.h>
 #include <sys/time.h>
 #include <cstdlib>
 #include <cmath>
@@ -113,13 +114,20 @@ void do_track()
     ping_time = ping_time_sec + (((double) tv_ping_time.tv_usec) / 1.0e6);
     track_sample_idx++;
   }
-
-    std::complex<float> dtft_coeff_A = goertzelNonInteger(chA_ptr,TRACK_LENGTH,shm_settings.track_frequency_target,SAMPLING_FREQUENCY);
     std::complex<float> dtft_coeff_B = goertzelNonInteger(chB_ptr,TRACK_LENGTH,shm_settings.track_frequency_target,SAMPLING_FREQUENCY);
-    std::complex<float> dtft_coeff_C = goertzelNonInteger(chC_ptr,TRACK_LENGTH,shm_settings.track_frequency_target,SAMPLING_FREQUENCY);
+    std::complex<float> dtft_coeff_COMMS = goertzelNonInteger(chB_ptr,TRACK_LENGTH,37500.0,SAMPLING_FREQUENCY);
+
+    if(std::log10(std::norm(dtft_coeff_COMMS)) > 10.3)
+    {
+        shm_set_trax_heading_status(shm_get_trax_heading_status() + 1);
+    }
 
   if (std::log10(std::norm(dtft_coeff_B)) > shm_settings.track_magnitude_threshold &&
     track_sample_idx > (unsigned int)shm_settings.track_cooldown_samples){
+
+    std::complex<float> dtft_coeff_A = goertzelNonInteger(chA_ptr,TRACK_LENGTH,shm_settings.track_frequency_target,SAMPLING_FREQUENCY);
+    std::complex<float> dtft_coeff_C = goertzelNonInteger(chC_ptr,TRACK_LENGTH,shm_settings.track_frequency_target,SAMPLING_FREQUENCY);
+
     next_ping_time += 2.0;
 
     shm_results_track.tracked_ping_magnitude = std::norm(dtft_coeff_B);
@@ -145,7 +153,7 @@ void do_track()
     shm_results_track.daemon_start_time = daemon_start_time;
     shm_results_track.tracked_ping_time = ping_time;
     shm_results_track.tracked_ping_heading_radians = (is_mainsub ? 3.14 : 0) + std::atan2(ky, kx);
-    shm_results_track.tracked_ping_elevation_radians = std::acos(-(std::sqrt(kz_2)));
+    shm_results_track.tracked_ping_elevation_radians = std::acos(std::sqrt(kz_2));
 
     shm_results_track.tracked_ping_count++;
     shm_results_track.tracked_ping_frequency = shm_results_spectrum.most_recent_ping_frequency;
