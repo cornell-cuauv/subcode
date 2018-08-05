@@ -69,7 +69,7 @@ class ForwardSearch(Task):
             FakeMoveX(forward * speed, speed),
             FakeMoveY(stride * speed, speed * dir),
             # For some reason we seem to drift a constant direction - check later?
-            FakeMoveY(0 if is_mainsub else stride * speed * 0.2, speed * -dir),
+#            FakeMoveY(0 if is_mainsub else stride * speed * 0.2, speed * -dir),
         )
 
     def on_first_run(self, forward=1, stride=1, speed=0.3, rightFirst=True):
