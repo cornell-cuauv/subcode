@@ -26,7 +26,7 @@ from mission.constants.timeout import timeouts
 
 # gate & dead reckon
 dist1 = 50
-dist2 = 60
+dist2 = 45
 
 GateDeadReckon = lambda: Sequential(
     Log('Depthing for gate...'),
