@@ -48,6 +48,8 @@ SurfaceCashIn = lambda: Sequential(
     Zero(),
     Log('Surfacing at cash-in'),
     Timer(1.3),
+    BigDepth(0),
+    Timer(1.3),
     BigDepth(1.2),
 )
 
@@ -85,7 +87,7 @@ highway = MissionTask(
 
 roulette = MissionTask(
     name='Roulette',
-    cls=Roulette,
+    cls=lambda: Roulette(),
     modules=[shm.vision_modules.Roulette],
     surfaces=False,
     timeout=timeouts['roulette'],
@@ -97,15 +99,15 @@ roulette = MissionTask(
 
 surface_cash_in = MissionTask(
     name="SurfaceCashIn",
-    cls=SurfaceCashIn(),
+    cls=lambda: SurfaceCashIn(),
     modules=None,
     surfaces=True,
 )
 
 cash_in = MissionTask(
     name='CashIn',
-    cls=Sequential(
-        CashIn,
+    cls=lambda: Sequential(
+        CashIn(),
         SurfaceCashIn(),
     ),
     modules=[shm.vision_modules.CashInDownward, shm.vision_modules.CashInForward],
@@ -122,21 +124,27 @@ found_task = 0
 cash_in_surfaced = False
 
 def find_task(task):
-    global found_task
+    global found_task, cash_in_surfaced
     found_task = task
 
-    if found_task == CASH_IN:
-        cash_in_surfaced = True
-
 def get_found_task():
+    global cash_in_surfaced
+
     if found_task == ROULETTE:
+        cash_in_surfaced = True
         return roulette
     else:
         #found_task == CASH_IN:
         if cash_in_surfaced:
             return cash_in
         else:
+            cash_in_surfaced = True
             return surface_cash_in
+
+    # print('found_task:', found_task)
+    # print('cash_in_surfaced:', cash_in_surfaced)
+    # return surface_cash_in
+
     #else:
     #    return MissionTask(name="Failure", cls=NoOp(), modules=None, surfaces=False)
 
@@ -173,6 +181,8 @@ tasks = [
     #get_path(PATH_1_BEND_RIGHT),
     #highway,
     #get_path(PATH_2_BEND_RIGHT),
+    lambda: track(roulette=True, cash_in=True),
+    get_found_task,
     lambda: track(roulette=True, cash_in=True),
     get_found_task,
     lambda: track(roulette=True, cash_in=True),

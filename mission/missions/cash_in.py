@@ -512,7 +512,7 @@ center_right = cons(
     debug=True
 )
 
-Full = Sequential(
+Full = lambda: Sequential(
     Depth(0),
     Depth(1.5),
     pickup_all,

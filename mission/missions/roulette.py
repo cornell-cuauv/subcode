@@ -67,7 +67,7 @@ Search = lambda: SearchFor(
     consistent_frames=(1*60, 1.5*60) # multiply by 60 to specify in seconds
 )
 
-Full = Retry(
+Full = lambda: Retry(
     lambda: Sequential(
         Log('Starting'),
         Zero(),
