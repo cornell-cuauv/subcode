@@ -36,7 +36,7 @@ int packet_count = 0;
 //Direction_thread --> using IIR for detection and NI-Goertzel for phase
 void direction_loop();
 
-//Spectrum_thread --> using FFT 
+//Spectrum_thread --> using FFT
 void spectrum_loop();
 
 std::complex<float> goertzelNonInteger(std::complex<float> *, int, float, float);
