@@ -128,7 +128,8 @@ def find_task(task):
 def get_found_task():
     if found_task == ROULETTE:
         return roulette
-    elif: #found_task == CASH_IN:
+    else:
+        #found_task == CASH_IN:
         if cash_in_surfaced:
             return cash_in
         else:

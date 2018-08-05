@@ -236,6 +236,7 @@ def threshold(img):
             )
 
             a, b = cv2.threshold(luv_u, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            a, b = cv2.threshold(lab_a, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             threshes["otsu"] = b
             threshes["all_bins"] = b
 
