@@ -194,6 +194,7 @@ RamBuoy = lambda num: Sequential(
 )
 
 Full = Sequential(
+    RelativeToInitialHeading(20),
     Log('Searching for buoys...'),
     SearchBuoy(num=1, count=4, total=5), # if we see the second buoy then we see both
     Succeed(RamBuoy(num=0)),

@@ -70,7 +70,7 @@ gate_dead_reckon = MissionTask(
         Zero(),
         Log('Dead reckoning through gate...'),
         BigDepth(2.2),
-        FakeMoveX(dist=6, speed=0.2),
+        FakeMoveX(dist=5.8, speed=0.2),
     ),
     modules=None,
     surfaces=False,
@@ -98,7 +98,7 @@ get_path = lambda bend_right: lambda: MissionTask(
 dice = MissionTask(
     name='Dice',
     cls=Dice,
-    modules=[shm.vision_modules.Dice],
+    modules=None, #[shm.vision_modules.Dice],
     surfaces=False,
     timeout=timeouts['dice'],
 )

@@ -1,7 +1,7 @@
 timeouts = {
     'gate': None,
     'path': 90,
-    'dice': 600,
+    'dice': 360,
     'track': None,
     'highway': None,
     'roulette': 90,
