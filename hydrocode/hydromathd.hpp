@@ -25,7 +25,7 @@ const int SPECTRUM_FFT_LENGTH = 1024; //Must be a power of 2
 const int TRACK_LENGTH = 256;
 
 const float SOUND_SPEED = 1481.0; // in water at 20 Degrees Celsius
-const float NIPPLE_DISTANCE = 0.013; // distance between transducers (right angles) in meters
+const float NIPPLE_DISTANCE = 0.0178; // distance between transducers (right angles) in meters
 
 double prev_psd = 0;
 long current_sample_count = 0;

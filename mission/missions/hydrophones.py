@@ -29,7 +29,7 @@ from mission.constants.config import track as settings
 from mission.missions.will_common import is_mainsub
 
 # WILL ITS THIS ONE!
-STOP_OVER_PINGER = False
+STOP_OVER_PINGER = True
 
 def get_clusterable(data):
   return np.array(data).reshape((len(data), 1))

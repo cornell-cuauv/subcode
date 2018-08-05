@@ -314,13 +314,21 @@ def run_loop(func):
 def control_loop(watcher, quit_event):
     watcher.watch(shm.leds)
 
+    last_mode = "--"
+    led_process = None
+
     while not quit_event.is_set():
         modename = shm.leds.mode.get()
-        led_controller_func = modes.get(modename, passthrough)
-        led_process = multiprocessing.Process(target=run_loop, args=(led_controller_func,), daemon=True)
-        led_process.start()
+
+        if modename != last_mode:
+            last_mode = modename
+            if led_process is not None:
+                led_process.terminate()
+            led_controller_func = modes.get(modename, passthrough)
+            led_process = multiprocessing.Process(target=run_loop, args=(led_controller_func,), daemon=True)
+            led_process.start()
+
         watcher.wait(new_update=False)
-        led_process.terminate()
 
 
 watch_thread_wrapper(control_loop)

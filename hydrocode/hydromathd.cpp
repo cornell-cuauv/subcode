@@ -145,7 +145,7 @@ void do_track()
     shm_results_track.daemon_start_time = daemon_start_time;
     shm_results_track.tracked_ping_time = ping_time;
     shm_results_track.tracked_ping_heading_radians = (is_mainsub ? 3.14 : 0) + std::atan2(ky, kx);
-    shm_results_track.tracked_ping_elevation_radians = std::acos(std::sqrt(kz_2));
+    shm_results_track.tracked_ping_elevation_radians = std::acos(-(std::sqrt(kz_2)));
 
     shm_results_track.tracked_ping_count++;
     shm_results_track.tracked_ping_frequency = shm_results_spectrum.most_recent_ping_frequency;

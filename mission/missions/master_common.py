@@ -175,7 +175,7 @@ class Begin(Task):
       FunctionTask(lambda: shm.deadman_settings.enabled.set(False)),
       Log('Disabling Record vision module'),
       FunctionTask(lambda: shm.vision_modules.Record.set(0)),
-      AllLeds('orange'),
+      #AllLeds('orange'),
 
       #Log('Wating for alignment...'),
       #WaitForUnkill(wait=1.0),
@@ -186,12 +186,12 @@ class Begin(Task):
       # Need a swimmer to do this
       Log('Waiting for re-kill...'),
       WaitForUnkill(killed=False, wait=0.5),
-      AllLeds('blue'),
+      #AllLeds('blue'),
 
       Log('Waiting for unkill signal to start mission...'),
       WaitForUnkill(wait=5.0),
       Log('Starting mission!'),
-      AllLeds('red'),
+      #AllLeds('red'),
 
       Log('Zeroing'),
       ZeroHeading(),
