@@ -17,10 +17,10 @@ def set_gain():
 
     #msg = com.SerializeToString()
     #print(msg)
-    
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(b"14",(UDP_IP,UDP_PORT))
-    print(14)
+    sock.sendto(b"12",(UDP_IP,UDP_PORT))
+    print(12)
 
 if __name__ == '__main__':
     set_gain()

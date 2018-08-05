@@ -19,6 +19,9 @@ import os
 import shm
 import datetime
 import traceback
+import subprocess
+import threading
+import time
 
 from mission.framework.task import Task
 from mission.opt_aux.aux import *
@@ -43,6 +46,11 @@ from mission.missions.leds import AllLeds
 from mission.constants.config import highway as highway_settings, track as track_settings, NONSURFACE_MIN_DEPTH as MIN_DEPTH
 
 from collections import namedtuple
+
+from hydrocode.scripts.udp_set_gain import set_gain
+from hydrocode.scripts.udp_set_gain_12 import set_gain as set_gain_12
+from hydrocode.scripts.udp_set_gain_13 import set_gain as set_gain_13
+
 
 class RunTask(Task):
   def on_first_run(self, task, *args, **kwargs):
@@ -225,11 +233,32 @@ class HydrophonesWithVision(Task):
 
 VisionFramePeriod = lambda period: FunctionTask(lambda: shm.vision_module_settings.time_between_frames.set(period))
 
-ConfigureHydromath = lambda enable: FunctionTask(lambda: shm.hydrophones_settings.enabled.set(enable))
+def pollux_step():
+  set_gain()
+  time.sleep(30)
+  set_gain_13()
+  time.sleep(30)
+  set_gain_12()
+
+def p_step():
+  threading.Thread(target=pollux_step, daemon=True).start()
+
+def ConfigureHydromath(enable, gain_high=True):
+  if os.environ["CUAUV_VEHICLE"] == "pollux":
+    return Sequential(
+      FunctionTask(lambda: shm.hydrophones_settings.enabled.set(enable)),
+      FunctionTask(p_step)
+    )
+  else:
+    return Sequential(
+      FunctionTask(lambda: shm.hydrophones_settings.enabled.set(enable)),
+      FunctionTask(set_gain if gain_high else set_gain_12)
+    )
+
 
 TrackerGetter = lambda found_roulette, found_cash_in, enable_roulette=True, enable_cash_in=True: Sequential(
   # Turn on hydromathd
-  ConfigureHydromath(True),
+  ConfigureHydromath(True, enable_cash_in),
   # Don't kill CPU with vision
   VisionFramePeriod(track_settings.vision_frame_period),
   Log('Roulette: ' + str(enable_roulette) + ', Cash-in:' + str(enable_cash_in)),
@@ -257,7 +286,7 @@ TrackerGetter = lambda found_roulette, found_cash_in, enable_roulette=True, enab
 
 TrackerCleanup = lambda: Sequential(
   # Turn off hydromathd
-  ConfigureHydromath(False),
+  ConfigureHydromath(False, True),
   # Go back to normal vision settings
   VisionFramePeriod(0.1), # this should be default
 )
@@ -283,3 +312,5 @@ EndMission = MissionTask(
 )
 
 ZeroHeading = lambda: FunctionTask(set_zero_heading)
+
+configure_hydrophones = ConfigureHydromath(True, True)
