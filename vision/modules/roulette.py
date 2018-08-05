@@ -42,7 +42,8 @@ options = [
     options.IntOption('hough_circles_param2', 30, 0, 255),
     options.IntOption('hough_circles_minRadius', 50, 0, 1000),
     options.IntOption('hough_circles_maxRadius', 1000, 0, 1000),
-    options.IntOption('contour_min_area', 1000, 0, 100000)
+    options.IntOption('contour_min_area', 1000, 0, 100000),
+    options.DoubleOption('percent_red_thresh', 0.005, 0, 1),
 ]
 
 POST_UMAT = True
@@ -268,6 +269,9 @@ class Roulette(ModuleBase):
             #                           param2=self.options['hough_circles_param2'], minRadius=self.options['hough_circles_minRadius'],
             #                           maxRadius=self.options['hough_circles_maxRadius'])
 
+            percent_red = cv2.countNonZero(red_threshed) / (DOWNWARD_CAM_WIDTH * DOWNWARD_CAM_HEIGHT)
+            percent_red_thresh = self.options['percent_red_thresh']
+
             # Hough circles aren't working. So don't use them.
             found_center = False # circles is not None
             if found_center:
@@ -366,7 +370,7 @@ class Roulette(ModuleBase):
                             if debug and POST_UMAT:
                                 self.post('lines', cv2.UMat.get(lines_mat))
 
-                            found_center = len(line_equations) >= 2
+                            found_center = len(line_equations) >= 2 and percent_red >= percent_red_thresh
                             if found_center:
                                 # calculate intersection of diameters of green section
                                 [x01, x02, y01, y02] = line_equations[0]
