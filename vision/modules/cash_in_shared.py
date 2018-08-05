@@ -16,17 +16,17 @@ def get_shared_options(is_forward):
         # Global
         options.BoolOption('in_simulator', False),
         options.BoolOption('preprocess_debug', False),
-        options.BoolOption('thresh_debug', False),
+        options.BoolOption('thresh_debug', True),
         options.BoolOption('contour_debug', False),
-        options.BoolOption('bins_debug', False),
+        options.BoolOption('bins_debug', True),
         options.BoolOption('funnels_debug', False),
 
         # Preprocess
-        options.IntOption('gaussian_kernel', (2, 5)[is_forward], 1, 40),
+        options.IntOption('gaussian_kernel', (5, 5)[is_forward], 1, 40),
         options.IntOption('gaussian_stdev', 20, 0, 40),
 
         # Threshing
-        options.IntOption('erode_size', (2, 5)[is_forward], 1, 40),
+        options.IntOption('erode_size', (3, 5)[is_forward], 1, 40),
         options.IntOption('thresh_size', (15, 15)[is_forward], 1, 100),
         options.IntOption("lab_b_min_red_bin", 140, 0, 255),
         options.IntOption("lab_b_max_red_bin", 250, 0, 255),
@@ -36,9 +36,9 @@ def get_shared_options(is_forward):
         options.IntOption("color_dist_max_yellow_funnel", (25, -1)[is_forward], 0, 255),
 
         # Contouring
-        options.IntOption('min_area', (30, 100)[is_forward], 1, 2000),
+        options.IntOption('min_area', (50, 100)[is_forward], 1, 2000),
         options.IntOption('min_y', (0, 200)[is_forward], 0, 2000),
-        options.DoubleOption('min_circularity', (0.7, 0.1)[is_forward], 0, 1),
+        options.DoubleOption('min_circularity', (0.8, 0.1)[is_forward], 0, 1),
         options.DoubleOption('max_rectangularity', 0.9, 0, 1),
 
         # Binning
@@ -50,6 +50,9 @@ def copy_mat(mat):
         return mat.get()
     else:
         return mat.copy()
+
+
+dist_multiple = (None, None, 1, 2 + math.sqrt(2), 4 + 2 * math.sqrt(2), 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
 
 
 class Shared:
@@ -237,8 +240,18 @@ def threshold(img):
 
             a, b = cv2.threshold(luv_u, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             a, b = cv2.threshold(lab_a, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            a, b = cv2.threshold(lab_l, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             threshes["otsu"] = b
             threshes["all_bins"] = b
+
+            threshes["all_bins"] = cv2.adaptiveThreshold(
+                lab_a,
+                255,
+                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY_INV,
+                shared.options["thresh_size"] * 2 + 1,
+                2,
+            )
 
             # threshes["all_bins"] = cv2.inRange(
             #     lab_b,
@@ -449,7 +462,6 @@ def find_bins(images):
             x = sum(fc.x * fc.area for fc in children) / total_area
             y = sum(fc.y * fc.area for fc in children) / total_area
 
-            dist_multiple = (None, None, 1, 2 + math.sqrt(2), 4 + 2 * math.sqrt(2), 7, 8, 9, 10, 11)
 
             total_dist = 0
 
@@ -477,7 +489,6 @@ def find_bins(images):
             x = sum(fc.x * fc.area for fc in dots) / total_area
             y = sum(fc.y * fc.area for fc in dots) / total_area
 
-            dist_multiple = (None, None, 1, 2 + math.sqrt(2), 4 + 2 * math.sqrt(2), 7, 8, 9, 10, 11)
 
             total_dist = 0
 
