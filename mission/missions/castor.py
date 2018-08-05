@@ -116,17 +116,25 @@ ROULETTE = 1
 CASH_IN = -1
 found_task = 0
 
+cash_in_surfaced = False
+
 def find_task(task):
     global found_task
     found_task = task
 
+    if found_task == CASH_IN:
+        cash_in_surfaced = True
+
 def get_found_task():
     if found_task == ROULETTE:
         return roulette
-    elif found_task == CASH_IN:
-        return cash_in
-    else:
-        return MissionTask(name="Failure", cls=NoOp(), modules=None, surfaces=False)
+    elif: #found_task == CASH_IN:
+        if cash_in_surfaced:
+            return cash_in
+        else:
+            return surface_cash_in
+    #else:
+    #    return MissionTask(name="Failure", cls=NoOp(), modules=None, surfaces=False)
 
 track = lambda roulette=True, cash_in=False: MissionTask(
     name="Track",
@@ -161,10 +169,9 @@ tasks = [
     #get_path(PATH_1_BEND_RIGHT),
     #highway,
     #get_path(PATH_2_BEND_RIGHT),
-    lambda: track(cash_in=False), # just roulette
+    lambda: track(roulette=True, cash_in=True),
     get_found_task,
-    lambda: track(roulette=False), # just cash-in
-    surface_cash_in,
+    lambda: track(roulette=True, cash_in=True),
     get_found_task,
 ]
 
