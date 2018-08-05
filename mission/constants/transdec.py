@@ -4,7 +4,7 @@ from mission.missions.will_common import is_mainsub
 
 HYDROPHONES_PINGER_DEPTH = 4.7
 
-NONSURFACE_MIN_DEPTH = 1.0
+NONSURFACE_MIN_DEPTH = 1.0 if is_mainsub() else 1.5
 
 # Note: These values are copied straight from the Teagle configuration.
 # They need to be updated for Transdec!!
@@ -29,11 +29,11 @@ path = Path(
 dice = Dice(
     depth=3.3,
     max_depth=4,
-    search_forward=6,
+    search_forward=5,
     search_stride=8,
     search_speed=0.2,
-    min_dot_radius=0.03,
-    ram_dist=1.3,
+    min_dot_radius=0.04,
+    ram_dist=1.5,
     ram_speed=0.16,
     rammed_back_up_timeout=20,
     lost_sight_back_up_timeout=5,
@@ -41,14 +41,14 @@ dice = Dice(
 )
 
 highway = Highway(
-    high_depth=1.2,
-    low_depth=1.2,
+    high_depth=1.6,
+    low_depth=1.6,
     dist=6 if is_mainsub() else 2,
     speed=0.4 if is_mainsub() else 0.2,
 )
 
 track = Track(
-    depth=1.6 if is_mainsub() else 2.0,
+    depth=2.2 if is_mainsub() else 2.2,
     slow_down_dist=5,
     max_speed=0.3 if is_mainsub() else 0.2,
     min_speed=0.1,
@@ -57,8 +57,8 @@ track = Track(
 
 roulette = Roulette(
     depth_search=1.5,
-    depth_realign=3.0,
-    depth_drop=3.6,
+    depth_realign=3.2,
+    depth_drop=3.9,
     heading_offset=-30,
 )
 

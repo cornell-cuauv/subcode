@@ -26,15 +26,16 @@ from mission.constants.timeout import timeouts
 
 # gate & dead reckon
 dist1 = 50
-dist2 = 10
+dist2 = 60
 
 GateDeadReckon = lambda: Sequential(
     Log('Depthing for gate...'),
-    BigDepth(1.5),
+    BigDepth(2.0),
     Log('Dead reckoning through gate...'),
     Timed(VelocityX(0.4), dist1),
     # MoveXRough(20),
     VelocityX(0),
+    BigDepth(1.5),
     Log('Turning toward pinger tasks...'),
     Heading(37 if RIGHT_HANDED else -37),
     Log('Dead reckoning a little bit toward pinger tasks...'),

@@ -69,7 +69,7 @@ gate_dead_reckon = MissionTask(
     cls=Sequential(
         Zero(),
         Log('Dead reckoning through gate...'),
-        BigDepth(2),
+        BigDepth(2.2),
         FakeMoveX(dist=6, speed=0.2),
     ),
     modules=None,
@@ -133,10 +133,10 @@ track = MissionTask(
 )
 
 # get a little closer to cash-in before we start tracking
-interlude = MissionTask(
+interlude = lambda dist, speed: lambda: MissionTask(
     name='Interlude',
     cls=Sequential(
-        FakeMoveX(dist=1.6, speed=0.2),
+        FakeMoveX(dist=dist, speed=speed),
     ),
     modules=None,
     surfaces=False,
@@ -167,11 +167,12 @@ tasks = [
     lambda: gate_dead_reckon,
     #get_path(PATH_1_BEND_RIGHT),
     fake_path(PATH_1_BEND_RIGHT),
+    interlude(dist=3.0, speed=0.2),
     lambda: dice,
     lambda: highway,
     #get_path(PATH_2_BEND_RIGHT),
     fake_path(PATH_2_BEND_RIGHT),
-    lambda: interlude,
+    interlude(dist=4.0, speed=0.2),
     #wait_for_track,
     track,
     surface_cash_in,
