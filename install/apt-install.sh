@@ -30,6 +30,7 @@ packages=(
     tmux
     usbutils
     wget
+    vlc
 
     # serial
     libgtest-dev
