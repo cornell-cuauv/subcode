@@ -56,6 +56,7 @@ dirs = [
         'mission/opt',
         # 'object-recognition',
         'positiontracker3',
+        'pooltest',
         'self_test',
         'sensors',
         'sensors/3dmg/gx4',
