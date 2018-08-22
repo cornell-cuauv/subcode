@@ -318,7 +318,7 @@ class Build:
                   "\"webpack\"" % (name))
         return exists
 
-    def webpack(self, output, config, src_dir):
+    def webpack(self, output, config, src_dir, npm_install_target):
         if not self.webpack_availible(output):
             return
 
@@ -331,13 +331,16 @@ class Build:
                         files.append(joined)
             return files
 
-        implicit = [x for x in walkFiles(os.path.join(self.wd, src_dir)) if x.endswith('.jsx')]
+        implicit = [npm_install_target] + [x for x in walkFiles(os.path.join(self.wd, src_dir)) if x.endswith('.jsx')]
 
         output_path = os.path.join(self.wd, output)
         config_path = os.path.join(self.wd, config)
 
         self.n.build(output_path, "webpack", variables={"config": config_path}, implicit=implicit)
         self.add_code_target(output_path)
+
+    def npm_install(self, output_name, package_json):
+        self.n.build(output_name, "npm-install", variables={"config_path": self.wd}, implicit=[package_json])
 
     def generate(self, out_files, script, in_files=[], depends=[], requires=None):
         """ Generate out_files from a script.
