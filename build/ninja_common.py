@@ -318,10 +318,15 @@ class Build:
                   "\"webpack\"" % (name))
         return exists
 
-    def webpack(self, output, config, src_dir, npm_install_target):
+    def webpack(self, output, config, src_dir, package_json):
         if not self.webpack_availible(output):
             return
 
+        # Create "fake" output file for dependency on npm-installed packages. The output file allows
+        # us to specify the dependency of the webpack rule on the npm-install rule and allows us to
+        # avoid evaluating npm-install every build.
+        npm_install_marker = os.path.join(self.wd, "npm-install.fake")
+        self.npm_install(npm_install_marker, package_json)
         def walkFiles(root):
             files = []
             for (subdir, _, fs) in os.walk(root):
@@ -331,7 +336,7 @@ class Build:
                         files.append(joined)
             return files
 
-        implicit = [npm_install_target] + [x for x in walkFiles(os.path.join(self.wd, src_dir)) if x.endswith('.jsx')]
+        implicit = [npm_install_marker] + [x for x in walkFiles(os.path.join(self.wd, src_dir)) if x.endswith('.jsx')]
 
         output_path = os.path.join(self.wd, output)
         config_path = os.path.join(self.wd, config)
