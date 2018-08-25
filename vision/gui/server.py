@@ -228,6 +228,7 @@ def module(module_name):
     return render_template('module.html', module_name=module_name, modules=get_active_modules())
 
 if __name__ == '__main__':
+    print('WARNING: auv-vision-gui is DEPRECATED. Please use auv-webserver instead.')
     # Turn off the default Python ^C handler that raises a KeyboardInterrupt.
     # Now SIGINT should behave identically to SIGTERM: kill the program.
     import signal
