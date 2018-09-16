@@ -7,7 +7,7 @@ def check_imports(*names):
     for name in names:
         try:
             __import__(name)
-        except ModuleNotFoundError:
+        except ImportError:
             not_found.append(name)
 
     if len(not_found) > 0:
