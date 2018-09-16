@@ -78,6 +78,10 @@ def get_worktree_guard(branch: str) -> str:
     return "worktree_{}".format(branch)
 
 
+def check_output(args, cwd):
+    return subprocess.check_output(args, cwd=cwd).decode("utf-8").strip()
+
+
 def get_docker_name(branch: str, vehicle: bool):
     if vehicle:
         return "cuauv_vehicle"
@@ -127,8 +131,8 @@ def init(*, on_vehicle=False):
                 print("Email: {}".format(email))
                 confirmed = input("Is this information correct? [yn]") == "y"
 
-                name_config_path.write_text(name)
-                email_config_path.write_text(email)
+                NAME_CONFIG_PATH.write_text(name)
+                EMAIL_CONFIG_PATH.write_text(email)
 
         guarded_call(
             "get_initial_configs",
@@ -137,21 +141,35 @@ def init(*, on_vehicle=False):
         )
 
     def clone_repo():
-        subprocess.run(
-            ["git", "clone", REPO_URL, str(REPO_PATH)],
-            check=True
-        )
+        cwd = os.path.dirname(os.path.realpath(__file__))
+        try:
+            current_git_repo = check_output(["git", "rev-parse", "--show-toplevel"], cwd)
+        except subprocess.CalledProcessError:
+            current_git_repo = None
+        if current_git_repo and check_output(["git", "remote", "get-url", "origin"], cwd) == REPO_URL:
+            # If already in main repository, then move it to repo path
+            subprocess.run(
+                ["mv", current_git_repo, str(REPO_PATH)],
+                check=True
+            )
+            print("mv {} {}".format(current_git_repo, str(REPO_PATH)))
+        else:
+            # Otherwise, clone main repository
+            subprocess.run(
+                ["git", "clone", REPO_URL, str(REPO_PATH)],
+                check=True
+            )
 
         if not on_vehicle:
             # Configure user name and email for git in repo directory
             subprocess.run(
-                ["git", "config", "user.name", "\"{}\"".format(name_config_path.read_text())],
+                ["git", "config", "user.name", "\"{}\"".format(NAME_CONFIG_PATH.read_text())],
                 cwd=str(REPO_PATH),
                 check=True
             )
 
             subprocess.run(
-                ["git", "config", "user.email", "\"{}\"".format(email_config_path.read_text())],
+                ["git", "config", "user.email", "\"{}\"".format(EMAIL_CONFIG_PATH.read_text())],
                 cwd=str(REPO_PATH),
                 check=True
             )
