@@ -44,7 +44,7 @@ Host loglan
 EOF
 
 # **************** vim ****************
-mkdir -p /home/software/.config
+sudo -u software mkdir -p /home/software/.config
 sudo -u software ln -s /home/software/cuauv/software/install/nvim /home/software/.config/
 
 # **************** sloth ****************
