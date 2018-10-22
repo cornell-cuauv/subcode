@@ -70,6 +70,10 @@ noremap L $
 " Allow using ; to access command mode in normal and visual mode
 noremap ; :
 
+" Move by visual-line by default
+noremap j gj
+noremap k gk
+
 " Splits: use g prefix instead of <C-w>
 nnoremap gh <C-w>h
 nnoremap gl <C-w>l
