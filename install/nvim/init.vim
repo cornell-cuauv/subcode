@@ -38,6 +38,7 @@ set ignorecase      " Case-insensitive
 set smartcase       " Override ignorecase if search includes capital letters
 set nohlsearch      " Don't highlight search after search is completed
 set gdefault        " When using :s command, replace all instances on line by default
+set ttimeoutlen=0   " Respond to escape immediately
 
 set clipboard=unnamedplus
 
