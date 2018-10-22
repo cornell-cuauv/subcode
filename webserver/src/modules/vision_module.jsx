@@ -45,6 +45,14 @@ function togglePreprocessorItems() {
     }
 }
 
+function setCoordinate(x, y) {
+    $("#coordinate").text(`X: ${x}, Y: ${y}`);
+}
+
+function setColorPicker(r, g, b) {
+    $("#color-picker").text(`R: ${r}, G: ${g}, B: ${b}`);
+}
+
 class ImageContainer extends React.Component {
     constructor(props) {
         super(props);
@@ -69,10 +77,24 @@ class ImageContainer extends React.Component {
         this.setState({data: nextProps.image.image});
     }
 
+    showPixel(e) {
+        const rect = e.target.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const canvas = document.createElement('canvas');
+        canvas.width = e.target.width;
+        canvas.height = e.target.height;
+        const canvasContext = canvas.getContext('2d');
+        canvasContext.drawImage(e.target, 0, 0, canvas.width, canvas.height);
+        const color = canvasContext.getImageData(x, y, 1, 1).data;
+        setCoordinate(x, y);
+        setColorPicker(color[0], color[1], color[2]);
+    }
+
     render() {
         return (
             <li className="image-container list-group-item col-xs-6">
-                <img id={this.imageId} src={'data:image/jpeg;base64,' + this.state.data} className="posted"/>
+                <img id={this.imageId} src={'data:image/jpeg;base64,' + this.state.data} className="posted" onClick={this.showPixel}/>
                 <br/>
                 {this.imageName}
             </li>
@@ -264,10 +286,13 @@ export class VisionModule extends React.Component {
                 <input
                     type="checkbox"
                     id="preprocessor-toggle"
+                    class="margin-left-right"
                     onChange={togglePreprocessorItems}
                 />
                 <label for="preprocessor-toggle">Toggle Preprocessor Options</label>
-                <button id="clear-images" onClick={this.clearImages}>Clear Images</button>
+                <button id="clear-images" class="margin-left-right" onClick={this.clearImages}>Clear Images</button>
+                <span id="coordinate" class="margin-left-right"></span>
+                <span id="color-picker" class="margin-left-right"></span>
                 <div class="row">
                     <div class="col-xs-10">
                     <ul class="list-group row" id="images">
