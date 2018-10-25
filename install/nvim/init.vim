@@ -53,50 +53,6 @@ colorscheme space-vim-dark
 syntax enable			" Enable syntax processing
 
 "
-" Mappings
-"
-
-" Leader
-let mapleader = ","
-let maplocalleader = "\\"
-
-" Make Y behave like D and C, instead of like yy
-nnoremap Y y$	
-
-" Much better use of H and L
-noremap H ^
-noremap L $
-
-" Allow using ; to access command mode in normal and visual mode
-noremap ; :
-
-" Move by visual-line by default
-noremap j gj
-noremap k gk
-
-" Splits: use g prefix instead of <C-w>
-nnoremap gh <C-w>h
-nnoremap gl <C-w>l
-nnoremap gj <C-w>j
-nnoremap gk <C-w>k
-nnoremap gH <C-w>H
-nnoremap gL <C-w>L
-nnoremap gJ <C-w>J
-nnoremap gK <C-w>K
-
-" Easier tab manipulation / navigation
-nnoremap <silent> <leader><tab> :tabnew<cr>
-nnoremap <silent> <leader><s-tab> :tabc<cr>
-nnoremap <silent> <tab> :tabn<cr>
-nnoremap <silent> <s-tab> :tabp<cr>
-
-nnoremap <leader><leader> :e#<cr> " Open last file
-
-" Control-Backspace deletes last work in insert mode
-noremap! <C-BS> <C-w>
-noremap! <C-h> <C-w>
-
-"
 " Autocmd
 "
 
