@@ -2,10 +2,7 @@
 " A minimal but convenient Vim configuration for viewing and quick editing.
 "
 " Tips:
-" - Use H and L to move to beginning and end of line
 " - Use gcc to comment the current line, or gc to comment the visual selection
-" - Use either colon or semicolon for command mode
-" - Use g<dir> like gh or gj to focus the left split or down split respectively
 
 filetype plugin indent on
 
