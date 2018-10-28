@@ -81,12 +81,14 @@ class ImageContainer extends React.Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        const currTime = Date.now();
-        this.setState({
-            data: nextProps.image.image,
-            lastFrameTime: currTime,
-            fps: Math.trunc(1000 / Math.max(100, currTime - this.state.lastFrameTime)),
-        });
+        if (this.props.image !== nextProps.image) {
+            const currTime = Date.now();
+            this.setState({
+                data: nextProps.image.image,
+                lastFrameTime: currTime,
+                fps: Math.trunc(1000 / Math.max(100, currTime - this.state.lastFrameTime)),
+            });
+        }
     }
 
     showPixel(e) {
