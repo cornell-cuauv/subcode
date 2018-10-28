@@ -28,3 +28,22 @@ img.posted {
     margin-left: 1em;
     margin-right: 1em;
 }
+
+#coordinate, #color-picker {
+    font-family: monospace;
+}
+
+#color-indicator {
+    display: inline-block;
+    height: 1em;
+    width: 1em;
+}
+
+.image-name {
+    font-family: monospace;
+}
+
+.fps {
+    font-family: monospace;
+    float: right;
+}

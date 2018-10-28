@@ -45,12 +45,17 @@ function togglePreprocessorItems() {
     }
 }
 
+function rgbToColor(r, g, b) {
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
 function setCoordinate(x, y) {
     $("#coordinate").text(`X: ${x}, Y: ${y}`);
 }
 
 function setColorPicker(r, g, b) {
     $("#color-picker").text(`R: ${r}, G: ${g}, B: ${b}`);
+    $("#color-indicator").css('background-color', rgbToColor(r, g, b));
 }
 
 class ImageContainer extends React.Component {
@@ -59,6 +64,8 @@ class ImageContainer extends React.Component {
         this.state = {
             image: this.props.image,
             data: this.props.image.image,
+            lastFrameTime: 0,
+            fps: 0,
         };
         this.imageName = this.props.image.image_name;
         this.imageId = formatId(this.imageName);
@@ -74,7 +81,12 @@ class ImageContainer extends React.Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        this.setState({data: nextProps.image.image});
+        const currTime = Date.now();
+        this.setState({
+            data: nextProps.image.image,
+            lastFrameTime: currTime,
+            fps: Math.trunc(1000 / Math.max(100, currTime - this.state.lastFrameTime)),
+        });
     }
 
     showPixel(e) {
@@ -96,7 +108,7 @@ class ImageContainer extends React.Component {
             <li className="image-container list-group-item col-xs-6">
                 <img id={this.imageId} src={'data:image/jpeg;base64,' + this.state.data} className="posted" onClick={this.showPixel}/>
                 <br/>
-                {this.imageName}
+                <span class="image-name">{this.imageName}</span> <span class="fps">{this.state.fps} FPS</span>
             </li>
         );
     }
@@ -293,6 +305,7 @@ export class VisionModule extends React.Component {
                 <button id="clear-images" class="margin-left-right" onClick={this.clearImages}>Clear Images</button>
                 <span id="coordinate" class="margin-left-right"></span>
                 <span id="color-picker" class="margin-left-right"></span>
+                <div id="color-indicator" class="margin-left-right"></div>
                 <div class="row">
                     <div class="col-xs-10">
                     <ul class="list-group row" id="images">
