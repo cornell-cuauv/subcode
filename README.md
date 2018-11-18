@@ -17,6 +17,12 @@ To prepare your system:
  4. Install two pip packages that are required for our Docker script:
     `sudo pip3 install docker clize`.
 
+Set up Docker Hub:
+ 1. Create a [Docker Hub account](https://hub.docker.com/). This is
+    where we store our Docker images for the time being.
+ 2. Ask Will to add your account to the CUAUV repository on Docker
+    Hub. Without this, you won't be able to clone the image.
+
 To get started with this repo:
  1. Clone this repo.
  2. Run `docker/auv-docker.py init`. This will set up your machine
