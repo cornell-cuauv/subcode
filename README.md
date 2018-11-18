@@ -21,10 +21,14 @@ Set up Docker Hub:
  1. Create a [Docker Hub account](https://hub.docker.com/). This is
     where we store our Docker images for the time being.
  2. Ask Will to add your account to the CUAUV repository on Docker
-    Hub. Without this, you won't be able to clone the image.
+    Hub. Without this, you won't be able to pull the image.
+ 3. Note: These steps are only required for team members because
+    our build server makes images significantly faster than your
+    computer can. If you don't have access to Docker Hub, you can
+    build the image locally with the standard Docker build.
 
 To get started with this repo:
- 1. Clone this repo.
+ 1. Clone this repo (any temporary place will do).
  2. Run `docker/auv-docker.py init`. This will set up your machine
     with worktrees and move the stack to `~/cuauv/`.
  3. Run `~/cuauv/workspaces/repo/docker/auv-docker.py cdw`. This will
