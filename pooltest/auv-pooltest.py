@@ -10,7 +10,7 @@ import fire
 import pooltest.slack as slack
 
 
-## Basic config/setup
+# Basic config/setup
 log_dir = Path(os.environ["CUAUV_LOG"])
 current_log_dir_alias = log_dir / "current"
 no_pooltest_log_dir = log_dir / "no-pooltest"
@@ -24,9 +24,10 @@ except FileExistsError:
     pass
 
 
-## Helper functions
+# Helper functions
 def follow_symlink(path):
     return Path(os.readlink(str(path)))
+
 
 def assert_valid_pooltest_name(name):
     if name in ["current", "no-pooltest"]:
@@ -77,13 +78,14 @@ def setup_log_dir(name):
 
     return current_log_dir
 
+
 def unlink_log_dir():
     assert pooltest_is_active, "Cannot unlink log dir if pooltest is not active"
     current_log_dir_alias.unlink()
     current_log_dir_alias.symlink_to(no_pooltest_log_dir)
 
 
-## Actual CLI exposed functions
+# Actual CLI exposed functions
 class Pooltest:
     def start(self, name):
         assert_valid_pooltest_name(name)
@@ -101,7 +103,6 @@ class Pooltest:
         with meta_json_path.open("w") as meta_json_file:
             json.dump(meta_start_info, meta_json_file, indent=2)
         slack.send('Pooltest has been started. Local logs will be available on the submarine at `{}`'.format(meta_json_path))
-
 
     def end(self):
         assert pooltest_is_active()
@@ -139,5 +140,7 @@ class Pooltest:
     def cleanup(self):
         raise NotImplemented
 
+
 if __name__ == '__main__':
     fire.Fire(Pooltest)
+
