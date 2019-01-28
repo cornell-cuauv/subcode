@@ -128,6 +128,6 @@ class Controller(Test):
 # Other
 class Merge(Test):
     def total_voltage_ok():
-        return 16.8 > shm.merge_status.total_voltage.get() > 14.0
+        return 17 > shm.merge_status.total_voltage.get() > 14.0
 
 import syscheck_selftest

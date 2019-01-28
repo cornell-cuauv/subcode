@@ -218,6 +218,10 @@ n.rule('general',
        description = '$name $out',
        restat = True)
 
+n.rule('npm-install',
+  command = 'npm install --prefix $config_path && touch $out',
+  description = 'NPM INSTALL --prefix $config_path')
+
 n.newline()
 
 # Add build.ninja target.

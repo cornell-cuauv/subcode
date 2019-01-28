@@ -2,6 +2,7 @@ import struct
 
 import shm
 
+from mission.framework.combinators import Sequential
 from mission.framework.primitive import FunctionTask
 
 def light_show(num):
@@ -48,6 +49,12 @@ colors = {
     'magenta': 'FF00FF',
 }
 
+InitLeds = Sequential(
+    LightShow(1),
+    AllLeds('magenta'),
+)
+
+TestBlack = AllLeds('black')
 TestRed = AllLeds('red')
 TestCyan = AllLeds('cyan')
 TestOrange = AllLeds('orange')

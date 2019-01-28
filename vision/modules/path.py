@@ -22,85 +22,75 @@ from vision import options as gui_options
 
 log = auvlog.client.log.vision.pipes
 
-vision_options = {
-    'pollux': [
-        gui_options.IntOption('hsv_s_block_size', 15, 1, 100),
-        gui_options.IntOption('hsv_v_block_size', 15, 1, 100),
-        gui_options.IntOption('hsv_s_c_thresh', -77, -200, 100),
-        gui_options.IntOption('hsv_v_c_thresh', -27, -200, 100),
-        gui_options.IntOption('lab_a_thresh_min', 0, 0, 255),
-        gui_options.IntOption('lab_a_thresh_max', 131, 0, 255),
-        gui_options.IntOption('lab_l_thresh_min', 0, 0, 255),
-        gui_options.IntOption('lab_l_thresh_max', 152, 0, 255),
-        gui_options.IntOption('lab_b_thresh_min', 0, 0, 255),
-        gui_options.IntOption('lab_b_thresh_max', 143, 0, 255),
-        gui_options.IntOption('hsv_h_min', 164, 0, 255),
-        gui_options.IntOption('hsv_h_max', 244, 0, 255),
-        gui_options.IntOption('erode_size', 4, 0, 50),
-        gui_options.IntOption('dilate_size', 4, 0, 50),
-        gui_options.DoubleOption('min_percent_frame', 0.01, 0, 0.1),
-        gui_options.DoubleOption('max_percent_frame', 0.2, 0, 1),
-        gui_options.IntOption('mask_size', 149, 0, 200),
-        gui_options.IntOption('canny1', 50, 0, 200),
-        gui_options.IntOption('canny2', 150, 0, 200),
-        gui_options.DoubleOption('min_angle_diff', np.pi/8, 0, np.pi*2),
-        gui_options.DoubleOption('min_line_dist', 100, 0, 1000),
-        # A circle with radius 1 inscribed in a square has
-        # 'rectangularity' pi/4 ~ 0.78.
-        gui_options.DoubleOption('aspect_ratio_threshold', 3, 0.5, 5),
-        gui_options.DoubleOption('min_rectangularity', 0.48),
-        gui_options.DoubleOption('heuristic_power', 5),
-        gui_options.BoolOption('debugging', False),
-        gui_options.DoubleOption('min_dist_ratio', 0.4, 0, 2),
-        gui_options.DoubleOption('max_dist_ratio', 2,0, 5),
-        gui_options.DoubleOption('min_line_hough_length',35, 0, 500),
+# vision_options = {
+#     'pollux': [
+#         gui_options.BoolOption('debugging', False),
+# #        gui_options.IntOption('lab_a_thresh_min', 0, 0, 255),
+# #        gui_options.IntOption('lab_a_thresh_max', 127, 0, 255),
+# #        gui_options.IntOption('hsv_h_min', 61, 0, 255),
+# #        gui_options.IntOption('hsv_h_max', 255, 0, 255),
+# #        gui_options.IntOption('erode_size', 4, 0, 50),
+# #        gui_options.IntOption('dilate_size', 4, 0, 50),
+#         gui_options.IntOption('canny1', 50, 0, 200),
+#         gui_options.IntOption('canny2', 150, 0, 200),
+# #        gui_options.IntOption('canny_aperture_size', 3, 0, 20),
+#         gui_options.DoubleOption('min_angle_diff', np.pi/8, 0, np.pi*2),
+# #        gui_options.DoubleOption('min_line_dist', 100, 0, 1000),
+#         # A circle with radius 1 inscribed in a square has
+#         # 'rectangularity' pi/4 ~ 0.78.
+#         gui_options.DoubleOption('min_line_hough_length',45, 0, 500),
+#         gui_options.IntOption('color_dist_min', 0, 0, 255),
+#         gui_options.IntOption('color_dist_max', 20, 0, 255),
 
-        # Preprocess
-        gui_options.IntOption('gaussian_kernel', 5, 1, 40),
-        gui_options.IntOption('gaussian_stdev', 20, 0, 40),
-    ],
-    'castor': [
-        gui_options.IntOption('hsv_s_block_size', 15, 1, 100),
-        gui_options.IntOption('hsv_v_block_size', 15, 1, 100),
-        gui_options.IntOption('hsv_s_c_thresh', -77, -200, 100),
-        gui_options.IntOption('hsv_v_c_thresh', -27, -200, 100),
-        gui_options.IntOption('lab_a_thresh_min', 0, 0, 255),
-        gui_options.IntOption('lab_a_thresh_max', 131, 0, 255),
-        gui_options.IntOption('lab_l_thresh_min', 0, 0, 255),
-        gui_options.IntOption('lab_l_thresh_max', 152, 0, 255),
-        gui_options.IntOption('lab_b_thresh_min', 0, 0, 255),
-        gui_options.IntOption('lab_b_thresh_max', 143, 0, 255),
-        gui_options.IntOption('hsv_h_min', 164, 0, 255),
-        gui_options.IntOption('hsv_h_max', 244, 0, 255),
-        gui_options.IntOption('erode_size', 4, 0, 50),
-        gui_options.IntOption('dilate_size', 4, 0, 50),
-        gui_options.DoubleOption('min_percent_frame', 0.01, 0, 0.1),
-        gui_options.DoubleOption('max_percent_frame', 0.2, 0, 1),
-        gui_options.IntOption('mask_size', 149, 0, 200),
-        gui_options.IntOption('canny1', 50, 0, 200),
-        gui_options.IntOption('canny2', 150, 0, 200),
-        gui_options.DoubleOption('min_angle_diff', np.pi/8, 0, np.pi*2),
-        gui_options.DoubleOption('min_line_dist', 100, 0, 1000),
-        # A circle with radius 1 inscribed in a square has
-        # 'rectangularity' pi/4 ~ 0.78.
-        gui_options.DoubleOption('aspect_ratio_threshold', 3, 0.5, 5),
-        gui_options.DoubleOption('min_rectangularity', 0.48),
-        gui_options.DoubleOption('heuristic_power', 5),
-        gui_options.BoolOption('debugging', False),
-        gui_options.DoubleOption('min_dist_ratio', 0.4, 0, 2),
-        gui_options.DoubleOption('max_dist_ratio', 2,0, 5),
-        gui_options.DoubleOption('min_line_hough_length',35, 0, 500),
+#         # Preprocess
+# #        gui_options.IntOption('gaussian_kernel', 5, 1, 40),
+# #        gui_options.IntOption('gaussian_stdev', 20, 0, 40),
+#     ],
+#     'castor': [
+#         gui_options.BoolOption('debugging', True),
+# #        gui_options.IntOption('lab_a_thresh_min', 0, 0, 255),
+# #        gui_options.IntOption('lab_a_thresh_max', 114, 0, 255),
+# #        gui_options.IntOption('hsv_h_min', 142, 0, 255),
+# #        gui_options.IntOption('hsv_h_max', 255, 0, 255),
+# #        gui_options.IntOption('erode_size', 4, 0, 50),
+# #        gui_options.IntOption('dilate_size', 4, 0, 50),
+#         gui_options.IntOption('canny1', 50, 0, 200),
+#         gui_options.IntOption('canny2', 150, 0, 200),
+# #        gui_options.IntOption('canny_aperture_size', 3, 0, 20),
+#         gui_options.DoubleOption('min_angle_diff', np.pi/8, 0, np.pi*2),
+# #        gui_options.DoubleOption('min_line_dist', 100, 0, 1000),
+#         # A circle with radius 1 inscribed in a square has
+#         # 'rectangularity' pi/4 ~ 0.78.
+#         gui_options.DoubleOption('min_line_hough_length',45, 0, 500),
+#         gui_options.IntOption('color_dist_min', 0, 255),
+#         gui_options.IntOption('color_dist_max', 20, 0, 255),
 
-        # Preprocess
-        gui_options.IntOption('gaussian_kernel', 5, 1, 40),
-        gui_options.IntOption('gaussian_stdev', 20, 0, 40),
-    ],
-}
+#         # Preprocess
+# #        gui_options.IntOption('gaussian_kernel', 5, 1, 40),
+# #        gui_options.IntOption('gaussian_stdev', 20, 0, 40),
+#     ],
+# }
+
+vision_options = [
+    gui_options.BoolOption('debugging', False),
+    gui_options.IntOption('canny1', 50, 0, 200),
+    gui_options.IntOption('canny2', 150, 0, 200),
+    gui_options.DoubleOption('min_angle_diff', np.pi/8, 0, np.pi*2),
+    gui_options.DoubleOption('min_line_hough_length',45, 0, 500),
+    gui_options.IntOption('color_dist_min', 0, 0, 255),
+    gui_options.IntOption('color_dist_max', 20, 0, 255),
+    gui_options.IntOption('min_angle_range', 35, 0, 180),
+    gui_options.IntOption('max_angle_range', 55, 0, 180),
+]
 
 segment_info = namedtuple("segment_info", ["x1", "y1", "x2", "y2", "angle", "id", "updated"])
 line_info = namedtuple("line_info", ["x1", "y1", "x2", "y2", "angle", "length", "id"])
 
 INVALID_ERROR = 1e99
+
+from conf.vehicle import VEHICLE
+
+is_mainsub = VEHICLE == 'castor'
 
 class Pipes(ModuleBase):
     tracked_lines = []
@@ -108,6 +98,7 @@ class Pipes(ModuleBase):
 
     def angle(self, x1, y1, x2, y2):
         a = atan( (x2-x1) / (y2-y1) )
+        #a = atan2(y2-y1, x2-x1)
         return a
 
     def angle_diff(self, a1, a2):
@@ -118,84 +109,103 @@ class Pipes(ModuleBase):
     def threshold(self, mat):
         threshes = {}
 
-        k_size = self.options["gaussian_kernel"]
-        k_std = self.options["gaussian_stdev"]
-        mat = cv2.GaussianBlur(mat, (k_size * 2 + 1, k_size * 2 + 1), k_std, k_std)
+        lab = cv2.cvtColor(mat, cv2.COLOR_BGR2LAB)
+        if False:
+            self.post('lab', lab)
 
-
+        dist_from_orange = np.linalg.norm(lab[:, :, :].astype(int) - [90, 144, 131], axis=2).astype(int)
         if self.options['debugging']:
-            self.post("preprocessed", mat)
+            self.post('orange_dist', np.abs(dist_from_orange).astype('uint8'))
 
-        hsv = cv2.cvtColor(mat, cv2.COLOR_RGB2HSV)
-        hsv_h, hsv_s, hsv_v = cv2.split(hsv)
-        # s_threshed = cv2.adaptiveThreshold(hsv_s, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 1 + 2 * self.options['hsv_s_block_size'], self.options['hsv_s_c_thresh'])
-        # v_threshed = cv2.adaptiveThreshold(hsv_v, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 1 + 2 * self.options['hsv_v_block_size'], self.options['hsv_v_c_thresh'])
-        h_threshed = cv2.inRange(hsv_v, self.options['hsv_h_min'], self.options['hsv_h_max'])
+        orange_threshed = cv2.inRange(dist_from_orange, self.options["color_dist_min"], self.options["color_dist_max"])
 
-        lab = cv2.cvtColor(mat, cv2.COLOR_RGB2LAB)
+        morphed = orange_threshed
+        threshes['morphed'] = morphed
 
-        lab_l, lab_a, lab_b = cv2.split(lab)
-
-        lab_a_threshed = cv2.inRange(lab_a, self.options['lab_a_thresh_min'], self.options['lab_a_thresh_max'])
-        # lab_l_threshed = cv2.inRange(lab_l, self.options['lab_l_thresh_min'], self.options['lab_l_thresh_max'])
-        # lab_b_threshed = cv2.inRange(lab_b, self.options['lab_b_thresh_min'], self.options['lab_b_thresh_max'])
+        #k_size = self.options["gaussian_kernel"]
+        #k_std = self.options["gaussian_stdev"]
+        #mat = cv2.GaussianBlur(mat, (k_size * 2 + 1, k_size * 2 + 1), k_std, k_std)
 
 
-        final_threshed = h_threshed & ~lab_a_threshed
+        #if self.options['debugging']:
+        #    self.post("preprocessed", mat)
 
-        if self.options['debugging']:
-            self.post('final_threshed',final_threshed)
+        # hsv = cv2.cvtColor(mat, cv2.COLOR_RGB2HSV)
+        # hsv_h, hsv_s, hsv_v = cv2.split(hsv)
+        # # s_threshed = cv2.adaptiveThreshold(hsv_s, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 1 + 2 * self.options['hsv_s_block_size'], self.options['hsv_s_c_thresh'])
+        # # v_threshed = cv2.adaptiveThreshold(hsv_v, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 1 + 2 * self.options['hsv_v_block_size'], self.options['hsv_v_c_thresh'])
+        # h_threshed = cv2.inRange(hsv_v, self.options['hsv_h_min'], self.options['hsv_h_max'])
 
-        # threshes["hsv_s"] = s_threshed
-        # threshes["hsv_v"] = v_threshed
-        threshes["hsv_h"] = h_threshed
-        threshes["final"] = final_threshed
+        # lab = cv2.cvtColor(mat, cv2.COLOR_RGB2LAB)
 
-        dilate_size = self.options['dilate_size']
-        erode_size = self.options['erode_size']
-        erode_element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (erode_size * 2 + 1, erode_size * 2 + 1), (erode_size, erode_size))
-        dilate_element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilate_size * 2 + 1, dilate_size * 2 + 1), (dilate_size, dilate_size))
-        morphed = cv2.erode(final_threshed, erode_element)
-        morphed = cv2.dilate(morphed, dilate_element)
+        # lab_l, lab_a, lab_b = cv2.split(lab)
 
-        threshes["morphed"] = cv2.inRange(final_threshed, 200, 255)
+        # lab_a_threshed = cv2.inRange(lab_a, self.options['lab_a_thresh_min'], self.options['lab_a_thresh_max'])
+        # # lab_l_threshed = cv2.inRange(lab_l, self.options['lab_l_thresh_min'], self.options['lab_l_thresh_max'])
+        # # lab_b_threshed = cv2.inRange(lab_b, self.options['lab_b_thresh_min'], self.options['lab_b_thresh_max'])
 
-        edges = cv2.Canny(morphed,self.options['canny1'],self.options['canny2'],apertureSize = 3)
+        # if self.options['debugging']:
+        #     self.post('lab_a_thresh', lab_a_threshed)
+
+        # final_threshed = h_threshed & ~lab_a_threshed
+        # #final_threshed = ~h_threshed & ~lab_a_threshed
+
+        # #if self.options['debugging']:
+        # #    self.post('final_threshed',final_threshed)
+
+        # # threshes["hsv_s"] = s_threshed
+        # # threshes["hsv_v"] = v_threshed
+        # threshes["hsv_h"] = h_threshed
+        # threshes["final"] = final_threshed
+
+        # dilate_size = self.options['dilate_size']
+        # erode_size = self.options['erode_size']
+        # erode_element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (erode_size * 2 + 1, erode_size * 2 + 1), (erode_size, erode_size))
+        # dilate_element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilate_size * 2 + 1, dilate_size * 2 + 1), (dilate_size, dilate_size))
+        # morphed = cv2.erode(final_threshed, erode_element)
+        # morphed = cv2.dilate(morphed, dilate_element)
+
+        # threshes["morphed"] = cv2.inRange(final_threshed, 200, 255)
+
+        # hack hack hack for simulator
+        sat = cv2.split(cv2.cvtColor(mat, cv2.COLOR_BGR2HSV))[1]
+        morphed = cv2.inRange(sat, 20, 255)
+
+        edges = cv2.Canny(morphed,threshold1=self.options['canny1'],threshold2=self.options['canny2'],apertureSize=3) #self.options['canny_aperture_size'])
         threshes["edges"] = edges
 
         if self.options['debugging']:
-          for name, image in threshes.items():
-            self.post("threshed_{}".format(name), image)
+            for name, image in threshes.items():
+                self.post("threshed_{}".format(name), image)
 
         return threshes
 
     def find_lines(self, mat, thresh):
-        if self.options['debugging']:
-            self.post("thres_test",thresh)
+        #if self.options['debugging']:
+        #    self.post("thres_test",thresh)
         minLineLength = self.options['min_line_hough_length']
-        maxLineGap = 100
 
-        lines = cv2.HoughLines(thresh,1,np.pi/180,int(minLineLength))
-        #lines = cv2.HoughLines(thresh,10,np.pi/180,100,minLineLength,maxLineGap)
+        theta_res = radians(2)
+
+        lines = cv2.HoughLines(thresh,1,theta_res,int(minLineLength))
 
         if lines is None:
-          return []
+            return []
 
-        #print(len(lines))
         if self.options["debugging"]:
-          line_image = np.copy(mat)
+            line_image = np.copy(mat)
 
-          for line in lines:
-            rho, theta = line[0]
-            a = np.cos(theta)
-            b = np.sin(theta)
-            x0 = a * rho
-            y0 = b * rho
-            x1 = int(x0 + 1000*(-b))
-            y1 = int(y0 + 1000*(a))
-            x2 = int(x0 - 1000*(-b))
-            y2 = int(y0 - 1000*(a))
-            cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),10)
+            for line in lines:
+                rho, theta = line[0]
+                a = np.cos(theta)
+                b = np.sin(theta)
+                x0 = a * rho
+                y0 = b * rho
+                x1 = int(x0 + 1000*(-b))
+                y1 = int(y0 + 1000*(a))
+                x2 = int(x0 - 1000*(-b))
+                y2 = int(y0 - 1000*(a))
+                cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),10)
 
 
         if self.options['debugging']:
@@ -205,77 +215,55 @@ class Pipes(ModuleBase):
 
     #A list of segment_infos sorted in order of best
     def average_lines(self,lines,mat):
+        if lines is None:
+            return lines
 
-      if lines is None:
-        return lines
+        info = []
+        final = []
 
-      info = []
-      final = []
+        for l in lines:
+            rho, theta = l[0]
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 1000*(-b))
+            y1 = int(y0 + 1000*(a))
+            x2 = int(x0 - 1000*(-b))
+            y2 = int(y0 - 1000*(a))
+            angle = self.angle(x1, y1, x2, y2)
+            length = sqrt((y2-y1)**2 + (x2-x1)**2)
 
-      for l in lines:
+            x = line_info(x1,y1,x2,y2, angle, length, 0)
+            info.append(x)
 
-        rho, theta = l[0]
-        a = np.cos(theta)
-        b = np.sin(theta)
-        x0 = a * rho
-        y0 = b * rho
-        x1 = int(x0 + 1000*(-b))
-        y1 = int(y0 + 1000*(a))
-        x2 = int(x0 - 1000*(-b))
-        y2 = int(y0 - 1000*(a))
-        angle = self.angle(x1, y1, x2, y2)
-        length = sqrt((y2-y1)**2 + (x2-x1)**2)
+        # Pick big lines first
+        info.sort(key=lambda x: x.length, reverse=True)
 
-        x = line_info(x1,y1,x2,y2, angle, length, 0)
-        info.append(x)
+        # Put into buckets
+        buckets = []
+        for line in info:
+            for bucket in buckets:
+                if self.angle_diff(line.angle, bucket[0].angle) < self.options['min_angle_diff']:
+                    bucket.append(line)
+                    break
+            else:
+                buckets.append([line])
 
-      info.sort(key=lambda x: x.length, reverse=True)
+        # Average each bucket
+        final = [line_info(*[sum([line[x] for line in bucket]) / len(bucket) for x in range(len(bucket[0]))]) for bucket in buckets]
 
-      for k in info:
-        for l in info:
+        if self.options["debugging"]:
+            line_image = np.copy(mat)
 
-          if self.angle_diff(l.angle,k.angle) < self.options['min_angle_diff']: # and abs(xc - xac) < self.options['min_line_dist'] and abs(yc - yac) < self.options['min_line_dist']:
-            newx1 = k.x1 + (k.x1 - l.x1) / 2
-            newx2 = k.x2 + (k.x2 - l.x2) / 2
-            newy1 = k.y1 + (k.y1 - l.y1) / 2
-            newy2 = k.y2 + (k.y2 - l.y2) / 2
+            for line in final:
+                x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
+                cv2.line(line_image,(int(x1),int(y1)),(int(x2),int(y2)),(0, 0, 255),15)
+            for line in info:
+                x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
+                cv2.line(line_image,(int(x1),int(y1)),(int(x2),int(y2)),(0, 255, 0),5)
 
-            new_ang = self.angle(newx1, newy1, newx2, newy2)
-
-            k=k._replace(x1=newx1,x2=newx1,y1=newy1,y2=newy2,angle=new_ang)
-
-
-            xac = abs(k.x1 + (k.x1-k.x2) / 2)
-            yac = abs(k.y1 + (k.y1-k.y2) / 2)
-
-
-            info.remove(l)
-
-
-
-      if len(info) >= 1:
-        final.append(info[0])
-
-        for l in info[1:]:
-          if self.angle_diff(info[0].angle, l.angle) > 0.5:
-
-            final.append(l)
-            break
-
-      if self.options["debugging"]:
-          line_image = np.copy(mat)
-
-          for line in final:
-            x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
-            cv2.line(line_image,(x1,y1),(x2,y2),(0, 0, 255),15)
-          for line in info:
-            x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
-            cv2.line(line_image,(x1,y1),(x2,y2),(0, 255, 0),5)
-
-
-          self.post("final_lines",line_image)
-
-      return final
+        return final
 
     def get_intersection(self, lines):
       x1 = lines[0].x1
@@ -299,8 +287,8 @@ class Pipes(ModuleBase):
 
         image_size = mat.shape[0]*mat.shape[1]
 
-        if self.options['debugging']:
-            self.post('orig', mat)
+        #if self.options['debugging']:
+        #    self.post('orig', mat)
         threshes = self.threshold(mat)
 
 
@@ -380,9 +368,9 @@ class Pipes(ModuleBase):
         for i, line in enumerate(linesI):
           x1,y1,x2,y2 = line.x1,line.y1,line.x2,line.y2
           if i == 0 and not second_line:
-            cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
+            cv2.line(line_image,(int(x1),int(y1)),(int(x2),int(y2)),(255,0,0),5)
           elif i == 1 or second_line:
-            cv2.line(line_image,(x1,y1),(x2,y2),(0,255,0),5)
+            cv2.line(line_image,(int(x1),int(y1)),(int(x2),int(y2)),(0,255,0),5)
 
         self.post("final_final",line_image)
 
@@ -390,4 +378,4 @@ class Pipes(ModuleBase):
           traceback.print_exc()
 
 if __name__ == '__main__':
-    Pipes('downward', vision_options[VEHICLE])()
+    Pipes('downward', vision_options)() #[VEHICLE])()

@@ -21,7 +21,7 @@ TRACK_MAG_THRESH = 11000
 SOUND_SPEED = 1481.0
 
 # Distance (perpendicular) between the 'phones.
-NIPPLE_DISTANCE = 0.013
+NIPPLE_DISTANCE = 0.0178
 
 # Directional vector in body frame between first and second transducers.
 trans_vec = np.array((1, 0, 0))
@@ -65,7 +65,7 @@ class Localizer:
 
     # > t3h PeNgU1N oF d00m
     # ~~~~~~~~~
-    elevation = math.acos(kz_2 ** 0.5)
+    elevation = math.acos(math.sqrt(kz_2))
     return -math.degrees(heading), math.degrees(elevation)
 
   def add_observation(self, phases, sub_pos, sub_quat):

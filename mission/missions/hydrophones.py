@@ -12,8 +12,7 @@ import shm
 from auv_math.math_utils import rotate
 from misc.hydro2trans import Localizer
 from mission.constants.config import HYDROPHONES_PINGER_DEPTH
-#from mission.constants.region import PINGER_FREQUENCY
-PINGER_FREQUENCY = 39500
+from mission.constants.region import PINGER_FREQUENCY, TRACK_MAG_THRESH, TRACK_COOLDOWN_SAMPLES
 from mission.framework.combinators import Sequential
 from mission.framework.helpers import get_sub_position, get_sub_quaternion, \
                                       ConsistencyCheck
@@ -22,14 +21,25 @@ from mission.framework.movement import Depth, Heading, VelocityX, VelocityY
 from mission.framework.primitive import Zero, Log
 from mission.framework.task import Task
 from mission.framework.stateful_tasks import StatefulTask
-from mission.constants.config import recovery
+
+from hydrocode.scripts.udp_set_gain import set_gain
+
+from mission.constants.config import track as settings
+
+from mission.missions.will_common import is_mainsub
+
 
 from conf.vehicle import VEHICLE
-
 is_mainsub = VEHICLE == 'castor'
 
+
 # WILL ITS THIS ONE!
-STOP_OVER_PINGER = False
+STOP_OVER_PINGER = True
+
+BACKWARDS = is_mainsub
+
+heading_offset = 180 if BACKWARDS else 0
+x_dir = -1 if BACKWARDS else 1
 
 def get_clusterable(data):
   return np.array(data).reshape((len(data), 1))
@@ -71,15 +81,14 @@ PingData = collections.namedtuple("PingData", ["phases", "heading",
 PINGS_LISTEN = 10
 MIN_CONSISTENT_PINGS = 3
 
-TRACK_MAG_THRESH = 20000 # changed for Pollux, potentially not correct?
 PINGER_PERIOD = 1.0
 
 MAX_FOLLOW_HEADING_DEVIATION = 10
-SLOW_DOWN_DISTANCE = 5
+SLOW_DOWN_DISTANCE = settings.slow_down_dist
 MIN_DEVIATING_PING_ELEVATION = 65
-MAX_FOLLOW_SPEED = 0.3 if is_mainsub else 0.2
-MIN_FOLLOW_SPEED = 0.1
-MAX_ONTOP_OF_PINGER_ELEVATION = 10 # Try 15 in real life
+MAX_FOLLOW_SPEED = settings.max_speed
+MIN_FOLLOW_SPEED = settings.min_speed
+MAX_ONTOP_OF_PINGER_ELEVATION = 15 # Try 15 in real life
 
 # There are two states:
 
@@ -122,10 +131,11 @@ class FindPinger(StatefulTask):
     self.follow_task = None
     self.heading_to_pinger = None
 
+    set_gain()
+
     shm.hydrophones_settings.track_frequency_target.set(PINGER_FREQUENCY)
     shm.hydrophones_settings.track_magnitude_threshold.set(TRACK_MAG_THRESH)
-    #shm.hydrophones_settings.track_cooldown_samples.set(795000)
-    shm.hydrophones_settings.track_cooldown_samples.set(350000)
+    shm.hydrophones_settings.track_cooldown_samples.set(TRACK_COOLDOWN_SAMPLES)
 
     shm.navigation_settings.position_controls.set(1)
     shm.navigation_settings.optimize.set(0)
@@ -305,12 +315,12 @@ class FindPinger(StatefulTask):
     self.logi("Following a heading of %0.3f" % self.heading_to_pinger)
 
     self.follow_change_heading = Heading()
-    self.follow_inital_heading = Heading(self.heading_to_pinger)
+    self.follow_inital_heading = Heading(self.heading_to_pinger + heading_offset)
     self.follow_vel_x = VelocityX()
     self.follow_vel_y = VelocityY()
 
     distance_to_pinger = self.elevation_to_distance(self.follow_elevation)
-    self.follow_vel_x(self.get_follow_speed(distance_to_pinger))
+    self.follow_vel_x(x_dir * self.get_follow_speed(distance_to_pinger))
     self.follow_vel_y(0.0)
 
   # Proportional control to slow down near the pinger
@@ -360,9 +370,9 @@ class FindPinger(StatefulTask):
         return "listen"
 
       self.logi("Going straight for the pinger!")
-      self.follow_vel_x(speed)
+      self.follow_vel_x(x_dir * speed)
       self.follow_vel_y(0.0)
-      self.follow_change_heading(self.heading_to_pinger)
+      self.follow_change_heading(self.heading_to_pinger + heading_offset)
     else:
       velocity = rotate([speed, 0], new_ping.heading)
       self.logi("We are close! Translating to pinger: Velocity (%0.3f, "
@@ -415,7 +425,7 @@ class OptimizablePinger(Task):
 
 def Full(): return Sequential(
     Log('Changing depth before hydrophones'),
-    Depth(1.3),
+    Depth(settings.depth),
     OptimizablePinger(),
 )
 

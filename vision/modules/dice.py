@@ -19,15 +19,21 @@ from will_common import find_best_match
 options = [
     options.BoolOption('debug', False),
     options.IntOption('hsv_thresh_c', 35, 0, 100),
-    options.IntOption('canny_a', 110, 0, 255),
-    options.IntOption('canny_b', 140, 0, 255),
+    options.IntOption('canny_a', 50, 0, 255),
+    options.IntOption('canny_b', 110, 0, 255),
+    options.IntOption('contour_area_thresh', 10, 1, 200),
     options.DoubleOption('perim_thresh', 1.5, 1, 10),
-    options.DoubleOption('circle_thresh', 5, 1, 10),
+    options.DoubleOption('circle_thresh', 3, 1, 10),
     options.DoubleOption('ellipse_thresh', 1.2, 1, 10),
+    options.DoubleOption('max_pip_dist_ratio', 4, 0, 10),
+    options.DoubleOption('max_pip_radius_ratio', 1.2, 1, 10),
+    options.IntOption('min_y', 200, 0, 1024),
 ]
 
 FORWARD_CAM_WIDTH = shm.camera.forward_width.get()
 FORWARD_CAM_HEIGHT = shm.camera.forward_height.get()
+
+PIP_THRESH = 5
 
 class Dice(ModuleBase):
     def post_umat(self, tag, img):
@@ -82,14 +88,19 @@ class Dice(ModuleBase):
 
             hsv_v_edges = cv2.Canny(hsv_v, self.options['canny_a'], self.options['canny_b'])
 
-            hsv_v_c = cv2.dilate(hsv_v_edges, self.kernel(1))
+            DILATE_VALS = [0, 1]
+            ACT_PIP_THRESH = PIP_THRESH * math.sqrt(len(DILATE_VALS))
+
+            # We want to dilate by both 0 and 1
+            hsv_v_c = [cv2.dilate(hsv_v_edges, self.kernel(foo)) for foo in DILATE_VALS]
             #luv_u_c = cv2.erode(luv_u_thresh, self.kernel(0))
             #luv_v_c = cv2.erode(luv_v_thresh, self.kernel(0))
             #y_cr_c = cv2.erode(y_cr_thresh, self.kernel(0))
             #y_cb_c = cv2.erode(y_cb_thresh, self.kernel(0))
 
             if debug:
-                self.post('hsv_v_c', hsv_v_c)
+                for i, bar in enumerate(hsv_v_c):
+                    self.post('hsv_v_c_{}'.format(i), bar)
                 #self.post('luv_u_c', luv_u_c)
                 #self.post('luv_v_c', luv_v_c)
                 #self.post('y_cr_c', y_cr_c)
@@ -97,42 +108,61 @@ class Dice(ModuleBase):
 
             # Find the dots in hsv_v
 
-            x, contours, x = cv2.findContours(hsv_v_c, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            contours = []
+            for bar in hsv_v_c:
+                contours += cv2.findContours(bar, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 
             dots = []
 
             # Problem is that this depends on the distance
             # When the dice are really far away the dots are tiny
-            min_area = 100
+            min_area = self.options['contour_area_thresh']
 
             for contour in contours:
-                hull = cv2.convexHull(contour)
-                # Use convex hull to fill in circle, otherwise we just get edge
-                area = cv2.contourArea(hull)
+                M = cv2.moments(contour)
+                center_y = M['m01'] / M['m00'] if M['m00'] != 0 else 0
 
-                # Make sure that we have a mostly-closed contour
-                perim = cv2.arcLength(contour, closed=False)
-                hull_perim = cv2.arcLength(hull, closed=True)
-                if area > min_area and max([perim / hull_perim, hull_perim / perim]) < self.options['perim_thresh']:
-                    # Bound with circle
-                    x, circ_r = cv2.minEnclosingCircle(contour)
-                    circ_area = math.pi * circ_r**2
+                if center_y > self.options['min_y']:
+                    hull = cv2.convexHull(contour)
+                    # Use convex hull to fill in circle, otherwise we just get edge
+                    area = cv2.contourArea(hull)
 
-                    if max(circ_area / area, area / circ_area) < self.options['circle_thresh']:
-                        # problems if contour isn't big enough
-                        try:
-                            # Bound with ellipse
-                            (ell_cx, ell_cy), (ell_w, ell_h), theta = cv2.fitEllipse(contour)
+                    # Make sure that we have a mostly-closed contour
+                    perim = cv2.arcLength(contour, closed=False)
+                    hull_perim = cv2.arcLength(hull, closed=True)
+                    if area > min_area and max([perim / hull_perim, hull_perim / perim]) < self.options['perim_thresh']:
+                        # Bound with circle
+                        x, circ_r = cv2.minEnclosingCircle(contour)
+                        circ_area = math.pi * circ_r**2
 
-                            ell_area = math.pi * ell_w * ell_h / 4
+                        if max(circ_area / area, area / circ_area) < self.options['circle_thresh']:
+                            # problems if contour isn't big enough
+                            try:
+                                # Bound with ellipse
+                                (ell_cx, ell_cy), (ell_w, ell_h), theta = cv2.fitEllipse(contour)
 
-                            if max(ell_area / area, area / ell_area) < self.options['ellipse_thresh']:
-                                dots.append((contour, (ell_cx, ell_cy), (ell_w + ell_h) / 2))
-                        except cv2.error:
-                            pass
+                                ell_area = math.pi * ell_w * ell_h / 4
+
+                                if max(ell_area / area, area / ell_area) < self.options['ellipse_thresh']:
+                                    dots.append((contour, (ell_cx, ell_cy), (ell_w + ell_h) / 2))
+                            except cv2.error:
+                                pass
+
+            # Use Hough circles as well
+
+            #circled = mat
+
+            #circles = cv2.HoughCircles(hsv_v, cv2.HOUGH_GRADIENT, 5, 50, param1=100, param2=10, minRadius=3, maxRadius=10)
+
+            #if circles is not None:
+            #    for circle in circles[0,:]:
+            #        print(circle)
+            #        cv2.circle(circled, (circle[0], circle[1]), circle[2], (0, 255, 0), 3)
 
             dotted = mat.copy()
             density_dots = np.zeros(mat.shape, np.uint8)
+
+            #self.post('circled', circled)
 
             for dot in dots:
                 x, y, w, h = cv2.boundingRect(dot[0])
@@ -157,7 +187,7 @@ class Dice(ModuleBase):
                     radius_ratio = max(dot1[2], dot2[2]) / min(dot1[2], dot2[2])
                     avg_radius = (dot1[2] + dot2[2]) / 2
 
-                    if dist < avg_radius * 5 and radius_ratio < 1.5:
+                    if dist < avg_radius * self.options['max_pip_dist_ratio'] and radius_ratio < self.options['max_pip_radius_ratio']:
                         # They should be in the same group
 
                         # Find the two groups
@@ -196,8 +226,8 @@ class Dice(ModuleBase):
 
                 shm_values.append((gcx, gcy, len(group), rad, dist))
 
-                cv2.circle(groups_out, (gcx, gcy), len(group) * 10, (0, 0, 255) if len(group) >= 5 else (0, 0, 0), thickness=(2 * len(group)))
-                if len(group) >= 5:
+                cv2.circle(groups_out, (gcx, gcy), len(group) * 10, (0, 0, 255) if len(group) >= ACT_PIP_THRESH else (0, 0, 0), thickness=(2 * len(group)))
+                if len(group) >= ACT_PIP_THRESH:
                     cv2.circle(groups_out, (gcx, gcy), int(rad), (255, 255, 0), thickness=5)
                 #if dist is not None:
                 #    x, y = slam.sub_to_vision(slam.slam_to_sub(slam.sub_to_slam(slam.vision_to_sub(gcx, gcy, dist, 0))), 0)
@@ -223,10 +253,11 @@ class Dice(ModuleBase):
                 new_data = shm_values[:2]
 
                 def comp(new, old):
-                    if new[2] < 5 or new is None or old is None:
+                    if new[2] < ACT_PIP_THRESH or new is None or old is None:
                         return np.inf
                     # Distance between centers
                     dist = self.dist(self.norm_xy(new[:2]), old[:2])
+                    
                     return dist
 
                 # Try to line up the data with the old one for consistency
@@ -259,7 +290,7 @@ class Dice(ModuleBase):
 
                     #cv2.circle(slam_out, (int(slammed_coords[0]), int(slammed_coords[1])), 100, (0, 255, 255), 20)
 
-                    new_var.visible = count >= 5
+                    new_var.visible = count >= ACT_PIP_THRESH
                     new_var.center_x = self.norm_x(cx)
                     new_var.center_y = self.norm_y(cy)
                     new_var.count = count

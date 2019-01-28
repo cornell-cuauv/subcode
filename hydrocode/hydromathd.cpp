@@ -2,6 +2,7 @@
 #include "track_iir.hpp"
 #include "liquid.h"//also installed fftw.hpp for faster fft (inherited dependency)
 #include "udp_receiver.hpp"
+#include <libshm/c/vars.h>
 #include <sys/time.h>
 #include <cstdlib>
 #include <cmath>
@@ -42,7 +43,8 @@ double next_ping_time;
 
 bool is_mainsub;
 
-void do_track(){
+void do_track()
+{
 
   double ping_time;
 
@@ -110,54 +112,63 @@ void do_track(){
 
     double ping_time_sec = (double) (((long int) tv_ping_time.tv_sec) - ((long int) daemon_start_time));
     ping_time = ping_time_sec + (((double) tv_ping_time.tv_usec) / 1.0e6);
-
-
-    double normalized_pwr = pwr_sum / (double)TRACK_LENGTH;
-    if ((normalized_pwr > shm_settings.track_magnitude_threshold &&
-         track_sample_idx > (unsigned int)shm_settings.track_cooldown_samples)) {
-      next_ping_time += 2.0;
-
-      std::complex<float> dtft_coeff_A = goertzelNonInteger(chA_filtered_ptr,TRACK_LENGTH,shm_settings.track_frequency_target,SAMPLING_FREQUENCY);
-      std::complex<float> dtft_coeff_B = goertzelNonInteger(chB_filtered_ptr,TRACK_LENGTH,shm_settings.track_frequency_target,SAMPLING_FREQUENCY);
-      std::complex<float> dtft_coeff_C = goertzelNonInteger(chC_filtered_ptr,TRACK_LENGTH,shm_settings.track_frequency_target,SAMPLING_FREQUENCY);
-
-      float phaseA = std::arg(dtft_coeff_A);
-      float phaseB = std::arg(dtft_coeff_B);
-      float phaseC = std::arg(dtft_coeff_C);
-
-      shm_results_track.diff_phase_y = phase_difference(phaseC,phaseB);
-      shm_results_track.diff_phase_x = phase_difference(phaseA,phaseB);
-
-      float kx = SOUND_SPEED * shm_results_track.diff_phase_x / (NIPPLE_DISTANCE * 2 * M_PI * shm_settings.track_frequency_target);
-      float ky = SOUND_SPEED * shm_results_track.diff_phase_y / (NIPPLE_DISTANCE * 2 * M_PI * shm_settings.track_frequency_target);
-
-      // std::cerr << "ky is " << ky << " and kx is " << kx << std::endl;
-
-      float kz_2 = 1 - kx * kx - ky * ky;
-      if (kz_2 < 0) {
-          // std::cerr << "WARNING1: z mag is negative! " << kz_2 << std::endl;
-        kz_2 = 0;
-      }
-
-      shm_results_track.daemon_start_time = daemon_start_time;
-      shm_results_track.tracked_ping_time = ping_time;
-      shm_results_track.tracked_ping_heading_radians = (is_mainsub ? 3.14 : 0) + std::atan2(ky, kx);
-      shm_results_track.tracked_ping_elevation_radians = std::acos(std::sqrt(kz_2));
-
-      shm_results_track.tracked_ping_count++;
-      shm_results_track.tracked_ping_frequency = shm_results_spectrum.most_recent_ping_frequency;
-      shm_results_track.tracked_ping_idx = track_sample_idx;
-
-      std::cout << "PING DETECTED @ n=" << track_sample_idx << " w/ pwr="<< normalized_pwr<< std::endl;
-      std::cout << "@ HEADING=" << shm_results_track.tracked_ping_heading_radians*(180.0f/M_PI) << std::endl;
-
-      shm_setg(hydrophones_results_track, shm_results_track);
-      track_sample_idx = 0;
-    }
-
     track_sample_idx++;
   }
+    std::complex<float> dtft_coeff_B = goertzelNonInteger(chB_ptr,TRACK_LENGTH,shm_settings.track_frequency_target,SAMPLING_FREQUENCY);
+    std::complex<float> dtft_coeff_COMMS = goertzelNonInteger(chB_ptr,TRACK_LENGTH,37500.0,SAMPLING_FREQUENCY);
+
+    if(std::log10(std::norm(dtft_coeff_COMMS)) > 10.3)
+    {
+        shm_set_trax_heading_status(shm_get_trax_heading_status() + 1);
+    }
+
+  if (std::log10(std::norm(dtft_coeff_B)) > shm_settings.track_magnitude_threshold &&
+    track_sample_idx > (unsigned int)shm_settings.track_cooldown_samples){
+
+    std::complex<float> dtft_coeff_A = goertzelNonInteger(chA_ptr,TRACK_LENGTH,shm_settings.track_frequency_target,SAMPLING_FREQUENCY);
+    std::complex<float> dtft_coeff_C = goertzelNonInteger(chC_ptr,TRACK_LENGTH,shm_settings.track_frequency_target,SAMPLING_FREQUENCY);
+
+    next_ping_time += 2.0;
+
+    shm_results_track.tracked_ping_magnitude = std::norm(dtft_coeff_B);
+
+    float phaseA = std::arg(dtft_coeff_A);
+    float phaseB = std::arg(dtft_coeff_B);
+    float phaseC = std::arg(dtft_coeff_C);
+
+    shm_results_track.diff_phase_y = phase_difference(phaseC,phaseB);
+    shm_results_track.diff_phase_x = phase_difference(phaseA,phaseB);
+
+    float kx = SOUND_SPEED * shm_results_track.diff_phase_x / (NIPPLE_DISTANCE * 2 * M_PI * shm_settings.track_frequency_target);
+    float ky = SOUND_SPEED * shm_results_track.diff_phase_y / (NIPPLE_DISTANCE * 2 * M_PI * shm_settings.track_frequency_target);
+
+    // std::cerr << "ky is " << ky << " and kx is " << kx << std::endl;
+
+    float kz_2 = 1 - kx * kx - ky * ky;
+    if (kz_2 < 0) {
+      // std::cerr << "WARNING1: z mag is negative! " << kz_2 << std::endl;
+      kz_2 = 0;
+    }
+
+    shm_results_track.daemon_start_time = daemon_start_time;
+    shm_results_track.tracked_ping_time = ping_time;
+    shm_results_track.tracked_ping_heading_radians = (is_mainsub ? 3.14 : 0) + std::atan2(ky, kx);
+    shm_results_track.tracked_ping_elevation_radians = std::acos(std::sqrt(kz_2));
+
+    shm_results_track.tracked_ping_count++;
+    shm_results_track.tracked_ping_frequency = shm_results_spectrum.most_recent_ping_frequency;
+    shm_results_track.tracked_ping_idx = track_sample_idx;
+
+    std::cout << "@ HEADING=" << shm_results_track.tracked_ping_heading_radians*(180.0f/M_PI) << std::endl;
+
+    shm_setg(hydrophones_results_track, shm_results_track);
+    track_sample_idx = 0;
+  }
+
+  //double normalized_pwr = pwr_sum / (double)TRACK_LENGTH;
+
 }
+
 
 std::complex<float> goertzelNonInteger(std::complex<float> *x , int N, float ftarget, float fsample) {
   //This algorithim is taken from
@@ -313,7 +324,7 @@ int main (int argc, char ** argv) {
     }
 
     current_sample_count+=CHANNEL_DEPTH;
-    do_spectrum();
+    //do_spectrum();
     do_track();
   }
 

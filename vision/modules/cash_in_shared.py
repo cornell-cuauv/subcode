@@ -16,27 +16,29 @@ def get_shared_options(is_forward):
         # Global
         options.BoolOption('in_simulator', False),
         options.BoolOption('preprocess_debug', False),
-        options.BoolOption('thresh_debug', False),
+        options.BoolOption('thresh_debug', True),
         options.BoolOption('contour_debug', False),
-        options.BoolOption('bins_debug', False),
+        options.BoolOption('bins_debug', True),
         options.BoolOption('funnels_debug', False),
 
         # Preprocess
-        options.IntOption('gaussian_kernel', (2, 5)[is_forward], 1, 40),
+        options.IntOption('gaussian_kernel', (5, 5)[is_forward], 1, 40),
         options.IntOption('gaussian_stdev', 20, 0, 40),
 
         # Threshing
-        options.IntOption('erode_size', (2, 5)[is_forward], 1, 40),
+        options.IntOption('erode_size', (3, 5)[is_forward], 1, 40),
         options.IntOption('thresh_size', (15, 15)[is_forward], 1, 100),
-        options.IntOption("lab_a_min_red_funnel", 137, 0, 255),
-        options.IntOption("lab_a_max_red_funnel", 250, 0, 255),
+        options.IntOption("lab_b_min_red_bin", 140, 0, 255),
+        options.IntOption("lab_b_max_red_bin", 250, 0, 255),
         options.IntOption("color_dist_min_red_funnel", (137, 0)[is_forward], 0, 255),
         options.IntOption("color_dist_max_red_funnel", (250, 35)[is_forward], 0, 255),
+        options.IntOption("color_dist_min_yellow_funnel", (0, -1)[is_forward], 0, 255),
+        options.IntOption("color_dist_max_yellow_funnel", (25, -1)[is_forward], 0, 255),
 
         # Contouring
-        options.IntOption('min_area', (10, 100)[is_forward], 1, 2000),
+        options.IntOption('min_area', (50, 100)[is_forward], 1, 2000),
         options.IntOption('min_y', (0, 200)[is_forward], 0, 2000),
-        options.DoubleOption('min_circularity', (0.4, 0.1)[is_forward], 0, 1),
+        options.DoubleOption('min_circularity', (0.8, 0.1)[is_forward], 0, 1),
         options.DoubleOption('max_rectangularity', 0.9, 0, 1),
 
         # Binning
@@ -48,6 +50,9 @@ def copy_mat(mat):
         return mat.get()
     else:
         return mat.copy()
+
+
+dist_multiple = (None, None, 1, 2 + math.sqrt(2), 4 + 2 * math.sqrt(2), 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
 
 
 class Shared:
@@ -124,6 +129,12 @@ def threshold(img):
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     (lab_l, lab_a, lab_b) = cv2.split(lab)
 
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    (hsv_h, hsv_s, hsv_v) = cv2.split(hsv)
+
+    debugs["luv"] = luv
+    debugs["lab"] = lab
+
     debugs["luv_u"] = luv_u
     debugs["luv_l"] = luv_l
     debugs["lab_a"] = lab_a
@@ -178,30 +189,6 @@ def threshold(img):
 
     else:
         if shared.is_forward:
-            # threshes["green"] = cv2.adaptiveThreshold(
-            #     luv_l,
-            #     255,
-            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            #     cv2.THRESH_BINARY_INV,
-            #     shared.options["thresh_size"] * 2 + 1,
-            #     9
-            # )
-
-            # threshes["red"] = cv2.adaptiveThreshold(
-            #     luv_u,
-            #     255,
-            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            #     cv2.THRESH_BINARY,
-            #     shared.options["thresh_size"] * 2 + 1,
-            #     -3,
-            # )
-
-            # threshes["red"] = cv2.inRange(
-            #     lab_a,
-            #     shared.options["lab_a_min_red_funnel"],
-            #     shared.options["lab_a_max_red_funnel"],
-            # )
-
             # shared.post("l", lab)
 
             dist_from_red_top = np.linalg.norm(lab[:, :, :].astype(int) - [150, 171, 151], axis=2).astype(int)
@@ -218,25 +205,6 @@ def threshold(img):
             )
 
         else:
-            # threshes["bin_green"] = cv2.adaptiveThreshold(
-            #     luv_l,
-            #     255,
-            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            #     cv2.THRESH_BINARY_INV,
-            #     shared.options["thresh_size"] * 2 + 1,
-            #     9
-            # )
-
-            # threshes["bin_green"] = cv2.Canny(lab_b.copy(), 5, 40)
-
-            # threshes["bin_red"] = cv2.adaptiveThreshold(
-            #     luv_u,
-            #     255,
-            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            #     cv2.THRESH_BINARY,
-            #     shared.options["thresh_size"] * 2 + 1,
-            #     -3,
-            # )
 
             # threshes["bin_red"] = cv2.adaptiveThreshold(
             #     lab_a,
@@ -260,11 +228,37 @@ def threshold(img):
             shm.recovery_vision_downward_red.probability.set(funnel)
 
 
+            dist_from_yellow = np.linalg.norm(lab[:, :, 1:].astype(int) - [248, 111, 173][1:], axis=2).astype(int)
+            # dist_from_yellow = np.linalg.norm(lab[:, :, :2].astype(int) - [149, 115, 170][:2], axis=2).astype(int)
+            # dist_from_yellow = np.linalg.norm(lab[:, :, 0].astype(int) - [248, 111, 173][0], axis=2).astype(int)
+
             threshes["all_bins"] = cv2.inRange(
-                lab_b,
-                170,
-                255
+                dist_from_yellow,
+                shared.options["color_dist_min_yellow_funnel"],
+                shared.options["color_dist_max_yellow_funnel"],
             )
+
+            a, b = cv2.threshold(luv_u, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            a, b = cv2.threshold(lab_a, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            a, b = cv2.threshold(lab_l, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            threshes["otsu"] = b
+            threshes["all_bins"] = b
+
+            threshes["all_bins"] = cv2.adaptiveThreshold(
+                lab_a,
+                255,
+                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY_INV,
+                shared.options["thresh_size"] * 2 + 1,
+                2,
+            )
+
+            # threshes["all_bins"] = cv2.inRange(
+            #     lab_b,
+            #     # hsv_s,
+            #     shared.options["lab_b_min_red_bin"],
+            #     shared.options["lab_b_max_red_bin"],
+            # )
 
 
 
@@ -463,12 +457,11 @@ def find_bins(images):
     for top in tops:
         children = [all_features[i] for i in childs[top.index] if all_features[i]]
 
-        if 2 <= len(children) <= 4:
+        if 2 <= len(children) <= 7:
             total_area = sum(fc.area for fc in children)
             x = sum(fc.x * fc.area for fc in children) / total_area
             y = sum(fc.y * fc.area for fc in children) / total_area
 
-            dist_multiple = (None, None, 1, 2 + math.sqrt(2), 4 + 2 * math.sqrt(2))
 
             total_dist = 0
 
@@ -479,6 +472,34 @@ def find_bins(images):
             area = total_dist / dist_multiple[len(children)]
 
             bins.append(Bin(x, y, area, 1))
+
+    if len(good_features) > 0:
+        total_area = sum(fc.area for fc in good_features)
+        x = sum(fc.x * fc.area for fc in good_features) / total_area
+        y = sum(fc.y * fc.area for fc in good_features) / total_area
+
+        dots = []
+
+        for gf in good_features:
+            if math.hypot(gf.x - x, gf.y - y) < shared.options["max_joining_dist"]:
+                dots.append(gf)
+
+        if len(dots) >= 3:
+            total_area = sum(fc.area for fc in dots)
+            x = sum(fc.x * fc.area for fc in dots) / total_area
+            y = sum(fc.y * fc.area for fc in dots) / total_area
+
+
+            total_dist = 0
+
+            for i, fc1 in enumerate(dots):
+                for fc2 in dots[i + 1:]:
+                    total_dist += math.hypot(fc1.x - fc2.x, fc1.y - fc2.y)
+
+            area = total_dist / dist_multiple[len(dots)]
+
+            bins.append(Bin(x, y, area, 1))
+
 
 
     shm_groups = [shm.recovery_vision_downward_bin_red, shm.recovery_vision_downward_bin_green]
@@ -494,9 +515,9 @@ def find_bins(images):
         output1.probability = binn.probability
 
     else:
-        output1.area = 0
-        output1.center_x = 0
-        output1.center_y = 0
+        # output1.area = 0
+        # output1.center_x = 0
+        # output1.center_y = 0
         output1.probability = 0
 
     if len(bins) >= 2:
@@ -508,9 +529,9 @@ def find_bins(images):
         output2.probability = binn.probability
 
     else:
-        output2.area = 0
-        output2.center_x = 0
-        output2.center_y = 0
+        # output2.area = 0
+        # output2.center_x = 0
+        # output2.center_y = 0
         output2.probability = 0
 
     shm_groups[0].set(output1)
@@ -531,7 +552,6 @@ def find_bins(images):
             # cv2.putText(image, str(binn), (int(binn.x), int(binn.y)), cv2.FONT_HERSHEY_SIMPLEX, 1, COLORS["MAGENTA"], 2)
             cv2.circle(image, (int(binn.x), int(binn.y)), int(binn.area), COLORS["BLUE"], 5)
 
-        shared.post("contours_all", image)
+        shared.post("bins_all", image)
 
-
-    pass
+    return bins

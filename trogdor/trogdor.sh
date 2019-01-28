@@ -37,12 +37,12 @@ VISION_CONFIG=$ROOT/vision/configs/master.yaml
 
 if [ "$SUBMARINE" = "castor" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
-  visiongui cameras webgui modules deadman uptime
-  dvld hydromathd)
+  visiongui cameras webgui modules uptime hydromathd
+  dvld leds deadman)
 elif [ "$SUBMARINE" = "pollux" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
-  visiongui cameras webgui modules deadman uptime
-  hydromathd)
+  visiongui cameras webgui modules uptime hydromathd deadman
+  )
 else
   echo "Unsupported submarine! Must be set to one of { artemis, apollo }!"
 fi
@@ -74,6 +74,10 @@ fork () {
   log "Forking \"$1 &> $LOGS/$2.log\"."
   echo "Starting $1 at `date -u +"%Y/%m/%d %H:%M:%S UTC"`" >> $LOGS/$2.log
   stdbuf -oL -eL $1 &>> $LOGS/$2.log &
+}
+
+set_priority() {
+  sudo renice -n $2 $(pgrep -f $1)
 }
 
 pkill () {
@@ -143,9 +147,9 @@ case $COMMAND in
             gx4d|gx4) fork "auv-3dmgx4d $GX_PORT" "gx4d" ;;
             gx1d|gx1) fork "auv-3dmgd $GX_PORT" "gx1d" ;;
             dvld|dvl) fork "auv-dvld $DVL_PORT" "dvld" ;;
-            kalmand|kalman) fork "auv-kalmand" "kalmand" ;;
+            kalmand|kalman) fork "auv-kalmand" "kalmand" && sleep 0.5 && set_priority "auv-kalmand" "-19" ;;
             navigated|navigate) fork "auv-navigated" "navigated" ;;
-            controld3|controld|control) fork "auv-controld3" "controld3" ;;
+            controld3|controld|control) fork "auv-controld3" "controld3" && sleep 0.5 && set_priority "auv-controld3" "-19" ;;
             shmserver) fork "auv-shm server" "shmserver" ;;
             log|logs|logger|logging) fork "auv-ld" "auv-ld" ;;
             ueye) invoke "sudo $ueyeCmd start" ;;
@@ -157,6 +161,7 @@ case $COMMAND in
             hydromathd) fork "auv-hydromathd" "hydromathd" ;;
             cameras) fork "auv-start-cameras" "start-cameras" ;;
             modules) fork "auv-start-modules" "start-modules" ;;
+            led|leds) fork "auv-led daemon" "led" ;;
             *) log "Service \"$SERVICE\" not found; aborting." ;;
         esac
     ;;
@@ -183,6 +188,7 @@ case $COMMAND in
             hydromathd) pkill "auv-hydromathd" ;;
             cameras) pkill "auv-start-cameras" ;;
             modules) pkill "auv-start-modules" ;;
+            led|leds) pkill "auv-led" ;;
             *) log "Service \"$SERVICE\" not found; aborting." ;;
         esac
     ;;
@@ -223,6 +229,7 @@ case $COMMAND in
             hydromathd) servicestatus "auv-hydromathd" "hydromathd" ;;
             cameras) servicestatus "auv-start-cameras" "cameras" ;;
             modules) servicestatus "auv-start-modules" "modules" ;;
+            led|leds) servicestatus "auv-led" "led" ;;
             *) log "Service \"$SERVICE\" not found; aborting." ;;
         esac
     ;;
@@ -248,6 +255,7 @@ case $COMMAND in
             hydromathd) assertservice "hydromathd" "auv-hydromathd" ;;
             cameras) assertservice "cameras" "auv-start-cameras" ;;
             modules) assertservice "modules" "auv-start-modules" ;;
+            led|leds) fork "auv-led daemon" "led";;
             ueye)
                 if [ -z "`pids ueyeethd`" ]; then
                     trogdor stop ueye
