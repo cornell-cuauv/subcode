@@ -41,7 +41,7 @@ class Tag(SqlClass):
         self.update()
 
     def get_parent_video(self):
-        from video import Video #need to keep this here to avoid circular import...
+        from cave.libcave.video import Video #need to keep this here to avoid circular import...
         vids = Video.get_all(filter_str="WHERE id=%d" % self.vid)
         if len(vids) != 1:
             self.log.error("ERROR: invalid parent video")

@@ -4,15 +4,15 @@ from time import time
 from gi.repository import Gtk, Gdk, GLib
 from misc.log import with_logging
 
-from libcave.video import Video
+from cave.libcave.video import Video
 
-from libcave.testexecutor import TestExecutor
-from libcave.trainexecutor import TrainExecutor
-from libcave.splitvideos import SplitVideos
+from cave.libcave.testexecutor import TestExecutor
+from cave.libcave.trainexecutor import TrainExecutor
+from cave.libcave.splitvideos import SplitVideos
 
-from libcave.registered_elements import get_registered_elements, \
-                                get_registered_elements_implementing
-from libcave.util import TimedHysteresis, populate_combo_box
+from cave.libcave.registered_elements import get_registered_elements, \
+                                             get_registered_elements_implementing
+from cave.libcave.util import TimedHysteresis, populate_combo_box
 
 try:
     import pygame
@@ -179,7 +179,7 @@ class TestWindow:
 
         #Populate mission element dropdown
         self.elements = get_registered_elements().keys()
-        self.elements.sort()
+        self.elements = sorted(self.elements)
         populate_combo_box(self.mission_element_combo, self.elements)
 
         #Get the main window

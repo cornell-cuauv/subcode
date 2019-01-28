@@ -6,14 +6,14 @@ import argparse
 import math
 
 from time import sleep, time
-from tags.registered_tags import load_tag_modules, get_class_from_tagtype
+from cave.libcave.tags.registered_tags import load_tag_modules, get_class_from_tagtype
 load_tag_modules()
-from tag import Tag
-from video import Video
-from database import Database
+from cave.libcave.tag import Tag
+from cave.libcave.video import Video
+from cave.libcave.database import Database
 from misc.log import init_logging, with_logging
-from videoutils import hash_video
-from registered_elements import get_registered_elements
+from cave.libcave.videoutils import hash_video
+from cave.libcave.registered_elements import get_registered_elements
 
 @with_logging
 class Cave:
