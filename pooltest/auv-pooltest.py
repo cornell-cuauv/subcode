@@ -18,10 +18,16 @@ meta_json_path = current_log_dir_alias / "meta.json"
 
 
 no_pooltest_log_dir.mkdir(exist_ok=True)
-current_log_dir_alias.symlink_to(no_pooltest_log_dir)
+try:
+    current_log_dir_alias.symlink_to(no_pooltest_log_dir)
+except FileExistsError:
+    pass
 
 
 ## Helper functions
+def follow_symlink(path):
+    return Path(os.readlink(str(path)))
+
 def assert_valid_pooltest_name(name):
     if name in ["current", "no-pooltest"]:
         raise RuntimeError("'{}' is reserved and cannot be a pooltest name.".format(name))
@@ -40,16 +46,17 @@ def get_command_output(command):
 
 
 def pooltest_is_active():
-    current_log_dir = os.readlink(current_log_dir_alias)
+    current_log_dir = follow_symlink(current_log_dir_alias)
     return not current_log_dir.samefile(no_pooltest_log_dir)
 
 
 def get_current_pooltest_name():
     assert pooltest_is_active(), "Cannot get pooltest name if pooltest is not active"
 
-    current_log_dir = os.readlink(current_log_dir_alias)
+    current_log_dir = follow_symlink(current_log_dir_alias)
     relpath = current_log_dir.relative_to(log_dir)
-    assert len(relpath.parents) == 0, "'{}' doesn't point to a sibling".format(current_log_dir_alias)
+    assert len(relpath.parents) == 0 or str(relpath.parents[0]) == '.', \
+        "'{}' doesn't point to a sibling".format(current_log_dir_alias)
     return relpath.name
 
 
@@ -93,13 +100,13 @@ class Pooltest:
 
         with meta_json_path.open("w") as meta_json_file:
             json.dump(meta_start_info, meta_json_file, indent=2)
-        slack.send('Pooltest has been started. Local logs will be available on the submarine at {}'.format(meta_json_path))
+        slack.send('Pooltest has been started. Local logs will be available on the submarine at `{}`'.format(meta_json_path))
 
 
     def end(self):
         assert pooltest_is_active()
 
-        current_log_dir = os.readlink(current_log_dir_alias)
+        current_log_dir = follow_symlink(current_log_dir_alias)
         pooltest_name = get_current_pooltest_name()
         print("Ending {}".format(pooltest_name))
 
@@ -118,7 +125,8 @@ class Pooltest:
             json.dump(meta_info, meta_json_file, indent=2)
 
         remote = "software@cuauv.org:/srv/logs/current/pooltest"
-        command = ["rsync", "-avzH", "-e", "ssh -p 2222", "--human-readable", "--progress", current_log_dir, remote]
+        command = ["rsync", "-avzH", "-e", "ssh -p 2222", "--human-readable", "--progress",
+                   str(current_log_dir), remote]
         print(command)
         subprocess.run(command)
 
