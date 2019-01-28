@@ -80,7 +80,7 @@ context_excludes = {
         'hydrocode',
         'lcd',
         'led',
-        'pooltest',
+        #'pooltest',
         'serial/cli',
         'serial/debugger',
         'serial/libserial',

@@ -7,6 +7,8 @@ import subprocess
 
 import fire
 
+import pooltest.slack as slack
+
 
 ## Basic config/setup
 log_dir = Path(os.environ["CUAUV_LOG"])
@@ -69,7 +71,7 @@ def setup_log_dir(name):
     return current_log_dir
 
 def unlink_log_dir():
-    assert pooltest_is_active, "Cannot unlink log dit if pooltest is not active"
+    assert pooltest_is_active, "Cannot unlink log dir if pooltest is not active"
     current_log_dir_alias.unlink()
     current_log_dir_alias.symlink_to(no_pooltest_log_dir)
 
@@ -91,6 +93,8 @@ class Pooltest:
 
         with meta_json_path.open("w") as meta_json_file:
             json.dump(meta_start_info, meta_json_file, indent=2)
+        slack.send('Pooltest has been started. Local logs will be available on the submarine at {}'.format(meta_json_path))
+
 
     def end(self):
         assert pooltest_is_active()
@@ -113,12 +117,13 @@ class Pooltest:
         with meta_json_path.open("w") as meta_json_file:
             json.dump(meta_info, meta_json_file, indent=2)
 
-        remote = "software@cuauv.org:/srv/logs/pooltest"
+        remote = "software@cuauv.org:/srv/logs/current/pooltest"
         command = ["rsync", "-avzH", "-e", "ssh -p 2222", "--human-readable", "--progress", current_log_dir, remote]
         print(command)
         subprocess.run(command)
 
         unlink_log_dir()
+        slack.send('Pooltest has been completed. Logs can be accessed at https://cuauv.org/log/{}'.format(pooltest_name))
 
     def assert_shm(self):
         raise NotImplemented
