@@ -19,7 +19,7 @@ try:
     pygame_present = True
     pygame.init()
 except ImportError:
-    print "Warning: pygame is not installed, there will be no sound!"
+    print("Warning: pygame is not installed, there will be no sound!")
     pygame_present = False
 
 __location__ = os.path.dirname(os.path.realpath(os.path.abspath(sys.argv[0])))
@@ -111,7 +111,7 @@ class TestWindow:
             if pygame_present:
                 try:
                     pygame.mixer.Sound(os.path.join(__location__,"resources/ding.wav")).play()
-                except pygame.error, e:
+                except pygame.error as e:
                     self.log.warning("Playing the ding failed... " + str(e))
             self.testing = False
             self.info_text.set_text("")

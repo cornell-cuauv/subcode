@@ -1,7 +1,7 @@
-from sql import SqlClass
+from cave.libcave.sql import SqlClass
 from misc.log import with_logging
 
-from libcave.tags.registered_tags import get_class_from_tagtype, \
+from cave.libcave.tags.registered_tags import get_class_from_tagtype, \
                                               get_tagtype_names
 
 #Maps python types to sqlite keywords
