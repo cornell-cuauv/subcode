@@ -1,9 +1,11 @@
 /.arcconfig
 /.zsh
 /nixos/configs/secrets/
+*/secrets/
 
 /shm_tools/shm-online/
 /sensors/3dmg/
+*/3dmg/
 /sonar/
 /notes/
 /misc/3dcontrol/
@@ -12,3 +14,6 @@
 
 /misc/#LED
 /misc/\#LED
+
+/vehicle-scripts/auv-env/*/*
+/pooltest/src
