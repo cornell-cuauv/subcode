@@ -90,6 +90,7 @@ class Pooltest:
     def start(self, name):
         assert_valid_pooltest_name(name)
         print("Starting {}".format(name))
+        print('Run `trogdor restart` to restart daemons with logging')
 
         meta_start_info = {
             "pooltest_name": name,
