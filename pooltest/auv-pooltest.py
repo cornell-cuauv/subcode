@@ -26,7 +26,7 @@ except FileExistsError:
 
 # Helper functions
 def follow_symlink(path):
-    return Path(Path(path).resolve())
+    return Path(path).resolve()
 
 
 def assert_valid_pooltest_name(name):
