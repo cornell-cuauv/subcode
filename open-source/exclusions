@@ -15,5 +15,6 @@
 /misc/#LED
 /misc/\#LED
 
+/pooltest/slack.py
+*/slack.py
 /vehicle-scripts/auv-env/*/*
-/pooltest/src
