@@ -19,14 +19,14 @@ export PYTHONPATH=$ROOT
 
 # PORT MAPPINGS
 
-# GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Pastor_2_AUV-PASTOR2-if00-port0)
+# GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Odax_2_AUV-ODAX2-if00-port0)
 SUBMARINE=$CUAUV_VEHICLE
-if [ "$SUBMARINE" = "castor" ]; then
-	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Pastor_2_AUV-PASTOR2-if00-port0)
-elif [ "$SUBMARINE" = "pollux" ]; then
+if [ "$SUBMARINE" = "odysseus" ]; then
+	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Odax_2_AUV-ODAX2-if00-port0)
+elif [ "$SUBMARINE" = "ajax" ]; then
 	GX_PORT=$(readlink -f /dev/serial/by-id/usb-FTDI_Quad_RS232-HS-if00-port0)
 fi
-DVL_PORT=/dev/serial/by-id/usb-CUAUV_PASTOR_4_AUV-PASTOR4-if03-port0
+DVL_PORT=/dev/serial/by-id/usb-CUAUV_ODAX_4_AUV-ODAX4-if03-port0
 
 # CONFIGS
 
@@ -35,11 +35,11 @@ VISION_CONFIG=$ROOT/vision/configs/master.yaml
 # SERVICES
 
 
-if [ "$SUBMARINE" = "castor" ]; then
+if [ "$SUBMARINE" = "odysseus" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
   cameras webgui modules uptime hydromathd
   dvld leds deadman log redis)
-elif [ "$SUBMARINE" = "pollux" ]; then
+elif [ "$SUBMARINE" = "ajax" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
   cameras webgui modules uptime hydromathd deadman log redis
   )

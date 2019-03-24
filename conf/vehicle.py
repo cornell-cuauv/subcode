@@ -12,9 +12,9 @@ if DIR is None:
 d = None
 VEHICLE = os.getenv("CUAUV_VEHICLE")
 
-if VEHICLE is None or not VEHICLE in ["castor", "pollux"]:
+if VEHICLE is None or not VEHICLE in ["odysseus", "ajax"]:
     sys.stderr.write("vehicle.py: CUAUV_VEHICLE must be set "
-                     "to one of { castor, pollux }.\n")
+                     "to one of { odysseus, ajax }.\n")
     sys.exit(1)
 
 with open(os.path.join(DIR, "conf", "%s.json" % VEHICLE)) as f:

@@ -27,7 +27,7 @@ NIPPLE_DISTANCE = 0.0178
 trans_vec = np.array((1, 0, 0))
 trans_vec2 = np.array((0, -1, 0))
 
-is_mainsub = VEHICLE == 'castor'
+is_mainsub = VEHICLE == 'odysseus'
 
 class Localizer:
   def __init__(self, frequency):

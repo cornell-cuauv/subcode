@@ -12,7 +12,7 @@ import shm
 from conf.vehicle import VEHICLE
 
 def is_mainsub():
-    return VEHICLE == 'castor'
+    return VEHICLE == 'odysseus'
 
 def interpolate_list(a, b, steps):
     return [a + (b - a) / steps * i for i in range(1, steps + 1)]

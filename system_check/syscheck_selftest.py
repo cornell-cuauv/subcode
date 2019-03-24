@@ -1,32 +1,32 @@
 import os
 
-from test import vehicle, level, Test, CASTOR, POLLUX, WARN, ERR
+from test import vehicle, level, Test, ODYSSEUS, AJAX, WARN, ERR
 
 # Syscheck self-tests, so meta
-@vehicle(POLLUX)
-class IsApollo(Test):
-    def is_pollux():
-        return "pollux" == os.getenv("CUAUV_VEHICLE")
+@vehicle(AJAX)
+class IsAjax(Test):
+    def is_ajax():
+        return "ajax" == os.getenv("CUAUV_VEHICLE")
 
-    class IsApollo(Test):
-        def is_pollux():
-            return "pollux" == os.getenv("CUAUV_VEHICLE")
+    class IsAjax(Test):
+        def is_ajax():
+            return "ajax" == os.getenv("CUAUV_VEHICLE")
 
-    @vehicle(CASTOR)
-    class IsArtemis(Test):
-        def is_castor():
-            return "castor" == os.getenv("CUAUV_VEHICLE")
+    @vehicle(ODYSSEUS)
+    class IsOdysseus(Test):
+        def is_odysseus():
+            return "odysseus" == os.getenv("CUAUV_VEHICLE")
 
-@vehicle(CASTOR)
-class IsArtemis(Test):
-    def is_castor():
-        return "castor" == os.getenv("CUAUV_VEHICLE")
+@vehicle(ODYSSEUS)
+class IsOdysseus(Test):
+    def is_odysseus():
+        return "odysseus" == os.getenv("CUAUV_VEHICLE")
 
-    class IsArtemis(Test):
-        def is_castor():
-            return "castor" == os.getenv("CUAUV_VEHICLE")
+    class IsOdysseus(Test):
+        def is_odysseus():
+            return "odysseus" == os.getenv("CUAUV_VEHICLE")
 
-    @vehicle(POLLUX)
-    class IsApollo(Test):
-        def is_pollux():
-            return "pollux" == os.getenv("CUAUV_VEHICLE")
+    @vehicle(AJAX)
+    class IsAjax(Test):
+        def is_ajax():
+            return "ajax" == os.getenv("CUAUV_VEHICLE")

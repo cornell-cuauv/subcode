@@ -51,18 +51,18 @@ greenlets = []
 
 cuauv_vehicle = os.environ.get("CUAUV_VEHICLE")
 
-if cuauv_vehicle == 'castor':
-    vehicle_id = test.CASTOR
-elif cuauv_vehicle == 'pollux':
-    vehicle_id = test.POLLUX
+if cuauv_vehicle == 'odysseus':
+    vehicle_id = test.ODYSSEUS
+elif cuauv_vehicle == 'ajax':
+    vehicle_id = test.AJAX
 else:
-    raise ValueError("CUAUV_VEHICLE must be set to one of {castor, pollux}!")
+    raise ValueError("CUAUV_VEHICLE must be set to one of {odysseus, ajax}!")
 
 environment_id = 2
 if(not args.environment):
     LAND_DEPTHS = {
-        test.CASTOR: 0.01,
-        test.POLLUX: 0.35,
+        test.ODYSSEUS: 0.01,
+        test.AJAX: 0.35,
     }
 
     if shm.kalman.depth.get() > LAND_DEPTHS[vehicle_id]:
