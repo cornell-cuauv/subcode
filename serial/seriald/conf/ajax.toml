@@ -1,10 +1,8 @@
 includes = [
-	"ports.toml",
-	"ajaxThruster1.toml",
-	"ajaxThruster2.toml",
-	"brendhim.toml",
-	"powerDistribution.toml",
-  "sensor.toml",
-	# "actuator.toml",
-	"merge.toml",
+    "ports.toml",
+    "ajaxThruster.toml",
+    "him.toml",
+    "ajaxPdActuator.toml",
+    "sensor.toml",
+    "merge.toml"
 ]

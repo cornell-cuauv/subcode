@@ -44,7 +44,7 @@ elif [ "$SUBMARINE" = "ajax" ]; then
   cameras webgui modules uptime hydromathd deadman log redis
   )
 else
-  echo "Unsupported submarine! Must be set to one of { artemis, apollo }!"
+  echo "Unsupported submarine! Must be set to one of { odysseus, ajax }!"
 fi
 
 # COLORS
