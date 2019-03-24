@@ -2,9 +2,10 @@ includes = [
 	"ports.toml",
 	"odysseusThruster1.toml",
 	"odysseusThruster2.toml",
-	"brendhim.toml",
+	"him.toml",
 	"powerDistribution.toml",
 	"sensor.toml",
 	"actuator.toml",
 	"merge.toml",
+    "led.toml",
 ]
