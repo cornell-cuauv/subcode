@@ -26,7 +26,7 @@ if [ "$SUBMARINE" = "odysseus" ]; then
 elif [ "$SUBMARINE" = "ajax" ]; then
 	GX_PORT=$(readlink -f /dev/serial/by-id/usb-FTDI_Quad_RS232-HS-if00-port0)
 fi
-DVL_PORT=/dev/serial/by-id/usb-CUAUV_ODAX_4_AUV-ODAX4-if03-port0
+DVL_PORT=/dev/serial/by-id/usb-CUAUV_ODAX_2_ODAX2-if01-port0
 
 # CONFIGS
 
