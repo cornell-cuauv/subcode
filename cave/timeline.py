@@ -343,9 +343,9 @@ class Timeline(Gtk.DrawingArea):
         def draw_frame_range(frame_list, height):
             #Code to get contiguous ranges from this list (to reduce drawing time)
             #ref: http://code.activestate.com/recipes/496682-make-ranges-of-contiguous-numbers-from-a-list-of-i/
-            frame_list.sort()
+            #frame_list.sort() ????
             for k,g in groupby(enumerate(frame_list), key=lambda i_x: i_x[0]-i_x[1]):
-                segment = map(operator.itemgetter(1),g)
+                segment = tuple(map(operator.itemgetter(1),g))
                 first_frame = segment[0]
                 last_frame = segment[-1]
 
