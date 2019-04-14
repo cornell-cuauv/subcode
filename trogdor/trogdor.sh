@@ -20,10 +20,10 @@ export PYTHONPATH=$ROOT
 # PORT MAPPINGS
 
 # GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Odax_2_AUV-ODAX2-if00-port0)
-SUBMARINE=$CUAUV_VEHICLE
-if [ "$SUBMARINE" = "odysseus" ]; then
+VEHICLE_TYPE=$CUAUV_VEHICLE_TYPE
+if [ "$VEHICLE_TYPE" = "mainsub" ]; then
 	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_ODAX_3_ODAX3-if01-port0)
-elif [ "$SUBMARINE" = "ajax" ]; then
+elif [ "$VEHICLE_TYPE" = "minisub" ]; then
 	GX_PORT=$(readlink -f /dev/serial/by-id/usb-FTDI_Quad_RS232-HS-if00-port0)
 fi
 DVL_PORT=/dev/serial/by-id/usb-CUAUV_ODAX_2_AUV-ODAX2-if01-port0
@@ -35,16 +35,16 @@ VISION_CONFIG=$ROOT/vision/configs/master.yaml
 # SERVICES
 
 
-if [ "$SUBMARINE" = "odysseus" ]; then
+if [ "$VEHICLE_TYPE" = "mainsub" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
   cameras webgui modules uptime hydromathd
   dvld leds deadman log redis)
-elif [ "$SUBMARINE" = "ajax" ]; then
+elif [ "$VEHICLE_TYPE" = "minisub" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
   cameras webgui modules uptime hydromathd deadman log redis
   )
 else
-  echo "Unsupported submarine! Must be set to one of { odysseus, ajax }!"
+  echo "Unsupported CUAUV_VEHICLE_TYPE! Must be set to one of { mainsub, minisub }!"
 fi
 
 # COLORS
