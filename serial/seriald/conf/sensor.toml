@@ -1,2 +1,2 @@
-[devices.Sensor.vars]
+[devices.sensor.vars]
 DepthReadVar = "depth.depth"

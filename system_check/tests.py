@@ -62,7 +62,7 @@ class Pressure(Test):
 # Serial
 class Serial(Test):
     def gpio_connected():
-        return shm.connected_devices.Sensor.get()
+        return shm.connected_devices.sensor.get()
 
     def merge_connected():
         return shm.connected_devices.merge.get()

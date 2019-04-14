@@ -2,29 +2,29 @@
 
 KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", MODE="0666", TAG+="systemd"
 
-# # FTDI 1
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 1", ATTRS{bInterfaceNumber}=="00", SYMLINK+="ttyUSB_odax_GX4", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 1", ATTRS{bInterfaceNumber}=="01", SYMLINK+="ttyUSB_odax_GPIO", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 1", ATTRS{bInterfaceNumber}=="02", SYMLINK+="ttyUSB_odax_VROOOOM", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 1", ATTRS{bInterfaceNumber}=="03", SYMLINK+="ttyUSB_odax_ACT", MODE="0666", TAG+="systemd"
+# FTDI 1
+# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 1", ATTRS{bInterfaceNumber}=="00", SYMLINK+="ttyUSB_odax_GX4", MODE="0666", TAG+="systemd"
+KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 1", ATTRS{bInterfaceNumber}=="01", SYMLINK+="ttyUSB_odax_GX4", MODE="0666", TAG+="systemd"
+KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 1", ATTRS{bInterfaceNumber}=="02", SYMLINK+="ttyUSB_odax_VROOM", MODE="0666", TAG+="systemd"
+KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 1", ATTRS{bInterfaceNumber}=="03", SYMLINK+="ttyUSB_odax_ACT", MODE="0666", TAG+="systemd"
 
-# # FTDI 2
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 2", ATTRS{bInterfaceNumber}=="00", SYMLINK+="ttyUSB_odax_PD", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 2", ATTRS{bInterfaceNumber}=="01", SYMLINK+="ttyUSB_odax_VROOM", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 2", ATTRS{bInterfaceNumber}=="02", SYMLINK+="ttyUSB_odax_POD", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 2", ATTRS{bInterfaceNumber}=="03", SYMLINK+="ttyUSB_odax_H2O", MODE="0666", TAG+="systemd"
+# FTDI 2
+KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 2", ATTRS{bInterfaceNumber}=="00", SYMLINK+="ttyUSB_odax_PD", MODE="0666", TAG+="systemd"
+KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 2", ATTRS{bInterfaceNumber}=="01", SYMLINK+="ttyUSB_odax_DVL", MODE="0666", TAG+="systemd"
+# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 2", ATTRS{bInterfaceNumber}=="02", SYMLINK+="ttyUSB_odax_POD", MODE="0666", TAG+="systemd"
+# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 2", ATTRS{bInterfaceNumber}=="03", SYMLINK+="ttyUSB_odax_H2O", MODE="0666", TAG+="systemd"
 
-# # FTDI 3
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 3", ATTRS{bInterfaceNumber}=="00", SYMLINK+="ttyUSB_odax_LED", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 3", ATTRS{bInterfaceNumber}=="01", SYMLINK+="ttyUSB_odax_X1", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 3", ATTRS{bInterfaceNumber}=="02", SYMLINK+="ttyUSB_odax_X3", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 3", ATTRS{bInterfaceNumber}=="03", SYMLINK+="ttyUSB_odax_X2", MODE="0666", TAG+="systemd"
+# FTDI 3
+KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 3", ATTRS{bInterfaceNumber}=="00", SYMLINK+="ttyUSB_odax_PD", MODE="0666", TAG+="systemd"
+# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 3", ATTRS{bInterfaceNumber}=="01", SYMLINK+="ttyUSB_odax_X1", MODE="0666", TAG+="systemd"
+# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 3", ATTRS{bInterfaceNumber}=="02", SYMLINK+="ttyUSB_odax_X3", MODE="0666", TAG+="systemd"
+KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 3", ATTRS{bInterfaceNumber}=="03", SYMLINK+="ttyUSB_odax_VROOOOM", MODE="0666", TAG+="systemd"
 
-# # FTDI 4
-KERNEL=="ttyUSB0", DRIVERS=="ftdi_sio", SYMLINK+="ttyUSB_odax_DVL", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 4", ATTRS{bInterfaceNumber}=="01", SYMLINK+="ttyUSB_odax_MERGE", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 4", ATTRS{bInterfaceNumber}=="02", SYMLINK+="ttyUSB_odax_HIM", MODE="0666", TAG+="systemd"
-# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="Odax 4", ATTRS{bInterfaceNumber}=="03", SYMLINK+="ttyUSB_odax_POE", MODE="0666", TAG+="systemd"
+# FTDI 4
+# KERNEL=="ttyUSB0", DRIVERS=="ftdi_sio", SYMLINK+="ttyUSB_odax_DVL", MODE="0666", TAG+="systemd"
+KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 4", ATTRS{bInterfaceNumber}=="01", SYMLINK+="ttyUSB_odax_ACT", MODE="0666", TAG+="systemd"
+KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 4", ATTRS{bInterfaceNumber}=="02", SYMLINK+="ttyUSB_odax_MERGE", MODE="0666", TAG+="systemd"
+# KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", ATTRS{interface}=="ODAX 4", ATTRS{bInterfaceNumber}=="03", SYMLINK+="ttyUSB_odax_POE", MODE="0666", TAG+="systemd"
 
 ## LCD Board
 # Ignore the C232H cable (for LCD)
