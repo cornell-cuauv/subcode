@@ -52,17 +52,17 @@ def run(t, last_result = None):
 greenlets = []
 
 if VEHICLE_TYPE == 'mainsub':
-    vehicle_id = test.ODYSSEUS
+    vehicle_id = test.MAINSUB
 elif VEHICLE_TYPE == 'minisub':
-    vehicle_id = test.AJAX
+    vehicle_id = test.MINISUB
 else:
     raise ValueError("CUAUV_VEHICLE_TYPE must be set to one of {mainsub, minisub}!")
 
 environment_id = 2
 if(not args.environment):
     LAND_DEPTHS = {
-        test.ODYSSEUS: 0.01,
-        test.AJAX: 0.35,
+        test.MAINSUB: 0.01,
+        test.MINISUB: 0.35,
     }
 
     if shm.kalman.depth.get() > LAND_DEPTHS[vehicle_id]:

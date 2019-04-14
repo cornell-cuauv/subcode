@@ -1,32 +1,33 @@
 import os
 
-from test import vehicle, level, Test, ODYSSEUS, AJAX, WARN, ERR
+from test import vehicle, level, Test, MAINSUB, MINISUB, WARN, ERR
+from conf.vehicle import VEHICLE_TYPE
 
 # Syscheck self-tests, so meta
-@vehicle(AJAX)
-class IsAjax(Test):
-    def is_ajax():
-        return "ajax" == os.getenv("CUAUV_VEHICLE")
+@vehicle(MINISUB)
+class IsMinisub(Test):
+    def is_minisub():
+        return "minisub" == VEHICLE_TYPE
 
-    class IsAjax(Test):
-        def is_ajax():
-            return "ajax" == os.getenv("CUAUV_VEHICLE")
+    class IsMinisub(Test):
+        def is_minisub():
+            return "minisub" == VEHICLE_TYPE
 
-    @vehicle(ODYSSEUS)
-    class IsOdysseus(Test):
-        def is_odysseus():
-            return "odysseus" == os.getenv("CUAUV_VEHICLE")
+    @vehicle(MAINSUB)
+    class IsMainsub(Test):
+        def is_mainsub():
+            return "mainsub" == VEHICLE_TYPE
 
-@vehicle(ODYSSEUS)
-class IsOdysseus(Test):
-    def is_odysseus():
-        return "odysseus" == os.getenv("CUAUV_VEHICLE")
+@vehicle(MAINSUB)
+class IsMainsub(Test):
+    def is_mainsub():
+        return "mainsub" == VEHICLE_TYPE
 
-    class IsOdysseus(Test):
-        def is_odysseus():
-            return "odysseus" == os.getenv("CUAUV_VEHICLE")
+    class IsMainsub(Test):
+        def is_mainsub():
+            return "mainsub" == VEHICLE_TYPE
 
-    @vehicle(AJAX)
-    class IsAjax(Test):
-        def is_ajax():
-            return "ajax" == os.getenv("CUAUV_VEHICLE")
+    @vehicle(MINISUB)
+    class IsMinisub(Test):
+        def is_minisub():
+            return "minisub" == VEHICLE_TYPE
