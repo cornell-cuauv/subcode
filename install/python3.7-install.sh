@@ -1,5 +1,7 @@
 # Install Python 3.7
 
+apt-get install -y zlib1g-dev
+
 mkdir python3.7-install
 cd python3.7-install
 
