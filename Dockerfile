@@ -11,6 +11,9 @@ COPY install/aptstrap.sh /dependencies/
 COPY install/foundation-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/foundation-install.sh
 
+COPY install/python3.7-install.sh /dependencies/
+RUN bash /dependencies/aptstrap.sh /dependencies/python3.7-install.sh
+
 COPY install/jetson-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/jetson-install.sh
 
