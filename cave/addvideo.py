@@ -15,7 +15,7 @@ class AddVideo:
     Dialog for adding a video to the database
     """
 
-    last_path = None #Stores the path of the last opened video
+    last_path = None # Stores the path of the last opened video
 
     def validate(self):
         #Validates form input; also sets variables for use higher up
