@@ -59,5 +59,10 @@ packages3=(
     pycairo
 )
 
+packages3_7=(
+    mypy
+)
+
 pip2 install "${packages[@]}" "${packages2[@]}"
 pip3 install "${packages[@]}" "${packages3[@]}"
+pip3.7 install "${packages[@]}" "${packages3[@]}" "${packages3_7[@]}"
