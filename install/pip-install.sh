@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -xeuo pipefail
 
-apt-get install -y libffi-dev openssl libssl-dev
+apt-get install -y libffi-dev openssl libssl-dev libgirepository1.0-dev
 
 if [[ "$(uname -m)" = "aarch64" ]]; then
     export LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu/tegra/
