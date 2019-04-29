@@ -24,7 +24,7 @@ VEHICLE_TYPE=$CUAUV_VEHICLE_TYPE
 if [ "$VEHICLE_TYPE" = "mainsub" ]; then
 	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_ODAX_3_ODAX3-if01-port0)
 elif [ "$VEHICLE_TYPE" = "minisub" ]; then
-	GX_PORT=$(readlink -f /dev/serial/by-id/usb-FTDI_Quad_RS232-HS-if00-port0)
+	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_ODAX_3_ODAX3-if01-port0)
 fi
 DVL_PORT=/dev/serial/by-id/usb-CUAUV_ODAX_2_AUV-ODAX2-if01-port0
 

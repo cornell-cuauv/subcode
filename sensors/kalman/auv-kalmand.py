@@ -150,8 +150,7 @@ def get_velocity(sub_quat):
     return vel
 
 def get_depth():
-    #return depth_var.get() - depth_offset_var.get()
-    return ((((depth_var.get() / 65536 * 5 / 250 - 0.004) * 100 / 0.016) * 6894.75729 / 1000 / 9.8) + 6.783617) / 0.395167
+    return depth_var.get() - depth_offset_var.get()
 
 sub_quat = Quaternion(q=quat_orientation_filter.x_hat[:4])
 
