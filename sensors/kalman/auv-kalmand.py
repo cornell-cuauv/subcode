@@ -18,6 +18,8 @@ from settings import dt
 from kalman_unscented import UnscentedKalmanFilter
 from kalman_position import PositionFilter
 
+from conf.vehicle import is_mainsub
+
 # Offset for GX4 mounting orientation
 GX_ORIENTATION_OFFSET = Quaternion(hpr=[90, 0, 180])
 rec_get_attr = lambda s: \
@@ -33,6 +35,7 @@ roll_rate_var = rec_get_attr(sensors["roll_rate"])
 
 depth_var = rec_get_attr(sensors["depth"])
 depth_offset_var = rec_get_attr(sensors["depth_offset"])
+depth_factor = 2.9 if is_mainsub else 1
 
 quat_group = rec_get_attr(sensors["quaternion"])
 
@@ -150,7 +153,7 @@ def get_velocity(sub_quat):
     return vel
 
 def get_depth():
-    return depth_var.get() - depth_offset_var.get()
+    return (depth_var.get() - depth_offset_var.get()) * depth_factor
 
 sub_quat = Quaternion(q=quat_orientation_filter.x_hat[:4])
 
