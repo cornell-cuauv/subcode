@@ -45,7 +45,7 @@ while read hash aunix_timestamp adate atime atimezone cunix_timestamp cdate ctim
                 "#"*) continue;;
                 *)
                     ll=(`echo "$REPO_DIR/$l"`) 
-                    [ ${#ll[@]} == 0 ] || [ ${#ll[@]} == 1 -a ! -e "${ll[0]}" ] && nomatch[$i]="$hash" #echo "Warning: Line \"$l\" of exclusions file matches nothing"
+                    [ ${#ll[@]} == 0 ] || [ ${#ll[@]} == 1 -a ! -e "${ll[0]}" ] && nomatch[$i]="$hash" && echo "Warning: Line \"$l\" of exclusions file matches nothing"
                 ;;
             esac
         done
@@ -58,8 +58,10 @@ while read hash aunix_timestamp adate atime atimezone cunix_timestamp cdate ctim
         PREV_COMMIT="$hash"
     fi
 done )
-for ((i=0;i<${#EXCLUSIONS[@]};i++)); do
-    echo ${exclusions[i]}: ${nomatch[i]}
-done
 #echo ${nomatch[@]}
+for ((i=0;i<${#EXCLUSIONS[@]};i++)); do
+    #echo ${exclusions[i]}: ${nomatch[i]}
+    echo -n "${EXCLUSIONS[$i]}: "
+    git log --format=%B -n1 ${nomatch[$i]}
+done
 
