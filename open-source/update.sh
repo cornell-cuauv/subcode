@@ -10,7 +10,7 @@ if [ $(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD) != "master" ]; then
     echo "Repo should probably be on master branch!" >&2
     echo -n "Continue (y/n)? " >&2
     read v
-    [ $v != "y" ] && exit 1
+    [ "x$v" != "xy" ] && echo "Exiting." && exit 1
 fi
 
 if [ ! -d .git ]; then
@@ -34,7 +34,8 @@ GIT_COMMITTER_EMAIL="leader@cuauv.org"
 export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
 
 git -C "$REPO_DIR" log $PREV_COMMIT..HEAD --format="%H %at %ai %ct %ci %s" | tac | (
-declare -a nomatch
+#declare -a nomatch
+nomatch=()
 while read hash aunix_timestamp adate atime atimezone cunix_timestamp cdate ctime ctimezone message; do
     if case $message in "Merge pull request #"*) MSG="$message"; true;; *) [ $hash == $FIRST_COMMIT ] && MSG="First open-source commit";; esac; then
         git -C "$REPO_DIR" diff --binary --full-index "$PREV_COMMIT" "$hash" | git apply --whitespace=nowarn --index > /dev/null
@@ -45,7 +46,7 @@ while read hash aunix_timestamp adate atime atimezone cunix_timestamp cdate ctim
                 "#"*) continue;;
                 *)
                     ll=(`echo "$REPO_DIR/$l"`) 
-                    [ ${#ll[@]} == 0 ] || [ ${#ll[@]} == 1 -a ! -e "${ll[0]}" ] && nomatch[$i]="$hash" && echo "Warning: Line \"$l\" of exclusions file matches nothing"
+                    [ ${#ll[@]} == 0 ] || [ ${#ll[@]} == 1 -a ! -e "${ll[0]}" ] && nomatch[$i]="$hash" # && echo "Warning: Line \"$l\" of exclusions file matches nothing @ ${hash} (${message})"
                 ;;
             esac
         done
@@ -57,11 +58,25 @@ while read hash aunix_timestamp adate atime atimezone cunix_timestamp cdate ctim
 
         PREV_COMMIT="$hash"
     fi
-done )
-#echo ${nomatch[@]}
-for ((i=0;i<${#EXCLUSIONS[@]};i++)); do
-    #echo ${exclusions[i]}: ${nomatch[i]}
-    echo -n "${EXCLUSIONS[$i]}: "
-    git log --format=%B -n1 ${nomatch[$i]}
 done
+if [ -n ${nomatch+x} ] && [ ${#nomatch[@]} -gt 0 ]; then
+    ml=0
+    for ((i=0;i<${#EXCLUSIONS[@]};i++)); do
+        nm="${EXCLUSIONS[$i]}"
+        if [ $i -lt ${#nomatch[@]} ] && \
+            [ -n ${nomatch[$i]+x} ] && [ ${#nm} -gt $ml ]; then
+            ml=${#nm}
+        fi
+    done
+    printf "%${ml}s  Last didn't match\n" "Exclusion"
+    for ((i=0;i<${#EXCLUSIONS[@]};i++)); do
+        #echo ${exclusions[i]}: ${nomatch[i]}
+        if [ -z "${EXCLUSIONS[$i]}" ] || [ -z ${nomatch[$i]+x} ]; then continue; fi
+        printf "%${ml}s  " "${EXCLUSIONS[$i]}"
+        h=
+        if [ "x$PREV_COMMIT" == "x${nomatch[$i]}" ]; then h=" (last)"; fi
+        git --no-pager -C "$REPO_DIR" log --format="%h (%s)$h" -n1 ${nomatch[$i]}
+    done
+fi
+)
 
