@@ -156,7 +156,7 @@ dvl_pd5 Pd5Com::getData() {
     ret.BIT_RESULTS = readUnsignedShort();
 
     ret.SPEED_OF_SOUND = readUnsignedShort();
-    ret.TEMPERATURE = readUnsignedShort();
+    ret.TEMPERATURE = readShort();
     ret.SALINITY = readByte();
 
     ret.DEPTH = readUnsignedShort();

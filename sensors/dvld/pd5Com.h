@@ -51,7 +51,7 @@ namespace sensord {
       u_int16_t BIT_RESULTS;
 
       u_int16_t SPEED_OF_SOUND;
-      u_int16_t TEMPERATURE;
+      int16_t TEMPERATURE;
       u_int8_t SALINITY;
 
       u_int16_t DEPTH;

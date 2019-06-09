@@ -57,9 +57,15 @@ void dvld::start(const string& port, const long uInterval) {
       svs.depth = ((double) (packet.DEPTH) / 10.0) - DEPTH_OFFSET;
       svs.temperature = (double) (packet.TEMPERATURE) / 100.0;
 
-      velocity_x_tmp = (double) (packet.BTM_VEL.x) / 1000.0;
-      velocity_y_tmp = (double) (packet.BTM_VEL.y) / 1000.0;
-      velocity_z_tmp = (double) (packet.BTM_VEL.z) / 1000.0;
+      int btm_x = packet.BTM_VEL.x, btm_y = packet.BTM_VEL.y, btm_z = packet.BTM_VEL.z;
+      velocity_x_tmp = (double) (btm_x) / 1000.0;
+      velocity_y_tmp = (double) (btm_y) / 1000.0;
+      velocity_z_tmp = (double) (btm_z) / 1000.0;
+
+      svs.vel_x_invalid = btm_x == -0x8000;
+      svs.vel_y_invalid = btm_y == -0x8000;
+      svs.vel_z_invalid = btm_z == -0x8000;
+
 
       // Ignore ridiculous values that make peter cry
       if (fabs(velocity_x_tmp) < 5) {
