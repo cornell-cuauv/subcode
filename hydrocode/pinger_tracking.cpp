@@ -14,13 +14,13 @@
 #include "libshm/c/vars.h"
 //#include "shm_mac.hpp"
 #include "pinger_tracking.hpp"
-//#include "audible_ping.hpp"
+#include "audible_ping.hpp"
 #include "common_dsp.hpp"
 #include "udp_sender.hpp"
 #include "liquid.h"
 #include "structs.hpp"
 
-//extern FILE *audible_file;
+extern FILE *audible_file;
 
 const int trigger_plot_length = 2 * dft_length; //length of the trigger plot (in samples)
 const int dft_plot_length = (int)(pinger_period * pinger_period_factor * sampling_rate / packet_length - gain_propagation_packets); //length of the dft plot (in samples)
@@ -228,7 +228,7 @@ void pinger_tracking_dsp(uint16_t *fpga_packet)
             new_normalized_sample.ch0 = new_raw_sample.ch0 - (highest_quantization_lvl / 2);
             new_normalized_sample.ch1 = new_raw_sample.ch1 - (highest_quantization_lvl / 2);
             new_normalized_sample.ch2 = new_raw_sample.ch2 - (highest_quantization_lvl / 2);
-            //printAudible(new_normalized_sample);
+            printAudible(new_normalized_sample);
             
             //everytime we get a record high triple_sample in the interval, we check for clipping (if autogain is on), and we rewrite the raw plot to capture the signal around this value
             if(new_raw_sample.max() > raw_peak)

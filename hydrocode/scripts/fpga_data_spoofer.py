@@ -24,9 +24,9 @@ C_AMPLITUDE = 0.76; #amplitude on channel C (max 1)
 total_time = 2 * IDLE_TIME + PING_TIME
 
 #calculating when the signal reaches each channel. reference channel is reached exactly when the initial padding ends
-a_start_time = IDLE_TIME - NIPPLE_DISTANCE * math.sin(HEADING * math.pi / 180) * math.cos(ELEVATION * math.pi / 180) / SOUND_SPEED
-b_start_time = IDLE_TIME + NIPPLE_DISTANCE * math.cos(HEADING * math.pi / 180) * math.cos(ELEVATION * math.pi / 180) / SOUND_SPEED
-c_start_time = IDLE_TIME
+a_start_time = IDLE_TIME
+b_start_time = IDLE_TIME - NIPPLE_DISTANCE * math.sin(HEADING * math.pi / 180) * math.cos(ELEVATION * math.pi / 180) / SOUND_SPEED
+c_start_time = IDLE_TIME + NIPPLE_DISTANCE * math.cos(HEADING * math.pi / 180) * math.cos(ELEVATION * math.pi / 180) / SOUND_SPEED
 
 #initializing the dict that will be saved to the mat file
 write_dict = {"raw_samples_interleaved": []}

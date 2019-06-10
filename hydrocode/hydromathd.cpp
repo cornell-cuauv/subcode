@@ -19,7 +19,7 @@
 #include "udp_receiver.hpp"
 #include "udp_sender.hpp"
 
-//extern FILE *audible_file;
+extern FILE *audible_file;
 
 int main()
 {
@@ -30,7 +30,7 @@ int main()
     udpSenderInit();
     shm_init();
     
-    //audible_file = fopen("audible_file.txt", "w");
+    audible_file = fopen("audible_file.txt", "w");
     
     while(1) //program superloop
     {
@@ -51,7 +51,7 @@ int main()
             //comms_dsp(fpga_packet);
         }
         
-        //fflush(audible_file);
+        fflush(audible_file);
     }
     
     //toodles!!!!!

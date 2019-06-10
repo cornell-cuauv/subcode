@@ -8,7 +8,7 @@ from scipy.misc import imread
 
 DFT_PLOT_LENGTH = 3500 #length of the dft plot (in samples)
 MAXIMUM_AMPLITUDE = DFT_PLOT_LENGTH #maximum signal amplitude (plot is square because the penguin meme is a square image)
-UDP_ADDRESS = "127.0.0.1" #local host because we receive plots from hydromathd on the same machine
+UDP_ADDRESS = "" #local host because we receive plots from hydromathd on the same machine
 UDP_PAYLOAD_SIZE = 512 #size of the UDP plot packets (in bytes)
 UDP_PORT = 9003 #hydromathd sends dft plots to this port
 

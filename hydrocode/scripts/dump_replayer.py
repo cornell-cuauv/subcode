@@ -19,13 +19,14 @@ data = scipy.io.loadmat(sys.argv[1])
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 #sending packets
-for packet_no in range(len(data["raw_samples_interleaved"]) // 768):
+for packet_no in range(len(data["raw_samples_interleaved"]) // TOTAL_PACKET_LENGTH):
 
 	 	#forming a packet from the data. 'H' is unsigned 16 bit integer
 		send_buffer = data["raw_samples_interleaved"][packet_no * TOTAL_PACKET_LENGTH : (packet_no + 1) * TOTAL_PACKET_LENGTH].astype('H')
 
 		#converting packet into a bytes array
-		payload = numpy.asarray(send_buffer).tobytes();
+		payload = numpy.asarray(send_buffer)
+		payload.tobytes()
 
 		#sending packet
 		sock.sendto(payload, (UDP_ADDRESS, UDP_PORT))
