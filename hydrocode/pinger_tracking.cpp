@@ -221,7 +221,7 @@ void pinger_tracking_dsp(uint16_t *fpga_packet)
             //pushing each triple_sample into the raw triple_sample buffer
             new_raw_sample.ch0 = fpga_packet[4 * packet_sample_no + 0];
             new_raw_sample.ch1 = fpga_packet[4 * packet_sample_no + 1];
-            new_raw_sample.ch2 = fpga_packet[4 * packet_sample_no + 2];
+            new_raw_sample.ch2 = fpga_packet[4 * packet_sample_no + 3];
             raw_buffer.push(new_raw_sample);
             
             triple_sample new_normalized_sample;

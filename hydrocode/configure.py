@@ -6,6 +6,4 @@ build = ninja_common.Build('hydrocode')
 build.build_cmd('auv-hydromathd', ['hydromathd.cpp', 'udp_receiver.cpp', 'udp_sender.cpp', 'pinger_tracking.cpp'],
                 auv_deps=['shm'], deps=['liquid'])
 
-build.install('auv-hydro-receive', 'hydrocode/scripts/udp_recv_orig.py')
-build.install('auv-ping-trigger', 'hydrocode/scripts/udp_recv_ping_trigger.py')
-build.install('auv-hydro-heading', 'hydrocode/scripts/hydromath_ui.py')
+build.install('auv-hydro-heading', 'hydrocode/scripts/heading_plot.py')
