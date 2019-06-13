@@ -5,31 +5,34 @@ import cv2
 import time
 
 import numpy as np
-from vision.modules.base import ModuleBase
+from vision.modules.base import ModuleBase, UndefinedModuleOption
 from vision.framework.transform import resize, simple_gaussian_blur
 from vision.framework.helpers import to_umat, from_umat
+from vision.framework.draw import draw_circle
 
 from vision import options
 
 opts =    [options.DoubleOption('rectangular_thresh', 0.7, 0, 1),
-           options.DoubleOption('source_x_scale_draugr', 1, 0, 1),
-           options.DoubleOption('source_y_scale_draugr', 1, 0, 1), #CHANGE BACK TO 1 IF COMPETITION BUOY IS NOT STRETCHED
-           options.DoubleOption('source_x_scale_vetalas', 1, 0, 1),
-           options.DoubleOption('source_y_scale_vetalas', 1, 0, 1),
-           options.DoubleOption('source_x_scale_aswang', 0.69, 0, 1), #CHANGE BACK TO 1 IF COMPETITION BUOY IS NOT STRETCHED
-           options.DoubleOption('source_y_scale_aswang', 1, 0, 1), #CHANGE BACK TO 1 IF COMPETITION BUOY IS NOT STRETCHED
-           options.DoubleOption('source_x_scale_jiangshi', 1, 0, 1),
-           options.DoubleOption('source_y_scale_jiangshi', 1, 0, 1),
+           options.DoubleOption('source_x_scale_upper_stake', 0.1, 0, 1),
+           options.DoubleOption('source_y_scale_upper_stake', 0.1, 0, 1), 
+           options.DoubleOption('source_x_scale_lower_stake', 0.1, 0, 1),
+           options.DoubleOption('source_y_scale_lower_stake', 0.1, 0, 1), 
            options.DoubleOption('downsize_camera', 0.25, 0, 1),
            options.IntOption('min_match_count', 10, 0, 255),
-           options.DoubleOption('good_ratio', 0.8, 0, 1)]
+           options.DoubleOption('good_ratio', 0.8, 0, 1),
+           options.BoolOption('show_keypoints', False)]
 
-PADDING = 100
+PADDING = 50
+BLUR_KERNEL = 3
+BLUR_SD = 1
 
-class VampBuoy(ModuleBase):
+HEART = (1376, 514)
+LEFT_CIRCLE = (390, 562)
+RIGHT_CIRCLE = (1900, 570)
+
+class Stake(ModuleBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        #self.source = cv2.imread('buoy_images/draugr.png',0)
         # self.orb = cv2.ORB_create(nfeatures=250, WTA_K=3)
         self.detector = cv2.xfeatures2d.SIFT_create()
         FLANN_INDEX_KDTREE = 0
@@ -59,20 +62,25 @@ class VampBuoy(ModuleBase):
                 scaledim = im
                 rx = 1
                 ry = 1
+            scaledim = simple_gaussian_blur(scaledim, BLUR_KERNEL, BLUR_SD)
             kp, des = self.detector.detectAndCompute(scaledim,None)
-            self.static[image] = {"name": image, "org": im, "img": scaledim, "rx": rx, "ry":ry, "kp":kp, "des":des}
-            self.post(image, cv2.drawKeypoints(scaledim, kp, None, (0,0,255), flags=0))
+            self.static[image] = {"name": image, "org": im, 
+                                  "img": scaledim, "rx": rx, "ry":ry, "kp":kp, "des":des}
+            keypoints = cv2.drawKeypoints(scaledim.copy(), kp, None, (0,0,255), flags=0)
+            self.post(image, keypoints)
             return self.static[image]
 
         if image in self.static:
             if self.static[image]['rx'] == self.options['source_x_scale_%s'%image] and \
-               self.static[image]['ry'] == self.options['source_y_scale_%s'%image]: 
+                    self.static[image]['ry'] == self.options['source_y_scale_%s'%image]:
                 return self.static[image]
             else: 
                 im = self.static[image]["org"]
                 return find_key_descriptors(im)
         else:
-            im = simple_gaussian_blur(cv2.imread('buoy_images/%s.png' %image,0), 11, 3)
+            im = cv2.imread('stake_images/%s.png' %image,0)
+
+            assert im is not None
             return find_key_descriptors(im) 
 
     def match(self, im1, im2, output, color):
@@ -84,6 +92,8 @@ class VampBuoy(ModuleBase):
         des2 = im2["des"]
         img1 = im1["img"]
         img2 = im2["img"]
+
+        M = None
 
         try:
             matches = self.flann.knnMatch(des1,des2,k=2)
@@ -117,7 +127,7 @@ class VampBuoy(ModuleBase):
                 rarea = rarea[1][0]*rarea[1][1]
                 if area/rarea < RECTANGULARITY_THRESH: 
                     print("box lower than rectangularity threshold")
-                    return output
+                    return output, None
                 output = cv2.polylines(output,[np.int32(dst)],True,color,3, cv2.LINE_AA)
             except ZeroDivisionError:
                 print('what')
@@ -127,36 +137,52 @@ class VampBuoy(ModuleBase):
         else:
             print ("Not enough matches are found for %s - %d/%d" % (im1["name"], len(good),MIN_MATCH_COUNT))
             matchesMask = None
+        return output, M
+
+    
+    def locate_source_point(self, image, mask, point, output=None):
+        i = self.static[image]
+        pt = np.float32([[[int(point[0]*i['rx'] + PADDING), int(point[1]*i['ry'] + PADDING)]]])
+        pt = cv2.perspectiveTransform(pt, mask)
+        draw_circle(output, tuple(pt[0][0]), 1, (0,0,255), thickness=3)
         return output
 
     def process(self, *mats):
+        print('start process')
         x = time.perf_counter()
         DOWNSIZE_CAMERA = self.options['downsize_camera']
 
-        img2 = resize(to_umat(mats[0]), int(mats[0].shape[1]*DOWNSIZE_CAMERA), int(mats[0].shape[0]*DOWNSIZE_CAMERA)) if DOWNSIZE_CAMERA else mats[0] # trainImage
+        mat = cv2.cvtColor(mats[0], cv2.COLOR_BGR2GRAY)
+
+        img2 = resize(to_umat(mat), int(mat.shape[1]*DOWNSIZE_CAMERA), int(mat.shape[0]*DOWNSIZE_CAMERA)) if DOWNSIZE_CAMERA else mat # trainImage
 
         #img2 = cv2.copyMakeBorder(img2, PADDING,PADDING,PADDING,PADDING, cv2.BORDER_REPLICATE)
 
-        draugr = self.static_process('draugr')
-        vetalas = self.static_process('vetalas')
-        aswang = self.static_process('aswang')
-        jiangshi = self.static_process('jiangshi')
+        upper_stake = self.static_process('upper_stake')
+        lower_stake = self.static_process('lower_stake')
 
         # find the keypoints and descriptors with SIFT
         kp2, des2 = self.detector.detectAndCompute(img2,None)
         cam = {"img": img2, "kp":kp2, "des": des2}
 
+        p = resize(mats[0], int(mats[0].shape[1] * self.options['downsize_camera']), int(mats[0].shape[0] * self.options['downsize_camera']))
+        p, MU = self.match(upper_stake, cam, p, (255,0,0))
+        p, ML = self.match(lower_stake, cam, p, (0, 255, 0))
 
-        p = self.match(draugr, cam, None, (255,0,0))
-        p = self.match(vetalas, cam, p, (0, 255, 0))
-        p = self.match(aswang, cam, p, (0,0,255))
+        assert p is not None
 
-        p = cv2.drawKeypoints(p, kp2, None, (255,255,0))
+        if self.options['show_keypoints']: p = cv2.drawKeypoints(p, kp2, None, (255,255,0))
         
-        p = from_umat(p)
+        if MU is not None:
+            p = self.locate_source_point('upper_stake', MU, LEFT_CIRCLE, p)
+            p = self.locate_source_point('lower_stake', MU, RIGHT_CIRCLE, p)
+
+        if ML is not None:
+            p = self.locate_source_point('lower_stake', ML, HEART, p)
+            
         self.post("outline", p)
         print(time.perf_counter() - x)
 
 
 if __name__ == '__main__':
-    VampBuoy('forward', opts)()
+    Stake('forward', opts)()
