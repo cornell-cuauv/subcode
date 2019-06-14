@@ -20,7 +20,10 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.7, 0, 1),
            options.DoubleOption('downsize_camera', 0.25, 0, 1),
            options.IntOption('min_match_count', 10, 0, 255),
            options.DoubleOption('good_ratio', 0.8, 0, 1),
-           options.BoolOption('show_keypoints', False)]
+           options.BoolOption('show_keypoints', False),
+           options.IntOption('board_separation', 300, 0, 4000),
+           options.IntOption('board_horizontal_offset', 70, -1000, 1000)]
+
 
 PADDING = 50
 BLUR_KERNEL = 3
@@ -93,8 +96,6 @@ class Stake(ModuleBase):
         img1 = im1["img"]
         img2 = im2["img"]
 
-        M = None
-
         try:
             matches = self.flann.knnMatch(des1,des2,k=2)
         except cv2.error as e:
@@ -115,6 +116,9 @@ class Stake(ModuleBase):
 
             M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
             matchesMask = mask.ravel().tolist()
+            print("m" + str(M))
+            print("ma" + str(mask))
+            print("mm" + str(matchesMask))
 
             h,w = img1.shape
             pts = np.float32([ [PADDING,PADDING],[PADDING,h-1-PADDING],[w-1-PADDING,h-PADDING-1],[w-PADDING-1,PADDING] ]).reshape(-1,1,2)
@@ -126,7 +130,7 @@ class Stake(ModuleBase):
                 rarea = rarea[1][0]*rarea[1][1]
                 if area/rarea < RECTANGULARITY_THRESH: 
                     #print("box lower than rectangularity threshold")
-                    return output, None
+                    return output, None 
 
                 def e_length(pt1, pt2):
                     return ((pt1[0] - pt2[0])**2 + (pt1[1]-pt2[1])**2)**(0.5)
@@ -141,6 +145,8 @@ class Stake(ModuleBase):
                 #TODO: this runs for both boards even though only the lower board data is used for shm
 
                 output = cv2.polylines(output,[np.int32(dst)],True,color,3, cv2.LINE_AA)
+
+                return output, M
             except ZeroDivisionError:
                 print('what')
             except cv2.error as e:
@@ -149,14 +155,14 @@ class Stake(ModuleBase):
         else:
             #print ("Not enough matches are found for %s - %d/%d" % (im1["name"], len(good),MIN_MATCH_COUNT))
             matchesMask = None
-        return output, M
+        return output, None
 
     
-    def locate_source_point(self, image, mask, point, output=None):
+    def locate_source_point(self, image, mask, point, output=None, color=(0,0,255)):
         i = self.static[image]
         pt = np.float32([[[int(point[0]*i['rx'] + PADDING), int(point[1]*i['ry'] + PADDING)]]])
         pt = cv2.perspectiveTransform(pt, mask)
-        draw_circle(output, tuple(pt[0][0]), 1, (0,0,255), thickness=3)
+        draw_circle(output, tuple(pt[0][0]), 1, color, thickness=3)
         return pt
 
     def process(self, *mats):
@@ -183,6 +189,11 @@ class Stake(ModuleBase):
         assert p is not None
         #print(p.shape)
 
+        self.post_shm(p, ML, MU)
+        self.post("outline", p)
+        #print(time.perf_counter() - x)
+
+    def post_shm(self, p, ML, MU):
         shm.torpedoes_stake.vamp_head_x.set(p.shape[1]//2)
         shm.torpedoes_stake.vamp_head_y.set(p.shape[0]//2)
 
@@ -192,29 +203,33 @@ class Stake(ModuleBase):
             shm.torpedoes_stake.open_hole_visible.set(True)
             left_hole = self.locate_source_point('upper_stake', MU, LEFT_CIRCLE, p)
             right_hole = self.locate_source_point('upper_stake', MU, RIGHT_CIRCLE, p)
-            shm.torpedoes_stake.open_hole_x.set(self.normalized(right_hole[0][0][0], axis=0, mat=p))
-            shm.torpedoes_stake.open_hole_y.set(self.normalized(right_hole[0][0][1], axis=1, mat=p))
+            shm.torpedoes_stake.open_hole_x.set(right_hole[0][0][0])
+            shm.torpedoes_stake.open_hole_y.set(right_hole[0][0][1])
             shm.torpedoes_stake.upper_visible.set(True)
         else:
             shm.torpedoes_stake.open_hole_visible.set(False)
             shm.torpedoes_stake.upper_visible.set(False)
+            if ML is not None:
+                left_hole = (LEFT_CIRCLE[0] + self.options['board_horizontal_offset'], -self.options['board_separation']-self.static['upper_stake']['org'].shape[0]+LEFT_CIRCLE[1])
+                left_hole = self.locate_source_point('upper_stake', ML, left_hole, p, color=(255,0,255))
+                right_hole = (RIGHT_CIRCLE[0] + self.options['board_horizontal_offset'], -self.options['board_separation']-self.static['upper_stake']['org'].shape[0]+RIGHT_CIRCLE[1])
+                right_hole = self.locate_source_point('upper_stake', ML, right_hole, p, color=(255,0,255))
+                shm.torpedoes_stake.open_hole_x.set(left_hole[0][0][0])
+                shm.torpedoes_stake.open_hole_y.set(left_hole[0][0][1])
 
         if ML is not None:
             shm.torpedoes_stake.heart_visible.set(True)
             heart = self.locate_source_point('lower_stake', ML, HEART, p)
             #print(heart)
-            # shm.torpedoes_stake.heart_x.set(self.normalized(heart[0][0][0], axis=0, mat=p))
-            # shm.torpedoes_stake.heart_y.set(self.normalized(heart[0][0][1], axis=1, mat=p))
             shm.torpedoes_stake.heart_x.set(heart[0][0][0])
             shm.torpedoes_stake.heart_y.set(heart[0][0][1])
             shm.torpedoes_stake.lower_visible.set(True)
         else:
             shm.torpedoes_stake.heart_visible.set(False)
             shm.torpedoes_stake.lower_visible.set(False)
-
-        self.post("outline", p)
-        #print(time.perf_counter() - x)
-
+            if MU is not None:
+                heart = (HEART[0] - self.options['board_horizontal_offset'], self.options['board_separation']+ self.static['upper_stake']['org'].shape[0]+HEART[1])
+                heart = self.locate_source_point('upper_stake', MU, heart, p, color=(255,0,255))
 
 if __name__ == '__main__':
     Stake('forward', opts)()
