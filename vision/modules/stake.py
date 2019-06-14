@@ -78,7 +78,7 @@ class Stake(ModuleBase):
                 im = self.static[image]["org"]
                 return find_key_descriptors(im)
         else:
-            im = cv2.imread('stake_images/%s.png' %image,0)
+            im = cv2.imread('stake_images/%s.png'%image,0)
 
             assert im is not None
             return find_key_descriptors(im) 
@@ -119,7 +119,6 @@ class Stake(ModuleBase):
             h,w = img1.shape
             pts = np.float32([ [PADDING,PADDING],[PADDING,h-1-PADDING],[w-1-PADDING,h-PADDING-1],[w-PADDING-1,PADDING] ]).reshape(-1,1,2)
 
-
             try:
                 dst = cv2.perspectiveTransform(pts,M)
                 area = cv2.contourArea(dst)
@@ -128,6 +127,19 @@ class Stake(ModuleBase):
                 if area/rarea < RECTANGULARITY_THRESH: 
                     print("box lower than rectangularity threshold")
                     return output, None
+
+                def e_length(pt1, pt2):
+                    return ((pt1[0] - pt2[0])**2 + (pt1[1]-pt2[1])**2)**(0.5)
+
+                def norm_length_diff(dst, line1, line2):
+                    l1 = e_length(dst[line1[0]][0], dst[line1[1]][0])
+                    l2 = e_length(dst[line2[0]][0], dst[line2[1]][0])
+                    return (l2-l1)/min(l1, l2)
+
+                shm.torpedoes_stake.align_h.set(norm_length_diff(dst, (0,1), (2,3)))
+                shm.torpedoes_stake.align_v.set(norm_length_diff(dst, (0,2), (1,3)))
+                #TODO: this runs for both boards even though only the lower board data is used for shm
+
                 output = cv2.polylines(output,[np.int32(dst)],True,color,3, cv2.LINE_AA)
             except ZeroDivisionError:
                 print('what')
@@ -145,7 +157,7 @@ class Stake(ModuleBase):
         pt = np.float32([[[int(point[0]*i['rx'] + PADDING), int(point[1]*i['ry'] + PADDING)]]])
         pt = cv2.perspectiveTransform(pt, mask)
         draw_circle(output, tuple(pt[0][0]), 1, (0,0,255), thickness=3)
-        return output
+        return pt
 
     def process(self, *mats):
         print('start process')
@@ -156,8 +168,6 @@ class Stake(ModuleBase):
 
         img2 = resize(to_umat(mat), int(mat.shape[1]*DOWNSIZE_CAMERA), int(mat.shape[0]*DOWNSIZE_CAMERA)) if DOWNSIZE_CAMERA else mat # trainImage
 
-        #img2 = cv2.copyMakeBorder(img2, PADDING,PADDING,PADDING,PADDING, cv2.BORDER_REPLICATE)
-
         upper_stake = self.static_process('upper_stake')
         lower_stake = self.static_process('lower_stake')
 
@@ -166,6 +176,7 @@ class Stake(ModuleBase):
         cam = {"img": img2, "kp":kp2, "des": des2}
 
         p = resize(mats[0], int(mats[0].shape[1] * self.options['downsize_camera']), int(mats[0].shape[0] * self.options['downsize_camera']))
+
         p, MU = self.match(upper_stake, cam, p, (255,0,0))
         p, ML = self.match(lower_stake, cam, p, (0, 255, 0))
 
@@ -174,12 +185,26 @@ class Stake(ModuleBase):
         if self.options['show_keypoints']: p = cv2.drawKeypoints(p, kp2, None, (255,255,0))
         
         if MU is not None:
-            p = self.locate_source_point('upper_stake', MU, LEFT_CIRCLE, p)
-            p = self.locate_source_point('lower_stake', MU, RIGHT_CIRCLE, p)
+            shm.torpedoes_stake.open_hole_visible.set(True)
+            left_hole = self.locate_source_point('upper_stake', MU, LEFT_CIRCLE, p)
+            right_hole = self.locate_source_point('upper_stake', MU, RIGHT_CIRCLE, p)
+            shm.torpedoes_stake.open_hole_x.set(self.normalized(right_hole[0][0][0], axis=0, mat=p))
+            shm.torpedoes_stake.open_hole_y.set(self.normalized(right_hole[0][0][1], axis=1, mat=p))
+            shm.torpedoes_stake.upper_visible.set(True)
+        else:
+            shm.torpedoes_stake.open_hole_visible.set(False)
+            shm.torpedoes_stake.upper_visible.set(False)
 
         if ML is not None:
-            p = self.locate_source_point('lower_stake', ML, HEART, p)
-            
+            shm.torpedoes_stake.heart_visible.set(True)
+            heart = self.locate_source_point('lower_stake', ML, HEART, p)
+            shm.torpedoes_stake.heart_x.set(self.normalized(heart[0][0][0], axis=0, mat=p))
+            shm.torpedoes_stake.heart_y.set(self.normalized(heart[0][0][1], axis=1, mat=p))
+            shm.torpedoes_stake.lower_visible.set(True)
+        else:
+            shm.torpedoes_stake.heart_visible.set(False)
+            shm.torpedoes_stake.lower_visible.set(False)
+
         self.post("outline", p)
         print(time.perf_counter() - x)
 
