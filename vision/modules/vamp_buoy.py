@@ -13,16 +13,17 @@ from vision import options
 
 opts =    [options.DoubleOption('rectangular_thresh', 0.7, 0, 1),
            options.DoubleOption('source_x_scale_draugr', 1, 0, 1),
-           options.DoubleOption('source_y_scale_draugr', 1, 0, 1), #CHANGE BACK TO 1 IF COMPETITION BUOY IS NOT STRETCHED
+           options.DoubleOption('source_y_scale_draugr', 1, 0, 1),
            options.DoubleOption('source_x_scale_vetalas', 1, 0, 1),
            options.DoubleOption('source_y_scale_vetalas', 1, 0, 1),
            options.DoubleOption('source_x_scale_aswang', 0.69, 0, 1), #CHANGE BACK TO 1 IF COMPETITION BUOY IS NOT STRETCHED
-           options.DoubleOption('source_y_scale_aswang', 1, 0, 1), #CHANGE BACK TO 1 IF COMPETITION BUOY IS NOT STRETCHED
+           options.DoubleOption('source_y_scale_aswang', 1, 0, 1),
            options.DoubleOption('source_x_scale_jiangshi', 1, 0, 1),
            options.DoubleOption('source_y_scale_jiangshi', 1, 0, 1),
            options.DoubleOption('downsize_camera', 0.25, 0, 1),
            options.IntOption('min_match_count', 10, 0, 255),
-           options.DoubleOption('good_ratio', 0.8, 0, 1)]
+           options.DoubleOption('good_ratio', 0.8, 0, 1),
+           options.BoolOption('show_keypoints', False)]
 
 PADDING = 100
 
@@ -113,8 +114,8 @@ class VampBuoy(ModuleBase):
             try:
                 dst = cv2.perspectiveTransform(pts,M)
                 area = cv2.contourArea(dst)
-                rarea = cv2.minAreaRect(dst)
-                rarea = rarea[1][0]*rarea[1][1]
+                mar = cv2.minAreaRect(dst)
+                rarea = mar[1][0]*mar[1][1]
                 if area/rarea < RECTANGULARITY_THRESH: 
                     print("box lower than rectangularity threshold")
                     return output
@@ -150,8 +151,10 @@ class VampBuoy(ModuleBase):
         p = self.match(draugr, cam, None, (255,0,0))
         p = self.match(vetalas, cam, p, (0, 255, 0))
         p = self.match(aswang, cam, p, (0,0,255))
+        p = self.match(jiangshi, cam, p, (255,255,255))
 
-        p = cv2.drawKeypoints(p, kp2, None, (255,255,0))
+        if self.options['show_keypoints']:
+            p = cv2.drawKeypoints(p, kp2, None, (255,255,0))
         
         p = from_umat(p)
         self.post("outline", p)

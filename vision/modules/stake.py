@@ -99,7 +99,7 @@ class Stake(ModuleBase):
             matches = self.flann.knnMatch(des1,des2,k=2)
         except cv2.error as e:
             matches = []
-            print(e)
+            #print(e)
 
         if output is None: output = img2
 
@@ -125,7 +125,7 @@ class Stake(ModuleBase):
                 rarea = cv2.minAreaRect(dst)
                 rarea = rarea[1][0]*rarea[1][1]
                 if area/rarea < RECTANGULARITY_THRESH: 
-                    print("box lower than rectangularity threshold")
+                    #print("box lower than rectangularity threshold")
                     return output, None
 
                 def e_length(pt1, pt2):
@@ -147,7 +147,7 @@ class Stake(ModuleBase):
                 print(e)
 
         else:
-            print ("Not enough matches are found for %s - %d/%d" % (im1["name"], len(good),MIN_MATCH_COUNT))
+            #print ("Not enough matches are found for %s - %d/%d" % (im1["name"], len(good),MIN_MATCH_COUNT))
             matchesMask = None
         return output, M
 
@@ -160,7 +160,7 @@ class Stake(ModuleBase):
         return pt
 
     def process(self, *mats):
-        print('start process')
+        #print('start process')
         x = time.perf_counter()
         DOWNSIZE_CAMERA = self.options['downsize_camera']
 
@@ -181,6 +181,10 @@ class Stake(ModuleBase):
         p, ML = self.match(lower_stake, cam, p, (0, 255, 0))
 
         assert p is not None
+        #print(p.shape)
+
+        shm.torpedoes_stake.vamp_head_x.set(p.shape[1]//2)
+        shm.torpedoes_stake.vamp_head_y.set(p.shape[0]//2)
 
         if self.options['show_keypoints']: p = cv2.drawKeypoints(p, kp2, None, (255,255,0))
         
@@ -198,15 +202,18 @@ class Stake(ModuleBase):
         if ML is not None:
             shm.torpedoes_stake.heart_visible.set(True)
             heart = self.locate_source_point('lower_stake', ML, HEART, p)
-            shm.torpedoes_stake.heart_x.set(self.normalized(heart[0][0][0], axis=0, mat=p))
-            shm.torpedoes_stake.heart_y.set(self.normalized(heart[0][0][1], axis=1, mat=p))
+            #print(heart)
+            # shm.torpedoes_stake.heart_x.set(self.normalized(heart[0][0][0], axis=0, mat=p))
+            # shm.torpedoes_stake.heart_y.set(self.normalized(heart[0][0][1], axis=1, mat=p))
+            shm.torpedoes_stake.heart_x.set(heart[0][0][0])
+            shm.torpedoes_stake.heart_y.set(heart[0][0][1])
             shm.torpedoes_stake.lower_visible.set(True)
         else:
             shm.torpedoes_stake.heart_visible.set(False)
             shm.torpedoes_stake.lower_visible.set(False)
 
         self.post("outline", p)
-        print(time.perf_counter() - x)
+        #print(time.perf_counter() - x)
 
 
 if __name__ == '__main__':

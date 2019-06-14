@@ -8,16 +8,18 @@ from mission.framework.primitive import (
 )
 from mission.framework.combinators import (
         Sequential,
-        Concurrent
+        Concurrent,
         MasterConcurrent,
         Retry,
         Conditional,
         While
 )
-from mission.framework.targeting import ForwardTarget, ForwardAlign, PIDLoop
+from mission.framework.targeting import ForwardTarget, PIDLoop
 from mission.framework.task import Task
 
-CAM_CENTER = (0,0)
+import shm
+
+CAM_CENTER = (shm.torpedoes_stake.vamp_head_x.get, shm.torpedoes_stake.vamp_head_y.get)
 
 #At the moment, 90% of the mission is fudged and untested. Proceed with caution.
 
@@ -25,27 +27,21 @@ CAM_CENTER = (0,0)
 # def vamp():
 #     return (shm.torpedoes_stake.vamp_head_x.get, shm.torpedoes_stake.vamp_head_y.get)
 
-@property
 def heart():
     return (shm.torpedoes_stake.heart_x.get, shm.torpedoes_stake.heart_y.get)
 
-@property
 def hole():
     return (shm.torpedoes_stake.open_hole_x.get, shm.torpedoes_stake.open_hole_y.get)
 
-@property
 def align_h():
     return shm.torpedoes_stake.align_h.get
 
-@property
 def align_v():
     return shm.torpedoes_stake.align_v.get
 
-@property
 def upper_visible(): 
     return shm.torpedoes_stake.upper_visible.get
 
-@property
 def lower_visible():
     return shm.torpedoes_stake.lower_visible.get
 
@@ -80,8 +76,8 @@ AlignNormal = lambda dbt=0.01875, pt=0.0005, pp=0.01875, dbp=0.0005: Sequential(
         CenterHeart(), #TODO: what to center on?
         Log('Aligning to normal of torpedo board'),
         MasterConcurrent(FunctionTask(lambda db=0.05: abs(align_h)<db and abs(align_v)<db), #TODO: make it fail if not visible
-            lambda : HeadingTarget(heart, target=CAM_CENTER, px=p, py=p, deadband=(db,db)),
-            PIDVelocity(align_h, p=pp, db=dbp)
+            lambda : HeadingTarget(heart(), target=CAM_CENTER, px=p, py=p, deadband=(db,db)),
+            PIDVelocity(align_h, p=pp, db=dbp)),
         Zero()
 )
 # CenterAlign = lambda: Sequential(
@@ -97,11 +93,12 @@ BackupRealign = lambda:Sequential(
         Zero(),
         AlignNormal()
 )
-CenterHeart= lambda db=0.01875, p=0.0005: Sequential(
+CenterHeart= While(lambda db=0, p=0.003, d=0.0005: Sequential(
         Log('Centering on heart'),
-        ForwardTarget(heart, target=CAM_CENTER, px=p, py=p, deadband=(db,db)), #TODO: CHECK P VALUES
-        Zero()
-)
+        ForwardTarget(heart(), target=CAM_CENTER, px=p, py=p, dx=d, dy=d, deadband=(db,db)), #TODO: CHECK P VALUES
+        Zero(),
+        Log('Done')
+), True)
 TargetTorpedos = lambda: Sequential(
         Log('Aligning shot'),
         Log('Firing')
@@ -110,10 +107,13 @@ MoveLever = lambda: Sequential( #TODO: DO WE USE MANIPULATORS? CAN WE USE MANIPU
         Log('Aligning with lever'),
         Log('Moving lever')
 )
-CenterHole = lambda db=0.01875, p=0.005: Sequential(
+CenterHole = lambda db=0.01875, p=0.0005: Sequential(
         Log('Centering on Hole'),
         ForwardTarget(board, target=CAM_CENTER, px=p, py=p, deadband=(db,db)) #TODO: CHECK P VALUES
 )
+
+OnlyCenter = lambda p = 0.0005, db=10: While(lambda: ForwardTarget(heart(), target=CAM_CENTER, px=p, py=p, deadband=(db,db)), True)
+ 
 
 Full = \
 lambda: Retry(
@@ -129,7 +129,7 @@ lambda: Retry(
         MoveLever(),
         BackupRealign(),
         CenterHole(),
-        TargetTorpedos()
+        TargetTorpedos(),
         Log('Stake complete')
     )
 , attempts=5) #TODO: What do we do with the retry?
