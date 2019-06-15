@@ -20,7 +20,7 @@ from conf import vehicle
 
 MODEL_DIR = os.path.join(os.environ['CUAUV_SOFTWARE'], 'control', 'bollard',
                          '2015-06-03')
-NEAR_SURFACE_THRESHOLD = 0.5 # Meters depth
+NEAR_SURFACE_THRESHOLD = 0.1 # Meters depth
 
 # Keys of this dictionary should match names given to thrusters below
 # Values should be a tuple of filenames for the forward and reverse models
@@ -362,8 +362,8 @@ class GenericThruster(object):
         """
             Returns the maximum positive and negative thrusts given the current sub position
         """
-        return self.max_thrust, self.max_neg_thrust if shm.kalman.depth.get() > NEAR_SURFACE_THRESHOLD \
-                else self.max_thrust_near_surface, self.max_neg_thrust_near_surface
+        return (self.max_thrust, self.max_neg_thrust) if shm.kalman.depth.get() > NEAR_SURFACE_THRESHOLD \
+                else (self.max_thrust_near_surface, self.max_neg_thrust_near_surface)
 
 class VideoRay(GenericThruster):
     max_pwm = 255
