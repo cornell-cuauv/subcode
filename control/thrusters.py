@@ -21,6 +21,10 @@ from conf import vehicle
 MODEL_DIR = os.path.join(os.environ['CUAUV_SOFTWARE'], 'control', 'bollard',
                          '2015-06-03')
 NEAR_SURFACE_THRESHOLD = 0.1 # Meters depth
+DEPTH_THRUSTER_NAMES = ['fore_port', 'fore_starboard', 'aft_port', 'aft_starboard']
+SURGE_THRUSTER_NAMES = ['port', 'starboard']
+SWAY_THRUSTER_NAMES = ['sway_aft', 'sway_fore']
+THRUSTER_NAMES = DEPTH_THRUSTER_NAMES + SURGE_THRUSTER_NAMES + SWAY_THRUSTER_NAMES
 
 # Keys of this dictionary should match names given to thrusters below
 # Values should be a tuple of filenames for the forward and reverse models
@@ -162,6 +166,7 @@ class GenericThruster(object):
         assert type(self) != GenericThruster
         assert -90.0 <= pitch <= 90
         assert 0 <= drag <= 1.0
+        assert name in THRUSTER_NAMES
 
         self.reversed_polarity = reversed_polarity
         self.broken = broken
@@ -195,9 +200,13 @@ class GenericThruster(object):
         self.min_pos_pwm = min_pos_pwm
         self.min_neg_pwm = min_neg_pwm
 
-        self.max_thrust = self.pwm_to_thrust(self.max_pwm)
+        if self.name in DEPTH_THRUSTER_NAMES:
+            self.max_thrust = self.pwm_to_thrust(self.max_pwm * 3 / 4)
+            self.max_neg_thrust = self.pwm_to_thrust(-self.max_pwm * 3 / 4)
+        else:
+            self.max_thrust = self.pwm_to_thrust(self.max_pwm)
+            self.max_neg_thrust = self.pwm_to_thrust(-self.max_pwm)
         self.max_thrust_near_surface = self.pwm_to_thrust(self.max_pwm / 2)
-        self.max_neg_thrust = self.pwm_to_thrust(-self.max_pwm)
         self.max_neg_thrust_near_surface = self.pwm_to_thrust(-self.max_pwm / 2)
 
         self.min_thrust = self.pwm_to_thrust(self.min_pos_pwm)
@@ -347,23 +356,25 @@ class GenericThruster(object):
 
         return [float(line.split()[1]) for line in lines[2:]]
 
-    def set_models(self):
-        if self.name in thruster_models:
-            tags = thruster_models[self.name]
-            self.curve_forward, self.curve_reverse = \
-       [self.parse_model("%s/%s.polynomial" % (MODEL_DIR, tag)) for tag in tags]
+    #def set_models(self):
+    #    if self.name in thruster_models:
+    #        tags = thruster_models[self.name]
+    #        self.curve_forward, self.curve_reverse = \
+    #   [self.parse_model("%s/%s.polynomial" % (MODEL_DIR, tag)) for tag in tags]
 
-            self.curve_reverse = [-x for x in self.curve_reverse]
+    #        self.curve_reverse = [-x for x in self.curve_reverse]
 
-        else:
-            log("No model for %s thruster, defaulting to VideoRay!" % self.name)
+    #    else:
+    #        log("No model for %s thruster, defaulting to VideoRay!" % self.name)
 
     def current_max_thrusts(self):
         """
             Returns the maximum positive and negative thrusts given the current sub position
         """
-        return (self.max_thrust, self.max_neg_thrust) if shm.kalman.depth.get() > NEAR_SURFACE_THRESHOLD \
-                else (self.max_thrust_near_surface, self.max_neg_thrust_near_surface)
+        if shm.kalman.depth.get() > NEAR_SURFACE_THRESHOLD:
+            return self.max_thrust, self.max_neg_thrust
+        else:
+            return self.max_thrust_near_surface, self.max_neg_thrust_near_surface
 
 class VideoRay(GenericThruster):
     max_pwm = 255
