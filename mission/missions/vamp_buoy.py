@@ -70,7 +70,7 @@ Point = lambda px=0.1, py=0.003, p=0.01, d=0.0005, db=0: Concurrent(
 AlignNormal = lambda px=0.1, py=0.003, p=0.03, d=0.0005, db=0: Concurrent(
             HeadingTarget(buoy_center(), target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
             PIDVelocity(align_h, p=p, d=d, db=db),
-            While(lambda: Log("align_h: %d"%align_h()), True))
+            While(lambda: Log("align_h: %d"%align_h()), True)) #TODO: Make VelY help with centering buoy
 # CenterAlign = lambda: Sequential(
 #         Center(),
 #         AlignNormal()
@@ -85,8 +85,8 @@ BackupRealign = lambda:Sequential(
         AlignNormal()
 )
 
-SIZE_THRESH = 3700 
-CenterBuoy= lambda px=0.002, py=0.003, d=0.0005, db=0: Concurrent(
+SIZE_THRESH = 8000
+CenterBuoy= lambda px=0.004, py=0.003, d=0.005, db=0: Concurrent(
         ForwardTarget(buoy_center(), target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)), #TODO: CHECK P VALUES
         While(lambda: Log("center: %d, %d, target: %d, %d"%(CAM_CENTER[0](), CAM_CENTER[1](), buoy_center()[0](), buoy_center()[1]())), True)
 )

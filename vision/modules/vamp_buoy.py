@@ -46,6 +46,7 @@ class VampBuoy(ModuleBase):
         #self.flann = cv2.BFMatcher(normType=cv2.NORM_HAMMING2, crossCheck=False)
         #self.flann = cv2.BFMatcher()
         self.static = {}
+        self.visible = {}
 
     def static_process(self, image):
 
@@ -85,6 +86,7 @@ class VampBuoy(ModuleBase):
         des2 = im2["des"]
         img1 = im1["img"]
         img2 = im2["img"]
+        self.visible[im1['name']] = False
 
         try:
             matches = self.flann.knnMatch(des1,des2,k=2)
@@ -116,10 +118,13 @@ class VampBuoy(ModuleBase):
                 area = cv2.contourArea(dst)
                 mar = cv2.minAreaRect(dst)
                 rarea = mar[1][0]*mar[1][1]
+                mom = cv2.moments(dst)
                 if area/rarea < RECTANGULARITY_THRESH: 
                     print("box lower than rectangularity threshold")
                     return output
                 output = cv2.polylines(output,[np.int32(dst)],True,color,3, cv2.LINE_AA)
+                self.visible[im1['name']] = ((mom["m10"]/mom["m00"], mom["m01"]/mom["m00"]), area)
+                self.post_shm_align(im1['name'], dst)
             except ZeroDivisionError:
                 print('what')
             except cv2.error as e:
@@ -155,10 +160,35 @@ class VampBuoy(ModuleBase):
 
         if self.options['show_keypoints']:
             p = cv2.drawKeypoints(p, kp2, None, (255,255,0))
-        
+
         p = from_umat(p)
+
+        self.post_shm()
+        shm.vamp_buoy_results.camera_x.set(p.shape[1]//2)
+        shm.vamp_buoy_results.camera_y.set(p.shape[0]//2)
+
         self.post("outline", p)
         print(time.perf_counter() - x)
+
+    def post_shm_align(self, image, dst):
+        def e_length(pt1, pt2):
+            return ((pt1[0] - pt2[0])**2 + (pt1[1]-pt2[1])**2)**(0.5)
+
+        def norm_length_diff(dst, line1, line2):
+            l1 = e_length(dst[line1[0]][0], dst[line1[1]][0])
+            l2 = e_length(dst[line2[0]][0], dst[line2[1]][0])
+            return (l2-l1)
+
+        getattr(shm.vamp_buoy_results, "%s_align_h"%image).set(int(norm_length_diff(dst, (0,1), (2,3))))
+        getattr(shm.vamp_buoy_results, "%s_align_v"%image).set(int(norm_length_diff(dst, (0,2), (1,3))))
+
+    def post_shm(self):
+        for k, v in self.visible.items():
+            getattr(shm.vamp_buoy_results, "%s_visible"%k).set(bool(v))
+            if v:
+                getattr(shm.vamp_buoy_results, "%s_center_x"%k).set(int(v[0][0]))
+                getattr(shm.vamp_buoy_results, "%s_center_y"%k).set(int(v[0][1]))
+                getattr(shm.vamp_buoy_results, "%s_size"%k).set(v[1])
 
 
 if __name__ == '__main__':
