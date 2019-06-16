@@ -19,35 +19,67 @@ from mission.framework.task import Task
 from mission.framework.movement import VelocityY, VelocityX
 
 from mission.missions.will_common import Consistent
+from mission.missions.poly import Polygon
 
 import shm
 
 CAM_CENTER = (shm.vamp_buoy_results.camera_x.get, shm.vamp_buoy_results.camera_y.get)
 
-buoys = ("vetalas", "draugr", "aswang", "jiangshi")
+TRIANGLE = ("vetalas", "draugr", "aswang")
 
-b = "draugr"
+single = "jiangshi"
 
-def buoy_center():
-    return (getattr(shm.vamp_buoy_results, "%s_center_x"%b).get, getattr(shm.vamp_buoy_results, "%s_center_y"%b).get)
-    # for b in buoys:
-    #     if getattr(shm.vamp_buoy_results, "%s_visible"%b).get:
-    #         return (getattr(shm.vamp_buoy_results, "%s_center_x"%b).get, getattr(shm.vamp_buoy_results, "%s_center_x"%b).get)
+CALL = "draugr"
 
-def buoy_size():
-    return getattr(shm.vamp_buoy_results, "%s_size"%b).get()
+SIZE_THRESH = 8000
+
+def call_buoy_center():
+    return (getattr(shm.vamp_buoy_results, "%s_center_x"%CALL).get, getattr(shm.vamp_buoy_results, "%s_center_y"%CALL).get)
+
+def any_buoy_center():
+    for b in TRIANGLE:
+        if getattr(shm.vamp_buoy_results, "%s_visible"%CALL).get:
+            return (getattr(shm.vamp_buoy_results, "%s_center_x"%CALL).get, getattr(shm.vamp_buoy_results, "%s_center_x"%CALL).get)
+
+def which_buoy_visible():
+    for b in TRIANGLE:
+        if getattr(shm.vamp_buoy_results, "%s_visible"%CALL).get:
+            return b
+
+def call_buoy_size():
+    return getattr(shm.vamp_buoy_results, "%s_size"%CALL).get()
+
+def any_buoy_size():
+    return getattr(shm.vamp_buoy_results, "%s_size"%CALL).get()
 
 def align_h():
-    return getattr(shm.vamp_buoy_results, "%s_align_h"%b).get()    
+    return getattr(shm.vamp_buoy_results, "%s_align_h"%CALL).get()    
+
+def triangle_visible():
+    for t in TRIANGLE:
+        if getattr(shm.vamp_buoy_results, "%s_visilbe").get():
+            return True
+    return False
+    
 
 
 
-Search = lambda: Sequential(
-        Log('Searching for torpedo board'),
+SearchTriangle = lambda: Sequential(
+        Log('Searching for triangular buoy'),
         SearchFor(
-            StillHeadingSearch(),
-            visible,
-            consistent_frames=(1*60, 1.5*60) #TODO: Check consistent frames
+            SwaySearch(2.0, 0.1),
+            triangle_visible,
+            consistent_frames=(1.5*60, 2.0*60) #TODO: Check consistent frames
+            ),
+        Zero()
+)
+
+SearchSpecific = lambda: Sequential(
+        Log('Searching for triangular buoy'),
+        SearchFor(
+            Polygon(),
+            triangle_visible,
+            consistent_frames=(1.5*60, 2.0*60) #TODO: Check consistent frames
             ),
         Zero()
 )
@@ -64,52 +96,60 @@ class PIDVelocity(Task):
     
 
 Point = lambda px=0.1, py=0.003, p=0.01, d=0.0005, db=0: Concurrent(
-            HeadingTarget(buoy_center(), target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
-            While(lambda: Log("center: %d, %d, target: %d, %d"%(CAM_CENTER[0](), CAM_CENTER[1](), buoy_center()[0](), buoy_center()[1]())), True))
+            HeadingTarget(any_buoy_center(), target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
+            While(lambda: Log("center: %d, %d, target: %d, %d"%(CAM_CENTER[0](), CAM_CENTER[1](), any_buoy_center()[0](), any_buoy_center()[1]())), True))
 
-AlignNormal = lambda px=0.1, py=0.003, p=0.03, d=0.0005, db=0: Concurrent(
-            HeadingTarget(buoy_center(), target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
+AlignAnyNormal = lambda px=0.1, py=0.003, p=0.03, d=0.0005, db=0: Concurrent(
+            HeadingTarget(any_buoy_center(), target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
             PIDVelocity(align_h, p=p, d=d, db=db),
             While(lambda: Log("align_h: %d"%align_h()), True)) #TODO: Make VelY help with centering buoy
-# CenterAlign = lambda: Sequential(
-#         Center(),
-#         AlignNormal()
-# )
-BackupRealign = lambda:Sequential(
-        Log('Backing up to realign with board'),
-        MasterConcurrent(Timeout(FunctionTask(lambda: shm.torpedoes_stake.visible), 90), 
-            #TODO: Timeout? What's a good time? What happens if it fails?
-            RelativeToCurrentVelocityZ(2) #TODO: Is it X or Y or Z? What's a good velocity?
-            ),
-        Zero(),
-        AlignNormal()
+
+CenterAnyBuoy= lambda px=0.004, py=0.003, d=0.005, db=0: Concurrent(
+        ForwardTarget(any_buoy_center(), target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)), #TODO: CHECK P VALUES
+        While(lambda: Log("center: %d, %d, target: %d, %d"%(CAM_CENTER[0](), CAM_CENTER[1](), any_buoy_center()[0](), any_buoy_center()[1]())), True)
 )
 
-SIZE_THRESH = 8000
-CenterBuoy= lambda px=0.004, py=0.003, d=0.005, db=0: Concurrent(
-        ForwardTarget(buoy_center(), target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)), #TODO: CHECK P VALUES
-        While(lambda: Log("center: %d, %d, target: %d, %d"%(CAM_CENTER[0](), CAM_CENTER[1](), buoy_center()[0](), buoy_center()[1]())), True)
+CenterCalledBuoy= lambda px=0.004, py=0.003, d=0.005, db=0: Concurrent(
+        ForwardTarget(call_buoy_center(), target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)), #TODO: CHECK P VALUES
+        While(lambda: Log("center: %d, %d, target: %d, %d"%(CAM_CENTER[0](), CAM_CENTER[1](), any_buoy_center()[0](), any_buoy_center()[1]())), True)
 )
-Approach = Sequential(
+
+AlignCalledNormal = lambda px=0.1, py=0.003, p=0.03, d=0.0005, db=0: Concurrent(
+            HeadingTarget(call_buoy_center(), target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
+            PIDVelocity(align_h, p=p, d=d, db=db),
+            While(lambda: Log("align_h: %d"%align_h()), True)) #TODO: Make VelY help with centering buoy
+
+ApproachCalled = Sequential(
             VelocityX(.2),
-            MasterConcurrent(Retry(lambda: Consistent(lambda: buoy_size() > SIZE_THRESH, 0.05, 0.1, False, True), attempts=20), #ADD EITHER LOSE SIGHT OF BUOY
-                CenterBuoy(),
-                While(lambda: Log("size: %d"%buoy_size()),True)),
+            MasterConcurrent(Retry(lambda: Consistent(lambda: call_buoy_size() > SIZE_THRESH, 0.05, 0.1, False, True), attempts=20), #ADD EITHER LOSE SIGHT OF BUOY
+                CenterCalledBuoy(),
+                While(lambda: Log("size: %d"%any_buoy_size()),True)),
             Zero())
 
-TargetTorpedos = lambda: Sequential(
-        Log('Aligning shot'),
-        Log('Firing')
-)
-MoveLever = lambda: Sequential( #TODO: DO WE USE MANIPULATORS? CAN WE USE MANIPULATORS?
-        Log('Aligning with lever'),
-        Log('Moving lever')
-)
-CenterHole = lambda db=0.01875, p=0.0005: Sequential(
-        Log('Centering on Hole'),
-        ForwardTarget(board, target=CAM_CENTER, px=p, py=p, deadband=(db,db)) #TODO: CHECK P VALUES
-)
+Ram = Sequential(Concurrent(AlignCalledNormal(), MoveX(1)), Zero())
 
-OnlyCenter = lambda p = 0.0005, db=10: While(lambda: ForwardTarget(heart(), target=CAM_CENTER, px=p, py=p, deadband=(db,db)), True)
+ApproachAny = Sequential(
+            VelocityX(.2),
+            MasterConcurrent(Retry(lambda: Consistent(lambda: any_buoy_size() > SIZE_THRESH, 0.05, 0.1, False, True), attempts=20), #ADD EITHER LOSE SIGHT OF BUOY
+                CenterAnyBuoy(),
+                While(lambda: Log("size: %d"%any_buoy_size()),True)),
+            Zero())
+
+SearchAndApproach = Sequential(SearchSpecific(), ApproachCalled())
+
+
  
+ Full = Sequential(
+            Log('Searching for buoy'),
+            SearchTriangle(),
+            Log('Found buoy, aligning'),
+            AlignAnyNormal(),
+            Log('Approaching buoy'),
+            ApproachAny(),
+            Log('Searching for face'),
+            Conditional(FunctionTask(lambda: which_buoy_visible == b), on_fail=SearchAndApproach()),
+            Log('Face found, ramming'),
+            Ram()
+            Log('Vamp_Buoy Complete')
+         )
 
