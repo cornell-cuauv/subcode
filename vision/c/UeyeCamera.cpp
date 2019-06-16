@@ -282,10 +282,10 @@ std::experimental::optional<std::pair<cv::Mat, long>> UeyeCamera::acquire_next_i
   pimpl->last_buffer_loc = buffer;
   pimpl->result.data = (unsigned char*) buffer;
 
-  if (pimpl->params->camera_id == 2) {
-    cv::remap(pimpl->result, *this->out, pimpl->undistort_matrix->map1, pimpl->undistort_matrix->map2, cv::INTER_LINEAR);
-    pimpl->result = this->out->getMat(cv::ACCESS_RW);
-  }
+  //if (pimpl->params->camera_id == 2) {
+  //  cv::remap(pimpl->result, *this->out, pimpl->undistort_matrix->map1, pimpl->undistort_matrix->map2, cv::INTER_LINEAR);
+  //  pimpl->result = this->out->getMat(cv::ACCESS_RW);
+  //}
 
 
   if (pimpl->params->rotate180) {
