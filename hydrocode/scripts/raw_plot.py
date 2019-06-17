@@ -9,7 +9,7 @@ from scipy.misc import imread
 
 RAW_PLOT_LENGTH = 64 #length of the raw plot (in samples)
 HIGHEST_QUANTIZATION_LVL = RAW_PLOT_LENGTH #maximum signal amplitude (plot is square because the penguin meme is a square image)
-UDP_ADDRESS = "" #local host because we receive plots from hydromathd on the same machine
+UDP_ADDRESS = "127.0.0.1" #local host because we receive plots from hydromathd on the same machine
 UDP_PAYLOAD_SIZE = 512 #size of the UDP plot packets (in bytes)
 UDP_PORT = 9001 #hydromathd sends raw plots to this port
 

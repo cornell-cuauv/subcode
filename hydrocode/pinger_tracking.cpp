@@ -14,13 +14,13 @@
 #include "libshm/c/vars.h"
 //#include "shm_mac.hpp"
 #include "pinger_tracking.hpp"
-#include "audible_ping.hpp"
+//#include "audible_ping.hpp"
 #include "common_dsp.hpp"
 #include "udp_sender.hpp"
 #include "liquid.h"
 #include "structs.hpp"
 
-extern FILE *audible_file;
+//extern FILE *audible_file;
 
 const int trigger_plot_length = 2 * dft_length; //length of the trigger plot (in samples)
 const int dft_plot_length = (int)(pinger_period * pinger_period_factor * sampling_rate / packet_length - gain_propagation_packets); //length of the dft plot (in samples)
@@ -133,11 +133,21 @@ void computeHeading(triple_sample ping_phase, float frequency, float &heading, f
     
     float cos_elevation;
     float path_diff_1, path_diff_2;
+    bool is_mainsub;
+    
+    is_mainsub = strcmp(std::getenv("CUAUV_VEHICLE_TYPE"), "mainsub") == 0;
     
     path_diff_1 = ping_phase.ch1 * sound_speed / (2 * M_PI * frequency);
     path_diff_2 = ping_phase.ch2 * sound_speed / (2 * M_PI * frequency);
     
-    heading = atan2(path_diff_1, -path_diff_2);
+    if(is_mainsub)
+    {
+        heading = atan2(path_diff_1, -path_diff_2);
+    }
+    else
+    {
+        heading = atan2(path_diff_1, -path_diff_2);
+    }
     
     cos_elevation = sqrt((path_diff_1 * path_diff_1 + path_diff_2 * path_diff_2)) / nipple_distance;
     if(cos_elevation > 1) //this can happen if the measured path differences are larger than they can theoretically be for a certain frequency
@@ -221,14 +231,14 @@ void pinger_tracking_dsp(uint16_t *fpga_packet)
             //pushing each triple_sample into the raw triple_sample buffer
             new_raw_sample.ch0 = fpga_packet[4 * packet_sample_no + 0];
             new_raw_sample.ch1 = fpga_packet[4 * packet_sample_no + 1];
-            new_raw_sample.ch2 = fpga_packet[4 * packet_sample_no + 3];
+            new_raw_sample.ch2 = fpga_packet[4 * packet_sample_no + 2];
             raw_buffer.push(new_raw_sample);
             
             triple_sample new_normalized_sample;
             new_normalized_sample.ch0 = new_raw_sample.ch0 - (highest_quantization_lvl / 2);
             new_normalized_sample.ch1 = new_raw_sample.ch1 - (highest_quantization_lvl / 2);
             new_normalized_sample.ch2 = new_raw_sample.ch2 - (highest_quantization_lvl / 2);
-            printAudible(new_normalized_sample);
+            //printAudible(new_normalized_sample);
             
             //everytime we get a record high triple_sample in the interval, we check for clipping (if autogain is on), and we rewrite the raw plot to capture the signal around this value
             if(new_raw_sample.max() > raw_peak)
