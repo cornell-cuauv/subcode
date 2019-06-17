@@ -17,9 +17,11 @@ from mission.framework.combinators import (
 from mission.framework.targeting import ForwardTarget, PIDLoop, HeadingTarget
 from mission.framework.task import Task
 from mission.framework.movement import VelocityY, VelocityX
+from mission.framework.position import MoveX
 
 from mission.missions.will_common import Consistent
-from mission.missions.poly import Polygon
+from mission.missions.poly import polygon
+from mission.framework.search import SearchFor, SwaySearch, VelocitySwaySearch, MoveXRough
 
 import shm
 
@@ -57,7 +59,7 @@ def align_h():
 
 def triangle_visible():
     for t in TRIANGLE:
-        if getattr(shm.vamp_buoy_results, "%s_visilbe").get():
+        if getattr(shm.vamp_buoy_results, "%s_visible"%t).get():
             return True
     return False
     
@@ -67,7 +69,7 @@ def triangle_visible():
 SearchTriangle = lambda: Sequential(
         Log('Searching for triangular buoy'),
         SearchFor(
-            SwaySearch(2.0, 0.1),
+            SwaySearch(2.0, 4.0),
             triangle_visible,
             consistent_frames=(1.5*60, 2.0*60) #TODO: Check consistent frames
             ),
@@ -77,7 +79,7 @@ SearchTriangle = lambda: Sequential(
 SearchSpecific = lambda: Sequential(
         Log('Searching for triangular buoy'),
         SearchFor(
-            Polygon(),
+            polygon,
             triangle_visible,
             consistent_frames=(1.5*60, 2.0*60) #TODO: Check consistent frames
             ),
@@ -135,21 +137,39 @@ ApproachAny = Sequential(
                 While(lambda: Log("size: %d"%any_buoy_size()),True)),
             Zero())
 
-SearchAndApproach = Sequential(SearchSpecific(), ApproachCalled())
+SearchAndApproach = Sequential(SearchSpecific, ApproachCalled)
 
 
  
- Full = Sequential(
-            Log('Searching for buoy'),
-            SearchTriangle(),
-            Log('Found buoy, aligning'),
-            AlignAnyNormal(),
-            Log('Approaching buoy'),
-            ApproachAny(),
-            Log('Searching for face'),
-            Conditional(FunctionTask(lambda: which_buoy_visible == b), on_fail=SearchAndApproach()),
-            Log('Face found, ramming'),
-            Ram()
-            Log('Vamp_Buoy Complete')
-         )
+Full = Sequential(
+        Log('Searching for buoy'),
+        SearchTriangle(),
+        Log('Found buoy, aligning'),
+        AlignAnyNormal(),
+        Log('Approaching buoy'),
+        ApproachAny(),
+        Log('Searching for face'),
+        Conditional(FunctionTask(lambda: which_buoy_visible == b), on_fail=SearchAndApproach),
+        Log('Face found, ramming'),
+        Ram,
+        Log('Vamp_Buoy Complete')
+     )
 
+SearchSingle = lambda: Sequential(
+        Log('Searching for triangular buoy'),
+        SearchFor(
+            VelocitySwaySearch(0.2, 1),
+            shm.vamp_buoy_results.jiangshi_visible,
+            consistent_frames=(1.5*60, 2.0*60) #TODO: Check consistent frames
+            ),
+        Zero()
+)
+
+SingleOnly = Sequential(
+                SearchSingle,
+                AlignCalledNormal,
+                ApproachCalled,
+                Ram
+            )
+
+Move = MoveX(3)
