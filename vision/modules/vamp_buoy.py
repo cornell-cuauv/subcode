@@ -75,6 +75,7 @@ class VampBuoy(ModuleBase):
                 return find_key_descriptors(im)
         else:
             im = simple_gaussian_blur(cv2.imread('buoy_images/%s.png' %image,0), 11, 3)
+            im = resize(im, im.shape[1]//2, im.shape[0]//2)
             return find_key_descriptors(im) 
 
     def match(self, im1, im2, output, color):
