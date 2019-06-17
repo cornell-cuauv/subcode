@@ -205,6 +205,11 @@ case $COMMAND in
             sleep 3
             trogdor hidden_start $SERVICE
           ;;
+          cameras)
+            trogdor stop $SERVICE
+            sleep 5
+            trogdor hidden_start $SERVICE
+          ;;
           *)
             trogdor stop $SERVICE
             trogdor hidden_start $SERVICE
