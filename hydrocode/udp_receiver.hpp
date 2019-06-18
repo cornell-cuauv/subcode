@@ -11,8 +11,8 @@
 
 #include <cstdint>
 
-const int udp_receive_port = 8899; //FPGA sends packets to this port
-const int udp_receive_payload_size = 1024; //size of FPGA packet (in bytes). 1024 bytes/packet = 4 channels * 128 samples/packet/channel * 2 bytes/sample
+static const int udp_receive_port = 8899; //FPGA sends packets to this port
+static const int udp_receive_payload_size = 1024; //size of FPGA packet (in bytes). 1024 bytes/packet = 4 channels * 128 samples/packet/channel * 2 bytes/sample
 
 void udpReceiverInit();
 bool udpReceive(uint16_t *fpga_packet);

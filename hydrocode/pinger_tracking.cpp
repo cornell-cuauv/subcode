@@ -22,29 +22,28 @@
 
 //extern FILE *audible_file;
 
-const int trigger_plot_length = 2 * dft_length; //length of the trigger plot (in samples)
-const int dft_plot_length = (int)(pinger_period * pinger_period_factor * sampling_rate / packet_length - gain_propagation_packets); //length of the dft plot (in samples)
-
-float dft_peak;
-buffer dft_results_buffer(dft_length + 1);
-buffer dft_plot_amplitudes(dft_plot_length);
-buffer dft_plot_ratios(dft_plot_length);
-buffer dft_plot_trigger_point(1);
-float dft_ratio_plot_peak;
-float dft_ratio_good_peak;
-int gain_lvl = default_gain_lvl;
-struct hydrophones_settings shm_settings;
-struct hydrophones_results_track shm_results_track;
-triple_phasor last_dft_result[freq_list_length];
-float noise_sum;
-int packet_no = 0;
-triple_sample ping_phase;
-int good_freq_no = 0;
-buffer_triple raw_buffer(raw_buffer_length);
-float raw_peak;
-buffer_triple raw_plot(raw_plot_length);
-int trigger_packet_no;
-buffer_triple trigger_plot(trigger_plot_length);
+static const int trigger_plot_length = 2 * dft_length; //length of the trigger plot (in samples)
+static const int dft_plot_length = (int)(pinger_period * pinger_period_factor * sampling_rate / packet_length - gain_propagation_packets); //length of the dft plot (in samples)
+static float dft_peak;
+static buffer dft_results_buffer(dft_length + 1);
+static buffer dft_plot_amplitudes(dft_plot_length);
+static buffer dft_plot_ratios(dft_plot_length);
+static buffer dft_plot_trigger_point(1);
+static float dft_ratio_plot_peak;
+static float dft_ratio_good_peak;
+static int gain_lvl = default_gain_lvl;
+static int good_freq_no = 0;
+static triple_phasor last_dft_result[freq_list_length];
+static float noise_sum;
+static int packet_no = 0;
+static triple_sample ping_phase;
+static buffer_triple raw_buffer(raw_buffer_length);
+static float raw_peak;
+static buffer_triple raw_plot(raw_plot_length);
+static struct hydrophones_settings shm_settings;
+static struct hydrophones_results_track shm_results_track;
+static int trigger_packet_no;
+static buffer_triple trigger_plot(trigger_plot_length);
 
 void slidingDFTBin(triple_phasor &X, const buffer_triple &signal_buffer, int buffer_length, int dft_length, float target_frequency, float sampling_rate)
 {
@@ -59,18 +58,6 @@ void slidingDFTBin(triple_phasor &X, const buffer_triple &signal_buffer, int buf
     term_to_remove = signal_buffer.read(buffer_length - 1 - dft_length);
     
     X = (X + new_term - term_to_remove) * std::exp(std::complex<float>(0, 1) * w0_n);
-}
-
-void setGain(int gain_lvl)
-{
-    //Prepares and sends gain settings to the FPGA.
-    
-    char gain_packet[2]; //changing the gain requires sending the setting in a string format to the FPGA
-    
-    gain_packet[0] = (gain_lvl + 1) / 10 + '0';
-    gain_packet[1] = (gain_lvl + 1) % 10 + '0';
-    
-    sendGain(gain_packet);
 }
 
 void scalePlot(buffer &plot, int plot_length, float scaling_factor)
@@ -92,24 +79,6 @@ void savePlot(const buffer_triple &data_buffer, int data_buffer_length, buffer_t
         copy_buffer.push(data_buffer.read(data_point_no + data_buffer_length - copy_length) * scaling_factor);
         //function also scales a plot while saving, to avoid running through the values twice. we need a separate scaling function because dft plot buffers are continuously pushed to, not captured via this function
     }
-}
-
-bool increaseGain(float raw_peak, int &gain_lvl)
-{
-    //Tries to increase gain, taking into account the signal strength on the current interval ("raw_peak") and the current gain level ("gain_lvl"). Returns 1 if gain has been increased
-    
-    //because the possible gain levels are a few random numbers like x6, x24, etc., it is easy to try all of them in decreasing order
-    for(int try_gain_lvl = 13; try_gain_lvl > gain_lvl; try_gain_lvl--)
-    {
-        //if signal would not have clipped on a higher gain, then gain can be incresed. DC bias needs to be accounted for because it does not change with gain. it is very roughly "highest_quantization_lvl / 2" at all times because we are working with single rail supplies.
-        if((raw_peak - highest_quantization_lvl / 2) / gainz[gain_lvl] * gainz[try_gain_lvl] <= (clipping_threshold - clipping_threshold_hysteresis - 0.5) * highest_quantization_lvl)
-        {
-            gain_lvl = try_gain_lvl;
-            return 1;
-        }
-    }
-    
-    return 0;
 }
 
 void normalizePhase(float &phase, float reference)
@@ -162,9 +131,14 @@ void computeHeading(triple_sample ping_phase, float frequency, float &heading, f
     }
 }
 
-void pinger_tracking_dsp(uint16_t *fpga_packet)
+void pinger_tracking_dsp(uint16_t *fpga_packet, bool reset_signal)
 {
     //Main function, executes every packet and controls the pinger tracking program flow.
+    
+    if(reset_signal == 1)
+    {
+        packet_no = 0;
+    }
     
     //preparing for a new interval. every interval is guaranteed to contain at least one ping
     if(packet_no == 0)
@@ -266,7 +240,7 @@ void pinger_tracking_dsp(uint16_t *fpga_packet)
                     }
                 }
                 
-                savePlot(raw_buffer, raw_buffer_length, raw_plot, raw_buffer_length, raw_plot_length / highest_quantization_lvl);
+                savePlot(raw_buffer, raw_buffer_length, raw_plot, raw_plot_length, raw_plot_length / highest_quantization_lvl);
             }
             
             //updating the DFT results buffer

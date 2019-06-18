@@ -9,27 +9,55 @@
 #include <cstdio>
 #include <cstdint>
 
-//#include "libshm/c/vars.h"
-#include "shm_mac.hpp"
+#include "libshm/c/vars.h"
+//#include "shm_mac.hpp"
 #include "comms.hpp"
 #include "common_dsp.hpp"
 #include "udp_sender.hpp"
 #include "liquid.h"
 #include "structs.hpp"
 
-void comms_dsp(uint16_t *fpga_packet)
+static int gain_lvl = default_gain_lvl;
+static struct hydrophones_settings shm_settings;
+static int packet_no = 0;
+static buffer raw_comms_buffer(raw_comms_buffer_length);
+static buffer raw_comms_plot(raw_comms_plot_length);
+static float raw_peak;
+static bool transmission_lock;
+
+void savePlotSingle(const buffer &data_buffer, int data_buffer_length, buffer &copy_buffer, int copy_length, float scaling_factor)
 {
+    for(int data_point_no = 0; data_point_no < copy_length; data_point_no++)
+    {
+        copy_buffer.push(data_buffer.read(data_point_no + data_buffer_length - copy_length) * scaling_factor);
+    }
+}
+
+void comms_dsp(uint16_t *fpga_packet, bool reset_signal)
+{
+    if(reset_signal == 1)
+    {
+        packet_no = 0;
+    }
+    
     if(packet_no == 0)
     {
         printf("%s \n", "new interval. mode: comms");
+        
+        shm_getg(hydrophones_settings, shm_settings);
+        
+        setGain(gain_lvl);
+        printf("%s%d \n", "gain: x", gainz[gain_lvl]);
     }
     
     if(packet_no >= gain_propagation_packets)
     {
         for(int packet_sample_no = 0; packet_sample_no < packet_length; packet_sample_no++)
         {
+            float new_raw_sample;
+            
             new_raw_sample = fpga_packet[4 * packet_sample_no + 3];
-            raw_buffer.push(new_raw_sample);
+            raw_comms_buffer.push(new_raw_sample);
             
             if(new_raw_sample > raw_peak)
             {
@@ -56,8 +84,35 @@ void comms_dsp(uint16_t *fpga_packet)
                     }
                 }
                 
-                savePlot(raw_buffer, raw_buffer_length, raw_plot, raw_buffer_length, raw_plot_length / highest_quantization_lvl);
+                savePlotSingle(raw_comms_buffer, raw_comms_buffer_length, raw_comms_plot, raw_comms_plot_length, raw_comms_plot_length / highest_quantization_lvl);
             }
         }
+    }
+    
+    packet_no++;
+    
+    if(packet_no >= (int)(comms_period * comms_period_factor * sampling_rate / packet_length) && transmission_lock == 0)
+    {
+        if(shm_settings.auto_gain == 1)
+        {
+            if(increaseGain(raw_peak, gain_lvl) == 1)
+            {
+                printf("%s \n", "gain increased");
+            }
+        }
+        else
+        {
+            gain_lvl = shm_settings.target_gain;
+        }
+        
+        sendPlot(raw_comms_plot.get(), 3, raw_comms_plot_length);
+        
+    end_interval:
+        
+        packet_no = 0;
+        
+        printf("%s %4.2f%s \n", "signal peak was:", raw_peak / highest_quantization_lvl * 100, "% of highest quantization level");
+        
+        printf("\n");
     }
 }

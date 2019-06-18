@@ -15,7 +15,7 @@
 //#include "shm_mac.hpp"
 #include "common_dsp.hpp"
 #include "pinger_tracking.hpp"
-//#include "comms.hpp"
+#include "comms.hpp"
 #include "udp_receiver.hpp"
 #include "udp_sender.hpp"
 
@@ -23,6 +23,7 @@
 
 int main()
 {
+    int current_mode = 0;
 	struct hydrophones_settings shm_settings;
 
     //initializing modules for receiving/sending network data and handling shm
@@ -44,11 +45,13 @@ int main()
         //calling pinger tracking code if in tracking mode or communications receive code if in comms mode
         if(shm_settings.enabled == 1)
         {
-            pinger_tracking_dsp(fpga_packet);
+            pinger_tracking_dsp(fpga_packet, current_mode != 1);
+            current_mode = 1;
         }
         else
         {
-            //comms_dsp(fpga_packet);
+            comms_dsp(fpga_packet, current_mode != 2);
+            current_mode = 2;
         }
         
         //fflush(audible_file);

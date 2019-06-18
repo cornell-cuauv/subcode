@@ -11,6 +11,11 @@
 
 #include <cstdint>
 
-void comms_dsp(uint16_t *fpga_packet);
+static const float comms_period = 2;
+static const float comms_period_factor = 1.2;
+static const int raw_comms_buffer_length = 512;
+static const int raw_comms_plot_length = 64;
+
+void comms_dsp(uint16_t *fpga_packet, bool reset_signal);
 
 #endif /* comms_hpp */

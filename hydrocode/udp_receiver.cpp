@@ -15,9 +15,9 @@
 
 #include "udp_receiver.hpp"
 
-bool bound = 0;
-int receive_socket;
-struct sockaddr_in receive_serv_addr;
+static bool bound = 0;
+static int receive_socket;
+static struct sockaddr_in receive_serv_addr;
 
 void udpReceiverInit()
 {

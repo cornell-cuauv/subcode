@@ -17,10 +17,10 @@
 #include "liquid.h"
 #include "structs.hpp"
 
-int gain_socket;
-struct sockaddr_in gain_serv_addr;
-int plot_sockets[3];
-struct sockaddr_in plot_serv_addresses[3];
+static int gain_socket;
+static struct sockaddr_in gain_serv_addr;
+static int plot_sockets[4];
+static struct sockaddr_in plot_serv_addresses[4];
 
 void udpSenderInit()
 {
@@ -69,6 +69,20 @@ void udpSenderInit()
     else
     {
         printf("%s \n", "created dft plot socket successfully");
+    }
+    
+    plot_sockets[3] = socket(AF_INET, SOCK_DGRAM, 0);
+    plot_serv_addresses[3].sin_family = AF_INET;
+    plot_serv_addresses[3].sin_port = htons(udp_raw_comms_plot_port);
+    plot_serv_addresses[3].sin_addr.s_addr = inet_addr(UDP_RAW_COMMS_PLOT_ADDRESS);
+    
+    if(plot_sockets[3] == -1)
+    {
+        printf("%s \n", "failed to create raw comms plot socket!");
+    }
+    else
+    {
+        printf("%s \n", "created raw comms plot socket successfully");
     }
     
     //gain settings
