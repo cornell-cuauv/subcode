@@ -42,6 +42,9 @@ void comms_dsp(uint16_t *fpga_packet, bool reset_signal)
     
     if(packet_no == 0)
     {
+        raw_peak = 0;
+        transmission_lock = 0;
+
         printf("%s \n", "new interval. mode: comms");
         
         shm_getg(hydrophones_settings, shm_settings);

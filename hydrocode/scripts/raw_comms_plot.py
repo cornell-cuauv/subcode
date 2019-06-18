@@ -21,7 +21,7 @@ sock.bind((UDP_ADDRESS, UDP_PORT))
 fig = plt.figure(figsize = (7, 7))
 
 #setting the plot labels
-plt.title("Raw Comms Data Ending in Highest Sample From Last Comms Interval")
+plt.title("Raw Comms Data Ending in Highest Sample From Last Interval")
 plt.xlabel("Sample Number")
 plt.ylabel("Amplitude")
 
