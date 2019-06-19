@@ -89,7 +89,7 @@ void comms_dsp(uint16_t *fpga_packet, bool reset_signal)
         }
         else
         {
-            gain_lvl = shm_settings.target_gain;
+            gain_lvl = shm_settings.manual_gain_value;
         }
         
         setGain(gain_lvl);

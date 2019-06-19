@@ -5,7 +5,10 @@
 import socket, struct, numpy, math
 import matplotlib.pyplot as plt
 from scipy import interpolate
-from scipy.misc import imread
+try:
+    from cv2 import imread
+except ImportError:
+    from scipy.misc import imread
 
 RAW_COMMS_PLOT_LENGTH = 64 #length of the raw comms plot (in samples)
 HIGHEST_QUANTIZATION_LVL = RAW_COMMS_PLOT_LENGTH #maximum signal amplitude (plot is square because the penguin meme is a square image)

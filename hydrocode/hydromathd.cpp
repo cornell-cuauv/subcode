@@ -25,6 +25,7 @@ int main()
 {
     int current_mode = 0;
 	struct hydrophones_settings shm_settings;
+	struct hydrophones_status shm_status;
 
     //initializing modules for receiving/sending network data and handling shm
     udpReceiverInit();
@@ -33,6 +34,8 @@ int main()
     
     //audible_file = fopen("audible_file.txt", "w");
     
+    shm_status.packet_count = 0; 
+
     while(1) //program superloop
     {
         uint16_t fpga_packet[4 * packet_length];
@@ -53,6 +56,9 @@ int main()
             comms_dsp(fpga_packet, current_mode != 0);
             current_mode = 0;
         }
+
+        shm_status.packet_count++;
+        shm_setg(hydrophones_status, shm_status);
         
         //fflush(audible_file);
     }

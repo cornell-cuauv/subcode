@@ -5,7 +5,11 @@
 import socket, struct, numpy, math
 import matplotlib.pyplot as plt
 from scipy import interpolate
-from scipy.misc import imread
+import os.path
+try:
+    from cv2 import imread
+except ImportError:
+    from scipy.misc import imread
 
 RAW_PLOT_LENGTH = 64 #length of the raw plot (in samples)
 HIGHEST_QUANTIZATION_LVL = RAW_PLOT_LENGTH #maximum signal amplitude (plot is square because the penguin meme is a square image)
@@ -26,7 +30,8 @@ plt.xlabel("Sample Number")
 plt.ylabel("Amplitudes ch0-Red ch1-Green ch2-Blue")
 
 #displaying the penguin meme background
-img = imread("katy.jpg")
+img = imread(os.path.join(os.path.dirname(os.path.realpath(__file__)), "katy.jpg"))
+#print(img.dtype, img.shape)
 plt.imshow(img, extent = [-RAW_PLOT_LENGTH + 1, 0, 0, HIGHEST_QUANTIZATION_LVL - 1])
 
 #creating the axes and setting the maximum values. removing axis ticks

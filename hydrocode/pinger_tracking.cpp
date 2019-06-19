@@ -170,7 +170,7 @@ void pinger_tracking_dsp(uint16_t *fpga_packet, bool reset_signal)
         //checking whether the shm frequency target setting is correct (present in the hardcoded frequency list)
         for(int freq_no = 0; freq_no < freq_list_length; freq_no++)
         {
-            if(shm_settings.track_frequency_target == freqs[freq_no])
+            if(shm_settings.track_frequency == freqs[freq_no])
             {
                 good_freq_no = freq_no;
                 freq_ok = 1;
@@ -325,7 +325,7 @@ void pinger_tracking_dsp(uint16_t *fpga_packet, bool reset_signal)
         }
         else
         {
-            gain_lvl = shm_settings.target_gain; //ensuring the gain in sync with shm if autogain is off
+            gain_lvl = shm_settings.manual_gain_value; //ensuring the gain in sync with shm if autogain is off
         }
         
         //scaling the plots and adding the trigger packet number to the dft plot. it could not be done on the go because we didn't know the peak values for the interval
@@ -349,7 +349,7 @@ void pinger_tracking_dsp(uint16_t *fpga_packet, bool reset_signal)
         //computing the heading and elevation based on the phase saved from the trigger packet
         normalizePhase(ping_phase.ch1, ping_phase.ch0);
         normalizePhase(ping_phase.ch2, ping_phase.ch0);
-        computeHeading(ping_phase, shm_settings.track_frequency_target, heading, elevation, elevation_correct);
+        computeHeading(ping_phase, shm_settings.track_frequency, heading, elevation, elevation_correct);
         
         //updating the shm results
         shm_results_track.tracked_ping_heading_radians = heading;

@@ -4,7 +4,10 @@
 
 import socket, struct, numpy, math, sys
 import matplotlib.pyplot as plt
-from scipy.misc import imread
+try:
+    from cv2 import imread
+except ImportError:
+    from scipy.misc import imread
 
 DFT_PLOT_LENGTH = 3500 #length of the dft plot (in samples)
 MAXIMUM_AMPLITUDE = DFT_PLOT_LENGTH #maximum signal amplitude (plot is square because the penguin meme is a square image)
