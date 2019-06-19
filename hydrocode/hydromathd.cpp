@@ -43,15 +43,15 @@ int main()
         udpReceive(fpga_packet);
         
         //calling pinger tracking code if in tracking mode or communications receive code if in comms mode
-        if(shm_settings.enabled == 1)
+        if(shm_settings.choose_one_for_tracking_choose_zero_for_communications == 1)
         {
             pinger_tracking_dsp(fpga_packet, current_mode != 1);
             current_mode = 1;
         }
         else
         {
-            comms_dsp(fpga_packet, current_mode != 2);
-            current_mode = 2;
+            comms_dsp(fpga_packet, current_mode != 0);
+            current_mode = 0;
         }
         
         //fflush(audible_file);

@@ -52,7 +52,7 @@ void comms_dsp(uint16_t *fpga_packet, bool reset_signal)
     {
         float new_raw_sample;
             
-        new_raw_sample = fpga_packet[4 * packet_sample_no + 2];
+        new_raw_sample = fpga_packet[4 * packet_sample_no + 3];
         raw_comms_buffer.push(new_raw_sample);
             
         if(new_raw_sample > raw_peak)
@@ -76,12 +76,15 @@ void comms_dsp(uint16_t *fpga_packet, bool reset_signal)
                 if(gain_lvl > 0)
                 {
                     gain_lvl--;
-                    printf("%s %d \n", "clipping, new gain: x", gainz[gain_lvl]);
+                    printf("%s%d \n", "clipping, new gain: x", gainz[gain_lvl]);
                 }
             }
             else
             {
-                increaseGain(raw_peak, gain_lvl);
+                if(increaseGain(raw_peak, gain_lvl) == 1)
+                {
+                    printf("%s%d \n", "gain increased, new gain: x", gainz[gain_lvl]);
+                }
             }
         }
         else

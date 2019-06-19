@@ -11,7 +11,7 @@
 
 #include <cstdint>
 
-static const float comms_agc_interval = 0.1;
+static const float comms_agc_interval = 0.2;
 static const float print_interval = 2;
 static const int raw_comms_buffer_length = 512;
 static const float raw_comms_plot_interval = 2;

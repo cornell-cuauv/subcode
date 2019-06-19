@@ -354,7 +354,7 @@ void pinger_tracking_dsp(uint16_t *fpga_packet, bool reset_signal)
         //updating the shm results
         shm_results_track.tracked_ping_heading_radians = heading;
         shm_results_track.tracked_ping_elevation_radians = elevation;
-        //shm_results_track.tracked_ping_elevation_correct = elevation_correct;
+        shm_results_track.tracked_ping_elevation_correct = elevation_correct;
         shm_setg(hydrophones_results_track, shm_results_track);
         //shm_setg(shm_results_track);
         

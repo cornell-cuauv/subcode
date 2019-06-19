@@ -17,7 +17,7 @@ bool increaseGain(float raw_peak, int &gain_lvl)
     for(int try_gain_lvl = 13; try_gain_lvl > gain_lvl; try_gain_lvl--)
     {
         //if signal would not have clipped on a higher gain, then gain can be incresed. DC bias needs to be accounted for because it does not change with gain. it is very roughly "highest_quantization_lvl / 2" at all times because we are working with single rail supplies.
-        if((raw_peak - highest_quantization_lvl / 2) / gainz[gain_lvl] * gainz[try_gain_lvl] <= (clipping_threshold - clipping_threshold_hysteresis - 0.5) * highest_quantization_lvl)
+        if((raw_peak - highest_quantization_lvl / 2) / gainz[gain_lvl] * gainz[try_gain_lvl] <= (clipping_threshold - clipping_threshold_hysteresis) * highest_quantization_lvl / 2)
         {
             gain_lvl = try_gain_lvl;
             return 1;
