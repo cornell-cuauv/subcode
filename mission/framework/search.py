@@ -13,7 +13,7 @@ from mission.framework.movement import (
     RelativeToInitialHeading, VelocityX,
     RelativeToCurrentHeading, VelocityY
 )
-from mission.framework.position import MoveXRough, MoveYRough, GoToPosition
+from mission.framework.position import MoveX, MoveY, GoToPosition
 from mission.framework.task import Task
 from mission.framework.timing import Timer, Timed
 from mission.framework.primitive import Zero
@@ -182,15 +182,15 @@ class SwaySearch(Task):
         self.stride = stride
         self.roll_extension = roll_extension
 
-        self.repeat = Sequential(self.maybe_add_roll(MoveYRough(self.width / 2), 1),
-                                 self.maybe_add_roll(MoveYRough(-self.width), -1),
-                                 self.maybe_add_roll(MoveXRough(self.stride), -1))
+        self.repeat = Sequential(self.maybe_add_roll(MoveY(self.width / 2, deadband=0.2), 1),
+                                 self.maybe_add_roll(MoveY(-self.width, deadband=0.2), -1),
+                                 self.maybe_add_roll(MoveX(self.stride, deadband=0.2), -1))
 
     def make_repeat(self):
-        self.repeat = Sequential(self.maybe_add_roll(MoveYRough(self.width), 1),
-                                 self.maybe_add_roll(MoveXRough(self.stride), 1),
-                                 self.maybe_add_roll(MoveYRough(-self.width), -1),
-                                 self.maybe_add_roll(MoveXRough(self.stride), -1))
+        self.repeat = Sequential(self.maybe_add_roll(MoveY(self.width), 1),
+                                 self.maybe_add_roll(MoveX(self.stride), 1),
+                                 self.maybe_add_roll(MoveY(-self.width), -1),
+                                 self.maybe_add_roll(MoveX(self.stride), -1))
 
     def on_run(self, *args):
         self.repeat()
