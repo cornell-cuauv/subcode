@@ -22,8 +22,9 @@ static struct hydrophones_settings shm_settings;
 static int packet_no = 0;
 static buffer raw_comms_buffer(raw_comms_buffer_length);
 static buffer raw_comms_plot(raw_comms_plot_length);
+static int last_gain_set_packet, last_raw_comms_plot_packet;
+static float raw_comms_plot_peak;
 static float raw_peak;
-static bool transmission_lock;
 
 void savePlotSingle(const buffer &data_buffer, int data_buffer_length, buffer &copy_buffer, int copy_length, float scaling_factor)
 {
@@ -35,72 +36,50 @@ void savePlotSingle(const buffer &data_buffer, int data_buffer_length, buffer &c
 
 void comms_dsp(uint16_t *fpga_packet, bool reset_signal)
 {
-    if(reset_signal == 1)
+    shm_getg(hydrophones_settings, shm_settings);
+    
+    if(reset_signal == 1 || packet_no = 0)
     {
         packet_no = 0;
-    }
-    
-    if(packet_no == 0)
-    {
+        last_gain_set_packet = 0;
+        last_raw_comms_plot_packet = 0;
+        raw_comms_plot_peak = 0;
         raw_peak = 0;
-        transmission_lock = 0;
-
-        printf("%s \n", "new interval. mode: comms");
-        
-        shm_getg(hydrophones_settings, shm_settings);
-        
-        setGain(gain_lvl);
-        printf("%s%d \n", "gain: x", gainz[gain_lvl]);
     }
     
-    if(packet_no >= gain_propagation_packets)
+    for(int packet_sample_no = 0; packet_sample_no < packet_length; packet_sample_no++)
     {
-        for(int packet_sample_no = 0; packet_sample_no < packet_length; packet_sample_no++)
+        float new_raw_sample;
+            
+        new_raw_sample = fpga_packet[4 * packet_sample_no + 3];
+        raw_comms_buffer.push(new_raw_sample);
+            
+        if(new_raw_sample > raw_peak)
         {
-            float new_raw_sample;
+            raw_peak = new_raw_sample;
             
-            new_raw_sample = fpga_packet[4 * packet_sample_no + 3];
-            raw_comms_buffer.push(new_raw_sample);
-            
-            if(new_raw_sample > raw_peak)
+            if(new_raw_sample > raw_comms_plot_peak)
             {
-                raw_peak = new_raw_sample;
-                
-                if(shm_settings.auto_gain == 1)
-                {
-                    if(raw_peak > clipping_threshold * highest_quantization_lvl)
-                    {
-                        printf("%s \n","clipping detected");
-                        
-                        if(gain_lvl > 0)
-                        {
-                            gain_lvl--;
-                            
-                            printf("%s \n", "gain decreased");
-                            
-                            goto end_interval;
-                        }
-                        else
-                        {
-                            printf("%s \n", "gain cannot be decreased further!");
-                        }
-                    }
-                }
-                
+                raw_comms_plot_peak = new_raw_sample;
                 savePlotSingle(raw_comms_buffer, raw_comms_buffer_length, raw_comms_plot, raw_comms_plot_length, raw_comms_plot_length / highest_quantization_lvl);
             }
         }
     }
     
-    packet_no++;
-    
-    if(packet_no >= (int)(comms_period * comms_period_factor * sampling_rate / packet_length) && transmission_lock == 0)
+    if(packet_no - last_gain_set_packet >= (int)(comms_agc_interval * sampling_rate / packet_length))
     {
         if(shm_settings.auto_gain == 1)
         {
-            if(increaseGain(raw_peak, gain_lvl) == 1)
+            if(raw_peak > clipping_threshold * highest_quantization_lvl)
             {
-                printf("%s \n", "gain increased");
+                if(gain_lvl > 0)
+                {
+                    gain_lvl--;
+                }
+            }
+            else
+            {
+                increaseGain(raw_peak, gain_lvl);
             }
         }
         else
@@ -108,14 +87,17 @@ void comms_dsp(uint16_t *fpga_packet, bool reset_signal)
             gain_lvl = shm_settings.target_gain;
         }
         
+        setGain(gain_lvl);
+        raw_peak = 0;
+        last_gain_set_packet = packet_no;
+    }
+    
+    if(packet_no - last_raw_comms_plot_packet >= (int)(raw_comms_plot_interval * sampling_rate / packet_length))
+    {
         sendPlot(raw_comms_plot.get(), 3, raw_comms_plot_length);
         
-    end_interval:
-        
-        packet_no = 0;
-        
-        printf("%s %4.2f%s \n", "signal peak was:", raw_peak / highest_quantization_lvl * 100, "% of highest quantization level");
-        
-        printf("\n");
+        raw_comms_plot_peak = 0;
     }
+    
+    packet_no++;
 }
