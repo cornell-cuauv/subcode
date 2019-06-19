@@ -146,6 +146,8 @@ def get_velocity(sub_quat):
         # vel[1] *= -1
         # Swap x and y axes
         vel[0], vel[1] = vel[1], -vel[0]
+        # Invert z axis, so that we measure depth rate instead of altitude rate
+        vel[2] = -vel[2]
 
         vel = convert_dvl_velocities(sub_quat, vel)
 
