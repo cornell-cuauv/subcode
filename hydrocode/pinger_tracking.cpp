@@ -159,7 +159,7 @@ void pinger_tracking_dsp(uint16_t *fpga_packet, bool reset_signal)
             last_dft_result[freq_no] = triple_phasor();
         }
 
-        printf("%s \n", "new interval. mode: tracking");
+        printf("\n%s \n", "new interval. mode: tracking");
         
         shm_getg(hydrophones_settings, shm_settings);
         
@@ -364,7 +364,5 @@ void pinger_tracking_dsp(uint16_t *fpga_packet, bool reset_signal)
         packet_no = 0;
         
         printf("%s %4.2f%s \n", "signal peak was:", raw_peak / highest_quantization_lvl * 100, "% of highest quantization level");
-        
-        printf("\n");
     }
 }

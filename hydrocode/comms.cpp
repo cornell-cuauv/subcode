@@ -22,7 +22,7 @@ static struct hydrophones_settings shm_settings;
 static int packet_no = 0;
 static buffer raw_comms_buffer(raw_comms_buffer_length);
 static buffer raw_comms_plot(raw_comms_plot_length);
-static int last_gain_set_packet, last_raw_comms_plot_packet;
+static int last_gain_set_packet, last_print_packet, last_raw_comms_plot_packet;
 static float raw_comms_plot_peak;
 static float raw_peak;
 
@@ -38,10 +38,11 @@ void comms_dsp(uint16_t *fpga_packet, bool reset_signal)
 {
     shm_getg(hydrophones_settings, shm_settings);
     
-    if(reset_signal == 1 || packet_no = 0)
+    if(reset_signal == 1 || packet_no == 0)
     {
         packet_no = 0;
         last_gain_set_packet = 0;
+        last_print_packet = 0;
         last_raw_comms_plot_packet = 0;
         raw_comms_plot_peak = 0;
         raw_peak = 0;
@@ -51,18 +52,18 @@ void comms_dsp(uint16_t *fpga_packet, bool reset_signal)
     {
         float new_raw_sample;
             
-        new_raw_sample = fpga_packet[4 * packet_sample_no + 3];
+        new_raw_sample = fpga_packet[4 * packet_sample_no + 2];
         raw_comms_buffer.push(new_raw_sample);
             
         if(new_raw_sample > raw_peak)
         {
             raw_peak = new_raw_sample;
+        }
             
-            if(new_raw_sample > raw_comms_plot_peak)
-            {
-                raw_comms_plot_peak = new_raw_sample;
-                savePlotSingle(raw_comms_buffer, raw_comms_buffer_length, raw_comms_plot, raw_comms_plot_length, raw_comms_plot_length / highest_quantization_lvl);
-            }
+        if(new_raw_sample > raw_comms_plot_peak)
+        {
+            raw_comms_plot_peak = new_raw_sample;
+            savePlotSingle(raw_comms_buffer, raw_comms_buffer_length, raw_comms_plot, raw_comms_plot_length, raw_comms_plot_length / highest_quantization_lvl);
         }
     }
     
@@ -75,6 +76,7 @@ void comms_dsp(uint16_t *fpga_packet, bool reset_signal)
                 if(gain_lvl > 0)
                 {
                     gain_lvl--;
+                    printf("%s %d \n", "clipping, new gain: x", gainz[gain_lvl]);
                 }
             }
             else
@@ -97,6 +99,15 @@ void comms_dsp(uint16_t *fpga_packet, bool reset_signal)
         sendPlot(raw_comms_plot.get(), 3, raw_comms_plot_length);
         
         raw_comms_plot_peak = 0;
+        last_raw_comms_plot_packet = packet_no;
+    }
+
+    if(packet_no - last_print_packet >= (int)(print_interval * sampling_rate / packet_length))
+    {
+        printf("\n%s \n", "mode: comms");
+        printf("%s%d \n", "gain: x", gainz[gain_lvl]);
+
+        last_print_packet = packet_no;
     }
     
     packet_no++;
