@@ -45,6 +45,9 @@ def any_buoy_center():
     b = which_buoy_visible()
     return (getattr(shm.vamp_buoy_results, "%s_center_x"%b).get(), getattr(shm.vamp_buoy_results, "%s_center_y"%b).get())
 
+def single_buoy_center():
+    return (getattr(shm.vamp_buoy_results, "%s_center_x"%single).get(), getattr(shm.vamp_buoy_results, "%s_center_y"%single).get())
+
 def which_buoy_visible():
     for b in TRIANGLE:
         if getattr(shm.vamp_buoy_results, "%s_visible"%b).get():
@@ -53,8 +56,14 @@ def which_buoy_visible():
 def call_buoy_visible():
     return which_buoy_visible() == CALL
 
+def single_buoy_visible():
+    return getattr(shm.vamp_buoy_results, "%s_visible"%single).get() 
+
 def call_buoy_size():
     return getattr(shm.vamp_buoy_results, "%s_size"%CALL).get()
+
+def single_buoy_size():
+    return getattr(shm.vamp_buoy_results, "%s_size"%single).get()
 
 def any_buoy_size():
     b = which_buoy_visible()
@@ -63,11 +72,12 @@ def any_buoy_size():
 def align_call_h():
     return getattr(shm.vamp_buoy_results, "%s_align_h"%CALL).get()    
 
+def align_single_h():
+    return getattr(shm.vamp_buoy_results, "%s_align_h"%single).get()    
+
 def align_any_h():
     b = which_buoy_visible()
     return getattr(shm.vamp_buoy_results, "%s_align_h"%b).get()    
-
-
 
 def triangle_visible():
     for t in TRIANGLE:
@@ -75,7 +85,6 @@ def triangle_visible():
             return True
     return False
     
-
 
 
 SearchTriangle = lambda: Sequential(
@@ -89,6 +98,7 @@ SearchTriangle = lambda: Sequential(
         Zero()
 )
 
+
 SearchCalled= lambda: Sequential(
         Log('Searching for triangular buoy'),
         SearchFor(
@@ -98,6 +108,7 @@ SearchCalled= lambda: Sequential(
             ),
         Zero()
 )
+
 
 class PIDSway(Task):
     def on_first_run(self, *args, **kwargs):
@@ -109,61 +120,111 @@ class PIDSway(Task):
     def stop(self):
         VelocityY(0)()
 
+
 Point = lambda px=0.3, py=0.0003, d=0.0005, db=0: Concurrent(
             HeadingTarget(point=any_buoy_center, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
-            AlwaysLog(lambda: "center: %d, %d, target: %d, %d"%(CAM_CENTER[0], CAM_CENTER[1], any_buoy_center()[0], any_buoy_center()[1])))
+            AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, any_buoy_center())))
+
 
 close_to = lambda point1, point2, db=10: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
 aligned = lambda align, db=2: abs(align) < db
 
-AlignAnyNormal = lambda px=0.15, py=0.0003, p=0.02, d=0.0005, db=0: MasterConcurrent(
-            Consistent(lambda: close_to(any_buoy_center(), CAM_CENTER) and aligned(align_any_h()), count=0.3, total=0.5, invert=False, result=True),
-            HeadingTarget(point=any_buoy_center, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
-            PIDSway(align_any_h, p=p, d=d, db=db),
-            AlwaysLog(lambda: "align_h: %d"%(align_any_h(),))) #TODO: Make VelY help with centering buoy
+Align = lambda centerf, alignf, px=0.15, py=0.0003, p=0.02, d=0.0005, db=0: MasterConcurrent(
+            Consistent(lambda: close_to(centerf(), CAM_CENTER) and aligned(align_any_h()), count=0.3, total=0.5, invert=False, result=True),
+            HeadingTarget(point=centerf, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
+            PIDSway(alignf, p=p, d=d, db=db),
+            AlwaysLog(lambda: "align_h: %d"%(alignf(),))) 
 
-CenterAnyBuoy = lambda px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
-            Consistent(lambda: close_to(any_buoy_center(), CAM_CENTER), 0.05, 0.1, False, True),
-            ForwardTarget(point=any_buoy_center, target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)), 
-            AlwaysLog(lambda: "center: %d, %d, target: %d, %d"%(CAM_CENTER[0], CAM_CENTER[1], any_buoy_center()[0], any_buoy_center()[1])))
+AlignAnyNormal = lambda: Align(cetnerf=any_buoy_center, alignf=align_any_h)
+AlignCalledNormal = lambda: Align(centerf=call_buoy_center, alignf=align_call_h)
+AlignSingleNormal = lambda: Align(centerf=single_buoy_center, alignf=align_single_h)
 
-
-CenterCalledBuoy = lambda px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
-            Consistent(lambda: close_to(call_buoy_center(), CAM_CENTER), 0.05, 0.1, False, True),
-            ForwardTarget(point=call_buoy_center, target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)),
-            AlwaysLog(lambda: "center: %d, %d, target: %d, %d"%(CAM_CENTER[0], CAM_CENTER[1], any_buoy_center()[0], any_buoy_center()[1])))
-
+# AlignAnyNormal = lambda px=0.15, py=0.0003, p=0.02, d=0.0005, db=0: MasterConcurrent(
+#             Consistent(lambda: close_to(any_buoy_center(), CAM_CENTER) and aligned(align_any_h()), count=0.3, total=0.5, invert=False, result=True),
+#             HeadingTarget(point=any_buoy_center, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
+#             PIDSway(align_any_h, p=p, d=d, db=db),
+#             AlwaysLog(lambda: "align_h: %d"%(align_any_h(),))) #TODO: Make VelY help with centering buoy
 
 
-AlignCalledNormal = lambda px=0.15, py=0.0303, p=0.02, d=0.0005, db=0: MasterConcurrent(
-            Consistent(lambda: close_to(call_buoy_center(), CAM_CENTER) and aligned(align_call_h()), 0.05, 0.1, False, True),
-            HeadingTarget(point=call_buoy_center, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
-            PIDSway(align_call_h, p=p, d=d, db=db),
-            AlwaysLog(lambda: "align_h: %d"%align_call_h())) #TODO: Make VelY help with centering buoy
+# AlignCalledNormal = lambda px=0.15, py=0.0303, p=0.02, d=0.0005, db=0: MasterConcurrent(
+#             Consistent(lambda: close_to(call_buoy_center(), CAM_CENTER) and aligned(align_any_h()), count=0.3, total=0.5, invert=False, result=True),
+#             HeadingTarget(point=call_buoy_center, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
+#             PIDSway(align_call_h, p=p, d=d, db=db),
+#             AlwaysLog(lambda: "align_h: {}".format(align_call_h()))) #TODO: Make VelY help with centering buoy
 
-ApproachCalled = lambda: Sequential(
-            VelocityX(.2, db=10),
-            MasterConcurrent(Consistent(lambda: call_buoy_size() > SIZE_THRESH, 0.05, 0.1, False, True), #ADD EITHER LOSE SIGHT OF BUOY
+
+# AlignSingleNormal = lambda px=0.15, py=0.0303, p=0.02, d=0.0005, db=0: MasterConcurrent(
+#             Consistent(lambda: close_to(single_buoy_center(), CAM_CENTER) and aligned(align_any_h()), count=0.3, total=0.5, invert=False, result=True),
+#             HeadingTarget(point=single_buoy_center, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
+#             PIDSway(align_single_h, p=p, d=d, db=db),
+#             AlwaysLog(lambda: "align_h: {}".format(align_single_h()))) #TODO: Make VelY help with centering buoy
+
+CenterBuoy = lambda centerf, px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
+            Consistent(lambda: close_to(centerf(), CAM_CENTER), count=0.3, total=0.5, invert=False, result=True),
+            ForwardTarget(point=centerf, target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)), 
+            AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, centerf())))
+
+CenterAnyBuoy = lambda: CenterBuoy(centerf=any_buoy_center)
+CenterCalledBuoy = lambda: CenterBuoy(centerf=call_buoy_center)
+CenterSingleBuoy = lambda: CenterBuoy(centerf=single_buoy_center)
+
+# CenterAnyBuoy = lambda px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
+#             Consistent(lambda: close_to(any_buoy_center(), CAM_CENTER), count=0.3, total=0.5, invert=False, result=True),
+#             ForwardTarget(point=any_buoy_center, target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)), 
+#             AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, any_buoy_center())))
+
+# CenterCalledBuoy = lambda px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
+#             Consistent(lambda: close_to(call_buoy_center(), CAM_CENTER), count=0.3, total=0.5, invert=False, result=True),
+#             ForwardTarget(point=call_buoy_center, target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)),
+#             AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, call_buoy_center())))
+
+# CenterSingleBuoy = lambda px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
+#             Consistent(lambda: close_to(single_buoy_center(), CAM_CENTER), count=0.3, total=0.5, invert=False, result=True),
+#             ForwardTarget(point=single_buoy_center, target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)),
+#             AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, single_buoy_center())))
+
+Approach = lambda sizef: Sequential(
+            MasterConcurrent(Consistent(lambda: sizef() > SIZE_THRESH, 0.05, 0.1, False, True), #ADD EITHER LOSE SIGHT OF BUOY
+                VelocityX(.2, db=10),
                 CenterCalledBuoy(),
-                AlwaysLog(lambda: "size: %d"%any_buoy_size())),
+                AlwaysLog(lambda: "size: {}".format(sizef()))),
             Zero())
 
+ApproachCalled = lambda: Approach(call_buoy_size)
+ApproachAny = lambda: Approach(any_buoy_size)
+ApproachSingle = lambda: Approach(single_buoy_size)
+
+# ApproachCalled = lambda: Sequential(
+#             MasterConcurrent(Consistent(lambda: call_buoy_size() > SIZE_THRESH, 0.05, 0.1, False, True), #ADD EITHER LOSE SIGHT OF BUOY
+#                 VelocityX(.2, db=10),
+#                 CenterCalledBuoy(),
+#                 AlwaysLog(lambda: "size: {}".format(any_buoy_size()))),
+#             Zero())
+
+# ApproachAny = lambda: Sequential(
+#             MasterConcurrent(Consistent(lambda: any_buoy_size() > SIZE_THRESH, 0.05, 0.1, False, True), #ADD EITHER LOSE SIGHT OF BUOY
+#                 VelocityX(.2, db=10),
+#                 CenterAnyBuoy(),
+#                 AlwaysLog(lambda: "size: {}".format(any_buoy_size()))),
+#             Zero())
+
+# ApproachSingle = lambda: Sequential(
+#             MasterConcurrent(Consistent(lambda: single_buoy_size() > SIZE_THRESH, 0.05, 0.1, False, True), #ADD EITHER LOSE SIGHT OF BUOY
+#                 VelocityX(.2, db=10),
+#                 CenterSingleBuoy(),
+#                 AlwaysLog(lambda: "size: {}".format(single_buoy_size()))),
+#             Zero())
+
+
 Ram = lambda: Sequential(Concurrent(AlignCalledNormal(), MoveX(1)), Zero())
+
 
 RamV = lambda: Sequential(MasterConcurrent(Timer(3), AlignCalledNormal(), VelocityX(.3)), Zero())
 
 
-ApproachAny = lambda: Sequential(
-            VelocityX(.2, db=10),
-            MasterConcurrent(Consistent(lambda: any_buoy_size() > SIZE_THRESH, 0.05, 0.1, False, True), #ADD EITHER LOSE SIGHT OF BUOY
-                CenterAnyBuoy(),
-                AlwaysLog(lambda: "size: %d"%any_buoy_size())),
-            Zero())
-
 SearchAndApproach = lambda: Sequential(SearchCalled, ApproachCalled)
 
 
- 
 Full = lambda: Sequential(
         Log('Searching for buoy'),
         SearchTriangle(),
@@ -172,27 +233,25 @@ Full = lambda: Sequential(
         Log('Approaching buoy'),
         ApproachAny(),
         Log('Searching for face'),
-        Conditional(FunctionTask(lambda: which_buoy_visible == b), on_fail=SearchAndApproach),
+        Conditional(FunctionTask(lambda: which_buoy_visible() == CALL), on_fail=SearchAndApproach),
         Log('Face found, ramming'),
         RamV(),
         Log('Vamp_Buoy Complete')
      )
 
 SearchSingle = lambda: Sequential(
-        Log('Searching for triangular buoy'),
+        Log('Searching for singular buoy'),
         SearchFor(
-            VelocitySwaySearch(0.2, 1),
-            shm.vamp_buoy_results.jiangshi_visible,
+            VelocitySwaySearch(width=1, stride=0.2),
+            shm.vamp_buoy_results.jiangshi_visible.get,
             consistent_frames=(1.5*60, 2.0*60) #TODO: Check consistent frames
             ),
         Zero()
 )
 
 SingleOnly = Sequential(
-                SearchSingle,
-                AlignCalledNormal,
-                ApproachCalled,
-                Ram
+                SearchSingle(),
+                AlignSingleNormal(),
+                ApproachSingle(),
+                Ram()
             )
-
-Move = MoveX(3)
