@@ -36,15 +36,15 @@ args = parser.parse_args()
 all_shm_groups = shm.__all__[1:]  # "watchers" is the first, hardcoded element which is skipped.
 
 
-def print_group(group_name, group=None):
+def print_group(group_name, group=None, clear=False):
     if group == None:
         group = getattr(shm, group_name)
 
     print("{}".format(group_name))
-    print(tabulate(
+    r = tabulate(
         ((name, str(c_type).split("'")[1].split('_')[1], getattr(group, name).get()) for name, c_type in group._fields),
-        headers=("Variable", "Type", "Value")))
-    print()
+        headers=("Variable", "Type", "Value"))
+    print((r.replace('\n', '\x1b[K\n') + '\x1b[K') if clear else r)
 
 
 if args.groups:
@@ -132,15 +132,19 @@ if args.group:
         else:
             print_group(args.group, group)
         if args.watch:
+            print('\x1b[?25l\x1b[s', end='')
             def f(watcher, quit_event):
                 watcher.watch(group)
 
                 while True:
                     watcher.wait(new_update=False)
-                    if quit_event.is_set():
-                        break
 
-                    print_group(args.group, group)
+                    if quit_event.is_set():
+                        print('\x1b[u\x1b[?25h', end='')
+                        break
+                    print('\x1b[{}A'.format(len(group._fields) + 3), end='')
+
+                    print_group(args.group, group, clear=True)
 
             watch_thread_wrapper(f)
 
