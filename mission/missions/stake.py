@@ -16,41 +16,43 @@ from mission.framework.combinators import (
 )
 from mission.framework.targeting import ForwardTarget, PIDLoop
 from mission.framework.task import Task
+from mission.framework.search import SearchFor
+from mission.missions.ozer_common import StillHeadingSearch
 
 import shm
 
-CAM_CENTER = (shm.torpedoes_stake.vamp_head_x.get, shm.torpedoes_stake.vamp_head_y.get)
+CAM_CENTER = (shm.torpedoes_stake.vamp_head_x.get(), shm.torpedoes_stake.vamp_head_y.get())
 
 #At the moment, 90% of the mission is fudged and untested. Proceed with caution.
 
 # @property
 # def vamp():
-#     return (shm.torpedoes_stake.vamp_head_x.get, shm.torpedoes_stake.vamp_head_y.get)
+#     return (shm.torpedoes_stake.vamp_head_x.get(), shm.torpedoes_stake.vamp_head_y.get())
 
 def heart():
-    return (shm.torpedoes_stake.heart_x.get, shm.torpedoes_stake.heart_y.get)
+    return (shm.torpedoes_stake.heart_x.get(), shm.torpedoes_stake.heart_y.get())
 
 def hole():
-    return (shm.torpedoes_stake.open_hole_x.get, shm.torpedoes_stake.open_hole_y.get)
+    return (shm.torpedoes_stake.open_hole_x.get(), shm.torpedoes_stake.open_hole_y.get())
 
 def align_h():
-    return shm.torpedoes_stake.align_h.get
+    return shm.torpedoes_stake.align_h.get()
 
 def align_v():
-    return shm.torpedoes_stake.align_v.get
+    return shm.torpedoes_stake.align_v.get()
 
 def upper_visible(): 
-    return shm.torpedoes_stake.upper_visible.get
+    return shm.torpedoes_stake.upper_visible.get()
 
 def lower_visible():
-    return shm.torpedoes_stake.lower_visible.get
+    return shm.torpedoes_stake.lower_visible.get()
 
 
 Search = lambda: Sequential(
         Log('Searching for torpedo board'),
         SearchFor(
             StillHeadingSearch(),
-            visible,
+            lambda: upper_visible() or lower_visible(),
             consistent_frames=(1*60, 1.5*60) #TODO: Check consistent frames
             ),
         Zero()
@@ -61,25 +63,49 @@ Search = lambda: Sequential(
 #         Zero()
 # )
 
-class PIDVelocity(Task):
-    def on_first_run(self):
-        self.pid_loop = PIDLoop(output_function=RelativeToCurrentVelocityY())
+class PIDSway(Task):
+    def on_first_run(self, *args, **kwargs):
+        self.pid_loop = PIDLoop(output_function=VelocityY())
 
-    def on_run(self, error, p=0.0005, i=0, d=0, db=0.01875):
-        self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband = db)
+    def on_run(self, error, p=0.0005,  i=0, d=0.0, db=0.01875, negate=False, *args, **kwargs):
+        self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband = db, negate=negate)
 
     def stop(self):
-        RelativeToCurrentVelocityY(0)()
-    
+        VelocityY(0)()
 
-AlignNormal = lambda dbt=0.01875, pt=0.0005, pp=0.01875, dbp=0.0005: Sequential(
-        CenterHeart(), #TODO: what to center on?
-        Log('Aligning to normal of torpedo board'),
-        MasterConcurrent(FunctionTask(lambda db=0.05: abs(align_h)<db and abs(align_v)<db), #TODO: make it fail if not visible
-            lambda : HeadingTarget(heart(), target=CAM_CENTER, px=p, py=p, deadband=(db,db)),
-            PIDVelocity(align_h, p=pp, db=dbp)),
-        Zero()
-)
+
+Point = lambda px=0.3, py=0.0003, p=0.01, d=0.0005, db=0: Concurrent(
+            HeadingTarget(point=heart, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
+            While(lambda: Log("center: %d, %d, target: %d, %d"%(CAM_CENTER[0], CAM_CENTER[1], any_buoy_center()[0], any_buoy_center()[1])), True))
+
+
+close_to = lambda point1, point2, db=10: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
+aligned = lambda align, db=2: abs(align) < db
+
+def Align(centerf, alignf, visiblef, px=0.15, py=0.0003, p=0.02, d=0.0005, db=0): 
+    return MasterConcurrent(
+            Consistent(lambda: close_to(centerf(), CAM_CENTER) and aligned(align_any_h()), count=0.3, total=0.5, invert=False, result=True),
+            Consistent(visiblef, count=0.2, total=0.3, invert=True, result=False),
+            HeadingTarget(point=centerf, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
+            PIDSway(alignf, p=p, d=d, db=db),
+            AlwaysLog(lambda: "align_h: %d"%(alignf(),))) 
+
+CenterBuoy = lambda centerf, visiblef, px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
+            Consistent(lambda: close_to(centerf(), CAM_CENTER), count=0.3, total=0.5, invert=False, result=True),
+            Consistent(visiblef, count=0.2, total=0.3, invert=True, result=False),
+            ForwardTarget(point=centerf, target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)), 
+            AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, centerf())))
+
+
+# AlignNormal = lambda dbt=0.01875, pt=0.0005, pp=0.01875, dbp=0.0005: Sequential(
+#         CenterHeart(), #TODO: what to center on?
+#         Log('Aligning to normal of torpedo board'),
+#         MasterConcurrent(FunctionTask(lambda db=0.05: abs(align_h)<db and abs(align_v)<db), #TODO: make it fail if not visible
+#             lambda : HeadingTarget(heart(), target=CAM_CENTER, px=p, py=p, deadband=(db,db)),
+#             PIDVelocity(align_h, p=pp, db=dbp)),
+#         Zero()
+# )
+
 # CenterAlign = lambda: Sequential(
 #         Center(),
 #         AlignNormal()

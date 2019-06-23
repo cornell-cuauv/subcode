@@ -13,10 +13,10 @@ from vision.framework.draw import draw_circle
 from vision import options
 
 opts =    [options.DoubleOption('rectangular_thresh', 0.7, 0, 1),
-           options.DoubleOption('source_x_scale_upper_stake', 0.1, 0, 1),
-           options.DoubleOption('source_y_scale_upper_stake', 0.1, 0, 1), 
-           options.DoubleOption('source_x_scale_lower_stake', 0.1, 0, 1),
-           options.DoubleOption('source_y_scale_lower_stake', 0.1, 0, 1), 
+           options.DoubleOption('source_x_scale_upper', 0.1, 0, 1),
+           options.DoubleOption('source_y_scale_upper', 0.1, 0, 1), 
+           options.DoubleOption('source_x_scale_lower', 0.1, 0, 1),
+           options.DoubleOption('source_y_scale_lower', 0.1, 0, 1), 
            options.DoubleOption('downsize_camera', 0.25, 0, 1),
            options.IntOption('min_match_count', 10, 0, 255),
            options.DoubleOption('good_ratio', 0.8, 0, 1),
@@ -36,20 +36,12 @@ RIGHT_CIRCLE = (1900, 570)
 class Stake(ModuleBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # self.orb = cv2.ORB_create(nfeatures=250, WTA_K=3)
         self.detector = cv2.xfeatures2d.SIFT_create()
         FLANN_INDEX_KDTREE = 0
-        #FLANN_INDEX_LSH = 6
         index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5) #For SIFT
-        # index_params= dict(algorithm = FLANN_INDEX_LSH,
-        #            table_number = 12, #6, # 12
-        #            key_size = 20, #12,     # 20
-        #            multi_probe_level = 2) #1) #2 #For ORB
         search_params = dict(checks = 50)
 
         self.flann = cv2.FlannBasedMatcher(index_params, search_params)
-        #self.flann = cv2.BFMatcher(normType=cv2.NORM_HAMMING2, crossCheck=False)
-        #self.flann = cv2.BFMatcher()
         self.static = {}
 
     def static_process(self, image):
@@ -100,7 +92,6 @@ class Stake(ModuleBase):
             matches = self.flann.knnMatch(des1,des2,k=2)
         except cv2.error as e:
             matches = []
-            #print(e)
 
         if output is None: output = img2
 
@@ -116,9 +107,9 @@ class Stake(ModuleBase):
 
             M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
             matchesMask = mask.ravel().tolist()
-            print("m" + str(M))
-            print("ma" + str(mask))
-            print("mm" + str(matchesMask))
+            # print("m" + str(M))
+            # print("ma" + str(mask))
+            # print("mm" + str(matchesMask))
 
             h,w = img1.shape
             pts = np.float32([ [PADDING,PADDING],[PADDING,h-1-PADDING],[w-1-PADDING,h-PADDING-1],[w-PADDING-1,PADDING] ]).reshape(-1,1,2)
@@ -140,8 +131,8 @@ class Stake(ModuleBase):
                     l2 = e_length(dst[line2[0]][0], dst[line2[1]][0])
                     return (l2-l1)/min(l1, l2)
 
-                shm.torpedoes_stake.align_h.set(norm_length_diff(dst, (0,1), (2,3)))
-                shm.torpedoes_stake.align_v.set(norm_length_diff(dst, (0,2), (1,3)))
+                getattr(shm.torpedoes_stake, "%s_align_h"%im1["name"]).set(norm_length_diff(dst, (0,1), (2,3)))
+                getattr(shm.torpedoes_stake, "%s_align_v"%im1["name"]).set(norm_length_diff(dst, (0,2), (1,3)))
                 #TODO: this runs for both boards even though only the lower board data is used for shm
 
                 output = cv2.polylines(output,[np.int32(dst)],True,color,3, cv2.LINE_AA)
@@ -166,7 +157,6 @@ class Stake(ModuleBase):
         return pt
 
     def process(self, *mats):
-        #print('start process')
         x = time.perf_counter()
         DOWNSIZE_CAMERA = self.options['downsize_camera']
 
@@ -174,8 +164,8 @@ class Stake(ModuleBase):
 
         img2 = resize(to_umat(mat), int(mat.shape[1]*DOWNSIZE_CAMERA), int(mat.shape[0]*DOWNSIZE_CAMERA)) if DOWNSIZE_CAMERA else mat # trainImage
 
-        upper_stake = self.static_process('upper_stake')
-        lower_stake = self.static_process('lower_stake')
+        upper_stake = self.static_process('upper')
+        lower_stake = self.static_process('lower')
 
         # find the keypoints and descriptors with SIFT
         kp2, des2 = self.detector.detectAndCompute(img2,None)
@@ -187,22 +177,21 @@ class Stake(ModuleBase):
         p, ML = self.match(lower_stake, cam, p, (0, 255, 0))
 
         assert p is not None
-        #print(p.shape)
 
         self.post_shm(p, ML, MU)
         self.post("outline", p)
         #print(time.perf_counter() - x)
 
     def post_shm(self, p, ML, MU):
-        shm.torpedoes_stake.vamp_head_x.set(p.shape[1]//2)
-        shm.torpedoes_stake.vamp_head_y.set(p.shape[0]//2)
+        shm.torpedoes_stake.camera_x.set(p.shape[1]//2)
+        shm.torpedoes_stake.camera_y.set(p.shape[0]//2)
 
         if self.options['show_keypoints']: p = cv2.drawKeypoints(p, kp2, None, (255,255,0))
         
         if MU is not None:
             shm.torpedoes_stake.open_hole_visible.set(True)
-            left_hole = self.locate_source_point('upper_stake', MU, LEFT_CIRCLE, p)
-            right_hole = self.locate_source_point('upper_stake', MU, RIGHT_CIRCLE, p)
+            left_hole = self.locate_source_point('upper', MU, LEFT_CIRCLE, p)
+            right_hole = self.locate_source_point('upper', MU, RIGHT_CIRCLE, p)
             shm.torpedoes_stake.open_hole_x.set(right_hole[0][0][0])
             shm.torpedoes_stake.open_hole_y.set(right_hole[0][0][1])
             shm.torpedoes_stake.upper_visible.set(True)
@@ -210,7 +199,7 @@ class Stake(ModuleBase):
             shm.torpedoes_stake.open_hole_visible.set(False)
             shm.torpedoes_stake.upper_visible.set(False)
             if ML is not None:
-                left_hole = (LEFT_CIRCLE[0] + self.options['board_horizontal_offset'], -self.options['board_separation']-self.static['upper_stake']['org'].shape[0]+LEFT_CIRCLE[1])
+                left_hole = (LEFT_CIRCLE[0] + self.options['board_horizontal_offset'], -self.options['board_separation']-self.static['upper']['org'].shape[0]+LEFT_CIRCLE[1])
                 left_hole = self.locate_source_point('upper_stake', ML, left_hole, p, color=(255,0,255))
                 right_hole = (RIGHT_CIRCLE[0] + self.options['board_horizontal_offset'], -self.options['board_separation']-self.static['upper_stake']['org'].shape[0]+RIGHT_CIRCLE[1])
                 right_hole = self.locate_source_point('upper_stake', ML, right_hole, p, color=(255,0,255))
