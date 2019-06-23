@@ -189,12 +189,17 @@ register_exit_signals(exit_handler)
 
 too_long_initial = True
 
+if initially_killed:
+    logger('Sub is currently hard-killed. Waiting until unkilled.', copy_to_stdout=True)
+
 while True:
     begin_time = time.time()
-    was_ever_unkilled = was_ever_unkilled or (not shm.switches.hard_kill.get())
+    is_unkilled = not shm.switches.hard_kill.get()
+    was_ever_unkilled = was_ever_unkilled or is_unkilled
 
     try:
-        task()
+        if is_unkilled:
+            task()
     except Exception as e:
         if not args.ignore_exceptions:
             cleanup()
