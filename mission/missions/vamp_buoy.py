@@ -82,6 +82,18 @@ def align_single_h():
 
 def align_any_h():
     b = which_buoy_visible()
+    return getattr(shm.vamp_buoy_results, "%s_align_h"%b).get()    
+
+def triangle_visible():
+    for b in TRIANGLE:
+        if getattr(shm.vamp_buoy_results, "%s_visible"%b).get():
+            return True
+    return False
+
+
+SwayOnlySearch = lambda: Sequential(
+            Timed(VelocityY(-speed), width/(2*speed)),
+            Timed(VelocityY(speed), width/(speed)),
             Timed(VelocityY(-speed), width/(2*speed)),
             Zero())
 
@@ -105,7 +117,32 @@ ReSearch = lambda: Sequential(
 
 withReSearchCalledOnFail = lambda task: lambda: Retry(lambda: \
         Conditional(main_task=task(), on_fail= \
-            Fail(Conditional(main_task=TinySearch(), on_fail=ReSearch()))), attempts=3)
+            Fail(Conditional(main_task=TinySearch(), on_fail= \
+                Fail(Conditional(main_task=ReSearch(), on_fail=RamAnything()))))), attempts=3)
+
+
+RamAnything = lambda backspeed=0.3, backtime=10: Sequential(
+        Log('Failed, backing up'),
+        Timed(VelocityX(-backspeed), backtime), 
+        Zero(),
+        SearchTriangle(),
+        ApproachAny(),
+        RamV())
+
+withRamAnythingOnFail = lambda task: lambda: Conditional(main_task=Timeout(task(), 100), on_fail=RamAnything())
+
+
+SearchTriangleOnFail = lambda backspeed=0.2, backtime=10: Sequential(
+        Log('Failed, backing up'),
+        Timed(VelocityX(-backspeed), backtime), 
+        Zero(),
+        Timeout(SearchTriangle(), 15))
+
+withSearchTriangleOnFail = lambda task: lambda: Retry(lambda: Conditional(main_task=task(), on_fail=Fail(SearchTriangleOnFail())), attempts=3)
+
+
+withAlignAnyOnFail = lambda task: lambda: Retry(lambda: Conditional(main_task=task(), on_fail=Fail(AlignAnyNormal())), attempts=2)
+
 
 
 SearchTriangle = lambda: Sequential(
