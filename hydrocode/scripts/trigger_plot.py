@@ -49,11 +49,11 @@ decode_string = str(TRIGGER_PLOT_LENGTH) + 'f'
 
 while 1:
 	#initializing the graph values list
-	line_values = list();
+	line_values = list()
 
 	#the three channels are received separately
 	for i in range(3):
-		data = bytes();
+		data = bytes()
 
 		#receiving the full packets and the final possibly partially filled packet
 		for j in range(int(math.ceil(float(TRIGGER_PLOT_LENGTH) / UDP_PAYLOAD_LENGTH))):

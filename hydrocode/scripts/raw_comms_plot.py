@@ -48,7 +48,7 @@ y_smooth = x_smooth
 decode_string = str(RAW_COMMS_PLOT_LENGTH) + 'f'
 
 while 1:
-	data = bytes();
+	data = bytes()
 
 	#receiving the full packets and the final possibly partially filled packet
 	for j in range(int(math.ceil(float(RAW_COMMS_PLOT_LENGTH) / UDP_PAYLOAD_SIZE))):

@@ -17,10 +17,10 @@ SOUND_SPEED = 1481 #speed of sound in fresh water at 20 degrees Celsius
 
 HEADING = 45 #ping heading (in degrees)
 ELEVATION = 86 #ping elevation (in degrees)
-A_AMPLITUDE = 0.76; #amplitude on channel A (max 1)
-B_AMPLITUDE = 0.87; #amplitude on channel B (max 1)
-C_AMPLITUDE = 0.76; #amplitude on channel C (max 1)
-D_AMPLITUDE = 0.75; #amplitude on channel D (max 1)
+A_AMPLITUDE = 0.76 #amplitude on channel A (max 1)
+B_AMPLITUDE = 0.87 #amplitude on channel B (max 1)
+C_AMPLITUDE = 0.76 #amplitude on channel C (max 1)
+D_AMPLITUDE = 0.75 #amplitude on channel D (max 1)
 
 #calculating the total duration of the dump
 total_time = 2 * IDLE_TIME + PING_TIME

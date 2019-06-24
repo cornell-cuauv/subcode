@@ -9,8 +9,8 @@
 #ifndef common_dsp_hpp
 #define common_dsp_hpp
 
-static const float clipping_threshold = 0.9; //clipping declared if signal above this level (fraction of maximum possible level)
-static const float clipping_threshold_hysteresis = 0.2;
+static const float clipping_threshold = 0.97; //clipping declared if signal above this level (fraction of maximum possible level)
+static const float clipping_threshold_hysteresis = 0.1; //hysteresis to prevent over-zealous gain increasing (fraction of maximum possible level)
 static const int default_gain_lvl = 0; //gain level upon startup if autogain enabled
 static const int gain_propagation_packets = 250; //time taken for fpga to switch gain, conservatively (in packets)
 static const float highest_quantization_lvl = 16383; //maximum possible level of a signal

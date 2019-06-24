@@ -49,11 +49,11 @@ trigger_decode_string = str(1) + 'f'
 
 while 1:
 	#initializing the graph values list
-	line_values = list();
+	line_values = list()
 
 	#amplitudes are received first, then ratios
 	for i in range(2):
-		data = bytes();
+		data = bytes()
 
 		#receiving the full packets and the final possibly partially filled packet
 		for j in range(int(math.ceil(float(DFT_PLOT_LENGTH) / UDP_PAYLOAD_SIZE))):
