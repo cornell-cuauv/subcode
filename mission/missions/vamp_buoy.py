@@ -50,16 +50,20 @@ def any_buoy_center():
 def single_buoy_center():
     return (getattr(shm.vamp_buoy_results, "%s_center_x"%single).get(), getattr(shm.vamp_buoy_results, "%s_center_y"%single).get())
 
-def which_buoy_visible():
-    global last_visible
+def _which_buoy_visible():
     for b in TRIANGLE:
         if getattr(shm.vamp_buoy_results, "%s_visible"%b).get():
             last_visible = b
             return b
+
+def which_buoy_visible():
+    global last_visible
+    b = _which_buoy_visible()
+    if b is not None: last_visible=b
     return last_visible
 
 def call_buoy_visible():
-    return which_buoy_visible() == CALL
+    return _which_buoy_visible() == CALL
 
 def single_buoy_visible():
     return getattr(shm.vamp_buoy_results, "%s_visible"%single).get() 
@@ -91,16 +95,13 @@ def triangle_visible():
     return False
 
 
-SwayOnlySearch = lambda: Sequential(
+SwayOnlySearch = lambda speed=0.3, width=2.5: Sequential(
             Timed(VelocityY(-speed), width/(2*speed)),
             Timed(VelocityY(speed), width/(speed)),
             Timed(VelocityY(-speed), width/(2*speed)),
             Zero())
 
 TinySearch = lambda backspeed=0.3, backtime=3: Sequential(
-        Zero(),
-        Log('Failed, backing up'),
-        Timed(VelocityX(-backspeed), backtime), 
         Zero(),
         Log('Doing TinySearch to see if we can find called'),
         Timeout(SearchFor(
@@ -112,60 +113,66 @@ TinySearch = lambda backspeed=0.3, backtime=3: Sequential(
 )
 
 ReSearch = lambda: Sequential(
+        SearchTriangleOnFail(),
         AlignAnyNormal(),
         SearchCalled())
 
 withReSearchCalledOnFail = lambda task: lambda: Retry(lambda: \
         Conditional(main_task=task(), on_fail= \
             Fail(Conditional(main_task=TinySearch(), on_fail= \
-                Fail(Conditional(main_task=ReSearch(), on_fail=RamAnything()))))), attempts=3)
+                Fail(Conditional(main_task=ReSearch(), on_fail=RamAnything()))))), attempts=2)
 
 
-RamAnything = lambda backspeed=0.3, backtime=10: Sequential(
+RamAnything = lambda backspeed=0.3, backtime=15: Sequential(
         Log('Failed, backing up'),
         Timed(VelocityX(-backspeed), backtime), 
         Zero(),
-        SearchTriangle(),
+        Timeout(SearchTriangle(), 200),
+        AlignAnyNormal(),
         ApproachAny(),
         RamV())
 
 withRamAnythingOnFail = lambda task: lambda: Conditional(main_task=Timeout(task(), 100), on_fail=RamAnything())
 
-
-SearchTriangleOnFail = lambda backspeed=0.2, backtime=10: Sequential(
+#TODO: make it sway left if last saw on left and sway right if last saw on right
+SearchTriangleOnFail = lambda backspeed=0.2, backtime=15: Sequential(
         Log('Failed, backing up'),
+        Zero(),
         Timed(VelocityX(-backspeed), backtime), 
         Zero(),
-        Timeout(SearchTriangle(), 15))
+        Timeout(SearchTriangle(), 120))
 
-withSearchTriangleOnFail = lambda task: lambda: Retry(lambda: Conditional(main_task=task(), on_fail=Fail(SearchTriangleOnFail())), attempts=3)
+withSearchTriangleOnFail = lambda task: lambda: Retry(lambda: Conditional(main_task=task(), on_fail=Fail(SearchTriangleOnFail())), attempts=2)
 
 
 withAlignAnyOnFail = lambda task: lambda: Retry(lambda: Conditional(main_task=task(), on_fail=Fail(AlignAnyNormal())), attempts=2)
 
 
+SEARCH_SIZE_THRESH = 2000
 
-SearchTriangle = lambda: Sequential(
+SearchTriangle = lambda stride=2: Sequential( #stride=1.25
         Log('Searching for triangular buoy'),
         SearchFor(
             #SwaySearch(2.0, 0.7),
-            VelocitySwaySearch(stride=0.7, width=2.0),
-            triangle_visible,
-            consistent_frames=(0.5*60, 1.0*60) #TODO: Check consistent frames
+            VelocitySwaySearch(stride=stride, width=2.5),
+            lambda: triangle_visible() and any_buoy_size() > SEARCH_SIZE_THRESH,
+            consistent_frames=(1.7*60, 2.0*60) #TODO: Check consistent frames
             ),
         Log('Finish Search'),
         Zero()
 )
 
 
+
 @withRamAnythingOnFail
 def SearchCalled():
     return Sequential(
         Log('Searching for called buoy'),
+        Zero(),
         SearchFor(
             polygon,
             call_buoy_visible,
-            consistent_frames=(1.5*60, 2.0*60) #TODO: Check consistent frames
+            consistent_frames=(1.7*60, 2.0*60) #TODO: Check consistent frames
             ),
         Zero()
     )
@@ -187,10 +194,10 @@ class PIDSway(Task):
 #             AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, any_buoy_center())))
 
 
-close_to = lambda point1, point2, db=10: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
-aligned = lambda align, db=2: abs(align) < db
+close_to = lambda point1, point2, db=15: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
+aligned = lambda align, db=3: abs(align) < db
 
-def Align(centerf, alignf, visiblef, px=0.15, py=0.0003, p=0.02, d=0.0005, db=0): 
+def Align(centerf, alignf, visiblef, px=0.18, py=0.03, p=0.02, d=0.0005, db=0): 
     return MasterConcurrent(
             Consistent(lambda: close_to(centerf(), CAM_CENTER) and aligned(align_any_h()), count=0.3, total=0.5, invert=False, result=True),
             Consistent(visiblef, count=0.2, total=0.3, invert=True, result=False),
@@ -202,7 +209,7 @@ def Align(centerf, alignf, visiblef, px=0.15, py=0.0003, p=0.02, d=0.0005, db=0)
 def AlignAnyNormal(): 
     return Align(centerf=any_buoy_center, alignf=align_any_h, visiblef=triangle_visible)
 
-
+#TODO: EDGE CASE
 def AlignCalledNormal():
     return Align(centerf=call_buoy_center, alignf=align_call_h, visiblef=call_buoy_visible)
 
@@ -229,13 +236,13 @@ AlignSingleNormal = lambda: Align(centerf=single_buoy_center, alignf=align_singl
 #             PIDSway(align_single_h, p=p, d=d, db=db),
 #             AlwaysLog(lambda: "align_h: {}".format(align_single_h()))) #TODO: Make VelY help with centering buoy
 
-CenterBuoy = lambda centerf, visiblef, px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
+CenterBuoy = lambda centerf, visiblef, px=0.004, py=0.07, d=0.005, db=0: MasterConcurrent(
             Consistent(lambda: close_to(centerf(), CAM_CENTER), count=0.3, total=0.5, invert=False, result=True),
-            Consistent(visiblef, count=0.2, total=0.3, invert=True, result=False),
+            #Consistent(visiblef, count=0.2, total=0.3, invert=True, result=False),
             ForwardTarget(point=centerf, target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)), 
             AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, centerf())))
 
-CenterAnyBuoy = lambda: CenterBuoy(centerf=any_buoy_center, visiblef=any_buoy_visible)
+CenterAnyBuoy = lambda: CenterBuoy(centerf=any_buoy_center, visiblef=triangle_visible)
 CenterCalledBuoy = lambda: CenterBuoy(centerf=call_buoy_center, visiblef=call_buoy_visible)
 CenterSingleBuoy = lambda: CenterBuoy(centerf=single_buoy_center, visiblef=single_buoy_visible)
 
@@ -296,16 +303,24 @@ ApproachSingle = lambda: Approach(sizef=single_buoy_size, centerf=single_buoy_ce
 
 Ram = lambda: Sequential(Concurrent(AlignAnyNormal(), MoveX(1)), Zero())
 
+BIG_SIZE_THRESH = 30000
 
-RamV = lambda: Sequential(MasterConcurrent(Timer(4), AlignAnyNormal(), VelocityX(.3)), Zero())
+RamV = lambda: Sequential(Log('Ramming!'), 
+        MasterConcurrent(
+            Consistent(lambda: any_buoy_size() > BIG_SIZE_THRESH, count=0.2, total=0.3, invert=False, result=True), 
+            Succeed(CenterAnyBuoy()), 
+            Succeed(VelocityX(.3))), 
+        Log('yeet'),
+        Timed(VelocityX(0.3), 8),
+        Zero())
 
 
-SearchAndApproach = lambda: Sequential(SearchCalled(), ApproachCalled())
+SearchAndApproach = lambda: Sequential(SearchCalled(), AlignCalledNormal(), ApproachCalled())
 
 
 Full = lambda: Sequential(
         Log('Searching for buoy'),
-        Timeout(SearchTriangle(), 120),
+        Timeout(SearchTriangle(), 250),
         Log('Found buoy, aligning'),
         AlignAnyNormal(),
         Log('Approaching buoy'),
