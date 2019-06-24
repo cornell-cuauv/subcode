@@ -13,7 +13,7 @@
 
 static const float comms_period = 2;
 static const int raw_comms_buffer_length = 512;
-static const int raw_comms_plot_length = 64;
+static const int raw_comms_plot_length = 200;
 
 void comms_dsp(uint16_t *fpga_packet, bool reset_signal);
 

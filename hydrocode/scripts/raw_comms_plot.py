@@ -5,12 +5,13 @@
 import socket, struct, numpy, math
 import matplotlib.pyplot as plt
 from scipy import interpolate
+import os.path
 try:
     from cv2 import imread
 except ImportError:
     from scipy.misc import imread
 
-RAW_COMMS_PLOT_LENGTH = 64 #length of the raw comms plot (in samples)
+RAW_COMMS_PLOT_LENGTH = 200 #length of the raw comms plot (in samples)
 HIGHEST_QUANTIZATION_LVL = RAW_COMMS_PLOT_LENGTH #maximum signal amplitude (plot is square because the penguin meme is a square image)
 UDP_ADDRESS = "127.0.0.1" #local host because we receive plots from hydromathd on the same machine
 UDP_PAYLOAD_SIZE = 512 #size of the UDP plot packets (in bytes)
@@ -29,7 +30,7 @@ plt.xlabel("Sample Number")
 plt.ylabel("Amplitude")
 
 #displaying the penguin meme background
-img = imread("katy.jpg")
+img = imread(os.path.join(os.path.dirname(os.path.realpath(__file__)), "katy.jpg"))
 plt.imshow(img, extent = [-RAW_COMMS_PLOT_LENGTH + 1, 0, 0, HIGHEST_QUANTIZATION_LVL - 1])
 
 #creating the axes and setting the maximum values. removing axis ticks
@@ -58,7 +59,7 @@ while 1:
 		#unpacking the received bytes array into values
 		line_values = numpy.asarray(struct.unpack(decode_string, data))
 
-	print("received raw plot")
+	print("received raw comms plot")
 
 	#updating the graph
 	function = interpolate.splrep(x, line_values)

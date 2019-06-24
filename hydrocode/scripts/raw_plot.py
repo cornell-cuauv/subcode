@@ -31,7 +31,6 @@ plt.ylabel("Amplitudes ch0-Red ch1-Green ch2-Blue")
 
 #displaying the penguin meme background
 img = imread(os.path.join(os.path.dirname(os.path.realpath(__file__)), "katy.jpg"))
-#print(img.dtype, img.shape)
 plt.imshow(img, extent = [-RAW_PLOT_LENGTH + 1, 0, 0, HIGHEST_QUANTIZATION_LVL - 1])
 
 #creating the axes and setting the maximum values. removing axis ticks
