@@ -1,7 +1,8 @@
 from mission.framework.combinators import Sequential, Retry, While
-from mission.framework.movement import RelativeToInitialHeading 
+from mission.framework.movement import RelativeToInitialHeading, VelocityY, VelocityX
 from mission.framework.position import MoveY
 from mission.framework.primitive import Log, Fail, Succeed, FunctionTask
+from mission.framework.timing import Timed
 
 from mission.missions.will_common import FakeMoveY
 
@@ -19,9 +20,9 @@ def loop_state():
 polygon = Sequential(
     While(
         lambda: Sequential(
-            MoveY(-0.7),
+            Timed(VelocityY(-0.2), 6),
             RelativeToInitialHeading(360 / sides),
-            MoveY(-0.7),
+            Timed(VelocityY(-0.2), 6)
             ), loop_state()
     )
 )

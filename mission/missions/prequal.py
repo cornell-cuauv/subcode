@@ -14,8 +14,8 @@ MainSub = Sequential(Depth(1.5),
         MoveX(-4.25, deadband=0.4))
 
 MiniSub = Sequential(Depth(2), 
-        Timed(VelocityX(1), 13), Zero(), 
-        Timed(VelocityY(0.5), 2), Zero(), 
-        Timed(VelocityX(-1), 13), Zero())
+        Timed(VelocityX(0.4), 25), Zero(), 
+        Timed(VelocityY(0.2), 10), Zero(), 
+        Timed(VelocityX(-0.4), 25), Zero())
 
 Move = MoveX(1, deadband=0.2)
