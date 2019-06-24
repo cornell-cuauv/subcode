@@ -2,12 +2,20 @@ from mission.framework.combinators import Sequential
 from mission.framework.position import MoveX, MoveY
 from mission.framework.movement import RelativeToInitialHeading, VelocityX, VelocityY, Depth
 from mission.framework.timing import Timed
-from mission.framework.primitive import Zero
+from mission.framework.primitive import Zero, Log
 
 
-MainSub = Sequential(Depth(2), MoveX(13, deadband=0.4), MoveY(1), MoveX(-13, deadband=0.4))
+MainSub = Sequential(Depth(1.5), 
+        Log('Moving Forward'),
+        MoveX(4.25, deadband=0.4), 
+        Log('Moving Horizontal'),
+        MoveY(0.6, deadband=0.3), 
+        Log('Moving Backwards'),
+        MoveX(-4.25, deadband=0.4))
 
 MiniSub = Sequential(Depth(2), 
         Timed(VelocityX(1), 13), Zero(), 
         Timed(VelocityY(0.5), 2), Zero(), 
         Timed(VelocityX(-1), 13), Zero())
+
+Move = MoveX(1, deadband=0.2)
