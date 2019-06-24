@@ -65,7 +65,7 @@ class VelocitySwaySearch(Task):
                                 VelocityY(0.0))
 
     def on_first_run(self, width=1 ,stride=1, speed=0.3, rightFirst=True, checkBehind=False):
-        self.make_repeat(stride, width, speed, rightFirst, checkBehind)
+        self.make_repeat(width, stride, speed, rightFirst, checkBehind)
 
     def on_run(self, width=1, stride = 1, speed=0.3, rightFirst=True, checkBehind=False):
         self.repeat()
