@@ -207,7 +207,8 @@ case $COMMAND in
           ;;
           cameras)
             trogdor stop $SERVICE
-            sleep 5
+            # Wait for cameras to be released
+            sleep 15
             trogdor hidden_start $SERVICE
           ;;
           *)
