@@ -1,0 +1,30 @@
+from mission.framework.task import Task
+from mission.framework.helpers import ConsistencyCheck, call_if_function
+from mission.framework.targeting import PIDLoop
+from mission.framework.movement import VelocityX, VelocityY
+"""
+A bunch of garbage that I (Attilus) want to use across different missions.
+"""
+
+# A task that runs a PID loop for VelocityY
+class PIDSway(Task):
+    def on_first_run(self, *args, **kwargs):
+        self.pid_loop = PIDLoop(output_function=VelocityY())
+
+    def on_run(self, error, p=0.0005,  i=0, d=0.0, db=0.01875, max_out=0.5, negate=False, *args, **kwargs):
+        self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband = db, negate=negate, max_out=max_out)
+
+    def stop(self):
+        VelocityY(0)()
+
+# A task that runs a PID loop for VelocityX
+class PIDStride(Task):
+    def on_first_run(self, *args, **kwargs):
+        self.pid_loop = PIDLoop(output_function=VelocityX())
+
+    def on_run(self, error, p=0.0005,  i=0, d=0.0, db=0.01875, negate=False, max_out=0.5, *args, **kwargs):
+        self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband = db, negate=negate, max_out=max_out)
+
+    def stop(self):
+        VelocityY(0)()
+

@@ -22,7 +22,9 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.7, 0, 1),
            options.DoubleOption('good_ratio', 0.8, 0, 1),
            options.BoolOption('show_keypoints', False),
            options.IntOption('board_separation', 300, 0, 4000),
-           options.IntOption('board_horizontal_offset', 70, -1000, 1000)]
+           options.IntOption('board_horizontal_offset', 70, -1000, 1000),
+           options.IntOption('lever_offset_x', -500, -3000, 3000),]
+           # options.IntOption('lever_offset_y')]
 
 
 PADDING = 50
@@ -42,6 +44,7 @@ class Stake(ModuleBase):
         search_params = dict(checks = 50)
 
         self.flann = cv2.FlannBasedMatcher(index_params, search_params)
+        self.past_var = {"lever_origin_upper": np.zeros((5,2)), "lever_origin_lower": np.zeros((5,2))}
         self.static = {}
 
     def static_process(self, image):
@@ -131,9 +134,13 @@ class Stake(ModuleBase):
                     l2 = e_length(dst[line2[0]][0], dst[line2[1]][0])
                     return (l2-l1)/min(l1, l2)
 
+                M = cv2.moments(dst)
+
                 getattr(shm.torpedoes_stake, "%s_align_h"%im1["name"]).set(norm_length_diff(dst, (0,1), (2,3)))
                 getattr(shm.torpedoes_stake, "%s_align_v"%im1["name"]).set(norm_length_diff(dst, (0,2), (1,3)))
-                #TODO: this runs for both boards even though only the lower board data is used for shm
+                getattr(shm.torpedoes_stake, "%s_size"%im1["name"]).set(area)
+                getattr(shm.torpedoes_stake, "%s_center_x"%im1["name"]).set(M["m10"]/M['m00'])
+                getattr(shm.torpedoes_stake, "%s_center_y"%im1["name"]).set(M["m01"]/M['m00'])
 
                 output = cv2.polylines(output,[np.int32(dst)],True,color,3, cv2.LINE_AA)
 
@@ -189,36 +196,82 @@ class Stake(ModuleBase):
         if self.options['show_keypoints']: p = cv2.drawKeypoints(p, kp2, None, (255,255,0))
         
         if MU is not None:
-            shm.torpedoes_stake.open_hole_visible.set(True)
+            shm.torpedoes_stake.left_hole_visible.set(True)
+            shm.torpedoes_stake.right_hole_visible.set(True)
             left_hole = self.locate_source_point('upper', MU, LEFT_CIRCLE, p)
             right_hole = self.locate_source_point('upper', MU, RIGHT_CIRCLE, p)
-            shm.torpedoes_stake.open_hole_x.set(right_hole[0][0][0])
-            shm.torpedoes_stake.open_hole_y.set(right_hole[0][0][1])
+            shm.torpedoes_stake.left_hole_x.set(left_hole[0][0][0])
+            shm.torpedoes_stake.left_hole_y.set(left_hole[0][0][1])
+            shm.torpedoes_stake.right_hole_x.set(right_hole[0][0][0])
+            shm.torpedoes_stake.right_hole_y.set(right_hole[0][0][1])
             shm.torpedoes_stake.upper_visible.set(True)
+
+            lever_origin=(self.options['lever_offset_x'], self.static['upper']['org'].shape[1] + self.options['board_separation']//2)
+            lever_origin_upper=self.locate_source_point('upper', MU, lever_origin, p, color=(255,0,255))
+            shm.torpedoes_stake.lever_origin_x.set(lever_origin_upper[0][0][0])
+            shm.torpedoes_stake.lever_origin_y.set(lever_origin_upper[0][0][1])
         else:
-            shm.torpedoes_stake.open_hole_visible.set(False)
+            shm.torpedoes_stake.left_hole_visible.set(False)
+            shm.torpedoes_stake.right_hole_visible.set(False)
             shm.torpedoes_stake.upper_visible.set(False)
             if ML is not None:
                 left_hole = (LEFT_CIRCLE[0] + self.options['board_horizontal_offset'], -self.options['board_separation']-self.static['upper']['org'].shape[0]+LEFT_CIRCLE[1])
-                left_hole = self.locate_source_point('upper_stake', ML, left_hole, p, color=(255,0,255))
-                right_hole = (RIGHT_CIRCLE[0] + self.options['board_horizontal_offset'], -self.options['board_separation']-self.static['upper_stake']['org'].shape[0]+RIGHT_CIRCLE[1])
-                right_hole = self.locate_source_point('upper_stake', ML, right_hole, p, color=(255,0,255))
-                shm.torpedoes_stake.open_hole_x.set(left_hole[0][0][0])
-                shm.torpedoes_stake.open_hole_y.set(left_hole[0][0][1])
+                left_hole = self.locate_source_point('upper', ML, left_hole, p, color=(255,0,255))
+                right_hole = (RIGHT_CIRCLE[0] + self.options['board_horizontal_offset'], -self.options['board_separation']-self.static['upper']['org'].shape[0]+RIGHT_CIRCLE[1])
+                right_hole = self.locate_source_point('upper', ML, right_hole, p, color=(255,0,255))
+                shm.torpedoes_stake.left_hole_x.set(left_hole[0][0][0])
+                shm.torpedoes_stake.left_hole_y.set(left_hole[0][0][1])
+                shm.torpedoes_stake.right_hole_x.set(right_hole[0][0][0])
+                shm.torpedoes_stake.right_hole_y.set(right_hole[0][0][1])
 
         if ML is not None:
             shm.torpedoes_stake.heart_visible.set(True)
-            heart = self.locate_source_point('lower_stake', ML, HEART, p)
+            heart = self.locate_source_point('lower', ML, HEART, p)
             #print(heart)
             shm.torpedoes_stake.heart_x.set(heart[0][0][0])
             shm.torpedoes_stake.heart_y.set(heart[0][0][1])
             shm.torpedoes_stake.lower_visible.set(True)
+
+            lever_origin=(self.options['lever_offset_x'], -self.options['board_separation']//2)
+            lever_origin_lower=self.locate_source_point('lower', ML, lever_origin, p, color=(0,0,0))
+            shm.torpedoes_stake.lever_origin_x.set(lever_origin_lower[0][0][0])
+            shm.torpedoes_stake.lever_origin_y.set(lever_origin_lower[0][0][1])
         else:
             shm.torpedoes_stake.heart_visible.set(False)
             shm.torpedoes_stake.lower_visible.set(False)
             if MU is not None:
-                heart = (HEART[0] - self.options['board_horizontal_offset'], self.options['board_separation']+ self.static['upper_stake']['org'].shape[0]+HEART[1])
-                heart = self.locate_source_point('upper_stake', MU, heart, p, color=(255,0,255))
+                heart = (HEART[0] - self.options['board_horizontal_offset'], self.options['board_separation']+ self.static['upper']['org'].shape[0]+HEART[1])
+                heart = self.locate_source_point('upper', MU, heart, p, color=(255,0,255))
+
+        if ML is not None and MU is not None:
+            self.past_var['lever_origin_lower'] = np.roll(self.past_var['lever_origin_lower'], axis=1, shift=1)
+            self.past_var['lever_origin_lower'][0] = lever_origin_lower
+            self.past_var['lever_origin_upper'] = np.roll(self.past_var['lever_origin_upper'], axis=1, shift=1)
+            self.past_var['lever_origin_upper'][0] = lever_origin_upper
+            # print("upper: {}, lower: {}".format(np.sum(np.var(np.linalg.norm(self.past_var['lever_origin_lower'], axis=0))), np.sum(np.var(np.linalg.norm(self.past_var['lever_origin_upper'], axis=0)))))
+            # if np.sum(np.var(np.linalg.norm(self.past_var['lever_origin_lower']))) > np.sum(np.var(np.linalg.norm(self.past_var['lever_origin_upper']))):
+
+            # covariance_u = np.cov(self.past_var['lever_origin_upper'])[1][0]
+            # covariance_l = np.cov(self.past_var['lever_origin_lower'])[1][0]
+            # if covariance_l > covariance_u:
+            #     shm.torpedoes_stake.lever_origin_x.set(lever_origin_upper[0][0][0])
+            #     shm.torpedoes_stake.lever_origin_y.set(lever_origin_upper[0][0][1])
+            #     draw_circle(p, tuple(lever_origin_upper[0][0]), 1, (0,255,255), thickness=3)
+            # else:
+            #     shm.torpedoes_stake.lever_origin_x.set(lever_origin_lower[0][0][0])
+            #     shm.torpedoes_stake.lever_origin_y.set(lever_origin_lower[0][0][1])
+            #     draw_circle(p, tuple(lever_origin_lower[0][0]), 1, (0,255,255), thickness=3)
+
+            if lever_origin_upper[0][0][0] > lever_origin_lower[0][0][0]:
+                shm.torpedoes_stake.lever_origin_x.set(lever_origin_upper[0][0][0])
+                shm.torpedoes_stake.lever_origin_y.set(lever_origin_upper[0][0][1])
+                draw_circle(p, tuple(lever_origin_upper[0][0]), 1, (0,0,255), thickness=3)
+            else:
+                shm.torpedoes_stake.lever_origin_x.set(lever_origin_lower[0][0][0])
+                shm.torpedoes_stake.lever_origin_y.set(lever_origin_lower[0][0][1])
+                draw_circle(p, tuple(lever_origin_lower[0][0]), 1, (0,0,255), thickness=3)
+
+
 
 if __name__ == '__main__':
     Stake('forward', opts)()

@@ -1,6 +1,7 @@
 from mission.framework.primitive import (
         Zero,
         Log,
+        AlwaysLog,
         Succeed,
         Fail,
         FunctionTask,
@@ -17,66 +18,109 @@ from mission.framework.combinators import (
 from mission.framework.targeting import ForwardTarget, PIDLoop
 from mission.framework.task import Task
 from mission.framework.search import SearchFor
+from mission.framework.movement import RelativeToCurrentDepth, VelocityY, Depth, VelocityX
+from mission.framework.timing import Timeout
 from mission.missions.ozer_common import StillHeadingSearch
+from mission.missions.will_common import Consistent
+from mission.missions.attilus_garbage import PIDStride, PIDSway
 
 import shm
 
-CAM_CENTER = (shm.torpedoes_stake.vamp_head_x.get(), shm.torpedoes_stake.vamp_head_y.get())
+CAM_CENTER = (shm.torpedoes_stake.camera_x.get(), shm.torpedoes_stake.camera_y.get())
 
 #At the moment, 90% of the mission is fudged and untested. Proceed with caution.
 
-# @property
-# def vamp():
-#     return (shm.torpedoes_stake.vamp_head_x.get(), shm.torpedoes_stake.vamp_head_y.get())
+TARGETS = {"upper":"lower", "lower":"upper"}
+current_target = ""
 
 def heart():
     return (shm.torpedoes_stake.heart_x.get(), shm.torpedoes_stake.heart_y.get())
+def heart_visible():
+    return shm.torpedoes_stake.heart_visible.get()
 
-def hole():
-    return (shm.torpedoes_stake.open_hole_x.get(), shm.torpedoes_stake.open_hole_y.get())
+def left_hole():
+    return (shm.torpedoes_stake.left_hole_x.get(), shm.torpedoes_stake.left_hole_y.get())
+#TODO: we have a bunch of estimating stuff -- incorporate?
+def left_hole_visible():
+    return shm.torpedoes_stake.left_hole_visible.get()
 
-def align_h():
-    return shm.torpedoes_stake.align_h.get()
+def lever():
+    return (shm.torpedoes_stake.lever_origin_x.get(), shm.torpedoes_stake.lever_origin_y.get())
 
-def align_v():
-    return shm.torpedoes_stake.align_v.get()
+# def align_h():
+#     return shm.torpedoes_stake.align_h.get()
+
+# def align_v():
+#     return shm.torpedoes_stake.align_v.get()
+
+def align_any_h():
+    pass
 
 def upper_visible(): 
     return shm.torpedoes_stake.upper_visible.get()
+def upper_size():
+    return shm.torpedoes_stake.upper_size.get()
+def upper_center():
+    return (shm.torpedoes_stake.upper_center_x.get(), shm.torpedoes_stake.upper_center_y.get())
+def upper_align_h():
+    return shm.torpedoes_stake.upper_align_h.get()
 
 def lower_visible():
     return shm.torpedoes_stake.lower_visible.get()
+def lower_size():
+    return shm.torpedoes_stake.lower_size.get()
+def lower_center():
+    return (shm.torpedoes_stake.lower_center_x.get(), shm.torpedoes_stake.lower_center_y.get())
+def lower_align_h():
+    return shm.torpedoes_stake.lower_align_h.get()
 
+def any_visible():
+    return lower_visible() or upper_visible()
 
-Search = lambda: Sequential(
+def which_visible(invert=False):
+    for k,v in TARGETS.items():
+        if getattr(shm.torpedoes_stake, "%s_visible"%k).get():
+            return v if invert else k
+
+SearchBoard = lambda: Sequential(
         Log('Searching for torpedo board'),
         SearchFor(
             StillHeadingSearch(),
-            lambda: upper_visible() or lower_visible(),
-            consistent_frames=(1*60, 1.5*60) #TODO: Check consistent frames
+            any_visible,
+            consistent_frames=(1.7*60, 2.0*60) #TODO: Check consistent frames
             ),
         Zero()
 )
-# Center = lambda: Sequential(
-#         Log('Centering on Vampire Head'),
-#         lambda db=0.01875, p=0.0005: ForwardTarget(vamp, target=CAM_CENTER, px=p, py=p, deadband=(db,db)), #TODO: CHECK P VALUES
-#         Zero()
-# )
 
-class PIDSway(Task):
-    def on_first_run(self, *args, **kwargs):
-        self.pid_loop = PIDLoop(output_function=VelocityY())
-
-    def on_run(self, error, p=0.0005,  i=0, d=0.0, db=0.01875, negate=False, *args, **kwargs):
-        self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband = db, negate=negate)
-
-    def stop(self):
-        VelocityY(0)()
+# IMPORTANT: MAKE SURE U CHANGE THIS FOR TEAGLE/TRANSDECK/WHATEVER so the sub doesn't hit the bottom of the pool
+MAX_DEPTH = 3.4
+def DepthSearch(min_depth=0.2, max_depth=3.4, speed=0.05):
+    return Sequential(
+            MasterConcurrent(
+                FunctionTask(lambda: shm.desires.depth.get() >= max_depth, finite=False),
+                RelativeToCurrentDepth(offset=speed, min_target=min_depth, max_target=max_depth)), 
+            Zero(),
+            Fail()
+    )
 
 
-Point = lambda px=0.3, py=0.0003, p=0.01, d=0.0005, db=0: Concurrent(
-            HeadingTarget(point=heart, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
-            While(lambda: Log("center: %d, %d, target: %d, %d"%(CAM_CENTER[0], CAM_CENTER[1], any_buoy_center()[0], any_buoy_center()[1])), True))
+#TODO: Edge case: if fails, do a depth heading search
+def SearchHalf(target, speed=0.05):
+    target = target or which_visible(invert=True)
+    direction = -speed if target=="upper" else speed
+    return Sequential(
+            SearchFor(
+                search_task=DepthSearch(speed=direction),
+                visible=getattr(shm.torpedoes_stake, "%s_visible"%target).get,
+                consistent_frames=(1.7*60, 2*60)
+                ),
+            Zero()
+        )
+
+def SearchUpper():
+    return SearchHalf('upper')
+def SearchLower():
+    return SearchHalf('lower')
 
 
 close_to = lambda point1, point2, db=10: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
@@ -90,71 +134,85 @@ def Align(centerf, alignf, visiblef, px=0.15, py=0.0003, p=0.02, d=0.0005, db=0)
             PIDSway(alignf, p=p, d=d, db=db),
             AlwaysLog(lambda: "align_h: %d"%(alignf(),))) 
 
-CenterBuoy = lambda centerf, visiblef, px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
+def AlignUpper():
+    return Align(upper_center, upper_align_h, upper_visible)
+def AlignLower():
+    return Align(lower_center, lower_align_h, lower_visible)
+
+Center = lambda centerf, visiblef, px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
             Consistent(lambda: close_to(centerf(), CAM_CENTER), count=0.3, total=0.5, invert=False, result=True),
             Consistent(visiblef, count=0.2, total=0.3, invert=True, result=False),
             ForwardTarget(point=centerf, target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)), 
             AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, centerf())))
 
+def CenterHeart():
+    return Center(centerf=heart, visiblef=heart_visible)
+def CeneterLeftHole():
+    return Center(centerf=left_hole, visiblef=left_hole_visible)
 
-# AlignNormal = lambda dbt=0.01875, pt=0.0005, pp=0.01875, dbp=0.0005: Sequential(
-#         CenterHeart(), #TODO: what to center on?
-#         Log('Aligning to normal of torpedo board'),
-#         MasterConcurrent(FunctionTask(lambda db=0.05: abs(align_h)<db and abs(align_v)<db), #TODO: make it fail if not visible
-#             lambda : HeadingTarget(heart(), target=CAM_CENTER, px=p, py=p, deadband=(db,db)),
-#             PIDVelocity(align_h, p=pp, db=dbp)),
-#         Zero()
-# )
+#TODO: tune everything
+#TODO: Also max velocity for pid stride?
+SIZE_THRESH = 5000
+def ApproachSize(sizef, centerf, visiblef, size_thresh, db=500):
+    return MasterConcurrent(
+            Consistent(lambda: abs(sizef()-size_thresh) < db, count=0.3, total=0.5, invert=False, result=True),
+            Consistent(lambda: close_to(centerf(), CAM_CENTER), count=0.3, total=0.5, invert=False, result=True),
+            Center(centerf, visiblef),
+            PIDStride(lambda: sizef()-size_thresh),
+            AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, centerf())))
 
-# CenterAlign = lambda: Sequential(
-#         Center(),
-#         AlignNormal()
-# )
-BackupRealign = lambda:Sequential(
-        Log('Backing up to realign with board'),
-        MasterConcurrent(Timeout(FunctionTask(lambda: shm.torpedoes_stake.visible), 90), 
-            #TODO: Timeout? What's a good time? What happens if it fails?
-            RelativeToCurrentVelocityZ(2) #TODO: Is it X or Y or Z? What's a good velocity?
-            ),
-        Zero(),
-        AlignNormal()
-)
-CenterHeart= While(lambda db=0, p=0.003, d=0.0005: Sequential(
-        Log('Centering on heart'),
-        ForwardTarget(heart(), target=CAM_CENTER, px=p, py=p, dx=d, dy=d, deadband=(db,db)), #TODO: CHECK P VALUES
-        Zero(),
-        Log('Done')
-), True)
+def ApproachLower():
+    return ApproachSize(lower_size, lower_center, lower_visible, SIZE_THRESH)
+def ApproachUpper():
+    return ApproachSize(upper_size, upper_center, upper_visible, SIZE_THRESH)
+
+def Backup(speed=0.2):
+    return Sequential(
+            Timeout(SearchFor(
+                search_task=While(lambda: VelocityX(-speed), True),
+                visible=any_visible,
+                consistent_frames=(1.7*60, 2.0*60),
+                ), 15),
+            Zero()
+            )
+
+
 TargetTorpedos = lambda: Sequential(
         Log('Aligning shot'),
         Log('Firing')
 )
+
+def CenterLever():
+    return Center(lever, any_visible)
+
 MoveLever = lambda: Sequential( #TODO: DO WE USE MANIPULATORS? CAN WE USE MANIPULATORS?
         Log('Aligning with lever'),
-        Log('Moving lever')
-)
-CenterHole = lambda db=0.01875, p=0.0005: Sequential(
-        Log('Centering on Hole'),
-        ForwardTarget(board, target=CAM_CENTER, px=p, py=p, deadband=(db,db)) #TODO: CHECK P VALUES
+        CenterLever(),
+        Log('Moving lever'),
+        MoveX(1),
+        MoveY(3)
 )
 
-OnlyCenter = lambda p = 0.0005, db=10: While(lambda: ForwardTarget(heart(), target=CAM_CENTER, px=p, py=p, deadband=(db,db)), True)
- 
 
 Full = \
 lambda: Retry(
     lambda: Sequential(
         Log('Starting Stake'),
-        Zero(),
-        Search(),
-        CenterAlign(),
-        CenterHeart(),
+        Zero(),#
+        SearchBoard(),#
+        SearchLower(),
+        AlignLower(),
+        ApproachLower(),
+        CenterHeart(),#
         TargetTorpedos(),
-        BackupRealign(),
-        AlignLever(),
-        MoveLever(),
-        BackupRealign(),
-        CenterHole(),
+        Backup(),
+        ApproachLower(),
+        AlignLower(),
+        MoveLever(),#
+        Backup(),
+        SearchUpper(),
+        AlignUpper(),
+        CenterHole(),#
         TargetTorpedos(),
         Log('Stake complete')
     )

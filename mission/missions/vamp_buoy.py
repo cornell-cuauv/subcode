@@ -19,10 +19,10 @@ from mission.framework.targeting import ForwardTarget, PIDLoop, HeadingTarget
 from mission.framework.task import Task
 from mission.framework.movement import VelocityY, VelocityX
 from mission.framework.position import MoveX
+from mission.framework.search import SearchFor, SwaySearch, VelocitySwaySearch, MoveX
 
 from mission.missions.will_common import Consistent
-from mission.missions.poly import polygon
-from mission.framework.search import SearchFor, SwaySearch, VelocitySwaySearch, MoveX
+from mission.missions.attilus_garbage import PIDStride, PIDSway
 
 from mission.framework.timing import Timer, Timed, Timeout
 
@@ -207,17 +207,6 @@ def SearchCalled():
     )
 
 
-# A task that runs a PID loop for VelocityY
-class PIDSway(Task):
-    def on_first_run(self, *args, **kwargs):
-        self.pid_loop = PIDLoop(output_function=VelocityY())
-
-    def on_run(self, error, p=0.0005,  i=0, d=0.0, db=0.01875, negate=False, *args, **kwargs):
-        self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband = db, negate=negate)
-
-    def stop(self):
-        VelocityY(0)()
-
 
 # Point = lambda px=0.3, py=0.0003, d=0.0005, db=0: Concurrent(
 #             HeadingTarget(point=any_buoy_center, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
@@ -267,9 +256,9 @@ CenterSingleBuoy = lambda: CenterBuoy(centerf=single_buoy_center, visiblef=singl
 
 # Approaches a the buoy until it reaches a predetermined size threshold
 Approach = lambda sizef, centerf, visiblef: Sequential(
-            MasterConcurrent(Consistent(lambda: sizef() > SIZE_THRESH, 0.05, 0.1, False, True), #ADD EITHER LOSE SIGHT OF BUOY
+            MasterConcurrent(Consistent(lambda: sizef() > SIZE_THRESH, count=0.2, 0.3, invert=False, result=True), #ADD EITHER LOSE SIGHT OF BUOY
                 Consistent(visiblef, count=0.2, total=0.3, invert=True, result=False),
-                VelocityX(.2, db=10),
+                Succeed(VelocityX(.2)),
                 While(lambda: CenterBuoy(centerf=centerf, visiblef=visiblef), True),
                 AlwaysLog(lambda: "size: {}, visible: {}".format(sizef(), visiblef()))),
             Zero())
