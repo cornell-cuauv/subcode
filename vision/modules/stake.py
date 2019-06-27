@@ -132,15 +132,15 @@ class Stake(ModuleBase):
                 def norm_length_diff(dst, line1, line2):
                     l1 = e_length(dst[line1[0]][0], dst[line1[1]][0])
                     l2 = e_length(dst[line2[0]][0], dst[line2[1]][0])
-                    return (l2-l1)/min(l1, l2)
+                    return (l2-l1)
 
-                M = cv2.moments(dst)
+                Moments = cv2.moments(dst)
 
                 getattr(shm.torpedoes_stake, "%s_align_h"%im1["name"]).set(norm_length_diff(dst, (0,1), (2,3)))
                 getattr(shm.torpedoes_stake, "%s_align_v"%im1["name"]).set(norm_length_diff(dst, (0,2), (1,3)))
                 getattr(shm.torpedoes_stake, "%s_size"%im1["name"]).set(area)
-                getattr(shm.torpedoes_stake, "%s_center_x"%im1["name"]).set(M["m10"]/M['m00'])
-                getattr(shm.torpedoes_stake, "%s_center_y"%im1["name"]).set(M["m01"]/M['m00'])
+                getattr(shm.torpedoes_stake, "%s_center_x"%im1["name"]).set(Moments["m10"]/Moments['m00'])
+                getattr(shm.torpedoes_stake, "%s_center_y"%im1["name"]).set(Moments["m01"]/Moments['m00'])
 
                 output = cv2.polylines(output,[np.int32(dst)],True,color,3, cv2.LINE_AA)
 
@@ -159,6 +159,7 @@ class Stake(ModuleBase):
     def locate_source_point(self, image, mask, point, output=None, color=(0,0,255)):
         i = self.static[image]
         pt = np.float32([[[int(point[0]*i['rx'] + PADDING), int(point[1]*i['ry'] + PADDING)]]])
+        print(mask)
         pt = cv2.perspectiveTransform(pt, mask)
         draw_circle(output, tuple(pt[0][0]), 1, color, thickness=3)
         return pt
@@ -244,10 +245,10 @@ class Stake(ModuleBase):
                 heart = self.locate_source_point('upper', MU, heart, p, color=(255,0,255))
 
         if ML is not None and MU is not None:
-            self.past_var['lever_origin_lower'] = np.roll(self.past_var['lever_origin_lower'], axis=1, shift=1)
-            self.past_var['lever_origin_lower'][0] = lever_origin_lower
-            self.past_var['lever_origin_upper'] = np.roll(self.past_var['lever_origin_upper'], axis=1, shift=1)
-            self.past_var['lever_origin_upper'][0] = lever_origin_upper
+            # self.past_var['lever_origin_lower'] = np.roll(self.past_var['lever_origin_lower'], axis=1, shift=1)
+            # self.past_var['lever_origin_lower'][0] = lever_origin_lower
+            # self.past_var['lever_origin_upper'] = np.roll(self.past_var['lever_origin_upper'], axis=1, shift=1)
+            # self.past_var['lever_origin_upper'][0] = lever_origin_upper
             # print("upper: {}, lower: {}".format(np.sum(np.var(np.linalg.norm(self.past_var['lever_origin_lower'], axis=0))), np.sum(np.var(np.linalg.norm(self.past_var['lever_origin_upper'], axis=0)))))
             # if np.sum(np.var(np.linalg.norm(self.past_var['lever_origin_lower']))) > np.sum(np.var(np.linalg.norm(self.past_var['lever_origin_upper']))):
 
@@ -262,15 +263,18 @@ class Stake(ModuleBase):
             #     shm.torpedoes_stake.lever_origin_y.set(lever_origin_lower[0][0][1])
             #     draw_circle(p, tuple(lever_origin_lower[0][0]), 1, (0,255,255), thickness=3)
 
-            if lever_origin_upper[0][0][0] > lever_origin_lower[0][0][0]:
-                shm.torpedoes_stake.lever_origin_x.set(lever_origin_upper[0][0][0])
-                shm.torpedoes_stake.lever_origin_y.set(lever_origin_upper[0][0][1])
-                draw_circle(p, tuple(lever_origin_upper[0][0]), 1, (0,0,255), thickness=3)
-            else:
-                shm.torpedoes_stake.lever_origin_x.set(lever_origin_lower[0][0][0])
-                shm.torpedoes_stake.lever_origin_y.set(lever_origin_lower[0][0][1])
-                draw_circle(p, tuple(lever_origin_lower[0][0]), 1, (0,0,255), thickness=3)
-
+            # if lever_origin_upper[0][0][0] > lever_origin_lower[0][0][0]:
+            #     shm.torpedoes_stake.lever_origin_x.set(lever_origin_upper[0][0][0])
+            #     shm.torpedoes_stake.lever_origin_y.set(lever_origin_upper[0][0][1])
+            #     draw_circle(p, tuple(lever_origin_upper[0][0]), 1, (0,0,255), thickness=3)
+            # else:
+            #     shm.torpedoes_stake.lever_origin_x.set(lever_origin_lower[0][0][0])
+            #     shm.torpedoes_stake.lever_origin_y.set(lever_origin_lower[0][0][1])
+            #     draw_circle(p, tuple(lever_origin_lower[0][0]), 1, (0,0,255), thickness=3)
+            midpoint = np.multiply(np.add(lever_origin_lower[0][0],lever_origin_upper[0][0]), 0.5)
+            shm.torpedoes_stake.lever_origin_x.set(midpoint[0])
+            shm.torpedoes_stake.lever_origin_y.set(midpoint[1])
+            draw_circle(p, tuple(midpoint), 1, (0,0,255), thickness=3)
 
 
 if __name__ == '__main__':
