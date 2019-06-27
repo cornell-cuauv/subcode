@@ -122,12 +122,12 @@ euler_orientation_filter = UnscentedKalmanFilter(6, fx_euler, 6, hx_euler, dt, .
 euler_orientation_filter.x_hat = np.array([hpr[0], hpr[1], hpr[2], 0, 0, 0])
 euler_orientation_filter.P *= .5
 #TODO Fill in covariances-- ordering is H P R Hrate Prate Rrate
-euler_orientation_filter.R = np.array([[100, 0, 0, 0, 0, 0],
-                                       [0, 100, 0, 0, 0, 0],
-                                       [0, 0, 100, 0, 0, 0],
-                                       [0, 0, 0,  100, 0, 0],
-                                       [0, 0, 0,  0, 100, 0],
-                                       [0, 0, 0,  0, 0, 100]])
+euler_orientation_filter.R = np.array([[1, 0, 0, 0, 0, 0],
+                                       [0, 1, 0, 0, 0, 0],
+                                       [0, 0, 1, 0, 0, 0],
+                                       [0, 0, 0,  1, 0, 0],
+                                       [0, 0, 0,  0, 1, 0],
+                                       [0, 0, 0,  0, 0, 1]])
 
 
 def convert_dvl_velocities(sub_quat, dvl_vel):
