@@ -1,7 +1,12 @@
 from mission.framework.task import Task
 from mission.framework.helpers import ConsistencyCheck, call_if_function
 from mission.framework.targeting import PIDLoop
-from mission.framework.movement import VelocityX, VelocityY
+from mission.framework.movement import VelocityX, VelocityY, RelativeToCurrentHeading, RelativeToInitialHeading
+from mission.framework.position import MoveX
+from mission.framework.combinators import While, Sequential, MasterConcurrent
+from mission.framework.primitive import FunctionTask, Succeed
+
+import shm
 """
 A bunch of garbage that I (Attilus) want to use across different missions.
 """
@@ -27,4 +32,33 @@ class PIDStride(Task):
 
     def stop(self):
         VelocityY(0)()
+
+class StillHeadingSearch(Task):
+    """
+    Search for an object visible from the current location that is in front of
+    the sub with highest probability. Edited from ozer_common
+    """
+
+    def on_first_run(self, *args, **kwargs):
+        init_heading = None
+
+        def set_init_heading():
+            nonlocal init_heading
+            init_heading = shm.kalman.heading.get()
+            return True
+
+        set_init_heading()
+
+        self.use_task(
+            While(lambda: Sequential(
+                RelativeToInitialHeading(5),
+                MasterConcurrent(
+                    FunctionTask(lambda: abs(shm.desires.heading.get() - init_heading) < 5, finite=False),
+                    RelativeToCurrentHeading(5)), 
+                # Move back a bit, we might be too close
+                MoveX(-1),
+                Succeed(FunctionTask(set_init_heading))
+            ), True),
+        )
+
 

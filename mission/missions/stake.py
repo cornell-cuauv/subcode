@@ -15,14 +15,14 @@ from mission.framework.combinators import (
         Conditional,
         While
 )
-from mission.framework.targeting import ForwardTarget, PIDLoop
+from mission.framework.targeting import ForwardTarget, PIDLoop, HeadingTarget
 from mission.framework.task import Task
 from mission.framework.search import SearchFor
 from mission.framework.movement import RelativeToCurrentDepth, VelocityY, Depth, VelocityX
 from mission.framework.timing import Timeout
-from mission.missions.ozer_common import StillHeadingSearch
+# from mission.missions.ozer_common import StillHeadingSearch
 from mission.missions.will_common import Consistent
-from mission.missions.attilus_garbage import PIDStride, PIDSway
+from mission.missions.attilus_garbage import PIDStride, PIDSway, StillHeadingSearch
 
 import shm
 
@@ -124,12 +124,12 @@ def SearchLower():
 
 
 close_to = lambda point1, point2, db=10: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
-aligned = lambda align, db=2: abs(align) < db
+aligned = lambda align, db=4: abs(align) < db
 
 def Align(centerf, alignf, visiblef, px=0.15, py=0.0003, p=0.02, d=0.0005, db=0): 
     return MasterConcurrent(
-            Consistent(lambda: close_to(centerf(), CAM_CENTER) and aligned(align_any_h()), count=0.3, total=0.5, invert=False, result=True),
-            Consistent(visiblef, count=0.2, total=0.3, invert=True, result=False),
+            Consistent(lambda: close_to(centerf(), CAM_CENTER) and aligned(alignf()), count=0.5, total=0.7, invert=False, result=True),
+            Consistent(visiblef, count=0.5, total=0.7, invert=True, result=False),
             HeadingTarget(point=centerf, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
             PIDSway(alignf, p=p, d=d, db=db),
             AlwaysLog(lambda: "align_h: %d"%(alignf(),))) 
@@ -138,6 +138,8 @@ def AlignUpper():
     return Align(upper_center, upper_align_h, upper_visible)
 def AlignLower():
     return Align(lower_center, lower_align_h, lower_visible)
+def AlignAny():
+    return AlignUpper() if upper_visible() else AlignLower()
 
 Center = lambda centerf, visiblef, px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
             Consistent(lambda: close_to(centerf(), CAM_CENTER), count=0.3, total=0.5, invert=False, result=True),
@@ -200,6 +202,7 @@ lambda: Retry(
         Log('Starting Stake'),
         Zero(),#
         SearchBoard(),#
+        AlignAny(),
         SearchLower(),
         AlignLower(),
         ApproachLower(),
