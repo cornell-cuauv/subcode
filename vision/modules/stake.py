@@ -12,12 +12,12 @@ from vision.framework.draw import draw_circle
 
 from vision import options
 
-opts =    [options.DoubleOption('rectangular_thresh', 0.7, 0, 1),
+opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.DoubleOption('source_x_scale_upper', 0.1, 0, 1),
            options.DoubleOption('source_y_scale_upper', 0.1, 0, 1), 
            options.DoubleOption('source_x_scale_lower', 0.1, 0, 1),
            options.DoubleOption('source_y_scale_lower', 0.1, 0, 1), 
-           options.DoubleOption('downsize_camera', 0.25, 0, 1),
+           options.DoubleOption('downsize_camera', 0.5, 0, 1),
            options.IntOption('min_match_count', 10, 0, 255),
            options.DoubleOption('good_ratio', 0.8, 0, 1),
            options.BoolOption('show_keypoints', False),
@@ -159,7 +159,7 @@ class Stake(ModuleBase):
     def locate_source_point(self, image, mask, point, output=None, color=(0,0,255)):
         i = self.static[image]
         pt = np.float32([[[int(point[0]*i['rx'] + PADDING), int(point[1]*i['ry'] + PADDING)]]])
-        print(mask)
+        #print(mask)
         pt = cv2.perspectiveTransform(pt, mask)
         draw_circle(output, tuple(pt[0][0]), 1, color, thickness=3)
         return pt

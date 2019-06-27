@@ -219,7 +219,7 @@ aligned = lambda align, db=3: abs(align) < db
 # Aligns horizontally with the buoy. It circles around the buoy using heading target and moving left/right relative to heading
 def Align(centerf, alignf, visiblef, px=0.18, py=0.03, p=0.02, d=0.0005, db=0): 
     return MasterConcurrent(
-            Consistent(lambda: close_to(centerf(), CAM_CENTER) and aligned(alignf()), count=0.3, total=0.5, invert=False, result=True),
+            Consistent(lambda: close_to(centerf(), CAM_CENTER) and aligned(alignf()), count=1.5, total=2.0, invert=False, result=True),
             Consistent(visiblef, count=0.2, total=0.3, invert=True, result=False),
             HeadingTarget(point=centerf, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
             PIDSway(alignf, p=p, d=d, db=db),

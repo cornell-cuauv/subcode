@@ -105,14 +105,14 @@ def DepthSearch(min_depth=0.2, max_depth=3.4, speed=0.05):
 
 
 #TODO: Edge case: if fails, do a depth heading search
-def SearchHalf(target, speed=0.05):
+def SearchHalf(target, speed=0.15):
     target = target or which_visible(invert=True)
     direction = -speed if target=="upper" else speed
     return Sequential(
             SearchFor(
                 search_task=DepthSearch(speed=direction),
                 visible=getattr(shm.torpedoes_stake, "%s_visible"%target).get,
-                consistent_frames=(1.7*60, 2*60)
+                consistent_frames=(2.7*60, 3*60)
                 ),
             Zero()
         )
@@ -126,10 +126,10 @@ def SearchLower():
 close_to = lambda point1, point2, db=10: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
 aligned = lambda align, db=4: abs(align) < db
 
-def Align(centerf, alignf, visiblef, px=0.15, py=0.0003, p=0.02, d=0.0005, db=0): 
+def Align(centerf, alignf, visiblef, px=0.11, py=0.004, p=0.007, d=0.0005, db=0): 
     return MasterConcurrent(
-            Consistent(lambda: close_to(centerf(), CAM_CENTER) and aligned(alignf()), count=0.5, total=0.7, invert=False, result=True),
-            Consistent(visiblef, count=0.5, total=0.7, invert=True, result=False),
+            Consistent(lambda: close_to(centerf(), CAM_CENTER) and aligned(alignf()), count=1.5, total=2, invert=False, result=True),
+            Consistent(visiblef, count=1.5, total=2.0, invert=True, result=False),
             HeadingTarget(point=centerf, target=CAM_CENTER, px=px, py=py, dy=d, dx=d, deadband=(db,db)),
             PIDSway(alignf, p=p, d=d, db=db),
             AlwaysLog(lambda: "align_h: %d"%(alignf(),))) 
@@ -140,33 +140,39 @@ def AlignLower():
     return Align(lower_center, lower_align_h, lower_visible)
 def AlignAny():
     return AlignUpper() if upper_visible() else AlignLower()
+def AlignHeart():
+    return Align(heart, lower_align_h, lower_visible)
 
-Center = lambda centerf, visiblef, px=0.004, py=0.0003, d=0.005, db=0: MasterConcurrent(
-            Consistent(lambda: close_to(centerf(), CAM_CENTER), count=0.3, total=0.5, invert=False, result=True),
-            Consistent(visiblef, count=0.2, total=0.3, invert=True, result=False),
-            ForwardTarget(point=centerf, target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db)), 
-            AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, centerf())))
+LEVER_LOCATION = (0, -20)
+
+Center = lambda centerf,  visiblef, targetf=CAM_CENTER, px=0.0018, py=0.004, d=0.005, db=0, closedb=5: MasterConcurrent(
+            Consistent(lambda: close_to(centerf(), targetf, db=closedb), count=1.5, total=2.0, invert=False, result=True),
+            Consistent(visiblef, count=1.5, total=2.0, invert=True, result=False),
+            ForwardTarget(point=centerf, target=targetf, px=px, py=py, dx=d, dy=d, deadband=(db,db)), 
+            AlwaysLog(lambda: "center: {}, target: {}".format(targetf, centerf())))
 
 def CenterHeart():
     return Center(centerf=heart, visiblef=heart_visible)
 def CeneterLeftHole():
     return Center(centerf=left_hole, visiblef=left_hole_visible)
+def CenterLever():
+    return Center(centerf=lever, visiblef=any_visible, targetf=[CAM_CENTER[i] + LEVER_LOCATION[i] for i in range(0,2)])
 
 #TODO: tune everything
 #TODO: Also max velocity for pid stride?
-SIZE_THRESH = 5000
-def ApproachSize(sizef, centerf, visiblef, size_thresh, db=500):
+SIZE_THRESH = 20000
+def ApproachSize(sizef, centerf, alignf, visiblef, size_thresh, db=300):
     return MasterConcurrent(
-            Consistent(lambda: abs(sizef()-size_thresh) < db, count=0.3, total=0.5, invert=False, result=True),
-            Consistent(lambda: close_to(centerf(), CAM_CENTER), count=0.3, total=0.5, invert=False, result=True),
-            Center(centerf, visiblef),
+            Consistent(lambda: abs(sizef()-size_thresh) < db and close_to(centerf(), CAM_CENTER) and aligned(alignf(), db=7), count=2.7, total=3.0, invert=False, result=True),
+            Consistent(visiblef, count=1.5, total=2.0, invert=True, result=False),
+            While(lambda: Align(centerf, alignf, visiblef), True),
             PIDStride(lambda: sizef()-size_thresh),
-            AlwaysLog(lambda: "center: {}, target: {}".format(CAM_CENTER, centerf())))
+            AlwaysLog(lambda: "center: {}, target: {}, align: {}, size{}".format(CAM_CENTER, centerf(), alignf(), sizef())))
 
 def ApproachLower():
-    return ApproachSize(lower_size, lower_center, lower_visible, SIZE_THRESH)
+    return ApproachSize(lower_size, lower_center, lower_align_h, lower_visible, SIZE_THRESH)
 def ApproachUpper():
-    return ApproachSize(upper_size, upper_center, upper_visible, SIZE_THRESH)
+    return ApproachSize(upper_size, upper_center, upper_align_h, upper_visible, SIZE_THRESH)
 
 def Backup(speed=0.2):
     return Sequential(
@@ -184,10 +190,8 @@ TargetTorpedos = lambda: Sequential(
         Log('Firing')
 )
 
-def CenterLever():
-    return Center(lever, any_visible)
 
-MoveLever = lambda: Sequential( #TODO: DO WE USE MANIPULATORS? CAN WE USE MANIPULATORS?
+MoveLever = lambda: Sequential( 
         Log('Aligning with lever'),
         CenterLever(),
         Log('Moving lever'),
