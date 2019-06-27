@@ -104,6 +104,7 @@ def get_orientation(quat_values):
 
 quat_values = quat_group.get()
 quat = get_orientation_shm(quat_values).q
+quat = (Quaternion(q=[quat[0], quat[1], quat[2], quat[3]]) * GX_ORIENTATION_OFFSET).q
 quat_orientation_filter = UnscentedKalmanFilter(7, fx_quat, 7, hx_quat, dt, .1)
 quat_orientation_filter.x_hat = np.array([quat[0], quat[1], quat[2], quat[3], 0, 0, 0])
 quat_orientation_filter.P *= .5
@@ -137,17 +138,21 @@ def convert_dvl_velocities(sub_quat, dvl_vel):
     vel_spitz_frame = (Quaternion(hpr=(hpr[0]%360, 0, 0)).conjugate() * sub_quat) * vel_body_frame
     return vel_spitz_frame
 
-def get_velocity(sub_quat):
+def get_velocity(sub_quat, heading_rate):
     vel = np.array([-vel_vars[vel_var].get() for vel_var in \
                     ["velx", "vely", "velz"]])
     if dvl_present:
-        # Rotate DVL velocities
-        # vel[0] *= -1
-        # vel[1] *= -1
-        # Swap x and y axes
+        # Rotate DVL velocities - swap x and y axes
         vel[0], vel[1] = vel[1], -vel[0]
         # Invert z axis, so that we measure depth rate instead of altitude rate
         vel[2] = -vel[2]
+
+        # Offset velocity to account for misaligned reference point and DVL position
+        # TODO: In the future, this may not be necessary. The numbers here are specifically for Odysseus.
+        # The numbers below are most likely incorrect for your sub.
+        SKEW_FACTOR = -0.2286 * 2 * math.pi / 360 # 9 inches from DVL beam to axis of rotation
+        dy = SKEW_FACTOR * heading_rate
+        vel[1] -= dy
 
         vel = convert_dvl_velocities(sub_quat, vel)
 
@@ -158,7 +163,11 @@ def get_depth():
 
 sub_quat = Quaternion(q=quat_orientation_filter.x_hat[:4])
 
-x_vel, y_vel, z_vel = get_velocity(sub_quat)
+hpr_rate_vec = np.array([roll_rate_var.get(), pitch_rate_var.get(), heading_rate_var.get()])
+hpr_rate_vec = np.eye(3, 3).dot(GX_ORIENTATION_OFFSET.matrix()).dot(hpr_rate_vec)
+heading_rate_in = math.radians(hpr_rate_vec[2])
+x_vel, y_vel, z_vel = get_velocity(sub_quat, heading_rate_in)
+
 
 depth = get_depth()
 kalman_xHat = np.array([[ x_vel, 0, y_vel, 0, 0, 0, depth, 0]]).reshape(8, 1)
@@ -223,7 +232,7 @@ while True:
             old_north = outputs.north
 
             sub_quat = Quaternion(q=quat_in)
-            vels = get_velocity(sub_quat)
+            vels = get_velocity(sub_quat, heading_rate_in)
             hpr = sub_quat.hpr()
             c = math.cos(math.radians(hpr[0]))
             s = math.sin(math.radians(hpr[0]))
@@ -262,7 +271,7 @@ while True:
                 pass_through = False
 
                 sub_quat = Quaternion(q=quat_in)
-                vels = get_velocity(sub_quat)
+                vels = get_velocity(sub_quat, heading_rate_in)
                 hpr = sub_quat.hpr()
                 c = math.cos(math.radians(hpr[0]))
                 s = math.sin(math.radians(hpr[0]))
@@ -349,7 +358,7 @@ while True:
             outputs.update(**output)
 
 
-        x_vel, y_vel, z_vel = get_velocity(sub_quat)
+        x_vel, y_vel, z_vel = get_velocity(sub_quat, heading_rate_in)
 
         # Compensate for gravitational acceleration
         #grav_x = math.sin( math.radians(outputs.pitch) )*9.8 # XXX: CHRIS DOES NOT LIKE (small angle approx??)
@@ -408,3 +417,4 @@ while True:
                 iteration = 0
                 real_start = time.time()
             print(iteration/(real_start-time.time()))
+
