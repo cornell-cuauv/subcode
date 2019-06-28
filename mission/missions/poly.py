@@ -7,7 +7,6 @@ from mission.framework.timing import Timed
 from mission.missions.will_common import FakeMoveY
 
 sides = 6
-attempt = iter((x for x in range(0,sides+1)))
 
 def loop_state():
     current = -1
