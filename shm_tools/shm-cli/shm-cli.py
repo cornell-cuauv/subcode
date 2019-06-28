@@ -5,6 +5,7 @@ from os.path import expanduser
 import os
 import sys
 from subprocess import call
+import time
 from misc.utils import watch_thread_wrapper
 
 from tabulate import tabulate
@@ -23,6 +24,8 @@ parser.add_argument('value', nargs='?', help='If provided, [group].[variable] wi
 
 parser.add_argument('--watch', '-w', action='store_true', default=False,
                     help='Watch and print out updates as a group or variable changes')
+parser.add_argument('--frequency', '-f', action='store_true', default=False,
+                    help='Print out the frequency of updates to a group')
 parser.add_argument('--reset', '-r', action='store_true', default=False,
                     help='Reset a group or variable to the default value')
 
@@ -129,6 +132,20 @@ if args.group:
                     if "shm_set({}".format(args.group) in line:
                         variable = line.split("shm_set({}, ".format(args.group))[1].split(")")[0].split(", ")
                         call(["auv-shm-cli", args.group] + variable)
+        elif args.frequency:
+            def f(watcher, quit_event):
+                watcher.watch(group)
+                last_updates = [0] * 3
+                while True:
+                    watcher.wait(new_update=False)
+                    if quit_event.is_set():
+                        break
+                    now = time.time()
+                    rate = len(last_updates) / (now - last_updates[0])
+                    last_updates.pop(0)
+                    last_updates.append(now)
+                    print('\rUpdate frequency: {:5.2f} Hz'.format(rate), end='')
+            watch_thread_wrapper(f)
         else:
             print_group(args.group, group)
         if args.watch:
