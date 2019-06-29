@@ -194,7 +194,7 @@ class SwaySearch(Task):
                                  self.maybe_add_roll(MoveY(-self.width), -1),
                                  self.maybe_add_roll(MoveX(self.stride), -1))
 
-    def on_run(self, *args):
+    def on_run(self, *args, **kwargs):
         self.repeat()
 
         if self.repeat.finished:
