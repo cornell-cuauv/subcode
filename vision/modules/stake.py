@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import shm
 import cv2
+from functools import reduce
 
 # import time
 
@@ -9,6 +10,8 @@ from vision.modules.base import ModuleBase  # , UndefinedModuleOption
 from vision.framework.transform import resize, simple_gaussian_blur
 from vision.framework.helpers import to_umat  # , from_umat
 from vision.framework.draw import draw_circle
+from vision.framework.color import bgr_to_lab, range_threshold
+
 
 from vision import options
 
@@ -29,6 +32,15 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.IntOption('left_circle_offset_y', 0, -3000, 3000),
            options.IntOption('right_circle_offset_x', 0, -3000, 3000),
            options.IntOption('right_circle_offset_y', 0, -3000, 3000),
+           options.IntOption('lever_l', 129, 0, 255),
+           options.IntOption('lever_a', 201, 0, 255),
+           options.IntOption('lever_b', 183, 0, 255),
+           options.IntOption('lever_color_distance', 40, 0, 255),
+           options.IntOption('contour_size_min', 10, 0, 1000),
+           options.IntOption('lever_endzone_x', 1650, 0, 6000),
+           options.IntOption('lever_endzone_y', 2063, 0, 6000),
+           options.IntOption('lever_endzone_width', 1275, 0, 6000),
+           options.IntOption('lever_endzone_height', 1163, 0, 6000),
            ]
 
 
@@ -60,6 +72,7 @@ class Stake(ModuleBase):
         self.flann = cv2.FlannBasedMatcher(index_params, search_params)
         self.past_var = {"lever_origin_upper": np.zeros((5, 2)), "lever_origin_lower": np.zeros((5, 2))}
         self.static = {}
+
 
     def static_process(self, image1, image2, name="board"):
 
@@ -111,6 +124,7 @@ class Stake(ModuleBase):
 
             assert im is not None
             return find_key_descriptors(im)
+
 
     def match(self, im1, im2, output, color):
         MIN_MATCH_COUNT = self.options['min_match_count']
@@ -186,6 +200,7 @@ class Stake(ModuleBase):
             # print ("Not enough matches are found for %s - %d/%d" % (im1["name"], len(good), MIN_MATCH_COUNT))
         return output, None
 
+
     def locate_source_point(self, image, mask, point, output=None, color=(0, 0, 255)):
         i = self.static[image]
         pt = np.float32([[[int(point[0]*i['rx'] + PADDING), int(point[1]*i['ry'] + PADDING)]]])
@@ -194,33 +209,8 @@ class Stake(ModuleBase):
         draw_circle(output, tuple(pt[0][0]), 1, color, thickness=3)
         return pt
 
-    def process(self, *mats):
-        # x = time.perf_counter()
-        DOWNSIZE_CAMERA = self.options['downsize_camera']
 
-        mat = cv2.cvtColor(mats[0], cv2.COLOR_BGR2GRAY)
-
-        img2 = resize(to_umat(mat), int(mat.shape[1]*DOWNSIZE_CAMERA), int(mat.shape[0]*DOWNSIZE_CAMERA)) if DOWNSIZE_CAMERA else mat  # trainImage
-
-        board = self.static_process('upper', 'lower')
-
-        # find the keypoints and descriptors with SIFT
-        kp2, des2 = self.detector.detectAndCompute(img2, None)
-        cam = {"img": img2, "kp": kp2, "des": des2}
-
-        p = resize(mats[0], int(mats[0].shape[1] * self.options['downsize_camera']), int(mats[0].shape[0] * self.options['downsize_camera']))
-
-        p, M = self.match(board, cam, p, (255, 0, 0))
-        if self.options['show_keypoints']: p = cv2.drawKeypoints(p, kp2, None, (255, 255, 0))
-
-        assert p is not None
-
-        self.post_shm(p, M)
-        self.post("outline", p)
-
-        # print(time.perf_counter() - x)
-
-    def post_shm(self, p, M):
+    def post_shm(self, mat, p, M):
         shm.torpedoes_stake.camera_x.set(p.shape[1]//2)
         shm.torpedoes_stake.camera_y.set(p.shape[0]//2)
 
@@ -243,6 +233,78 @@ class Stake(ModuleBase):
             shm.torpedoes_stake.heart_y.set(heart[0][0][1])
         else:
             shm.torpedoes_stake.board_visible.set(False)
+
+        # shm.torpedoes_stake.lever_finished.set(self.lever_finished(mat, 'board', M, p))
+        print(self.lever_finished(mat, 'board', M, p))
+
+    def lever_finished(self, mat, image, mask, output):
+        colorspace = "lab"
+        lever_endzone = ((self.options['lever_endzone_x'],
+                          self.options['lever_endzone_y']),
+                         (self.options['lever_endzone_x'] + self.options['lever_endzone_width'],
+                          self.options['lever_endzone_y'] + self.options['lever_endzone_height']))
+        endzone_transformed = [self.locate_source_point(image, mask, pt, output, (0, 255, 0))[0][0] for pt in lever_endzone]
+
+        _, split = bgr_to_lab(mat)
+
+        d = self.options['lever_color_distance']
+        threshed = [range_threshold(split[i],
+                    self.options['lever_%s' % colorspace[i]] - d, self.options['lever_%s' % colorspace[i]] + d)
+                    for i in range(len(colorspace))]
+
+        combined = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
+        self.post('thresh', combined)
+
+        _, contours, _ = cv2.findContours(combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        filtered = [i for i in contours if cv2.contourArea(i) > self.options['contour_size_min']]
+        cv2.drawContours(mat, filtered, -1, (0, 255, 0), 3)
+        self.post('contours', mat)
+
+        def contour_in_endzone(contour, p):
+            M = cv2.moments(contour)
+
+            center = (M['m10']/M['m00'], M['m01']/M['m00'])
+            print(center)
+            draw_circle(p, (int(center[0]), int(center[1])), 1, (0, 255, 0), thickness=3)
+
+            def within(pt, pt1, pt2):
+                return pt > pt1 and pt < pt2
+
+            return within(center[0], endzone_transformed[0][0], endzone_transformed[1][0]) and \
+                   within(center[1], endzone_transformed[0][1], endzone_transformed[1][1])
+        ret = any(map(lambda x: contour_in_endzone(x, output), filtered))
+        self.post('nani', output)
+
+        return ret
+
+
+    def process(self, *mats):
+        # x = time.perf_counter()
+        DOWNSIZE_CAMERA = self.options['downsize_camera']
+
+        mat = cv2.cvtColor(mats[0], cv2.COLOR_BGR2GRAY)
+
+        img2 = resize(to_umat(mat), int(mat.shape[1]*DOWNSIZE_CAMERA), int(mat.shape[0]*DOWNSIZE_CAMERA)) if DOWNSIZE_CAMERA else mat  # trainImage
+
+        board = self.static_process('upper', 'lower')
+
+        # find the keypoints and descriptors with SIFT
+        kp2, des2 = self.detector.detectAndCompute(img2, None)
+        cam = {"img": img2, "kp": kp2, "des": des2}
+
+        p = resize(mats[0], int(mats[0].shape[1] * self.options['downsize_camera']), int(mats[0].shape[0] * self.options['downsize_camera']))
+        p_mat = p.copy()
+
+        p, M = self.match(board, cam, p, (255, 0, 0))
+        if self.options['show_keypoints']: p = cv2.drawKeypoints(p, kp2, None, (255, 255, 0))
+
+        assert p is not None
+
+        self.post_shm(p_mat, p, M)
+        self.post("outline", p)
+
+        # print(time.perf_counter() - x)
+
 
 
 if __name__ == '__main__':

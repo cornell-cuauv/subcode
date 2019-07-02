@@ -41,6 +41,9 @@ def heart():
 def left_hole():
     return (shm.torpedoes_stake.left_hole_x.get(), shm.torpedoes_stake.left_hole_y.get())
 
+def right_hole():
+    return (shm.torpedoes_stake.right_hole_x.get(), shm.torpedoes_stake.right_hole_y.get())
+
 def lever():
     return (shm.torpedoes_stake.lever_origin_x.get(), shm.torpedoes_stake.lever_origin_y.get())
 
@@ -94,36 +97,8 @@ def withAlignHeartOnFail(task):
 def withAlignBoardOnFail(task):
     return lambda *args, **kwargs: Retry(lambda: Conditional(task(*args, **kwargs), on_fail=Fail(AlignBoard())), attempts=2)
 
-
-
-# IMPORTANT: MAKE SURE U CHANGE THIS FOR TEAGLE/TRANSDECK/WHATEVER so the sub doesn't hit the bottom of the pool
-# MAX_DEPTH = 3.4
-# def DepthSearch(min_depth=0.2, max_depth=3.4, speed=0.05):
-#     return Sequential(
-#             MasterConcurrent(
-#                 FunctionTask(lambda: shm.desires.depth.get() >= max_depth, finite=False),
-#                 RelativeToCurrentDepth(offset=speed, min_target=min_depth, max_target=max_depth)),
-#             Zero(),
-#             Fail()
-#     )
-
-
-# def SearchHalf(target, speed=0.15):
-#     target = target or which_visible(invert=True)
-#     direction = -speed if target=="upper" else speed
-#     return Sequential(
-#             SearchFor(
-#                 search_task=DepthSearch(speed=direction),
-#                 visible=getattr(shm.torpedoes_stake, "%s_visible"%target).get,
-#                 consistent_frames=(2.7*60, 3*60)
-#                 ),
-#             Zero()
-#         )
-
-# def SearchUpper():
-#     return SearchHalf('upper')
-# def SearchLower():
-#     return SearchHalf('lower')
+def withShootRightOnFail(task):
+    return lambda: Conditional(task, on_fail=Fail(Sequential(AlignRightHole(), ApproachRightHole(), DeadReckonRightHole(), Backup())))
 
 
 close_to = lambda point1, point2, db=10: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
@@ -138,16 +113,14 @@ def Align(centerf, alignf, visiblef, px=0.11, py=0.004, p=0.007, d=0.0005, db=0)
             PIDSway(alignf, p=p, d=d, db=db),
             AlwaysLog(lambda: "align_h: %d" % (alignf(),)))
 
-# def AlignUpper():
-#     return Align(upper_center, align_h, visible)
-# def AlignLower():
-#     return Align(lower_center, align_h, visible)
 def AlignBoard():
     return Align(board_center, align_h, visible)
 def AlignHeart():
     return Align(heart, align_h, visible)
 def AlignLeftHole():
     return Align(left_hole, align_h, visible)
+def AlignRightHole():
+    return Align(right_hole, align_h, visible
 
 Center = lambda centerf,  visiblef, targetf=CAM_CENTER, px=0.0018, py=0.004, d=0.005, db=0, closedb=5: MasterConcurrent(
             Consistent(lambda: close_to(centerf(), targetf, db=closedb), count=1.5, total=2.0, invert=False, result=True),
@@ -159,6 +132,8 @@ def CenterHeart():
     return Center(centerf=heart, visiblef=visible)
 def CenterLeftHole():
     return Center(centerf=left_hole, visiblef=visible)
+def CenterRightHole():
+    return Center(centerf=right_hole, visiblef=visible)
 def CenterLever():
     return Center(centerf=lever, visiblef=visible)
 def CenterBoard():
@@ -180,15 +155,32 @@ def ApproachHeart():
 @withAlignBoardOnFail
 def ApproachLeftHole():
     return ApproachSize(size, left_hole, align_h, visible, APPROACH_SIZE)
+@withAlignBoardOnFail
+def ApproachRightHole():
+    return ApproachSize(size, right_hole, align_h, visible, APPROACH_SIZE)
+@withAlignBoardOnFail
+def ApproachRightHole():
+    return ApproachSize(size, right_hole, align_h, visible, APPROACH_SIZE)
 
 def ApproachAlign():
     return ApproachSize(size, board_center, align_h, visible, ALIGN_SIZE)
 
 def DeadReckonHeart():
     pass
-def DeadReckonLever():
+def _DeadReckonLever():
     pass
+
+@withShootRightOnFail
+def DeadReckonLever():
+    return Retry(lambda: Sequential(
+            _DeadReckonLever(),
+            Backup(),
+            ApproachAlign(),
+            FunctionTask(lambda: shm.torpedoes_stake.lever_finished.get())), attempts=2)
+
 def DeadReckonLeftHole():
+    pass
+def DeadReckonRightHole():
     pass
 
 
@@ -205,14 +197,6 @@ def Backup(speed=0.2):
             )
 
 
-TargetTorpedos = lambda: Sequential(
-        Log('Aligning shot'),
-        Log('Firing')
-)
-
-
-
-
 Full = \
     lambda: Sequential(
         Log('Starting Stake'),
@@ -224,8 +208,8 @@ Full = \
         AlignBoard(),
         CenterLever(),  # Approach?
         DeadReckonLever(),
-        Backup(),
         AlignLeftHole(),
+        ApproachLeftHole(),
         DeadReckonLeftHole(),  # Approach?
         Backup(),
         Log('Stake complete')
