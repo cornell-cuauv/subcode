@@ -30,6 +30,7 @@ int main()
     //initializing modules for receiving/sending network data and handling shm
     udpReceiverInit();
     udpSenderInit();
+    commsInit();
     shm_init();
     
     //audible_file = fopen("audible_file.txt", "w");
@@ -48,13 +49,18 @@ int main()
         //calling pinger tracking code if in tracking mode or communications receive code if in comms mode
         if(shm_settings.choose_one_for_tracking_choose_zero_for_communications == 1)
         {
-            pinger_tracking_dsp(fpga_packet, current_mode != 1);
+            pingerTrackingDSP(fpga_packet, current_mode != 1);
             current_mode = 1;
         }
         else
         {
-            comms_dsp(fpga_packet, current_mode != 0);
-            current_mode = 0;
+            if(current_mode != 0)
+            {
+                commsReset();
+                current_mode = 0;
+            }
+            
+            commsDSP(fpga_packet, shm_status.packet_count);
         }
 
         shm_status.packet_count++;

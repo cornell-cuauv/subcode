@@ -2,8 +2,9 @@
 
 #Script for drawing plots of the correct DFT bin amplitude and ratio between successive amplitudes with respect to time. Also shows trigger point. Read Hydrophones Code wiki entry.
 
-import socket, struct, numpy, math, sys
+import socket, struct, numpy, math
 import matplotlib.pyplot as plt
+import os.path
 try:
     from cv2 import imread
 except ImportError:
@@ -28,7 +29,7 @@ plt.xlabel("Packet Number")
 plt.ylabel("Amplitudes White, Ratios Blue")
 
 #displaying the penguin meme background
-img = imread("katy.jpg")
+img = imread(os.path.join(os.path.dirname(os.path.realpath(__file__)), "katy.jpg"))
 plt.imshow(img, extent = [0, DFT_PLOT_LENGTH - 1, 0, MAXIMUM_AMPLITUDE - 1])
 
 #creating the axes and setting the maximum values. removing axis ticks

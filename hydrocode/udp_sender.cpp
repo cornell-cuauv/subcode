@@ -14,13 +14,11 @@
 #include <arpa/inet.h>
 
 #include "udp_sender.hpp"
-#include "liquid.h"
-#include "structs.hpp"
 
 static int gain_socket;
 static struct sockaddr_in gain_serv_addr;
-static int plot_sockets[4];
-static struct sockaddr_in plot_serv_addresses[4];
+static int plot_sockets[5];
+static struct sockaddr_in plot_serv_addresses[5];
 
 void udpSenderInit()
 {
@@ -73,16 +71,30 @@ void udpSenderInit()
     
     plot_sockets[3] = socket(AF_INET, SOCK_DGRAM, 0);
     plot_serv_addresses[3].sin_family = AF_INET;
-    plot_serv_addresses[3].sin_port = htons(udp_raw_comms_plot_port);
-    plot_serv_addresses[3].sin_addr.s_addr = inet_addr(UDP_RAW_COMMS_PLOT_ADDRESS);
+    plot_serv_addresses[3].sin_port = htons(udp_comms_filtered_plot_port);
+    plot_serv_addresses[3].sin_addr.s_addr = inet_addr(UDP_COMMS_FILTERED_PLOT_ADDRESS);
     
     if(plot_sockets[3] == -1)
     {
-        printf("%s \n", "failed to create raw comms plot socket!");
+        printf("%s \n", "failed to create comms filtered plot socket!");
     }
     else
     {
-        printf("%s \n", "created raw comms plot socket successfully");
+        printf("%s \n", "created comms filtered plot socket successfully");
+    }
+    
+    plot_sockets[4] = socket(AF_INET, SOCK_DGRAM, 0);
+    plot_serv_addresses[4].sin_family = AF_INET;
+    plot_serv_addresses[4].sin_port = htons(udp_corr_plot_port);
+    plot_serv_addresses[4].sin_addr.s_addr = inet_addr(UDP_CORR_PLOT_ADDRESS);
+    
+    if(plot_sockets[4] == -1)
+    {
+        printf("%s \n", "failed to create correlation plot socket!");
+    }
+    else
+    {
+        printf("%s \n", "created correlation plot socket successfully");
     }
     
     //gain settings

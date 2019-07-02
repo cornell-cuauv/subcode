@@ -5,6 +5,7 @@
 import socket, struct, numpy, math
 import matplotlib.pyplot as plt
 from scipy import interpolate
+import os.path
 try:
     from cv2 import imread
 except ImportError:
@@ -29,7 +30,7 @@ plt.xlabel("Sample Number")
 plt.ylabel("Amplitudes ch0-Red ch1-Green ch2-Blue")
 
 #displaying the penguin meme background
-img = imread("katy.jpg")
+img = imread(os.path.join(os.path.dirname(os.path.realpath(__file__)), "katy.jpg"))
 plt.imshow(img, extent = [-TRIGGER_PLOT_LENGTH / 2, TRIGGER_PLOT_LENGTH / 2 - 1, 0, HIGHEST_QUANTIZATION_LVL - 1])
 
 #creating the axes and setting the maximum values. removing axis ticks

@@ -18,8 +18,11 @@ static const int udp_trigger_plot_port = 9002; //trigger plot script listens on 
 #define UDP_DFT_PLOT_ADDRESS "127.0.0.1" //local host because the plotting scripts are on the same machine
 static const int udp_dft_plot_port = 9003; //dft plot script listens on this port
 
-#define UDP_RAW_COMMS_PLOT_ADDRESS "127.0.0.1"
-static const int udp_raw_comms_plot_port = 9004;
+#define UDP_COMMS_FILTERED_PLOT_ADDRESS "127.0.0.1"
+static const int udp_comms_filtered_plot_port = 9004;
+
+#define UDP_CORR_PLOT_ADDRESS "127.0.0.1"
+static const int udp_corr_plot_port = 9005;
 
 #define UDP_GAIN_ADDRESS "192.168.93.13" //FPGA IP address
 static const int udp_gain_port = 5005; //FPGA listens on this port for gain settings

@@ -13,17 +13,19 @@
 
 #include "libshm/c/vars.h"
 //#include "shm_mac.hpp"
+#include "structs.hpp"
 #include "pinger_tracking.hpp"
-//#include "audible_ping.hpp"
 #include "common_dsp.hpp"
 #include "udp_sender.hpp"
-#include "liquid.h"
-#include "structs.hpp"
+
+#include <complex>
+
+//#include "audible_ping.hpp"
 
 //extern FILE *audible_file;
 
 static const int trigger_plot_length = 2 * dft_length; //length of the trigger plot (in samples)
-static const int dft_plot_length = (int)(pinger_period * pinger_period_factor * sampling_rate / packet_length - gain_propagation_packets); //length of the dft plot (in samples)
+static const int dft_plot_length = (int)(pinger_period * pinger_period_factor * (float)sampling_rate / packet_length - gain_propagation_packets); //length of the dft plot (in samples)
 static float dft_peak;
 static buffer dft_results_buffer(dft_length + 1);
 static buffer dft_plot_amplitudes(dft_plot_length);
@@ -42,8 +44,27 @@ static float raw_peak;
 static buffer_triple raw_plot(raw_plot_length);
 static struct hydrophones_settings shm_settings;
 static struct hydrophones_results_track shm_results_track;
+static struct gx4 gx4_data;
 static int trigger_packet_no;
 static buffer_triple trigger_plot(trigger_plot_length);
+
+bool increaseGain(float raw_peak, int &gain_lvl)
+{
+    //Tries to increase gain, taking into account the signal strength on the current interval ("raw_peak") and the current gain level ("gain_lvl"). Returns 1 if gain has been increased
+    
+    //because the possible gain levels are a few random numbers like x6, x24, etc., it is easy to try all of them in decreasing order
+    for(int try_gain_lvl = 13; try_gain_lvl > gain_lvl; try_gain_lvl--)
+    {
+        //if signal would not have clipped on a higher gain, then gain can be incresed. DC bias needs to be accounted for because it does not change with gain. it is very roughly "highest_quantization_lvl / 2" at all times because we are working with single rail supplies.
+        if((raw_peak - highest_quantization_lvl / 2) / gainz[gain_lvl] * gainz[try_gain_lvl] <= (clipping_threshold - clipping_threshold_hysteresis) * highest_quantization_lvl / 2)
+        {
+            gain_lvl = try_gain_lvl;
+            return 1;
+        }
+    }
+    
+    return 0;
+}
 
 void slidingDFTBin(triple_phasor &X, const buffer_triple &signal_buffer, int buffer_length, int dft_length, float target_frequency, float sampling_rate)
 {
@@ -52,7 +73,7 @@ void slidingDFTBin(triple_phasor &X, const buffer_triple &signal_buffer, int buf
     triple_phasor new_term, term_to_remove;
     float w0_n;
     
-    w0_n = 2 * M_PI * round(target_frequency * dft_length / sampling_rate) / dft_length; //target frequency normalized to the range [0, 2 pi)
+    w0_n = 2 * M_PI * round(target_frequency * dft_length / (float)sampling_rate) / dft_length; //target frequency normalized to the range [0, 2 pi)
     
     new_term = signal_buffer.read(buffer_length - 1);
     term_to_remove = signal_buffer.read(buffer_length - 1 - dft_length);
@@ -109,13 +130,15 @@ void computeHeading(triple_sample ping_phase, float frequency, float &heading, f
     path_diff_1 = ping_phase.ch1 * sound_speed / (2 * M_PI * frequency);
     path_diff_2 = ping_phase.ch2 * sound_speed / (2 * M_PI * frequency);
     
+    shm_getg(gx4, gx4_data);
+    
     if(is_mainsub)
     {
-        heading = atan2(path_diff_1, -path_diff_2);
+        heading = fmod(atan2(path_diff_1, -path_diff_2) * 180.0 / M_PI + gx4_data.heading, 360.0);
     }
     else
     {
-        heading = atan2(path_diff_1, -path_diff_2);
+        heading = fmod(atan2(path_diff_1, -path_diff_2) * 180.0 / M_PI + gx4_data.heading, 360.0);
     }
     
     cos_elevation = sqrt((path_diff_1 * path_diff_1 + path_diff_2 * path_diff_2)) / nipple_distance;
@@ -131,7 +154,7 @@ void computeHeading(triple_sample ping_phase, float frequency, float &heading, f
     }
 }
 
-void pinger_tracking_dsp(uint16_t *fpga_packet, bool reset_signal)
+void pingerTrackingDSP(uint16_t *fpga_packet, bool reset_signal)
 {
     //Main function, executes every packet and controls the pinger tracking program flow.
     
@@ -161,7 +184,7 @@ void pinger_tracking_dsp(uint16_t *fpga_packet, bool reset_signal)
 
         printf("\n%s \n", "new interval. mode: tracking");
         
-        shm_getg(hydrophones_settings, shm_settings);
+        //shm_getg(hydrophones_settings, shm_settings);
         
         //the desired gain is set everytime a new interval starts
         setGain(gain_lvl);
@@ -246,7 +269,7 @@ void pinger_tracking_dsp(uint16_t *fpga_packet, bool reset_signal)
             //updating the DFT results buffer
             for(int freq_no = 0; freq_no < freq_list_length; freq_no++)
             {
-                slidingDFTBin(last_dft_result[freq_no], raw_buffer, raw_buffer_length, dft_length, freqs[freq_no], sampling_rate);
+                slidingDFTBin(last_dft_result[freq_no], raw_buffer, raw_buffer_length, dft_length, freqs[freq_no], (float)sampling_rate);
             }
             dft_results_buffer.push(last_dft_result[good_freq_no].combinedAmplitude());
             
@@ -309,7 +332,7 @@ void pinger_tracking_dsp(uint16_t *fpga_packet, bool reset_signal)
     packet_no++;
     
     //ending an interval
-    if(packet_no == (int)(pinger_period * pinger_period_factor * sampling_rate / packet_length))
+    if(packet_no == (int)(pinger_period * pinger_period_factor * (float)sampling_rate / packet_length))
     {
         float elevation;
         bool elevation_correct;
