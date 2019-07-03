@@ -64,7 +64,7 @@ if not args.no_record:
     try:
         dirs = glob.glob(os.path.join(cuauv_log, 'current', dirname_base) + '[0-9][0-9]*')
 
-        dn = [int(os.path.basename(x)[len(dirname_base):]) for x in dirs]
+        dn = [int(os.path.basename(x)[len(dirname_base):]) for x in dirs] or [1]
         highest_run_num = max(dn)
 
     except subprocess.CalledProcessError as ls_except:
