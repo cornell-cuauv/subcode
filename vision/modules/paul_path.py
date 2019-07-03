@@ -5,6 +5,8 @@ import numpy as np
 from vision.modules.base import ModuleBase
 from vision.options import *
 import math
+import cmath
+import shm
 
 #static_img = cv2.imread('path1.png')
 static_img = None
@@ -63,9 +65,12 @@ class Path(ModuleBase):
         self.post('edg', edg)
         lines = cv2.HoughLines(edg, 1, np.pi/180 * 2, self.options['houghness'])
         #print(lines)
-        if lines is None: return
+        if lines is None or len(lines) < 2:
+            shm.path_results.num_lines.set(0)
+            shm.path_results.visible_1.set(False)
+            shm.path_results.visible_2.set(False)
+            return
         #print(lines)
-        if len(lines) < 2: return
         lines[lines[:,0,0] < 0,:,1] += np.pi
         lines[:,:,0] = np.abs(lines[:,:,0])
         pkv = np.exp(1j * lines[:,:,1])
@@ -86,6 +91,19 @@ class Path(ModuleBase):
         superlabels = label * 2
         supercenters = []
         m2 = mat.copy()
+        for i, ((r, th),) in enumerate(lines):
+            #print(r, th)
+            
+            dr = np.exp(1j*th)
+            cent = dr * r
+            drx = dr * 1j
+            #print(cent, end='\t')
+            p1 = cent + 1000 * drx
+            p2 = cent + -1000 * drx
+            #print(p1, p2)
+            #print(label[i])
+            m2 = cv2.line(m2, (int(p1.real), int(p1.imag)), (int(p2.real), int(p2.imag)), clrs[superlabels[i]], 2)
+        self.post('m2', m2)
         #for i in range(2):
         #    matches = lines[label == i,:,0]
         #    if len(matches) < 2: return
@@ -101,21 +119,52 @@ class Path(ModuleBase):
         #d1 = (uv_norm(supercenters[0][0] + supercenters[1][0]), (supercenters[0][1] + supercenters[1][1]) / 2)
         #d2 = (uv_norm(supercenters[2][0] + supercenters[3][0]), (supercenters[2][1] + supercenters[3][1]) / 2)
         d1, d2 = ((np.mean(pkv[label == i,0]), np.mean(lines[label == i,:,0])) for i in range(2))
-        print(d1, d2)
+        d1, d2 = ((a / abs(a), b) for a, b in (d1, d2))
+        #print(d1, d2)
 
         ddot = d1[0].real * d2[0].real + d1[0].imag * d2[0].imag
         if ddot < 0:
             d1 = -d1[0], -d1[1]#((d1[1] + math.pi) % (2*math.pi))
-        center = np.linalg.solve(np.complex64([d1[0] / abs(d1[0]), d2[0] / abs(d2[0])]).view(np.float32).reshape(2,-1), [[d1[1]], [d2[1]]])[:,0].astype(np.float64)#.view(np.complex64)[0]
+            ddot *= -1
+        try:
+            center = np.linalg.solve(np.complex64([d1[0] / abs(d1[0]), d2[0] / abs(d2[0])]).view(np.float32).reshape(2,-1), [[d1[1]], [d2[1]]])[:,0].astype(np.float64)#.view(np.complex64)[0]
+        except np.linalg.linalg.LinAlgError:
+            print('singular matrix')
+            shm.path_results.num_lines.set(0)
+            shm.path_results.visible_1.set(False)
+            shm.path_results.visible_2.set(False)
+            return
+        shm.path_results.center_x.set((center[0] / mat.shape[1]) - .5)
+        shm.path_results.center_y.set((center[1] - mat.shape[0] / 2) / mat.shape[1])
         #print(center)
         d3 = (uv_norm(d1[0] + d2[0]), (d1[1] + d2[1]) / 2)
         d3 = d3[0], np.dot(center, np.complex64([d3[0]]).view(np.float32))
-        mat = cv2.circle(mat, (int(center[0]), int(center[1])), 10, (255, 0, 0), 2)
+        try:
+            mat = cv2.circle(mat, (int(center[0]), int(center[1])), 10, (255, 0, 0), 2)
+        except (ValueError, OverflowError):
+            print('overflow')
+            shm.path_results.num_lines.set(0)
+            shm.path_results.visible_1.set(False)
+            shm.path_results.visible_2.set(False)
+            return
         indices_y, indices_x = np.indices(mat.shape[:-1])
         msk2 = (indices_y * d3[0].imag + indices_x * d3[0].real) < d3[1]
         #self.post('msk2', msk2.astype(np.uint8) * 255)
-        angle = math.acos(-ddot)
-        if not ((self.options['angle_min'] * math.pi / 180) < angle < (self.options['angle_max'] * math.pi / 180)): return
+        try:
+            angle = math.acos(-ddot)
+        except ValueError:
+            angle = 0
+        if not ((self.options['angle_min'] * math.pi / 180) < angle < (self.options['angle_max'] * math.pi / 180)):
+            mat[0:20,0:20] = (0, 0, 255)
+            print(angle * 180 / math.pi)
+            if angle < .2:
+                shm.path_results.num_lines.set(1)
+            else:
+                shm.path_results.num_lines.set(0)
+        else:
+            shm.path_results.num_lines.set(2)
+            #self.post('mat', mat)
+            #return
         #print(center)
         #d3 = center, (d1[1] + d2[1])
 
@@ -128,6 +177,14 @@ class Path(ModuleBase):
         v2 = d2[0] * 1j#(-1j if side else 1j)
         v1 = max((v1, -v1), key=k)
         v2 = max((v2, -v2), key=k)
+        v1, v2 = (v1, v2) if np.cross(*np.complex128([[v1], [v2]]).view(np.float64)) > 0 else (v2, v1)
+        #v1, v2 = sorted((v1, v2), key=lambda x: -x.imag)
+        shm.path_results.visible_1.set(True)
+        shm.path_results.visible_2.set(True)
+        #c1, c2 = (x.conjugate() * -1j for x in (v1, v2))
+        c1, c2 = v1, v2
+        shm.path_results.angle_1.set(cmath.log(c1).imag)
+        shm.path_results.angle_2.set(cmath.log(c2).imag)
 
             
         print(center)
@@ -136,7 +193,7 @@ class Path(ModuleBase):
             #print(Ccenter, v)
             ds = Ccenter + v * 200
             #mat = cv2.line(mat, (int(Ccenter.real), int(Ccenter.imag)), (int(ds.real), int(ds.imag)), clrs[i], 2)
-            mat = cv2.circle(mat, (int(ds.real), int(ds.imag)), 10, (255, 0, 0), 2)
+            mat = cv2.circle(mat, (int(ds.real), int(ds.imag)), 10, clrs[i*2+1], 2)
 
         for i, (v, dst) in enumerate((d1, d2, d3)):
             v /= abs(v)
@@ -153,27 +210,11 @@ class Path(ModuleBase):
         #    p2 = ctr - 1000 * vc
         #    m2 = cv2.line(m2, (int(p1.real), int(p1.imag)), (int(p2.real), int(p2.imag)), clrs[i], 2)
         #print(supercenters)
-        for i, ((r, th),) in enumerate(lines):
-            #print(r, th)
-            
-            dr = np.exp(1j*th)
-            cent = dr * r
-            drx = dr * 1j
-            #print(cent, end='\t')
-            p1 = cent + 1000 * drx
-            p2 = cent + -1000 * drx
-            #print(p1, p2)
-            #print(label[i])
-            m2 = cv2.line(m2, (int(p1.real), int(p1.imag)), (int(p2.real), int(p2.imag)), clrs[superlabels[i]], 2)
         #print(angles)
         #l2 = np.complex64([np.exp(2j * th) for (r, th), in lines]
         #dirs = [dir ** 2 for cent, dir in ll]
 
         self.post('mat', mat)
-        self.post('m2', m2)
-
-
-
 
 if __name__ == '__main__':
     Path('downward', opts)()
