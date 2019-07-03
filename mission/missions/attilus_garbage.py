@@ -27,7 +27,7 @@ class PIDStride(Task):
     def on_first_run(self, *args, **kwargs):
         self.pid_loop = PIDLoop(output_function=VelocityX())
 
-    def on_run(self, error, p=0.000003,  i=0, d=0.0, db=0.01875, negate=False, max_out=0.5, *args, **kwargs):
+    def on_run(self, error, p=0.00003,  i=0, d=0.0, db=0.01875, negate=False, max_out=0.5, *args, **kwargs):
         self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband = db, negate=negate, max_out=max_out)
 
     def stop(self):

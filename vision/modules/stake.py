@@ -35,16 +35,16 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.IntOption('lever_l', 129, 0, 255),
            options.IntOption('lever_a', 201, 0, 255),
            options.IntOption('lever_b', 183, 0, 255),
-           options.IntOption('lever_color_distance', 40, 0, 255),
-           options.IntOption('contour_size_min', 10, 0, 1000),
-           options.IntOption('lever_endzone_x', 1650, 0, 6000),
-           options.IntOption('lever_endzone_y', 2063, 0, 6000),
-           options.IntOption('lever_endzone_width', 1275, 0, 6000),
-           options.IntOption('lever_endzone_height', 1163, 0, 6000),
+           options.IntOption('lever_color_distance', 50, 0, 255),
+           options.IntOption('contour_size_min', 5, 0, 1000),
+           options.IntOption('lever_endzone_left', 1793, 0, 6000),
+           options.IntOption('lever_gutter_top', 2343, 0, 6000),
+           options.IntOption('lever_gutter_bot', 2695, 0, 6000),
            ]
 
 
 PADDING = 50
+GUTTER_PAD = 500
 BLUR_KERNEL = 3
 BLUR_SD = 1
 
@@ -234,30 +234,38 @@ class Stake(ModuleBase):
         else:
             shm.torpedoes_stake.board_visible.set(False)
 
-        # shm.torpedoes_stake.lever_finished.set(self.lever_finished(mat, 'board', M, p))
-        print(self.lever_finished(mat, 'board', M, p))
+        shm.torpedoes_stake.lever_finished.set(self.lever_finished(mat, 'board', M, p))
+        # print(self.lever_finished(mat, 'board', M, p))
 
     def lever_finished(self, mat, image, mask, output):
         colorspace = "lab"
-        lever_endzone = ((self.options['lever_endzone_x'],
-                          self.options['lever_endzone_y']),
-                         (self.options['lever_endzone_x'] + self.options['lever_endzone_width'],
-                          self.options['lever_endzone_y'] + self.options['lever_endzone_height']))
-        endzone_transformed = [self.locate_source_point(image, mask, pt, output, (0, 255, 0))[0][0] for pt in lever_endzone]
+        shape = self.static[image]['org'].shape[1] + GUTTER_PAD
+        lever_gutter = ((-GUTTER_PAD, self.options['lever_gutter_top']),
+                        (-GUTTER_PAD, self.options['lever_gutter_bot']),
+                        (shape, self.options['lever_gutter_bot']),
+                        (shape, self.options['lever_gutter_top']),
+                        )
+        gutter_transformed = [self.locate_source_point(image, mask, pt, output, (0, 255, 0))[0][0] for pt in lever_gutter]
+        gutter_transformed = np.float32(gutter_transformed).reshape(-1, 1, 2)
+        gutter_mask = np.zeros((mat.shape[0], mat.shape[1]), dtype=np.uint8)
+        cv2.fillPoly(gutter_mask, [np.int32(gutter_transformed)], 255)
+        self.post('gutter', gutter_mask)
 
         _, split = bgr_to_lab(mat)
 
         d = self.options['lever_color_distance']
         threshed = [range_threshold(split[i],
                     self.options['lever_%s' % colorspace[i]] - d, self.options['lever_%s' % colorspace[i]] + d)
-                    for i in range(len(colorspace))]
+                    for i in range(1, len(colorspace))]
 
         combined = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
+        combined = cv2.bitwise_and(combined, gutter_mask)
         self.post('thresh', combined)
-
+        lever_endzone_left = self.locate_source_point(image, mask, (self.options['lever_endzone_left'], self.options['lever_gutter_top']), output, (0, 0, 0,))
         _, contours, _ = cv2.findContours(combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         filtered = [i for i in contours if cv2.contourArea(i) > self.options['contour_size_min']]
         cv2.drawContours(mat, filtered, -1, (0, 255, 0), 3)
+
         self.post('contours', mat)
 
         def contour_in_endzone(contour, p):
@@ -266,14 +274,11 @@ class Stake(ModuleBase):
             center = (M['m10']/M['m00'], M['m01']/M['m00'])
             print(center)
             draw_circle(p, (int(center[0]), int(center[1])), 1, (0, 255, 0), thickness=3)
+            
+            return center[0] > lever_endzone_left[0][0][0]
 
-            def within(pt, pt1, pt2):
-                return pt > pt1 and pt < pt2
 
-            return within(center[0], endzone_transformed[0][0], endzone_transformed[1][0]) and \
-                   within(center[1], endzone_transformed[0][1], endzone_transformed[1][1])
         ret = any(map(lambda x: contour_in_endzone(x, output), filtered))
-        self.post('nani', output)
 
         return ret
 
@@ -300,7 +305,11 @@ class Stake(ModuleBase):
 
         assert p is not None
 
-        self.post_shm(p_mat, p, M)
+        try:
+            self.post_shm(p_mat, p, M)
+        except cv2.error as e:
+            print(e)
+
         self.post("outline", p)
 
         # print(time.perf_counter() - x)
