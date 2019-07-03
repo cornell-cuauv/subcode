@@ -309,11 +309,10 @@ class GenericThruster(object):
             else:
                 z = -0.5*(qvars.b - sqrt(D))
                 pwm = z/qvars.a
-
+            return int(round(pwm))
         except ValueError: #sqrt negative number, possible for small values of x
-            return 0       #small enough to return 0 anyway
+            return 0       #small enough to return 0 anyway, avoid errors on NaN
 
-        return int(round(pwm))
 
     def get_thrust_vectoring_offset(self):
         angle = self.thrust_vectoring_data.angle_from_value(self.vector_angle.get())
