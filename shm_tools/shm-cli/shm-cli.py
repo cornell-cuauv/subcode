@@ -14,6 +14,8 @@ import shm
 
 __author__ = 'zander'
 
+HISTORY_LENGTH = 10
+
 parser = argparse.ArgumentParser(description='A shared memory command line interface.', prog='auv-shm-cli')
 
 # Positional arguments
@@ -135,13 +137,15 @@ if args.group:
         elif args.frequency:
             def f(watcher, quit_event):
                 watcher.watch(group)
-                last_updates = [0] * 3
+                last_updates = None
                 while True:
                     watcher.wait(new_update=False)
                     if quit_event.is_set():
                         break
                     now = time.time()
-                    rate = len(last_updates) / (now - last_updates[0])
+                    if last_updates is None:
+                        last_updates = [0] + [now] * (HISTORY_LENGTH - 1)
+                    rate = len(last_updates) / (now - last_updates[0] + 1e-30)
                     last_updates.pop(0)
                     last_updates.append(now)
                     print('\rUpdate frequency: {:5.2f} Hz'.format(rate), end='')
