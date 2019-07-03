@@ -120,7 +120,7 @@ def AlignHeart():
 def AlignLeftHole():
     return Align(left_hole, align_h, visible)
 def AlignRightHole():
-    return Align(right_hole, align_h, visible
+    return Align(right_hole, align_h, visible)
 
 Center = lambda centerf,  visiblef, targetf=CAM_CENTER, px=0.0018, py=0.004, d=0.005, db=0, closedb=5: MasterConcurrent(
             Consistent(lambda: close_to(centerf(), targetf, db=closedb), count=1.5, total=2.0, invert=False, result=True),

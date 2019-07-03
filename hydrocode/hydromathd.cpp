@@ -15,7 +15,7 @@
 //#include "shm_mac.hpp"
 #include "common_dsp.hpp"
 #include "pinger_tracking.hpp"
-#include "comms.hpp"
+//#include "comms.hpp"
 #include "udp_receiver.hpp"
 #include "udp_sender.hpp"
 
@@ -30,7 +30,7 @@ int main()
     //initializing modules for receiving/sending network data and handling shm
     udpReceiverInit();
     udpSenderInit();
-    commsInit();
+    //commsInit();
     shm_init();
     
     //audible_file = fopen("audible_file.txt", "w");
@@ -56,11 +56,11 @@ int main()
         {
             if(current_mode != 0)
             {
-                commsReset();
+                //commsReset();
                 current_mode = 0;
             }
             
-            commsDSP(fpga_packet, shm_status.packet_count);
+            //commsDSP(fpga_packet, shm_status.packet_count);
         }
 
         shm_status.packet_count++;

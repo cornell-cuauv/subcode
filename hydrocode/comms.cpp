@@ -9,8 +9,8 @@
 #include <cstdio>
 #include <cstdint>
 
-//#include "libshm/c/vars.h"
-#include "shm_mac.hpp"
+#include "libshm/c/vars.h"
+//#include "shm_mac.hpp"
 #include "liquid.h"
 #include "comms.hpp"
 #include "common_dsp.hpp"
@@ -243,7 +243,7 @@ void commsDSP(uint16_t *fpga_packet, unsigned int packet_no)
         ac_coupled_sample = input_sample - dc_offset;
         windowf_push(ac_coupled_buffer, ac_coupled_sample);
     
-        nco_crcf_mix_down(mixer_oscillator, *(liquid_float_complex *)&ac_coupled_sample, (liquid_float_complex *)&mixed_sample);
+        nco_crcf_mix_down(mixer_oscillator, *(liquid_float_complex *)&ac_coupled_sample, reinterpret_cast<liquid_float_complex *>(&mixed_sample));
         windowcf_push(mixed_buffer, *(liquid_float_complex *)&mixed_sample);
         
         firfilt_crcf_push(lowpass_fir, *(liquid_float_complex *)&mixed_sample);
