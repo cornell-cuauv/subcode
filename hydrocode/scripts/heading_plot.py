@@ -27,8 +27,8 @@ r = [0, 1]
 
 while 1:
 	#retreiving the most recent data from shm
-	theta = shm.hydrophones_results_track.tracked_ping_heading_radians.get()
-	r = math.cos(shm.hydrophones_results_track.tracked_ping_elevation_radians.get())
+	theta = math.radians(shm.hydrophones_results_track.tracked_ping_heading.get())
+	r = math.cos(math.radians(shm.hydrophones_results_track.tracked_ping_elevation.get()))
 
 	#updating the graph
 	line.set_xdata([theta, theta])

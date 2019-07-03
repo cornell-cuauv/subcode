@@ -38,7 +38,9 @@ static int good_freq_no = 0;
 static triple_phasor last_dft_result[freq_list_length];
 static float noise_sum;
 static int packet_no = 0;
-static triple_sample ping_phase;
+static float elevation = 0;
+static bool elevation_correct = 0;
+static float heading = 0;
 static buffer_triple raw_buffer(raw_buffer_length);
 static float raw_peak;
 static buffer_triple raw_plot(raw_plot_length);
@@ -134,11 +136,11 @@ void computeHeading(triple_sample ping_phase, float frequency, float &heading, f
     
     if(is_mainsub)
     {
-        heading = fmod(atan2(path_diff_1, -path_diff_2) * 180.0 / M_PI + gx4_data.heading, 360.0);
+        heading = fmod(atan2(path_diff_2, path_diff_1) * 180.0 / M_PI + gx4_data.heading, 360.0);
     }
     else
     {
-        heading = fmod(atan2(path_diff_1, -path_diff_2) * 180.0 / M_PI + gx4_data.heading, 360.0);
+        heading = fmod(atan2(path_diff_1, -path_diff_2) * 180.0 / M_PI /*+ gx4_data.heading*/, 360.0);
     }
     
     cos_elevation = sqrt((path_diff_1 * path_diff_1 + path_diff_2 * path_diff_2)) / nipple_distance;
@@ -149,7 +151,7 @@ void computeHeading(triple_sample ping_phase, float frequency, float &heading, f
     }
     else
     {
-        elevation = acos(cos_elevation);
+        elevation = acos(cos_elevation) * 180.0 / M_PI;
         elevation_correct = 1;
     }
 }
@@ -172,7 +174,9 @@ void pingerTrackingDSP(uint16_t *fpga_packet, bool reset_signal)
         dft_ratio_plot_peak = 0;
         dft_ratio_good_peak = 0;
         noise_sum = 0;
-        ping_phase = triple_sample();
+        heading = 0;
+        elevation = 0;
+        elevation_correct = 0;
         raw_buffer.clear();
         raw_peak = 0;
         trigger_packet_no = 0;
@@ -184,7 +188,7 @@ void pingerTrackingDSP(uint16_t *fpga_packet, bool reset_signal)
 
         printf("\n%s \n", "new interval. mode: tracking");
         
-        //shm_getg(hydrophones_settings, shm_settings);
+        shm_getg(hydrophones_settings, shm_settings);
         
         //the desired gain is set everytime a new interval starts
         setGain(gain_lvl);
@@ -219,7 +223,7 @@ void pingerTrackingDSP(uint16_t *fpga_packet, bool reset_signal)
         average_noise = noise_sum / (packet_no - gain_propagation_packets + 1);
 
         //operations performed on every triple_sample in a packet
-        for(int packet_sample_no = 0; packet_sample_no < packet_length; packet_sample_no++)
+        for(unsigned int packet_sample_no = 0; packet_sample_no < packet_length; packet_sample_no++)
         {
             //this section executes on every sample
             
@@ -295,10 +299,14 @@ void pingerTrackingDSP(uint16_t *fpga_packet, bool reset_signal)
                     
                     if(reject_event != 1)
                     {
+                        triple_sample ping_phase;
                         dft_ratio_good_peak = dft_ratio;
                         
                         //keeping the phase for this potential trigger event and updating the trigger packet number
                         ping_phase = last_dft_result[good_freq_no].phase();
+                        normalizePhase(ping_phase.ch1, ping_phase.ch0);
+                        normalizePhase(ping_phase.ch2, ping_phase.ch0);
+                        computeHeading(ping_phase, shm_settings.track_frequency, heading, elevation, elevation_correct);
                         trigger_packet_no = packet_no;
                     
                         //rewriting the trigger plot to capture the signal around the trigger sample
@@ -334,10 +342,6 @@ void pingerTrackingDSP(uint16_t *fpga_packet, bool reset_signal)
     //ending an interval
     if(packet_no == (int)(pinger_period * pinger_period_factor * (float)sampling_rate / packet_length))
     {
-        float elevation;
-        bool elevation_correct;
-        float heading;
-
         //increasing gain for the next interval if signal would not have clipped on higher gain (if autogain enabled)
         if(shm_settings.auto_gain == 1)
         {
@@ -368,15 +372,10 @@ void pingerTrackingDSP(uint16_t *fpga_packet, bool reset_signal)
         sendPlot(dft_plot_amplitudes.get(), 2, dft_plot_length);
         sendPlot(dft_plot_ratios.get(), 2, dft_plot_length);
         sendPlot(dft_plot_trigger_point.get(), 2, 1);
-
-        //computing the heading and elevation based on the phase saved from the trigger packet
-        normalizePhase(ping_phase.ch1, ping_phase.ch0);
-        normalizePhase(ping_phase.ch2, ping_phase.ch0);
-        computeHeading(ping_phase, shm_settings.track_frequency, heading, elevation, elevation_correct);
         
         //updating the shm results
-        shm_results_track.tracked_ping_heading_radians = heading;
-        shm_results_track.tracked_ping_elevation_radians = elevation;
+        shm_results_track.tracked_ping_heading = heading;
+        shm_results_track.tracked_ping_elevation = elevation;
         shm_results_track.tracked_ping_elevation_correct = elevation_correct;
         shm_setg(hydrophones_results_track, shm_results_track);
         //shm_setg(shm_results_track);
