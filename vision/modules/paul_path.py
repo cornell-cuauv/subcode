@@ -23,7 +23,7 @@ opts = [
         #IntOption('l_trg', 78, 0, 255), # 129
         #IntOption('a_trg', 171, 0, 255), # 201
         #IntOption('b_trg', 173, 0, 255), # 183
-        IntOption('houghness', 194, 0, 1000),
+        IntOption('houghness', 154, 0, 1000),
         IntOption('canny1', 76, 0, 1000), # 25
         IntOption('canny2', 191, 0, 1000), # 93
         #IntOption('canny1', 25, 0, 1000),

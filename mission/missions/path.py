@@ -64,21 +64,73 @@ class FirstPipeGroupFirst(Task):
         if self.angle_2_checker.check(diff < 0 ^ (angle_1 < angle_2) ^ (not bend_right)):
             self.finish(success=False)
 
+#class PipeIdentifier(Task):
+#    def on_first_run(self):
+#        self.total_1
+
+
+def s(n):
+    b = [' '] * 360
+    b[180] = '+'
+    b[n] = '#'
+    return ''.join(b)
+def s2(a, b, c):
+    bl = [' '] * 360
+    bl[180] = '+'
+    bl[a] = 'A'
+    bl[b] = 'B'
+    bl[c] = 'D'
+    return ''.join(bl)
 def heading_to_vector(h):
     return np.exp([1j * h]).astype(np.complex128).view(np.float64)
+def hwrap(f):
+    def _wrap(*args, **kwargs):
+        print('c')
+        return f(*args, **kwargs)
+    return _wrap
+DEADBAND = .06
+def is_done(heading, trg, dst):
+    v = heading_to_vector(heading()) * -dst
+    print(shm.path_results.center_x.get(), shm.path_results.center_y.get(), v)
+    return  abs(heading_sub_degrees(trg, heading(), math.pi*2)) < math.radians(5) and \
+            abs(shm.path_results.center_x.get() - v[0]) < DEADBAND and \
+            abs(shm.path_results.center_y.get() - v[1]) < DEADBAND
+
+
 PipeAlign = lambda heading, trg, dst: Sequential(
     Log("PipeAlign start"),
-    MasterConcurrent(DownwardTarget(lambda: (shm.path_results.center_x.get(), shm.path_results.center_y.get()),
-        target=(lambda: heading_to_vector(heading()) * -dst),
-                   deadband=(.03, .03), px=0.75, py=0.75, ix=.05, iy=.05),
-                   #PIDLoop(input_value=output_function=RelativeToCurrentHeading(), negate=True, deadband=0
-#HeadingTarget(
-                While(lambda: FunctionTask(lambda: shm.desires.heading.set(shm.kalman.heading.get()-math.degrees(heading_sub_degrees(trg, heading(), math.pi*2))) if shm.path_results.num_lines.get() == 2 else None), lambda: True),
-                #While(lambda: Log("h: {} d: {} x: {} y: {} c: {}".format(heading(), math.degrees(heading_sub_degrees(trg, heading(), math.pi*2)), shm.path_results.center_x.get(), shm.path_results.center_y.get(), heading_to_vector(heading()) * dst)), lambda: True)
-                ),
+    MasterConcurrent(
+        While(
+            lambda: Sequential(
+                Log("attempt asdasd"),
+                Concurrent(
+                    DownwardTarget(
+                        lambda: (shm.path_results.center_x.get(), shm.path_results.center_y.get()),
+                        target=(lambda: heading_to_vector(heading()) * -dst),
+                        deadband=(DEADBAND, DEADBAND), px=1, py=1, ix=.05, iy=.05
+                    ),
+                    While(
+                        lambda: Sequential(
+                            FunctionTask(lambda: shm.navigation_desires.heading.set((shm.kalman.heading.get()-.95*math.degrees(heading_sub_degrees(trg, heading(), math.pi*2))) % 360) if shm.path_results.num_lines.get() == 2 else None),
+                            #Log('{:03d} '.format(int(shm.navigation_desires.heading.get())) + s2(int(math.degrees(trg)), int(math.degrees(heading())), int(shm.desires.heading.get())) if shm.path_results.num_lines.get() == 2 else 'X'),
+                            Timer(.05)
+                            ),
+                        lambda: abs(heading_sub_degrees(trg, heading(), math.pi*2)) > math.radians(5)
+                    )#, count=6, total=8, invert=False, result=True),
+                )
+            ),
+            lambda: not is_done(heading, trg, dst)#lambda: abs(heading_sub_degrees(trg, heading(), math.pi*2)) > math.radians(5) or abs(shm.path_results.center_x.get()) > .08 or abs(shm.path_results.center_y.get()) > .08
+        ),
+
+            #, count=3, total=4, invert=False, result=True),
+        #While(lambda: Log("V: {} h: {} d: {} x: {} y: {} c: {}".format(shm.path_results.num_lines.get(), heading(), math.degrees(heading_sub_degrees(trg, heading(), math.pi*2)), shm.path_results.center_x.get(), shm.path_results.center_y.get(), heading_to_vector(heading()) * dst)), lambda: True),
+        #While(lambda: Log(s(int(math.degrees(heading_sub_degrees(trg, heading(), math.pi*2))) + 180)), lambda: True),
+         #While(lambda: Log(s2(int(math.degrees(trg)), int(math.degrees(heading()))) if shm.path_results.num_lines.get() == 2 else 'X'), lambda: True),
+    ),
     Log("Centered on Pipe in PipeAlign!"),
-    FunctionTask(lambda: shm.navigation_desires.heading.set(-180/math.pi*heading()+shm.kalman.heading.get()))
+    #FunctionTask(lambda: shm.navigation_desires.heading.set(-180/math.pi*heading()+shm.kalman.heading.get()))
 )
+
 
 
 FollowPipe = lambda h1, h2: Sequential(
@@ -142,10 +194,37 @@ FullPipe = lambda bend_right=False: Sequential(
 
 
 path = FullPipe()
-t1 = PipeAlign(shm.path_results.angle_1.get, math.pi/2, .3)
-t2 = PipeAlign(shm.path_results.angle_1.get, math.pi/2, 0)
-t3 = PipeAlign(shm.path_results.angle_2.get, -math.pi/2, 0)
-t4 = PipeAlign(shm.path_results.angle_2.get, -math.pi/2, 3)
-path2 = Sequential(Log("t1"), t1, Log("t2"), t2, Log("t3"), t3, Log("t4"), t4)
+def gen_pipe(s, a1, a2):
+    t1 = PipeAlign(a1, math.pi/2, .2)
+    t2 = PipeAlign(a1, math.pi/2, 0)
+    t3 = PipeAlign(a2, -math.pi/2, 0)
+    t4 = PipeAlign(a2, -math.pi/2, .3)
+    return Sequential(
+        Log(s),
+        Log("t1"),
+        t1,
+        Timer(.5),
+        Log("t2"),
+        t2,
+        Timer(.5),
+        Log("t3"),
+        t3,
+        Timer(.5),
+        Log("t4"),
+        t4,
+        Timer(.5),
+    )
+
+path2 = Sequential(
+    Log("Searching for path..."),
+    SearchTask(),
+    Zero(),
+    Log("Found Pipe!"),
+    Conditional(
+        FunctionTask(lambda: math.sin(shm.path_results.angle_1.get()) > math.sin(shm.path_results.angle_2.get())),
+        on_success=gen_pipe("a", shm.path_results.angle_1.get, shm.path_results.angle_2.get),
+        on_fail=gen_pipe("b", shm.path_results.angle_2.get, shm.path_results.angle_1.get),
+    )
+)
 
 get_path = lambda bend_right: FullPipe(bend_right)
