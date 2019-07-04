@@ -33,6 +33,7 @@ CAM_CENTER = (shm.torpedoes_stake.camera_x.get(), shm.torpedoes_stake.camera_y.g
 
 TARGETS = {"upper": "lower", "lower": "upper"}
 current_target = ""
+MOVE_DIRECTION=1  # 1 if lever on left else -1 if on right
 
 
 def heart():
@@ -97,12 +98,21 @@ def withApproachAlignOnFail(task):
 def withShootRightOnFail(task):
     return lambda: Conditional(task(), on_fail=Fail(Sequential(Zero(), ApproachAlign(), CenterRightHole(), ApproachRightHole(), DeadReckonRightHole(), Backup())))
 
+def withApproachHeartOnFail(task):
+    return lambda *args, **kwargs: Retry(lambda: Conditional(task(*args, **kwargs), on_fail=Fail(Sequential(Zero(), CenterHeart()))), attempts=2)
+
+def withApproachLeftHoleOnFail(task):
+    return lambda *args, **kwargs: Retry(lambda: Conditional(task(*args, **kwargs), on_fail=Fail(Sequential(Zero(), ApproachLeftHole()))), attempts=2)
+
+def withApproachRightHoleOnFail(task):
+    return lambda *args, **kwargs: Retry(lambda: Conditional(task(*args, **kwargs), on_fail=Fail(Sequential(Zero(), ApproachRightHole()))), attempts=2)
+
 
 close_to = lambda point1, point2, db=10: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
 aligned = lambda align, db=4: abs(align) < db
 
 @withReSearchBoardOnFail
-def Align(centerf, alignf, visiblef, px=0.11, py=0.004, p=0.009, dx=0.00, dy=0.000, dsway=0.00, db=0): #dx=0.005, dy=0.0005, dsway=0.002
+def Align(centerf, alignf, visiblef, px=0.14, py=0.004, p=0.009, dx=0.00, dy=0.000, dsway=0.00, db=0): #dx=0.005, dy=0.0005, dsway=0.002
     return MasterConcurrent(
             Consistent(lambda: close_to(centerf(), CAM_CENTER) and aligned(alignf()), count=1.5, total=2, invert=False, result=True),
             Consistent(visiblef, count=1.5, total=2.0, invert=True, result=False),
@@ -119,21 +129,21 @@ def AlignLeftHole():
 def AlignRightHole():
     return Align(right_hole, align_h, visible)
 
-Center = lambda centerf,  visiblef, targetf=CAM_CENTER, px=0.002, py=0.007, dx=0.000, dy=0.0005, db=0, closedb=5: MasterConcurrent(
-            Consistent(lambda: close_to(centerf(), targetf, db=closedb), count=1.3, total=2.0, invert=False, result=True),
+Center = lambda centerf,  visiblef, targetf=CAM_CENTER, px=0.0009, py=0.004, dx=0.000, dy=0.05, db=0, closedb=5: MasterConcurrent(
+            Consistent(lambda: close_to(centerf(), targetf, db=closedb), count=4.0, total=5.0, invert=False, result=True),
             Consistent(visiblef, count=1.5, total=2.0, invert=True, result=False),
             ForwardTarget(point=centerf, target=targetf, px=px, py=py, dx=dx, dy=dy, deadband=(db,db)), 
             AlwaysLog(lambda: "center: {}, target: {}".format(targetf, centerf())))
 
-@withApproachAlignOnFail
+@withApproachHeartOnFail
 def CenterHeart():
-    return Center(centerf=heart, visiblef=visible, closedb=20)
-@withApproachAlignOnFail
+    return Center(centerf=heart, visiblef=visible, closedb=10)
+@withApproachLeftHoleOnFail
 def CenterLeftHole():
-    return Center(centerf=left_hole, visiblef=visible, closedb=15)
-@withApproachAlignOnFail
+    return Center(centerf=left_hole, visiblef=visible, closedb=10)
+@withApproachRightHoleOnFail
 def CenterRightHole():
-    return Center(centerf=right_hole, visiblef=visible, closedb=20)
+    return Center(centerf=right_hole, visiblef=visible, closedb=10)
 @withApproachAlignOnFail
 def CenterLever():
     return Center(centerf=lever, visiblef=visible, closedb=20)
@@ -142,19 +152,10 @@ def CenterBoard():
     return Center(centerf=board_center, visiblef=visible)
 
 
-def withCenterHeartOnFail(task):
-    return lambda *args, **kwargs: Retry(lambda: Conditional(task(*args, **kwargs), on_fail=Fail(Sequential(Zero(), CenterHeart()))), attempts=2)
-
-def withCenterLeftHoleOnFail(task):
-    return lambda *args, **kwargs: Retry(lambda: Conditional(task(*args, **kwargs), on_fail=Fail(Sequential(Zero(), CenterHeart()))), attempts=2)
-
-def withCenterRightHoleOnFail(task):
-    return lambda *args, **kwargs: Retry(lambda: Conditional(task(*args, **kwargs), on_fail=Fail(Sequential(Zero(), CenterHeart()))), attempts=2)
-
 
 # TODO: tune everything
 APPROACH_SIZE = 70000
-def ApproachCenterSize(sizef, centerf, alignf, visiblef, size_thresh, p=0.000003, px=0.0005, py=0.0004, dx=0.001, dy=0.005, d=50, closedb=20, db=30000):
+def ApproachCenterSize(sizef, centerf, alignf, visiblef, size_thresh, p=0.000003, px=0.0009, py=0.004, dx=0.00, dy=0.005, d=0, closedb=20, db=30000):
     return MasterConcurrent(
             Consistent(lambda: abs(sizef()-size_thresh) < db and close_to(centerf(), CAM_CENTER, db=closedb), count=2.7, total=3.0, invert=False, result=True),
             Consistent(visiblef, count=1.3, total=2.0, invert=True, result=False),
@@ -164,19 +165,19 @@ def ApproachCenterSize(sizef, centerf, alignf, visiblef, size_thresh, p=0.000003
 
 def ApproachAlignSize(sizef, centerf, alignf, visiblef, size_thresh, db=30000):
     return MasterConcurrent(
-            Consistent(lambda: abs(sizef()-size_thresh) < db and close_to(centerf(), CAM_CENTER, db=20) and aligned(alignf(), db=6), count=2.7, total=3.0, invert=False, result=True),
+            Consistent(lambda: abs(sizef()-size_thresh) < db and close_to(centerf(), CAM_CENTER, db=20) and aligned(alignf(), db=4), count=2.3, total=3.0, invert=False, result=True),
             Consistent(visiblef, count=1.3, total=2.0, invert=True, result=False),
             While(lambda: Align(centerf, alignf, visiblef), True),
             PIDStride(lambda: sizef()-size_thresh),
             AlwaysLog(lambda: "center: {}, target: {}, align: {}, size{}".format(CAM_CENTER, centerf(), alignf(), sizef())))
 
-@withCenterHeartOnFail
+@withApproachAlignOnFail
 def ApproachHeart():
     return ApproachCenterSize(size, heart, align_h, visible, APPROACH_SIZE)
-@withCenterLeftHoleOnFail
+@withApproachAlignOnFail
 def ApproachLeftHole():
     return ApproachCenterSize(size, left_hole, align_h, visible, APPROACH_SIZE, closedb=15)
-@withCenterRightHoleOnFail
+@withApproachAlignOnFail
 def ApproachRightHole():
     return ApproachCenterSize(size, right_hole, align_h, visible, APPROACH_SIZE)
 
@@ -188,8 +189,8 @@ def DeadReckonHeart():
     pass
 def _DeadReckonLever():
     return Sequential(
-        Succeed(Timeout(MoveX(.63, deadband=0.05), 20)),
-        Succeed(Timeout(MoveY(.7, deadband=0.05), 20)))
+        Succeed(Timeout(MoveX(.60, deadband=0.05), 20)),
+        Succeed(Timeout(MoveY(MOVE_DIRECTION * .7, deadband=0.05), 20)))
 
 @withShootRightOnFail
 def DeadReckonLever():
@@ -201,7 +202,7 @@ def DeadReckonLever():
             Timeout(Consistent(lambda: shm.torpedoes_stake.lever_finished.get(), count=1.5, total=2.0, invert=False, result=True), 10)), attempts=2)
 
 def DeadReckonLeftHole():
-    return MoveX(0.1)
+    return MoveX(0.25)
 def DeadReckonRightHole():
     pass
 
@@ -224,15 +225,15 @@ Full = \
         Log('Starting Stake'),
         SearchBoard(),  # Timeout
         ApproachAlign(),
-        CenterHeart(),
         ApproachHeart(),
+        CenterHeart(),
         DeadReckonHeart(),
         Backup(),
         ApproachAlign(),
         DeadReckonLever(),
         ApproachAlign(),
-        CenterLeftHole(),
         ApproachLeftHole(),
+        CenterLeftHole(),
         DeadReckonLeftHole(),  # Approach?
         Backup(),
         Log('Stake complete')

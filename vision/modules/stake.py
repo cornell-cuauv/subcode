@@ -28,18 +28,18 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.IntOption('lever_position_y', 2500, 0, 6000),
            options.IntOption('heart_offset_x', 0, -3000, 3000),
            options.IntOption('heart_offset_y', 0, -3000, 3000),
-           options.IntOption('left_circle_offset_x', 0, -3000, 3000),
-           options.IntOption('left_circle_offset_y', 0, -3000, 3000),
-           options.IntOption('right_circle_offset_x', 0, -3000, 3000),
-           options.IntOption('right_circle_offset_y', 0, -3000, 3000),
+           options.IntOption('left_circle_offset_x', -60, -3000, 3000),
+           options.IntOption('left_circle_offset_y', -112, -3000, 3000),
+           options.IntOption('right_circle_offset_x', -148, -3000, 3000),
+           options.IntOption('right_circle_offset_y', -110, -3000, 3000),
            options.IntOption('lever_l', 129, 0, 255),
            options.IntOption('lever_a', 201, 0, 255),
            options.IntOption('lever_b', 183, 0, 255),
            options.IntOption('lever_color_distance', 50, 0, 255),
            options.IntOption('contour_size_min', 5, 0, 1000),
            options.IntOption('lever_endzone_left', 1793, 0, 6000),
-           options.IntOption('lever_gutter_top', 2343, 0, 6000),
-           options.IntOption('lever_gutter_bot', 2695, 0, 6000),
+           options.IntOption('lever_gutter_top', 2238, 0, 6000),
+           options.IntOption('lever_gutter_bot', 2887, 0, 6000),
            ]
 
 
@@ -52,6 +52,7 @@ HEART = (1356, 3250)
 LEFT_CIRCLE = (390, 562)
 RIGHT_CIRCLE = (1900, 570)
 
+MOVE_DIRECTION=1  # 1 if lever on left else -1 if on right
 
 class Stake(ModuleBase):
 
@@ -275,7 +276,7 @@ class Stake(ModuleBase):
             print(center)
             draw_circle(p, (int(center[0]), int(center[1])), 1, (0, 255, 0), thickness=3)
             
-            return center[0] > lever_endzone_left[0][0][0]
+            return center[0] > lever_endzone_left[0][0][0] if MOVE_DIRECTION==1 else lever_endzone_left[0][0][0] > center[0]
 
 
         ret = any(map(lambda x: contour_in_endzone(x, output), filtered))
