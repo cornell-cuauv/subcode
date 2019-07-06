@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from math import pi, atan, sin, cos
 from functools import reduce
+import time
 
 import cv2
 import numpy as np
@@ -24,13 +25,14 @@ opts = [
         IntOption('red_b', 154, 0, 255),
         IntOption('lever_color_distance', 24, 0, 255),
         IntOption('contour_size_min', 50, 0, 1000),
-        IntOption('intersection_size_min', 20, 0, 1000),
-        IntOption('erode_kernel_size', 18, 0, 100),
-        IntOption('dilate_kernel_size', 18, 0, 100),
-        IntOption('dilate_iterations', 10, 0, 10),
-        IntOption('line_thresh', 210, 0, 5000),
+        IntOption('intersection_size_min', 20, 0, 1000),  
+        IntOption('erode_kernel_size', 3, 0, 100),  # 18
+        IntOption('dilate_yellow_kernel_size', 3, 0, 100),  # 18
+        IntOption('dilate_red_kernel_size', 3, 0, 100),  # 18
+        IntOption('dilate_iterations', 10, 0, 20),  
+        IntOption('line_thresh', 130, 0, 5000),
         IntOption('manipulator_angle', 25, -90, 90),
-        DoubleOption('circularity_thresh', 0.8, 0, 1),
+        DoubleOption('circularity_thresh', 0.4, 0, 1),
 ]
 
 COLORSPACE = "lab"
@@ -50,21 +52,29 @@ def angle_to_unit_circle(angle):
 
 class Color(ModuleBase):
     def process(self, mat):
+        t = time.perf_counter()
         self.post('org', mat)
         # print(mat.shape)
         d = self.options['lever_color_distance']
         color = [self.options["yellow_%s" % c] for c in COLORSPACE]
-        yellow = self.find_color(mat, color, d, iterations=self.options['dilate_iterations'])
+        # yellow = self.find_color(mat, color, d, iterations=self.options['dilate_iterations'], rectangular=True)
+        yellow = self.find_color(mat, color, d, erode_mask=self.options['erode_kernel_size'], dilate_mask=self.options['dilate_yellow_kernel_size'], iterations=self.options['dilate_iterations'], rectangular=True)
         self.post('yellow', yellow)
         yellow_contours = self.contours_and_filter(yellow, self.options['contour_size_min'])
         yellow_contours = self.filter_circles(yellow_contours, self.options['circularity_thresh'])
 
+        tt = time.perf_counter()
+        print("y %f" % (tt-t))
+
         color = [self.options["red_%s" % c] for c in COLORSPACE]
-        red = self.find_color(mat, color, d, use_first_channel=True, erode_mask=True, dilate_mask=True, iterations=6, rectangular=False)
+        red = self.find_color(mat, color, d, use_first_channel=True, erode_mask=self.options['erode_kernel_size'], dilate_mask=self.options['dilate_red_kernel_size'], iterations=10, rectangular=True)
         # red = dilate(red, elliptic_kernel(self.options['dilate_kernel_size']), iterations=1)
-        red = erode(red, elliptic_kernel(self.options['dilate_kernel_size']), iterations=2)
+        red = erode(red, elliptic_kernel(self.options['dilate_red_kernel_size']), iterations=1)
         self.post('red', red)
         red_contours = outer_contours(red)
+
+        t = time.perf_counter()
+        print("yy %f " % (t-tt))
 
         platform, garlic = self.red_in_circle(mat, yellow_contours, red_contours)
         platform_center = None
@@ -93,7 +103,10 @@ class Color(ModuleBase):
         mat = cv2.drawContours(mat, yellow_contours, -1, (0, 255, 0), 10)
         self.post('yellow_contours', mat)
 
-    def find_color(self, mat, color, distance, use_first_channel=False, erode_mask=True, dilate_mask=True, iterations=1, rectangular=False):
+        tt = time.perf_counter()
+        print("yyy %f" % (tt-t))
+
+    def find_color(self, mat, color, distance, use_first_channel=False, erode_mask=False, dilate_mask=False, iterations=1, rectangular=False):
         _, split = bgr_to_lab(mat)
         threshed = [range_threshold(split[i],
                     color[i] - distance, color[i] + distance)
@@ -101,12 +114,12 @@ class Color(ModuleBase):
         combined = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
         if dilate_mask or erode_mask:
             if erode_mask:
-                kernel = elliptic_kernel(self.options['erode_kernel_size']) if not rectangular \
-                        else rect_kernel(self.options['erode_kernel_size'])
+                kernel = elliptic_kernel(erode_mask) if not rectangular \
+                        else rect_kernel(erode_mask)
                 combined = erode(combined, kernel, iterations=1)
             if dilate_mask:
-                kernel = elliptic_kernel(self.options['dilate_kernel_size']) if not rectangular \
-                        else rect_kernel(self.options['dilate_kernel_size'])
+                kernel = elliptic_kernel(dilate_mask) if not rectangular \
+                        else rect_kernel(dilate_mask)
                 combined = dilate(combined, kernel, iterations=iterations)
         # _, contours, _ = cv2.findContours(combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         # filtered = [i for i in contours if cv2.contourArea(i) > self.options['contour_size_min']]
@@ -129,13 +142,16 @@ class Color(ModuleBase):
         for i in range(len(yellow_contours)):
             mask_y = mask.copy()
             mask_r = mask.copy()
-            mask_y = cv2.fillPoly(mask_y, [yellow_contours[i]], 255)
+            # mask_y = cv2.fillPoly(mask_y, [yellow_contours[i]], 255)
+            (x, y), r = cv2.minEnclosingCircle(yellow_contours[i])
+            mask_y = cv2.circle(mask_y, (int(x), int(y)), int(r), 255, -1)
             self.post('mask_y%d' % i, mask_y)
             mask_r = cv2.fillPoly(mask_r, red_contours, 255)
             self.post('mask_r%d' % i, mask_r)
             intersection = cv2.bitwise_and(mask_y, mask_r)
             self.post('intersection%d' % i, intersection)
             if any(map(lambda x: cv2.contourArea(x) > self.options['intersection_size_min'], outer_contours(intersection))):
+                dilate(intersection, rect_kernel(self.options['dilate_red_kernel_size']), iterations=6)
                 return [yellow_contours[i]], outer_contours(intersection)
         return None, None
 
