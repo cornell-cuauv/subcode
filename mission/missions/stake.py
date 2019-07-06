@@ -21,9 +21,11 @@ from mission.framework.search import SearchFor, SwaySearch
 from mission.framework.movement import RelativeToCurrentDepth, VelocityY, VelocityX
 from mission.framework.position import MoveX, MoveY
 from mission.framework.timing import Timeout
+from mission.framework.actuators import FireActuators
 # from mission.missions.ozer_common import StillHeadingSearch
 from mission.missions.will_common import Consistent
 from mission.missions.attilus_garbage import PIDStride, PIDSway, StillHeadingSearch
+
 
 import shm
 
@@ -190,7 +192,7 @@ def DeadReckonHeart():
 def _DeadReckonLever():
     return Sequential(
         Succeed(Timeout(MoveX(.60, deadband=0.05), 20)),
-        Succeed(Timeout(MoveY(MOVE_DIRECTION * .7, deadband=0.05), 20)))
+        Succeed(Timeout(MoveY(MOVE_DIRECTION * .7, deadband=0.05), 20)),)
 
 @withShootRightOnFail
 def DeadReckonLever():
@@ -202,7 +204,8 @@ def DeadReckonLever():
             Timeout(Consistent(lambda: shm.torpedoes_stake.lever_finished.get(), count=1.5, total=2.0, invert=False, result=True), 10)), attempts=2)
 
 def DeadReckonLeftHole():
-    return MoveX(0.25)
+    return Sequential(MoveX(0.25),
+            FireActuators())  # TODO
 def DeadReckonRightHole():
     pass
 

@@ -17,7 +17,7 @@ class PIDSway(Task):
         self.pid_loop = PIDLoop(output_function=VelocityY())
 
     def on_run(self, error, p=0.0005,  i=0, d=0.0, db=0.01875, max_out=0.5, negate=False, *args, **kwargs):
-        self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband = db, negate=negate, max_out=max_out)
+        self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband=db, negate=negate, max_out=max_out)
 
     def stop(self):
         VelocityY(0)()
@@ -28,10 +28,21 @@ class PIDStride(Task):
         self.pid_loop = PIDLoop(output_function=VelocityX())
 
     def on_run(self, error, p=0.00003,  i=0, d=0.0, db=0.01875, negate=False, max_out=0.5, *args, **kwargs):
-        self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband = db, negate=negate, max_out=max_out)
+        self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband=db, negate=negate, max_out=max_out)
 
     def stop(self):
         VelocityY(0)()
+
+# A task that runs a PID loop for Heading
+class PIDHeading(Task):
+    def on_first_run(self, *args, **kwargs):
+        self.pid_loop = PIDLoop(output_function=RelativeToCurrentHeading())
+
+    def on_run(self, error, p=0.003,  i=0, d=0.0, db=0.01875, negate=False, max_out=None, *args, **kwargs):  # TODO: max_out
+        self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=360, deadband=db, negate=negate, max_out=max_out)
+
+    def stop(self):
+        RelativeToCurrentHeading(0)()
 
 class StillHeadingSearch(Task):
     """
@@ -54,7 +65,7 @@ class StillHeadingSearch(Task):
                 RelativeToInitialHeading(speed),
                 MasterConcurrent(
                     FunctionTask(lambda: abs(shm.desires.heading.get() - init_heading) < db, finite=False),
-                    RelativeToCurrentHeading(speed)), 
+                    RelativeToCurrentHeading(speed)),
                 # Move back a bit, we might be too close
                 MoveX(-1),
                 Succeed(FunctionTask(set_init_heading))
