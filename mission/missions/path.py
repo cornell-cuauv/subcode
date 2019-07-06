@@ -10,7 +10,7 @@ from mission.framework.combinators import Sequential, Concurrent, MasterConcurre
 from mission.framework.helpers import get_downward_camera_center, ConsistencyCheck
 from mission.framework.movement import Depth, Heading, Pitch, VelocityX, VelocityY, RelativeToCurrentHeading
 from mission.framework.position import PositionalControl
-from mission.framework.primitive import Zero, Log, FunctionTask, Fail
+from mission.framework.primitive import Zero, Log, FunctionTask, Fail, NoOp
 from mission.framework.search import SearchFor, VelocityTSearch, SwaySearch, PitchSearch, VelocitySwaySearch
 from mission.framework.targeting import DownwardTarget, PIDLoop, HeadingTarget
 from mission.framework.task import Task
@@ -89,15 +89,15 @@ def hwrap(f):
         return f(*args, **kwargs)
     return _wrap
 DEADBAND = .06
-def is_done(heading, trg, dst):
+def is_done(heading, trg, dst, deadband):
     v = heading_to_vector(heading()) * -dst
     print(shm.path_results.center_x.get(), shm.path_results.center_y.get(), v)
     return  abs(heading_sub_degrees(trg, heading(), math.pi*2)) < math.radians(5) and \
-            abs(shm.path_results.center_x.get() - v[0]) < DEADBAND and \
-            abs(shm.path_results.center_y.get() - v[1]) < DEADBAND
+            abs(shm.path_results.center_x.get() - v[0]) < deadband and \
+            abs(shm.path_results.center_y.get() - v[1]) < deadband
 
 
-PipeAlign = lambda heading, trg, dst: Sequential(
+PipeAlign = lambda heading, trg, dst, deadband: Sequential(
     Log("PipeAlign start"),
     MasterConcurrent(
         While(
@@ -107,7 +107,7 @@ PipeAlign = lambda heading, trg, dst: Sequential(
                     DownwardTarget(
                         lambda: (shm.path_results.center_x.get(), shm.path_results.center_y.get()),
                         target=(lambda: heading_to_vector(heading()) * -dst),
-                        deadband=(DEADBAND, DEADBAND), px=1, py=1, ix=.05, iy=.05
+                        deadband=(deadband, deadband), px=1, py=1, ix=.05, iy=.05
                     ),
                     While(
                         lambda: Sequential(
@@ -119,7 +119,7 @@ PipeAlign = lambda heading, trg, dst: Sequential(
                     )#, count=6, total=8, invert=False, result=True),
                 )
             ),
-            lambda: not is_done(heading, trg, dst)#lambda: abs(heading_sub_degrees(trg, heading(), math.pi*2)) > math.radians(5) or abs(shm.path_results.center_x.get()) > .08 or abs(shm.path_results.center_y.get()) > .08
+            lambda: not is_done(heading, trg, dst, deadband)#lambda: abs(heading_sub_degrees(trg, heading(), math.pi*2)) > math.radians(5) or abs(shm.path_results.center_x.get()) > .08 or abs(shm.path_results.center_y.get()) > .08
         ),
 
             #, count=3, total=4, invert=False, result=True),
@@ -195,10 +195,10 @@ FullPipe = lambda bend_right=False: Sequential(
 
 path = FullPipe()
 def gen_pipe(s, a1, a2):
-    t1 = PipeAlign(a1, math.pi/2, .2)
-    t2 = PipeAlign(a1, math.pi/2, 0)
-    t3 = PipeAlign(a2, -math.pi/2, 0)
-    t4 = PipeAlign(a2, -math.pi/2, .3)
+    t1 = PipeAlign(a1, math.pi/2, .2, DEADBAND * 1.5)
+    t2 = PipeAlign(a1, math.pi/2, 0, DEADBAND * 1.5)
+    t3 = PipeAlign(a2, -math.pi/2, 0, DEADBAND)
+    t4 = PipeAlign(a2, -math.pi/2, .3, DEADBAND)
     return Sequential(
         Log(s),
         Log("t1"),
@@ -206,18 +206,33 @@ def gen_pipe(s, a1, a2):
         Timer(.5),
         Log("t2"),
         t2,
-        Timer(.5),
+        Timer(.15),
         Log("t3"),
         t3,
         Timer(.5),
         Log("t4"),
         t4,
         Timer(.5),
+        Log("done")
     )
 
 path2 = Sequential(
     Log("Searching for path..."),
-    SearchTask(),
+    While(
+        lambda: Conditional(
+            FunctionTask(lambda: shm.path_results.num_lines.get() < 2),
+            on_success=MasterConcurrent(
+                While(lambda: NoOp(), lambda: shm.path_results.num_lines.get() < 2),
+                DownwardTarget(
+                    lambda: (shm.path_results.center_x.get(), shm.path_results.center_y.get()),
+                    target=(0, 0),
+                    deadband=(.1, .1), px=.5, py=.5, ix=.05, iy=.05
+                ),
+            ),
+            on_fail=SearchTask()
+        ),
+        lambda: shm.path_results.num_lines.get() < 2
+    ),
     Zero(),
     Log("Found Pipe!"),
     Conditional(

@@ -40,6 +40,7 @@ def uv_norm(s):
 
 class Path(ModuleBase):
     def process(self, mat):
+        indices_y, indices_x = np.indices(mat.shape[:-1])
         self.post('img', mat)
         if static_img is not None: mat = static_img.copy()
         cc = cv2.cvtColor(mat, cv2.COLOR_BGR2LAB).astype(np.int16)
@@ -50,6 +51,8 @@ class Path(ModuleBase):
         np.clip(z, 0, 255, out=z)
         z = z.astype(np.uint8)
         t2 = z < self.options['d_thresh']
+        centr_y = np.mean(indices_y[t2])
+        centr_x = np.mean(indices_x[t2])
         near_target = cv2.dilate(t2.astype(np.uint8) * 255, kernel, iterations=2)
         self.post('dist', z)
         edg = cv2.Canny(z, self.options['canny1'], self.options['canny2'], apertureSize=3)
@@ -66,7 +69,12 @@ class Path(ModuleBase):
         lines = cv2.HoughLines(edg, 1, np.pi/180 * 2, self.options['houghness'])
         #print(lines)
         if lines is None or len(lines) < 2:
-            shm.path_results.num_lines.set(0)
+            if np.sum(t2) < .01 * mat.shape[1] * mat.shape[0]:
+                shm.path_results.num_lines.set(-1)
+            else:
+                shm.path_results.num_lines.set(0)
+                shm.path_results.center_x.set((centr_x / mat.shape[1]) - .5)
+                shm.path_results.center_y.set((centr_y - mat.shape[0] / 2) / mat.shape[1])
             shm.path_results.visible_1.set(False)
             shm.path_results.visible_2.set(False)
             return
@@ -130,7 +138,12 @@ class Path(ModuleBase):
             center = np.linalg.solve(np.complex64([d1[0] / abs(d1[0]), d2[0] / abs(d2[0])]).view(np.float32).reshape(2,-1), [[d1[1]], [d2[1]]])[:,0].astype(np.float64)#.view(np.complex64)[0]
         except np.linalg.linalg.LinAlgError:
             print('singular matrix')
-            shm.path_results.num_lines.set(0)
+            if np.sum(t2) < .01 * mat.shape[1] * mat.shape[0]:
+                shm.path_results.num_lines.set(-1)
+            else:
+                shm.path_results.num_lines.set(0)
+                shm.path_results.center_x.set((centr_x / mat.shape[1]) - .5)
+                shm.path_results.center_y.set((centr_y - mat.shape[0] / 2) / mat.shape[1])
             shm.path_results.visible_1.set(False)
             shm.path_results.visible_2.set(False)
             return
@@ -143,11 +156,13 @@ class Path(ModuleBase):
             mat = cv2.circle(mat, (int(center[0]), int(center[1])), 10, (255, 0, 0), 2)
         except (ValueError, OverflowError):
             print('overflow')
-            shm.path_results.num_lines.set(0)
+            if np.sum(t2) < .01 * mat.shape[1] * mat.shape[0]:
+                shm.path_results.num_lines.set(-1)
+            else:
+                shm.path_results.num_lines.set(0)
             shm.path_results.visible_1.set(False)
             shm.path_results.visible_2.set(False)
             return
-        indices_y, indices_x = np.indices(mat.shape[:-1])
         msk2 = (indices_y * d3[0].imag + indices_x * d3[0].real) < d3[1]
         #self.post('msk2', msk2.astype(np.uint8) * 255)
         try:
