@@ -194,6 +194,8 @@ if initially_killed:
 while True:
     begin_time = time.time()
     is_unkilled = not shm.switches.hard_kill.get()
+    if is_unkilled and not was_ever_unkilled:
+        shm.switches.soft_kill.set(0)
     was_ever_unkilled = was_ever_unkilled or is_unkilled
 
     try:
