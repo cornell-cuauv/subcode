@@ -66,7 +66,7 @@ class Path(ModuleBase):
         self.post('near_target', near_target)
         edg &= near_target
         self.post('edg', edg)
-        lines = cv2.HoughLines(edg, 1, np.pi/180 * 2, self.options['houghness'])
+        lines = cv2.HoughLines(edg, 1, np.pi/180, self.options['houghness'])
         #print(lines)
         if lines is None or len(lines) < 2:
             if np.sum(t2) < .01 * mat.shape[1] * mat.shape[0]:

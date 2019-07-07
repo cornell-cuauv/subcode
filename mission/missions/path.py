@@ -220,16 +220,17 @@ path2 = Sequential(
     Log("Searching for path..."),
     While(
         lambda: Conditional(
-            FunctionTask(lambda: shm.path_results.num_lines.get() < 2),
+            FunctionTask(lambda: shm.path_results.num_lines.get() in (0, 1)),
             on_success=MasterConcurrent(
                 While(lambda: NoOp(), lambda: shm.path_results.num_lines.get() < 2),
+                Log("Centering on blob..."),
                 DownwardTarget(
                     lambda: (shm.path_results.center_x.get(), shm.path_results.center_y.get()),
                     target=(0, 0),
                     deadband=(.1, .1), px=.5, py=.5, ix=.05, iy=.05
                 ),
             ),
-            on_fail=SearchTask()
+            on_fail=Sequential(Log("Blind search..."), SearchTask())
         ),
         lambda: shm.path_results.num_lines.get() < 2
     ),
