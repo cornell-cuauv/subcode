@@ -63,7 +63,7 @@ fi
 CMAKE_FLAGS+=(-DWITH_FFMPEG=ON)
 
 # Enable non-free modules
-CMAKE_FLAGS+=(-OPENCV_ENABLE_NONFREE=ON)
+CMAKE_FLAGS+=(-DOPENCV_ENABLE_NONFREE=ON)
 
 # build with ninja
 CMAKE_FLAGS+=(-GNinja)
