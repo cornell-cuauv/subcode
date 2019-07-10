@@ -22,7 +22,7 @@ from mission.missions.attilus_garbage import PIDSway
 from mission.constants.config import path as settings
 from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT
 
-from mission.missions.will_common import Consistent, BigDepth, is_mainsub, FakeMoveX
+from mission.missions.will_common import Consistent, BigDepth, is_mainsub, FakeMoveX, FakeMoveY
 from auv_python_helpers.angles import heading_sub_degrees
 import numpy as np
 
@@ -116,26 +116,49 @@ FollowLine = Concurrent(
 )
 
 aaa = Sequential(
-        Depth(2),
+        Log("Started mission"),
+        Depth(1.5),
+        Log("At depth"),
+        FakeMoveX(2, .65),
+        Zero(),
+        Log("Starting tracking"),
         Timer(1),
         Log("following"),
-        Timed(Concurrent(VelocityX(.5), FollowLine), 23),
-        Log("following done"),
-        Timer(1),
-        MoveY(-.375, deadband=.05),
-        MoveX(1.1, deadband=.05),
-        Log("turning 1"),
-        RelativeToInitialHeading(90),
-        Log("turning 2"),
-        Timer(1),
-        MoveX(.75, deadband=.05),
-        Log("turning 1"),
-        RelativeToInitialHeading(90),
-        Log("turning 2"),
-        Timer(1),
-        MoveX(1.1, deadband=.05),
-        MoveY(.375, deadband=.05),
         Timed(Concurrent(VelocityX(.5), FollowLine), 24),
+        Log("following done"),
+        Timed(VelocityX(-.5), .1),
+        Zero(),
+        Timer(1),
+        FakeMoveY(-.6, .65),
+        Timed(VelocityY(.5), .05),
+        Zero(),
+        Timer(1),
+        FakeMoveX(2.8, .65),
+        Timed(VelocityX(-.5), .1),
+        Zero(),
+        Timer(1),
+        Log("turning 1"),
+        RelativeToInitialHeading(90),
+        Log("turning 2"),
+        Timer(1),
+        FakeMoveX(2.8, .65),
+        Timed(VelocityX(-.5), .1),
+        Zero(),
+        Timer(1),
+        Log("turning 1"),
+        RelativeToInitialHeading(90),
+        Log("turning 2"),
+        Timer(1),
+        FakeMoveX(2.8, .65),
+        Timed(VelocityX(-.5), .1),
+        Zero(),
+        Timer(1),
+        FakeMoveY(.8, .65),
+        Timed(VelocityY(-.5), .05),
+        Zero(),
+        Timer(1),
+        Timed(Concurrent(VelocityX(.5), FollowLine), 25),
+        FunctionTask(lambda: shm.switches.soft_kill.set(1))
 )
 
 #bbb = Sequential(
