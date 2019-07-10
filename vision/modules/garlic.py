@@ -7,8 +7,8 @@ import cv2
 import numpy as np
 
 from vision.modules.base import ModuleBase
-from vision.framework.color import bgr_to_lab, range_threshold
-from vision.framework.transform import elliptic_kernel, dilate, erode, rect_kernel
+from vision.framework.color import bgr_to_lab, range_threshold, color_dist
+from vision.framework.transform import elliptic_kernel, dilate, erode, rect_kernel, morph_remove_noise, simple_gaussian_blur, resize
 from vision.framework.feature import outer_contours, find_lines
 from vision.framework.draw import draw_line
 from vision.options import IntOption, DoubleOption
@@ -25,14 +25,15 @@ opts = [
         IntOption('red_b', 154, 0, 255),
         IntOption('lever_color_distance', 24, 0, 255),
         IntOption('contour_size_min', 50, 0, 1000),
-        IntOption('intersection_size_min', 20, 0, 1000),  
+        IntOption('intersection_size_min', 20, 0, 1000),
         IntOption('erode_kernel_size', 3, 0, 100),  # 18
-        IntOption('dilate_yellow_kernel_size', 3, 0, 100),  # 18
+        IntOption('dilate_yellow_kernel_size', 5, 0, 100),  # 18
         IntOption('dilate_red_kernel_size', 3, 0, 100),  # 18
-        IntOption('dilate_iterations', 10, 0, 20),  
+        IntOption('dilate_iterations', 10, 0, 20),
         IntOption('line_thresh', 130, 0, 5000),
         IntOption('manipulator_angle', 25, -90, 90),
-        DoubleOption('circularity_thresh', 0.4, 0, 1),
+        IntOption('kmeans_size', 300, 0, 2000),
+        DoubleOption('circularity_thresh', 0.5, 0, 1),
 ]
 
 COLORSPACE = "lab"
@@ -59,6 +60,7 @@ class Color(ModuleBase):
         color = [self.options["yellow_%s" % c] for c in COLORSPACE]
         # yellow = self.find_color(mat, color, d, iterations=self.options['dilate_iterations'], rectangular=True)
         yellow = self.find_color(mat, color, d, erode_mask=self.options['erode_kernel_size'], dilate_mask=self.options['dilate_yellow_kernel_size'], iterations=self.options['dilate_iterations'], rectangular=True)
+        yellow = erode(yellow, rect_kernel(self.options['dilate_yellow_kernel_size']), iterations=self.options['dilate_iterations'])
         self.post('yellow', yellow)
         yellow_contours = self.contours_and_filter(yellow, self.options['contour_size_min'])
         yellow_contours = self.filter_circles(yellow_contours, self.options['circularity_thresh'])
@@ -69,7 +71,7 @@ class Color(ModuleBase):
         color = [self.options["red_%s" % c] for c in COLORSPACE]
         red = self.find_color(mat, color, d, use_first_channel=True, erode_mask=self.options['erode_kernel_size'], dilate_mask=self.options['dilate_red_kernel_size'], iterations=10, rectangular=True)
         # red = dilate(red, elliptic_kernel(self.options['dilate_kernel_size']), iterations=1)
-        red = erode(red, elliptic_kernel(self.options['dilate_red_kernel_size']), iterations=1)
+        red = erode(red, rect_kernel(self.options['dilate_red_kernel_size']), iterations=1)
         self.post('red', red)
         red_contours = outer_contours(red)
 
@@ -139,21 +141,81 @@ class Color(ModuleBase):
 
     def red_in_circle(self, mat, yellow_contours, red_contours):
         mask = np.zeros((mat.shape[0], mat.shape[1]), dtype=np.uint8)
+        circle_mat = mat.copy()
         for i in range(len(yellow_contours)):
             mask_y = mask.copy()
             mask_r = mask.copy()
             # mask_y = cv2.fillPoly(mask_y, [yellow_contours[i]], 255)
             (x, y), r = cv2.minEnclosingCircle(yellow_contours[i])
             mask_y = cv2.circle(mask_y, (int(x), int(y)), int(r), 255, -1)
+            circle_mat = cv2.circle(circle_mat, (int(x), int(y)), 255, -1)
             self.post('mask_y%d' % i, mask_y)
             mask_r = cv2.fillPoly(mask_r, red_contours, 255)
             self.post('mask_r%d' % i, mask_r)
             intersection = cv2.bitwise_and(mask_y, mask_r)
             self.post('intersection%d' % i, intersection)
             if any(map(lambda x: cv2.contourArea(x) > self.options['intersection_size_min'], outer_contours(intersection))):
-                dilate(intersection, rect_kernel(self.options['dilate_red_kernel_size']), iterations=6)
-                return [yellow_contours[i]], outer_contours(intersection)
+                self.post('circle_mat', circle_mat)
+                return [yellow_contours[i]], self.kmeans(mat, yellow_contours[i])
+                # dilate(intersection, rect_kernel(self.options['dilate_red_kernel_size']), iterations=6)
+                # return [yellow_contours[i]], outer_contours(intersection)
         return None, None
+
+    def kmeans(self, mat, yellow_contour):
+        (x, y), r = cv2.minEnclosingCircle(yellow_contour)
+        mat, _ = bgr_to_lab(mat)
+        mat = mat[:, :, 1:]
+        # mat = mat[int(y-r):int(y+r), int(x-r):int(x+r), :]
+        self.post('hmm', mat)
+        mask = np.zeros((mat.shape[0], mat.shape[1]), dtype=np.uint8)
+        mask_y = cv2.circle(mask, (int(x), int(y)), int(r), 255, -1)
+        masked = cv2.bitwise_and(mat, mat, mask=mask_y)
+        self.post('masked', masked)
+        masked = masked[int(y-r):int(y+r), int(x-r):int(x+r), :]
+        masked = resize(masked, self.options['kmeans_size'], self.options['kmeans_size'])
+        simple_gaussian_blur(masked, 7, 3)
+        if not all(masked.shape): return
+        print(masked.shape)
+        # color = masked[int(r), 5]
+        # masked = np.where(masked==(0,0), color, masked)
+        array = masked.reshape((-1, 2))
+        array = np.float32(array)
+        # print(array)
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        compactness, labels, centers = cv2.kmeans(array, 3, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+        array = np.uint8(array)
+        # print(array.shape)
+        labels = labels.ravel()
+        # array = np.where(labels==0, (255, 0, 0), array)
+        # array = np.where(labels==1, (0, 255, 0), array)
+        # array = np.where(labels==0, (0, 0, 255), array)
+        mean = [(np.mean(array[labels.ravel()==i], axis=0), i) for i in range(3)]
+        print(mean)
+        mean.sort(key=lambda x: color_dist((x[0][0], x[0][1], 0), (self.options['red_a'], self.options['red_b'], 0)))
+        red_label = mean[0][1]
+        print(red_label)
+        post = np.full((array.shape[0], ), 0, dtype=np.uint8)
+        # post[labels.ravel()!=red_label] = 0
+        post[labels.ravel()==red_label] = 255
+        # array[labels.ravel()==2] = (0, 255)
+        # labels = np.uint8(labels)
+        post = post.reshape((masked.shape[0], masked.shape[1]))
+        print(post.shape)
+        # r = self.options['kmeans_size'] if self.options['kmeans_size'] < r*2 else r*2
+        print(r)
+        post = post[int(r*0.3):-int(r*0.3), int(r*0.3):-int(r*0.3)]
+        another_mask = np.zeros((post.shape[0], post.shape[1]), dtype=np.uint8)
+        cv2.circle(another_mask, (post.shape[0]//2, post.shape[1]//2), post.shape[0]//2, 255, -1)
+        post = cv2.bitwise_and(post, post, mask=another_mask)
+        post = morph_remove_noise(post, rect_kernel(5))
+        # print(post)
+        self.post('array', post)
+        print(centers)
+        print(post.shape)
+        return outer_contours(post)
+
+
+
 
     def center(self, contour, post=False):
         M = cv2.moments(contour)
