@@ -1,7 +1,7 @@
 import shm
 
 from mission.framework.search import SearchFor, SwaySearch
-from mission.framework.combinators import Sequential, MasterConcurrent
+from mission.framework.combinators import Sequential, MasterConcurrent, While
 from mission.framework.primitive import Zero, Log, AlwaysLog
 from mission.framework.targeting import DownwardTarget
 from mission.framework.movement import Depth, RelativeToInitialDepth
@@ -10,7 +10,7 @@ from mission.framework.timing import Timeout
 from mission.framework.actuators import FireActuator
 
 from mission.missions.will_common import Consistent
-from mission.missios.attilu_garbage import PIDHeading
+from mission.missions.attilus_garbage import PIDHeading
 
 DEPTH_TEAGLE = 2.3
 DEPTH_TRANSDECK = None
@@ -19,7 +19,7 @@ DEPTH = DEPTH_TEAGLE
 
 SIZE_THRESH = 9000
 
-CAM_CENTER = shm.recovery_garlic.cam_x.get(), shm.recover_garlic.cam_y.get()
+CAM_CENTER = shm.recovery_garlic.cam_x.get(), shm.recovery_garlic.cam_y.get()
 
 def visible():
     return shm.recovery_garlic.visible.get()
@@ -40,11 +40,11 @@ Search = lambda: Sequential(  # TODO: TIMEOUT?
             ),
             Zero())
 
-Center = lambda db=20, px=0.003, py=0.003: Sequential(
+Center = lambda db=40, px=0.0008, py=0.0008: Sequential(
             Log('Centering'),
             MasterConcurrent(
                 DownwardTarget(point=center, target=CAM_CENTER, deadband=(db, db), px=px, py=py),
-                AlwaysLog(lambda: 'center = {}'.format(center))))
+                AlwaysLog(lambda: 'center = {}, target = {}'.format(center(), CAM_CENTER))))
 
 Descend = lambda depth=DEPTH, db=0.1, size_thresh=SIZE_THRESH: Sequential(  # TODO: FIND THE ACTUAL DEPTH1!!
             Log('Descent into Madness'),
@@ -55,11 +55,11 @@ Descend = lambda depth=DEPTH, db=0.1, size_thresh=SIZE_THRESH: Sequential(  # TO
 
 close_to = lambda point1, point2, db=10: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
 
-Align = lambda closedb=20, aligndb=10: Sequential(
+Align = lambda closedb=20, aligndb=3: Sequential(
             Log('Aligning'),
             MasterConcurrent(
-                Consistent(lambda: close_to(center(), CAM_CENTER) and abs(angle_offset) < aligndb, count=2.3, total=3, invert=False, result=True),
-                Center(),
+                Consistent(lambda: close_to(center(), CAM_CENTER) and abs(angle_offset()) < aligndb, count=2.3, total=3, invert=False, result=True),
+                While(Center, True),
                 PIDHeading(angle_offset)),
             Zero())
 

@@ -131,7 +131,7 @@ def AlignLeftHole():
 def AlignRightHole():
     return Align(right_hole, align_h, visible)
 
-Center = lambda centerf,  visiblef, targetf=CAM_CENTER, px=0.0009, py=0.004, dx=0.000, dy=0.05, db=0, closedb=5: MasterConcurrent(
+Center = lambda centerf,  visiblef, targetf=CAM_CENTER, px=0.0007, py=0.005, dx=0.000, dy=0.0, db=0, closedb=5: MasterConcurrent(
             Consistent(lambda: close_to(centerf(), targetf, db=closedb), count=4.0, total=5.0, invert=False, result=True),
             Consistent(visiblef, count=1.5, total=2.0, invert=True, result=False),
             ForwardTarget(point=centerf, target=targetf, px=px, py=py, dx=dx, dy=dy, deadband=(db,db)), 

@@ -55,6 +55,8 @@ class Color(ModuleBase):
     def process(self, mat):
         t = time.perf_counter()
         self.post('org', mat)
+        shm.recovery_garlic.cam_x.set(mat.shape[1]//2)
+        shm.recovery_garlic.cam_y.set(mat.shape[0]//2)
         # print(mat.shape)
         d = self.options['lever_color_distance']
         color = [self.options["yellow_%s" % c] for c in COLORSPACE]
@@ -172,7 +174,8 @@ class Color(ModuleBase):
         masked = cv2.bitwise_and(mat, mat, mask=mask_y)
         self.post('masked', masked)
         masked = masked[int(y-r):int(y+r), int(x-r):int(x+r), :]
-        masked = resize(masked, self.options['kmeans_size'], self.options['kmeans_size'])
+        size = min(self.options['kmeans_size'], int(2*r))
+        masked = resize(masked, size, size)
         simple_gaussian_blur(masked, 7, 3)
         if not all(masked.shape): return
         print(masked.shape)

@@ -38,7 +38,7 @@ class PIDHeading(Task):
     def on_first_run(self, *args, **kwargs):
         self.pid_loop = PIDLoop(output_function=RelativeToCurrentHeading())
 
-    def on_run(self, error, p=0.003,  i=0, d=0.0, db=0.01875, negate=False, max_out=None, *args, **kwargs):  # TODO: max_out
+    def on_run(self, error, p=0.35,  i=0, d=0.0, db=0.01875, negate=False, max_out=20, *args, **kwargs):  # TODO: max_out
         self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=360, deadband=db, negate=negate, max_out=max_out)
 
     def stop(self):
