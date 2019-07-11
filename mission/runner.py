@@ -195,7 +195,7 @@ while True:
     begin_time = time.time()
     is_unkilled = not shm.switches.hard_kill.get()
     #print(is_unkilled)
-    if is_unkilled and not was_ever_unkilled:
+    if initially_killed and is_unkilled and not was_ever_unkilled:
         # If un-hard killing for the first time, also un-soft kill to start mission
         time.sleep(3)
         shm.switches.soft_kill.set(0)
