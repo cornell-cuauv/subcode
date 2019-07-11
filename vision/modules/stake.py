@@ -19,19 +19,21 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.DoubleOption('source_x_scale_board', 0.1, 0, 1),
            options.DoubleOption('source_y_scale_board', 0.1, 0, 1),
            options.DoubleOption('downsize_camera', 0.5, 0, 1),
-           options.IntOption('min_match_count', 10, 0, 255),
+           options.IntOption('min_match_count', 3, 0, 255),
            options.DoubleOption('good_ratio', 0.8, 0, 1),
            options.BoolOption('show_keypoints', False),
            options.IntOption('board_separation', 450, 0, 4000),
            options.IntOption('board_horizontal_offset', 70, -1000, 1000),
            options.IntOption('lever_position_x', -500, -3000, 3000),
            options.IntOption('lever_position_y', 2500, 0, 6000),
-           options.IntOption('heart_offset_x', 0, -3000, 3000),
+           options.IntOption('heart_offset_x', -307, -3000, 3000),
            options.IntOption('heart_offset_y', 0, -3000, 3000),
+           options.IntOption('belt_offset_x', 0, -3000, 3000),
+           options.IntOption('belt_offset_y', 0, -3000, 3000),
            options.IntOption('left_circle_offset_x', -60, -3000, 3000),
            options.IntOption('left_circle_offset_y', -112, -3000, 3000),
-           options.IntOption('right_circle_offset_x', -148, -3000, 3000),
-           options.IntOption('right_circle_offset_y', -110, -3000, 3000),
+           options.IntOption('right_circle_offset_x', -64, -3000, 3000),
+           options.IntOption('right_circle_offset_y', -148, -3000, 3000),
            options.IntOption('lever_l', 129, 0, 255),
            options.IntOption('lever_a', 201, 0, 255),
            options.IntOption('lever_b', 183, 0, 255),
@@ -49,6 +51,7 @@ BLUR_KERNEL = 3
 BLUR_SD = 1
 
 HEART = (1356, 3250)
+BELT = (1174, 3700)
 LEFT_CIRCLE = (390, 562)
 RIGHT_CIRCLE = (1900, 570)
 
@@ -58,6 +61,8 @@ class Stake(ModuleBase):
 
     def heart(self):
         return (HEART[0] + self.options['heart_offset_x'], HEART[1] + self.options['heart_offset_y'])
+    def belt(self):
+        return (BELT[0] + self.options['belt_offset_x'], BELT[1] + self.options['belt_offset_y'])
     def left_circle(self):
         return (LEFT_CIRCLE[0] + self.options['left_circle_offset_x'], LEFT_CIRCLE[1] + self.options['left_circle_offset_y'])
     def right_circle(self):
@@ -232,6 +237,9 @@ class Stake(ModuleBase):
             heart = self.locate_source_point('board', M, self.heart(), p)
             shm.torpedoes_stake.heart_x.set(heart[0][0][0])
             shm.torpedoes_stake.heart_y.set(heart[0][0][1])
+            belt = self.locate_source_point('board', M, self.belt(), p)
+            shm.torpedoes_stake.belt_x.set(belt[0][0][0])
+            shm.torpedoes_stake.belt_y.set(belt[0][0][1])
         else:
             shm.torpedoes_stake.board_visible.set(False)
 
