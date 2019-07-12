@@ -9,10 +9,6 @@
 #ifndef constants_hpp
 #define constants_hpp
 
-#include "liquid.h"
-
-#include <complex>
-
 namespace Comms
 {
     extern const unsigned int DSP_DECIM_FACTOR;

@@ -9,9 +9,9 @@
 #ifndef COMMS_HPP
 #define COMMS_HPP
 
-#include "liquid.h"
-
 #include <complex>
+
+#include "liquid.h"
 
 enum downconverter_status{DOWNCONV_DEFAULT, NEW_CONV_SAMPLE};
 enum synchronizer_status{SYNCH_DEFAULT, NEW_SYNCH_POINT, SYNCH_LOCKED_ON};

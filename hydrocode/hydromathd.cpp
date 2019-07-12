@@ -7,6 +7,7 @@
 //
 
 #include <cstdint>
+#include <complex>
 
 #include "liquid.h"
 #include "libshm/c/vars.h"
@@ -128,7 +129,7 @@ int main()
                         comms_corr_plot_sender.send(comms_dyn_thresh_plot, Comms::CORR_PLOT_LEN);
                     }
                     
-                    windowcf_push(baseb_buff, *reinterpret_cast<liquid_float_complex *>(&baseb_sample));
+                    windowcf_push(baseb_buff, baseb_sample);
                     if(std::abs(baseb_sample) > baseb_peak)
                     {
                         baseb_peak = std::abs(baseb_sample);

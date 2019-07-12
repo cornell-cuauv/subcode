@@ -11,8 +11,6 @@
 
 #include <cstdint>
 
-#include "liquid.h"
-
 static const float clipping_threshold = 0.97; //clipping declared if signal above this level (fraction of maximum possible level)
 static const float clipping_threshold_hysteresis = 0.1; //hysteresis to prevent over-zealous gain increasing (fraction of maximum possible level)
 static const int dc_calc_length = 64; //length of running average for calculating the DC bias (in samples)

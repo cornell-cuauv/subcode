@@ -13,7 +13,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "liquid.h"
 #include "udp_sender.hpp"
 
 const unsigned int UDPGainSender::GAIN_PKT_SIZE = 2;

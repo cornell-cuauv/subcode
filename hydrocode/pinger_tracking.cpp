@@ -10,16 +10,14 @@
 
 #include <cstdio>
 #include <cstdint>
+#include <complex>
 
-#include "liquid.h"
 #include "libshm/c/vars.h"
 //#include "shm_mac.hpp"
 #include "pinger_tracking.hpp"
 #include "udp_sender.hpp"
 #include "structs.hpp"
 #include "constants.hpp"
-
-#include <complex>
 
 static const int trigger_plot_length = 2 * dft_length; //length of the trigger plot (in samples)
 static const int dft_plot_length = (int)(pinger_period * pinger_period_factor * (float)ADC_SAMPLE_RATE / SAMPLE_PKT_LEN - gain_propagation_packets); //length of the dft plot (in samples)
@@ -374,7 +372,7 @@ void pingerTracking(uint16_t *fpga_packet)
         shm_results_track.tracked_ping_elevation = elevation;
         shm_results_track.tracked_ping_elevation_correct = elevation_correct;
         shm_setg(hydrophones_results_track, shm_results_track);
-        shm_setg(shm_results_track);
+        //shm_setg(shm_results_track);
         
         //in case of clipping, no plots shown and no headings calculated
         end_interval:

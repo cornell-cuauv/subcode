@@ -14,7 +14,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "liquid.h"
 #include "udp_receiver.hpp"
 
 UDPSampleReceiver::UDPSampleReceiver(unsigned int port):

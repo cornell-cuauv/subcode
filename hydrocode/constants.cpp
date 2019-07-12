@@ -8,10 +8,6 @@
 
 #include <netinet/in.h>
 
-#include "liquid.h"
-
-#include <complex>
-
 namespace Comms
 {
     extern const unsigned int DSP_DECIM_FACTOR = 20;

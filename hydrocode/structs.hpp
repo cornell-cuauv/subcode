@@ -11,9 +11,9 @@
 #ifndef structs_hpp
 #define structs_hpp
 
-#include "liquid.h"
-
 #include <complex>
+
+#include "liquid.h"
 
 struct triple_sample
 {

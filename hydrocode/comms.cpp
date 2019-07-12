@@ -7,12 +7,11 @@
 //
 
 #include <cstdint>
+#include <complex>
 
 #include "liquid.h"
 //#include "libshm/c/vars.h"
 #include "comms.hpp"
-
-#include <complex>
 
 const unsigned int Downconverter::TRANS_WIDTH = 500;
 const unsigned int Downconverter::STOPBAND_ATTEN = 60;
@@ -93,7 +92,7 @@ mix_osc(nco_crcf_create(LIQUID_NCO))
     
     liquid_firdes_kaiser(filt_len, f_cutoff_hat, STOPBAND_ATTEN, 0.0f, coeffs);
     filt = firfilt_crcf_create(coeffs, filt_len);
-    firfilt_crcf_freqresponse(filt, 0, reinterpret_cast<liquid_float_complex *>(&filt_unscaled_resp));
+    firfilt_crcf_freqresponse(filt, 0, &filt_unscaled_resp);
     firfilt_crcf_set_scale(filt, 1.0f / std::abs(filt_unscaled_resp));
     
     delete [] coeffs;
@@ -108,15 +107,15 @@ void Downconverter::push(float in_sample)
     std::complex<float> in_sample_complex = in_sample;
     std::complex<float> mixed;
     
-    nco_crcf_mix_down(mix_osc, *reinterpret_cast<liquid_float_complex *>(&in_sample_complex), reinterpret_cast<liquid_float_complex *>(&mixed));
+    nco_crcf_mix_down(mix_osc, in_sample_complex, &mixed));
     nco_crcf_step(mix_osc);
     
-    firfilt_crcf_push(filt, *reinterpret_cast<liquid_float_complex *>(&mixed));
+    firfilt_crcf_push(filt, mixed);
     
     status = DOWNCONV_DEFAULT;
     if(n % decim_factor == 0)
     {
-        firfilt_crcf_execute(filt, reinterpret_cast<liquid_float_complex *>(&conv_sample));
+        firfilt_crcf_execute(filt, &conv_sample);
         status = NEW_CONV_SAMPLE;
     }
     
@@ -164,14 +163,12 @@ thresh_calc(THRESH_CALC_LEN)
         space_coeffs[coeff_no] = base_coeffs[coeff_no] * std::exp(j * (std::complex<float>)(2 * M_PI * (float)(space_freq_hat * (coeff_no + 1))));
         mark_coeffs[coeff_no] = base_coeffs[coeff_no] * std::exp(j * (std::complex<float>)(2 * M_PI * (float)(mark_freq_hat * (coeff_no + 1))));
     }
-    space_filt = firfilt_cccf_create(reinterpret_cast<liquid_float_complex *>(space_coeffs), filt_len);
-    mark_filt = firfilt_cccf_create(reinterpret_cast<liquid_float_complex *>(mark_coeffs), filt_len);
-    firfilt_cccf_freqresponse(space_filt, space_freq_hat, reinterpret_cast<liquid_float_complex *>(&space_unscaled_resp));
-    firfilt_cccf_freqresponse(mark_filt, mark_freq_hat, reinterpret_cast<liquid_float_complex *>(&mark_unscaled_resp));
-    std::complex<float> space_unscaled_resp_inv = (std::complex<float>)1.0f / space_unscaled_resp;
-    std::complex<float> mark_unscaled_resp_inv = (std::complex<float>)1.0f / mark_unscaled_resp;
-    firfilt_cccf_set_scale(space_filt, *reinterpret_cast<liquid_float_complex *>(&space_unscaled_resp_inv));
-    firfilt_cccf_set_scale(mark_filt, *reinterpret_cast<liquid_float_complex *>(&mark_unscaled_resp_inv));
+    space_filt = firfilt_cccf_create(space_coeffs, filt_len);
+    mark_filt = firfilt_cccf_create(mark_coeffs, filt_len);
+    firfilt_cccf_freqresponse(space_filt, space_freq_hat, &space_unscaled_resp);
+    firfilt_cccf_freqresponse(mark_filt, mark_freq_hat, &mark_unscaled_resp);
+    firfilt_cccf_set_scale(space_filt, (std::complex<float>)1.0f / space_unscaled_resp_inv);
+    firfilt_cccf_set_scale(mark_filt, (std::complex<float>)1.0f / mark_unscaled_resp_inv);
 
     for(unsigned int coeff_no = 0; coeff_no < code_len * SAMPLES_PER_SYMBOL; coeff_no++)
     {
@@ -200,8 +197,8 @@ FSKSynchronizer::~FSKSynchronizer(void)
 }
 void FSKSynchronizer::push(std::complex<float> in_sample)
 {
-    firfilt_cccf_push(space_filt, *reinterpret_cast<liquid_float_complex *>(&in_sample));
-    firfilt_cccf_push(mark_filt, *reinterpret_cast<liquid_float_complex *>(&in_sample));
+    firfilt_cccf_push(space_filt, in_sample);
+    firfilt_cccf_push(mark_filt, in_sample);
     
     status = SYNCH_DEFAULT;
     if(n % (sample_rate / (sym_rate * SAMPLES_PER_SYMBOL)) == 0)
@@ -209,8 +206,8 @@ void FSKSynchronizer::push(std::complex<float> in_sample)
         std::complex<float> space_ch_sample, mark_ch_sample;
         float corr_sig_output, corr_orth_output;
         
-        firfilt_cccf_execute(space_filt, reinterpret_cast<liquid_float_complex *>(&space_ch_sample));
-        firfilt_cccf_execute(mark_filt, reinterpret_cast<liquid_float_complex *>(&mark_ch_sample));
+        firfilt_cccf_execute(space_filt, &space_ch_sample);
+        firfilt_cccf_execute(mark_filt, &mark_ch_sample);
         
         float corr_in = sym_corrections[1] * std::abs(mark_ch_sample) - sym_corrections[0] * std::abs(space_ch_sample);
         windowf_push(corr_in_buff, corr_in);
@@ -303,10 +300,9 @@ filters(new firfilt_cccf[num_sym])
         for(unsigned int coeff_no = 0; coeff_no < filt_len; coeff_no++)
         {
             rotated_coeffs[coeff_no] = base_coeffs[coeff_no] * std::exp(j * (std::complex<float>)(2 * M_PI * (float)(sym_freq_hat * (coeff_no + 1))));
-            filters[sym_index] = firfilt_cccf_create(reinterpret_cast<liquid_float_complex *>(rotated_coeffs), filt_len);
-            firfilt_cccf_freqresponse(filters[sym_index], sym_freq_hat, reinterpret_cast<liquid_float_complex *>(&unscaled_resp));
-            std::complex<float> unscaled_resp_inv = (std::complex<float>)1.0f / unscaled_resp;
-            firfilt_cccf_set_scale(filters[sym_index], *reinterpret_cast<liquid_float_complex *>(&unscaled_resp_inv));
+            filters[sym_index] = firfilt_cccf_create(rotated_coeffs, filt_len);
+            firfilt_cccf_freqresponse(filters[sym_index], sym_freq_hat, &unscaled_resp);
+            firfilt_cccf_set_scale(filters[sym_index], (std::complex<float>)1.0f / unscaled_resp_inv);
         }
     }
     
@@ -329,7 +325,7 @@ void FSKDecider::push(std::complex<float> in_sample)
 {
     for(unsigned int sym_index = 0; sym_index < num_sym; sym_index++)
     {
-        firfilt_cccf_push(filters[sym_index], *reinterpret_cast<liquid_float_complex *>(&in_sample));
+        firfilt_cccf_push(filters[sym_index], in_sample);
     }
     
     if(n % (sample_rate / (sym_rate * SAMPLES_PER_SYMBOL)) == 0)
@@ -338,7 +334,7 @@ void FSKDecider::push(std::complex<float> in_sample)
         
         for(unsigned int sym_index = 0; sym_index < num_sym; sym_index++)
         {
-            firfilt_cccf_execute(filters[sym_index], reinterpret_cast<liquid_float_complex *>(&sym_ch_sample));
+            firfilt_cccf_execute(filters[sym_index], sym_ch_sample);
             
             energies[sym_index] += sym_corrections[sym_index] * std::abs(sym_ch_sample);
         }
