@@ -11,6 +11,8 @@
 
 #include <cstdint>
 
+#include "liquid.h"
+
 static const float clipping_threshold = 0.97; //clipping declared if signal above this level (fraction of maximum possible level)
 static const float clipping_threshold_hysteresis = 0.1; //hysteresis to prevent over-zealous gain increasing (fraction of maximum possible level)
 static const int dc_calc_length = 64; //length of running average for calculating the DC bias (in samples)
@@ -28,6 +30,6 @@ static const float sound_speed = 1481; //speed of sound in fresh water at 20 deg
 static const int freqs[freq_list_length] = {25000, 30000, 35000, 40000}; //hardcoded frequencies list. read wiki entry before updating this!
 static const int gainz[14] = {1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128}; //possible gain settings
 
-void pingerTrackingDSP(uint16_t *fpga_packet, bool reset_signal);
+void pingerTracking(uint16_t *fpga_packet);
 
 #endif /* pinger_tracking_hpp */
