@@ -35,7 +35,7 @@ CAM_CENTER = (shm.torpedoes_stake.camera_x.get(), shm.torpedoes_stake.camera_y.g
 
 TARGETS = {"upper": "lower", "lower": "upper"}
 current_target = ""
-MOVE_DIRECTION=1  # 1 if lever on left else -1 if on right
+MOVE_DIRECTION=-1  # 1 if lever on left else -1 if on right
 
 
 def heart():
@@ -49,6 +49,15 @@ def left_hole():
 
 def right_hole():
     return (shm.torpedoes_stake.right_hole_x.get(), shm.torpedoes_stake.right_hole_y.get())
+
+def close_visible():
+    return shm.torpedoes_stake.close_visible.get()
+
+def close_size():
+    return shm.torpedoes_stake.close_size.get()
+
+def close():
+    return (shm.torpedoes_stake.close_x.get(), shm.torpedoes_stake.close_y.get())
 
 def lever():
     return (shm.torpedoes_stake.lever_origin_x.get(), shm.torpedoes_stake.lever_origin_y.get())
@@ -155,25 +164,30 @@ def CenterRightHole():
 def CenterLever():
     return Center(centerf=lever, visiblef=visible, closedb=20)
 
+@withApproachAlignOnFail
+def CenterClose():
+    return Center(centerf=close, visiblef=close_visible, py=0.002, closedb=30)
+
 def CenterBoard():
     return Center(centerf=board_center, visiblef=visible)
 
 
 
 # TODO: tune everything
+HOLE_SIZE=15000
 APPROACH_SIZE = 70000
 HEART_SIZE = 300000
-def ApproachCenterSize(sizef, centerf, alignf, visiblef, size_thresh, p=0.000003, px=0.0009, py=0.004, dx=0.00, dy=0.005, d=0, consistent_total=2.0, closedb=20, db=30000):
+def ApproachCenterSize(sizef, centerf, alignf, visiblef, size_thresh, p=0.000003, px=0.0009, py=0.01, dx=0.00, dy=0.00, d=0, consistent_total=2.0, closedb=20, db=30000):
     return MasterConcurrent(
             Consistent(lambda: abs(sizef()-size_thresh) < db and close_to(centerf(), CAM_CENTER, db=closedb), count=2.7, total=3.0, invert=False, result=True),
             Consistent(visiblef, count=1.3, total=consistent_total, invert=True, result=False),
             While(lambda: Center(centerf, visiblef, px=px, py=py, dx=dx, dy=dy), True),
             PIDStride(lambda: sizef()-size_thresh, p=p, d=d),
-            AlwaysLog(lambda: "center: {}, target: {}, align: {}, size{}".format(CAM_CENTER, centerf(), alignf(), sizef())))
+            AlwaysLog(lambda: "center: {}, target: {}, size{}".format(CAM_CENTER, centerf(), sizef())))
 
 def ApproachAlignSize(sizef, centerf, alignf, visiblef, size_thresh, db=30000):
     return MasterConcurrent(
-            Consistent(lambda: abs(sizef()-size_thresh) < db and aligned(alignf(), db=4), count=3.3, total=4.0, invert=False, result=True),
+            Consistent(lambda: abs(sizef()-size_thresh) < db and aligned(alignf(), db=7), count=3.3, total=4.0, invert=False, result=True),
             Consistent(visiblef, count=1.3, total=2.0, invert=True, result=False),
             While(lambda: Align(centerf, alignf, visiblef), True),
             PIDStride(lambda: sizef()-size_thresh),
@@ -187,10 +201,13 @@ def ApproachBelt():
     return ApproachCenterSize(size, belt, align_h, visible, HEART_SIZE, p=0.0000007, db=50000, consistent_total=2.5, closedb=50)
 @withApproachAlignOnFail
 def ApproachLeftHole():
-    return ApproachCenterSize(size, left_hole, align_h, visible, APPROACH_SIZE, closedb=15, consistent_total=3.0)
+    return ApproachCenterSize(size, left_hole, align_h, visible, APPROACH_SIZE, closedb=30, consistent_total=3.0)
 @withApproachAlignOnFail
 def ApproachRightHole():
-    return ApproachCenterSize(size, right_hole, align_h, visible, APPROACH_SIZE, closedb=15, consistent_total=3.0)
+    return ApproachCenterSize(size, right_hole, align_h, visible, APPROACH_SIZE, closedb=30, consistent_total=3.0)
+@withApproachAlignOnFail
+def ApproachClose():
+    return ApproachCenterSize(close_size, close, None, close_visible, HOLE_SIZE, p=0.000002, px=0.001, py=0.003, dy=0.005, db=4000, closedb=20, consistent_total=2.0)
 
 @withReSearchBoardOnFail
 def ApproachAlign():
@@ -201,7 +218,9 @@ def DeadReckonHeart():
 def _DeadReckonLever():
     return Sequential(
         Succeed(Timeout(MoveX(.60, deadband=0.05), 20)),
-        Succeed(Timeout(MoveY(MOVE_DIRECTION * .7, deadband=0.05), 20)),)
+        Succeed(Timeout(MoveY(MOVE_DIRECTION * .7, deadband=0.05), 20)),
+        Succeed(Timeout(MoveX(.30, deadband=0.1), 20)),
+        )
 
 @withShootRightOnFail
 def DeadReckonLever():
@@ -256,5 +275,7 @@ Test = \
     lambda: Sequential(
             ApproachAlign(),
             ApproachRightHole(),
+            Log('plox'),
+            ApproachClose(),
             Log('what'),
             FireActuator('bottom_torpedo', 0.3))

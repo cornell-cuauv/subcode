@@ -47,6 +47,8 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.IntOption('color_a', 113, 0, 255),
            options.IntOption('color_b', 159, 0, 255),
            options.IntOption('color_distance', 15, 0, 255),
+           options.IntOption('close_offset_x', -55, -255, 255),
+           options.IntOption('close_offset_y', -30, -255, 255),
            ]
 
 
@@ -60,7 +62,7 @@ BELT = (1174, 3700)
 LEFT_CIRCLE = (390, 562)
 RIGHT_CIRCLE = (1900, 570)
 
-MOVE_DIRECTION=1  # 1 if lever on left else -1 if on right
+MOVE_DIRECTION=-1  # 1 if lever on left else -1 if on right
 
 class Stake(ModuleBase):
 
@@ -316,8 +318,9 @@ class Stake(ModuleBase):
             shm.torpedoes_stake.close_visible.set(True)
             close = max(contours, key=contour_area)
             centroid = contour_centroid(close)
-            shm.torpedoes_stake.close_x.set(centroid[0])
-            shm.torpedoes_stake.close_y.set(centroid[1])
+            shm.torpedoes_stake.close_x.set(centroid[0] + self.options['close_offset_x'])
+            shm.torpedoes_stake.close_y.set(centroid[1] + self.options['close_offset_y'])
+            shm.torpedoes_stake.close_size.set(contour_area(close))
             cv2.drawContours(mat, [close], -1, (255, 0, 0), thickness=5)
         else:
             shm.torpedoes_stake.close_visible.set(False)
