@@ -10,6 +10,8 @@ from vision.framework.feature import outer_contours, contour_approx, contour_are
 from vision.framework.transform import erode, dilate, rect_kernel, morph_remove_noise, morph_close_holes, resize, elliptic_kernel
 from vision.framework.helpers import to_umat
 
+MANIPULATOR_ANGLE = 25
+
 garlic_crucifix_opts = [
         IntOption('yellow_l', 186, 0, 255),  # 224
         IntOption('yellow_a', 144, 0, 255),  # 130
@@ -36,7 +38,7 @@ garlic_crucifix_opts = [
         IntOption('kmeans_morph_iterations', 3, 1, 50),
         IntOption('kmeans_shrink_size', 300, 1, 1000),
         IntOption('garlic_line_threshold', 35, 0, 5000),
-        IntOption('manipulator_angle', 25, 0, 359),
+        IntOption('manipulator_angle', MANIPULATOR_ANGLE, 0, 359),
         IntOption('green_l', 228, 0, 255),
         IntOption('green_a', 131, 0, 255),
         IntOption('green_b', 190, 0, 255),

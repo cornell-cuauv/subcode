@@ -8,10 +8,11 @@ import numpy as np
 from vision.modules.base import ModuleBase
 from vision.framework.color import bgr_to_lab, range_threshold
 from vision.framework.transform import elliptic_kernel, dilate, erode, rect_kernel
-from vision.framework.feature import outer_contours, find_lines
+from vision.framework.feature import outer_contours, find_lines, contour_centroid, contour_area
 from vision.framework.draw import draw_line
 from vision.options import IntOption, DoubleOption
-# import math
+
+from vision.modules.attilus_garbage import thresh_color_distance, filter_contour_size, filter_shapularity, angle_to_line, MANIPULATOR_ANGLE
 
 opts = [
         IntOption('yellow_l', 186, 0, 255),  # 224
@@ -20,152 +21,110 @@ opts = [
         IntOption('purple_l', 39, 0, 255),  # 224
         IntOption('purple_a', 160, 0, 255),
         IntOption('purple_b', 80, 0, 255),
-        IntOption('lever_color_distance', 24, 0, 255),
+        IntOption('vampire_color_distance', 30, 0, 255),
         IntOption('contour_size_min', 50, 0, 1000),
         IntOption('intersection_size_min', 20, 0, 1000),
-        IntOption('erode_kernel_size', 18, 0, 100),
-        IntOption('dilate_kernel_size', 18, 0, 100),
-        IntOption('dilate_iterations', 10, 0, 10),
+        IntOption('erode_kernel_size', 5, 0, 100),
+        IntOption('erode_iterations', 3, 0, 100),
+        IntOption('dilate_kernel_size', 5, 0, 100),
+        IntOption('dilate_iterations', 6, 0, 10),
         IntOption('line_thresh', 210, 0, 5000),
+        IntOption('manipulator_angle', MANIPULATOR_ANGLE, 0, 359),
+        DoubleOption('rectangle_padding', 0.4, -1, 1),
         DoubleOption('rectangularity_thresh', 0.8, 0, 1),
 ]
 
 COLORSPACE = "lab"
 
 
-class Color(ModuleBase):
+class Vampire(ModuleBase):
     def process(self, mat):
         self.post('org', mat)
         # print(mat.shape)
-        d = self.options['lever_color_distance']
+        _, split = bgr_to_lab(mat)
+        d = self.options['vampire_color_distance']
         color = [self.options["yellow_%s" % c] for c in COLORSPACE]
-        yellow = self.find_color(mat, color, d, iterations=self.options['dilate_iterations'])
-        self.post('yellow', yellow)
-        yellow_contours = self.contours_and_filter(yellow, self.options['contour_size_min'])
-        yellow_contours = self.filter_rectangles(yellow_contours, self.options['rectangularity_thresh'])
+        self.rectangles = self.find_yellow_rectangle(split, color, d, self.options['erode_kernel_size'],
+                                                self.options['erode_iterations'],
+                                                self.options['dilate_kernel_size'],
+                                                self.options['dilate_iterations'],
+                                                self.options['contour_size_min'],
+                                                self.options['rectangularity_thresh'],
+                                                -self.options['rectangle_padding'])
 
-        for y in yellow_contours:
-            rectangle = cv2.boxPoints(cv2.minAreaRect(y))
+        for y in self.rectangles:
+            rectangle = cv2.boxPoints(y['rectangle'])
             mat = cv2.drawContours(mat, [np.int0(rectangle)], 0, (0, 0, 255), 10)
 
-
-
         color = [self.options["purple_%s" % c] for c in COLORSPACE]
-        purple = self.find_color(mat, color, d, use_first_channel=False, erode_mask=True, dilate_mask=True, iterations=3, rectangular=False)
-        self.post('purple', purple)
-        purple_contours = self.contours_and_filter(purple, self.options['contour_size_min'])
-        # # red = dilate(red, elliptic_kernel(self.options['dilate_kernel_size']), iterations=1)
-        # red = erode(red, elliptic_kernel(self.options['dilate_kernel_size']), iterations=2)
-        # self.post('red', red)
-        # red_contours = outer_contours(red)
+        # purple = self.find_color(mat, color, d, use_first_channel=False, erode_mask=True, dilate_mask=True, iterations=3, rectangular=False)
+        # self.post('purple', purple)
+        # purple_contours = self.contours_and_filter(purple, self.options['contour_size_min'])
+        self.find_vampire(mat, split, color, d)
 
-        # platform, garlic = self.red_in_circle(mat, yellow_contours, red_contours)
-        # platform_center = None
-
-        # if platform is not None:
-        #     platform_center = self.center(platform[0])
-        #     garlic_mask = np.zeros((mat.shape[0], mat.shape[1]), dtype=np.uint8)
-        #     garlic_mask = cv2.drawContours(garlic_mask, garlic, -1, (255, 0, 0), 10)
-        #     self.post('garlic', garlic_mask)
-        #     mat = cv2.circle(mat, platform_center, 4, (255, 255, 0), thickness=4)
-        #     lines, garlic_vectors = self.find_garlic_angle(mat, garlic_mask) 
-
-        #     for l in lines:
-        #         draw_line(mat, (l[0], l[1]), (l[2], l[3]), thickness=5)
-        #     for v in garlic_vectors:
-        #         draw_line(mat, platform_center, tuple([platform_center[i] + int(v[i] * 1000) for i in range(len(v))]), color=(0,255,0), thickness=5)
-
-        # self.post('line', mat)
-
-        mat = cv2.drawContours(mat, yellow_contours, -1, (0, 255, 0), 10)
-        mat = cv2.drawContours(mat, purple_contours, -1, (0, 255, 0), 10)
+        mat = cv2.drawContours(mat, [r['contour'] for r in self.rectangles], -1, (0, 255, 0), 10)
+        # mat = cv2.drawContours(mat, purple_contours, -1, (0, 255, 0), 10)
         self.post('yellow_contours', mat)
 
-    def find_color(self, mat, color, distance, use_first_channel=False, erode_mask=True, dilate_mask=True, iterations=1, rectangular=False):
-        _, split = bgr_to_lab(mat)
-        threshed = [range_threshold(split[i],
-                    color[i] - distance, color[i] + distance)
-                    for i in range(int(not use_first_channel), len(color))]
-        combined = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
-        if dilate_mask or erode_mask:
-            if erode_mask:
-                kernel = elliptic_kernel(self.options['erode_kernel_size']) if not rectangular \
-                        else rect_kernel(self.options['erode_kernel_size'])
-                combined = erode(combined, kernel, iterations=1)
-            if dilate_mask:
-                kernel = elliptic_kernel(self.options['dilate_kernel_size']) if not rectangular \
-                        else rect_kernel(self.options['dilate_kernel_size'])
-                combined = dilate(combined, kernel, iterations=iterations)
-        # _, contours, _ = cv2.findContours(combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        # filtered = [i for i in contours if cv2.contourArea(i) > self.options['contour_size_min']]
-        return combined
 
-    def contours_and_filter(self, mat, size_thresh):
-        _, contours, _ = cv2.findContours(mat, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        filtered = [i for i in contours if cv2.contourArea(i) > size_thresh]
-        return filtered
+    def find_yellow_rectangle(self, split, color, distance, erode_kernel, erode_iterations,
+                              dilate_kernel, dilate_iterations, min_contour_size,
+                              min_rectangularity, padding_offset):
+        mask = thresh_color_distance(split, color, distance)
+        mask = erode(mask, rect_kernel(erode_kernel), iterations=erode_iterations)
+        mask = dilate(mask, rect_kernel(dilate_kernel), iterations=dilate_iterations)
 
-    def filter_rectangles(self, contours, rectangularity_thresh):
-        def _check_rectangle(contour):
-            rectangle = cv2.minAreaRect(contour)
-            rectangle_area = rectangle[1][0] * rectangle[1][1]
-            area = cv2.contourArea(contour)
-            return area/rectangle_area > rectangularity_thresh
-        return [c for c in contours if _check_rectangle(c)]
+        contours = outer_contours(mask)
+        contours = filter_contour_size(contours, min_contour_size)
 
-    def red_in_circle(self, mat, yellow_contours, red_contours):
-        mask = np.zeros((mat.shape[0], mat.shape[1]), dtype=np.uint8)
-        for i in range(len(yellow_contours)):
-            mask_y = mask.copy()
-            mask_r = mask.copy()
-            mask_y = cv2.fillPoly(mask_y, [yellow_contours[i]], 255)
-            self.post('mask_y%d' % i, mask_y)
-            mask_r = cv2.fillPoly(mask_r, red_contours, 255)
-            self.post('mask_r%d' % i, mask_r)
-            intersection = cv2.bitwise_and(mask_y, mask_r)
-            self.post('intersection%d' % i, intersection)
-            if any(map(lambda x: cv2.contourArea(x) > self.options['intersection_size_min'], outer_contours(intersection))):
-                return [yellow_contours[i]], outer_contours(intersection)
+        def box_area(contour):
+            r = cv2.minAreaRect(contour)
+            return r[1][0] * r[1][1]
+
+        contours = filter_shapularity(box_area, contours, min_rectangularity)
+
+        def rectangle_with_offset(contour):
+            r = cv2.minAreaRect(contour)
+            return r[0], (max(r[1][0] * (1-padding_offset), 0), max(r[1][1] * (1-padding_offset), 0)), r[2]
+
+        return [{'contour': c, 'rectangle': rectangle_with_offset(c)} for c in contours]
+
+
+    def find_vampire(self, mat, split, color, distance):
+        mask = thresh_color_distance(split, color, distance)
+        self.post('purple', mask)
+        i, mask_r = self.intersect_rectangles(self.rectangles, mask, self.options['intersection_size_min'])
+        self.post('rectangle', mask_r)
+
+        if i is not None:
+            purple = cv2.bitwise_and(mask, mask_r)
+            purple_contours = outer_contours(purple)
+
+            purple_center = contour_centroid(max(purple_contours, key=contour_area))
+            print(purple_center)
+
+            align_angle = self.rectangles[i]['rectangle'][2] + 270 if self.rectangles[i]['rectangle'][1][1] > self.rectangles[i]['rectangle'][1][0] else self.rectangles[i]['rectangle'][2]
+
+            cv2.circle(mat, purple_center, 20, color=(0, 0, 255), thickness=-1)
+            draw_line(mat, *angle_to_line(self.options['manipulator_angle'], origin=purple_center), thickness=5)
+            draw_line(mat, *angle_to_line(align_angle, origin=purple_center), color=(0, 255, 0), thickness=5)
+
+        self.post('hmm', mat)
+
+
+    def intersect_rectangles(self, rectangles, mask, min_size):
+        for i in range(len(rectangles)):
+            c = rectangles[i]['rectangle']
+            mask_c = np.zeros(mask.shape, dtype=np.uint8)
+            mask_c = cv2.fillPoly(mask_c, [np.int0(cv2.boxPoints(c))], color=255)
+            # self.post('mask_%d'%i, mask_c)
+            intersect = cv2.bitwise_and(mask, mask_c)
+            # self.post('intersect_%d'%i, intersect)
+            if any(map(lambda x: cv2.contourArea(x) > min_size, outer_contours(intersect))):
+                return i, intersect
         return None, None
-
-    def center(self, contour):
-        M = cv2.moments(contour)
-        return (int(M['m10']/M['m00']), int(M['m01']/M['m00']))
-
-    def find_garlic_angle(self, mat, garlic_mask):
-        try:
-            lines = find_lines(garlic_mask, 1, pi/180, self.options['line_thresh'])
-
-            def lines_to_angles(line):
-                try:
-                    return atan((line[1]-line[3])/(line[0]-line[2]))
-                except ZeroDivisionError:
-                    return pi/2
-            def angle_to_unit_circle(angle):
-                return cos(angle), sin(angle)
-
-            angles = np.array([angle_to_unit_circle(lines_to_angles(l)) for l in lines[0]], dtype=np.float32)
-            if len(angles) < 2:
-                return [], []
-
-            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-            compactness, label, center = cv2.kmeans(angles, 2, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-
-            return lines[0], center  # , [atan(c[1]/c[0]) for c in center]
-
-            for c in center:
-                draw_line(mat, platform_center, tuple([int(platform_center[i] + c[i]* 1000) for i in range(len(platform_center))]), thickness=5)
-            self.post('averaged', mat)
-
-
-            for l in lines[0]:
-                draw_line(mat, (l[0], l[1]), (l[2], l[3]), thickness=5)
-
-        except cv2.error as e:
-            print(e)
-            return [], []
 
 
 
 if __name__ == '__main__':
-    Color('downward', opts)()
+    Vampire('downward', opts)()
