@@ -183,7 +183,7 @@ void pingerTracking(uint16_t *fpga_packet)
 
         printf("\n%s \n", "new interval. mode: tracking");
         
-        //shm_getg(hydrophones_settings, shm_settings);
+        shm_getg(hydrophones_settings, shm_settings);
         
         //the desired gain is set everytime a new interval starts
         gain_sender.send(gain_lvl);

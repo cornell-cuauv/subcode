@@ -19,7 +19,7 @@ public:
     void recv(uint16_t *pkt, unsigned int pkt_len);
 
 private:
-    unsigned int sock;
+    int sock;
 };
 
 #endif /* udp_receiver_hpp */

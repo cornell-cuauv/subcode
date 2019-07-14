@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <complex>
+#include <cstring>
 
 #include "liquid.h"
 //#include "libshm/c/vars.h"
@@ -107,7 +108,7 @@ void Downconverter::push(float in_sample)
     std::complex<float> in_sample_complex = in_sample;
     std::complex<float> mixed;
     
-    nco_crcf_mix_down(mix_osc, in_sample_complex, &mixed));
+    nco_crcf_mix_down(mix_osc, in_sample_complex, &mixed);
     nco_crcf_step(mix_osc);
     
     firfilt_crcf_push(filt, mixed);
@@ -167,8 +168,8 @@ thresh_calc(THRESH_CALC_LEN)
     mark_filt = firfilt_cccf_create(mark_coeffs, filt_len);
     firfilt_cccf_freqresponse(space_filt, space_freq_hat, &space_unscaled_resp);
     firfilt_cccf_freqresponse(mark_filt, mark_freq_hat, &mark_unscaled_resp);
-    firfilt_cccf_set_scale(space_filt, (std::complex<float>)1.0f / space_unscaled_resp_inv);
-    firfilt_cccf_set_scale(mark_filt, (std::complex<float>)1.0f / mark_unscaled_resp_inv);
+    firfilt_cccf_set_scale(space_filt, (std::complex<float>)1.0f / space_unscaled_resp);
+    firfilt_cccf_set_scale(mark_filt, (std::complex<float>)1.0f / mark_unscaled_resp);
 
     for(unsigned int coeff_no = 0; coeff_no < code_len * SAMPLES_PER_SYMBOL; coeff_no++)
     {
@@ -302,11 +303,11 @@ filters(new firfilt_cccf[num_sym])
             rotated_coeffs[coeff_no] = base_coeffs[coeff_no] * std::exp(j * (std::complex<float>)(2 * M_PI * (float)(sym_freq_hat * (coeff_no + 1))));
             filters[sym_index] = firfilt_cccf_create(rotated_coeffs, filt_len);
             firfilt_cccf_freqresponse(filters[sym_index], sym_freq_hat, &unscaled_resp);
-            firfilt_cccf_set_scale(filters[sym_index], (std::complex<float>)1.0f / unscaled_resp_inv);
+            firfilt_cccf_set_scale(filters[sym_index], (std::complex<float>)1.0f / unscaled_resp);
         }
     }
     
-    memset(energies, 0.0f, num_sym * sizeof(float));
+    std::memset(energies, 0.0f, num_sym * sizeof(float));
     
     delete [] base_coeffs;
     delete [] rotated_coeffs;
@@ -334,7 +335,7 @@ void FSKDecider::push(std::complex<float> in_sample)
         
         for(unsigned int sym_index = 0; sym_index < num_sym; sym_index++)
         {
-            firfilt_cccf_execute(filters[sym_index], sym_ch_sample);
+            firfilt_cccf_execute(filters[sym_index], &sym_ch_sample);
             
             energies[sym_index] += sym_corrections[sym_index] * std::abs(sym_ch_sample);
         }
@@ -356,7 +357,7 @@ void FSKDecider::push(std::complex<float> in_sample)
             }
         }
         num_accum_samples = 0;
-        memset(energies, 0.0f, num_sym * sizeof(float));
+        std::memset(energies, 0.0f, num_sym * sizeof(float));
         status = NEW_SYMBOL;
     }
     
@@ -373,7 +374,7 @@ unsigned int FSKDecider::getSym(void)
 void FSKDecider::rst(void)
 {
     num_accum_samples = 0;
-    memset(energies, 0.0f, num_sym * sizeof(float));
+    std::memset(energies, 0.0f, num_sym * sizeof(float));
     status = DECID_DEFAULT;
 }
 

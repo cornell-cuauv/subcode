@@ -19,7 +19,7 @@ public:
 private:
     static const unsigned int GAIN_PKT_SIZE;
     
-    unsigned int sock;
+    int sock;
     struct sockaddr_in serv_addr;
 };
 
@@ -31,7 +31,7 @@ public:
 private:
     static const unsigned int PLOT_PKT_SIZE;
     
-    unsigned int sock;
+    int sock;
     struct sockaddr_in serv_addr;
 };
 

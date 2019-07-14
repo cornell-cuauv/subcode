@@ -22,7 +22,7 @@ namespace Comms
     extern const float CODE[32] = {1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, 1, -1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 0};
     extern const float ORTH_CODE[32] = {1, 1, 1, 1, 1, -1, -1, 1, -1, -1, 1, 1, -1, -1, -1, -1, 1, -1, 1, 1, -1, 1, -1, 1, -1, -1, -1, 1, 1, 1, -1, 0};
     extern const unsigned int CODE_LEN = 32;
-    extern const unsigned int PKT_SIZE = 1;
+    extern const unsigned int PKT_SIZE = 4;
     
     extern const char BASEB_PLOT_ADDR[] = "127.0.0.1";
     extern const unsigned int BASEB_PLOT_PORT = 9004;
