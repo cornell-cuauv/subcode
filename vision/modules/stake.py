@@ -2,6 +2,7 @@
 import shm
 import cv2
 from functools import reduce
+from math import pi
 
 # import time
 
@@ -12,6 +13,8 @@ from vision.framework.feature import outer_contours, contour_centroid, contour_a
 from vision.framework.helpers import to_umat  # , from_umat
 from vision.framework.draw import draw_circle
 from vision.framework.color import bgr_to_lab, range_threshold
+
+from vision.modules.heart import heart as heart_original
 
 
 from vision import options
@@ -31,10 +34,10 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.IntOption('heart_offset_y', 0, -3000, 3000),
            options.IntOption('belt_offset_x', 0, -3000, 3000),
            options.IntOption('belt_offset_y', 0, -3000, 3000),
-           options.IntOption('left_circle_offset_x', -60, -3000, 3000),
-           options.IntOption('left_circle_offset_y', -112, -3000, 3000),
-           options.IntOption('right_circle_offset_x', -64, -3000, 3000),
-           options.IntOption('right_circle_offset_y', -148, -3000, 3000),
+           options.IntOption('left_circle_offset_x', -284, -3000, 3000),
+           options.IntOption('left_circle_offset_y', 565, -3000, 3000),
+           options.IntOption('right_circle_offset_x', -519, -3000, 3000),
+           options.IntOption('right_circle_offset_y', 565, -3000, 3000),
            options.IntOption('lever_l', 129, 0, 255),
            options.IntOption('lever_a', 201, 0, 255),
            options.IntOption('lever_b', 183, 0, 255),
@@ -47,8 +50,10 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.IntOption('color_a', 113, 0, 255),
            options.IntOption('color_b', 159, 0, 255),
            options.IntOption('color_distance', 15, 0, 255),
-           options.IntOption('close_offset_x', -55, -255, 255),
-           options.IntOption('close_offset_y', -30, -255, 255),
+           options.IntOption('close_offset_x', -70, -255, 255),
+           options.IntOption('close_offset_y', -10, -255, 255),
+           options.DoubleOption('min_eccentricity', 0.6, 0, 1),
+           options.DoubleOption('min_elllipsish_thing', 0.9, 0, 1),
            ]
 
 
@@ -289,8 +294,6 @@ class Stake(ModuleBase):
         cv2.drawContours(mat, filtered, -1, (0, 255, 0), 3)
 
 
-
-
         def contour_in_endzone(contour, p):
             M = cv2.moments(contour)
 
@@ -315,15 +318,72 @@ class Stake(ModuleBase):
 
         contours = outer_contours(mask)
         if contours is not None and len(contours) > 0:
-            shm.torpedoes_stake.close_visible.set(True)
-            close = max(contours, key=contour_area)
-            centroid = contour_centroid(close)
-            shm.torpedoes_stake.close_x.set(centroid[0] + self.options['close_offset_x'])
-            shm.torpedoes_stake.close_y.set(centroid[1] + self.options['close_offset_y'])
-            shm.torpedoes_stake.close_size.set(contour_area(close))
-            cv2.drawContours(mat, [close], -1, (255, 0, 0), thickness=5)
+            # shm.torpedoes_stake.close_visible.set(True)
+
+            def filter_ellipses(contour):
+                if len(contour) < 5: return False
+                if contour_area(contour) < 20: return False
+                _, (MA, ma), _ = cv2.fitEllipse(contour)
+                try:
+                    return (1-(MA**2)/(ma**2))**(1/2) > self.options['min_eccentricity'] and contour_area(contour)/(MA * ma / 4 * pi) > self.options['min_elllipsish_thing']
+                except ZeroDivisionError:
+                    return False
+
+            close = list(filter(filter_ellipses , contours))
+            close.sort(key=contour_area)
+            
+            close1 = None
+            close2 = None
+            try:
+                close1 = {'contour': close[0], 'centroid': contour_centroid(close[0]), 'area': contour_area(close[0])}
+                close2 = {'contour': close[1], 'centroid': contour_centroid(close[1]), 'area': contour_area(close[1])}
+            
+                if close1['centroid'][0] > close2['centroid'][0]:
+                    temp = close2
+                    close2 = close1
+                    close1 = temp
+
+            except IndexError:
+                pass
+
+            if close1 is not None:
+                shm.torpedoes_stake.close_left_x.set(close1['centroid'][0] + self.options['close_offset_x'])
+                shm.torpedoes_stake.close_left_y.set(close1['centroid'][1] + self.options['close_offset_y'])
+                shm.torpedoes_stake.close_left_size.set(close1['area'])
+                shm.torpedoes_stake.close_left_visible.set(True)
+
+                if close2 is not None:
+                    shm.torpedoes_stake.close_right_x.set(close2['centroid'][0] + self.options['close_offset_x'])
+                    shm.torpedoes_stake.close_right_y.set(close2['centroid'][1] + self.options['close_offset_y'])
+                    shm.torpedoes_stake.close_right_size.set(close2['area'])
+                    shm.torpedoes_stake.close_right_visible.set(True)
+                else:
+                    shm.torpedoes_stake.close_right_visible.set(False)
+            else:
+                shm.torpedoes_stake.close_left_visible.set(False)
+                shm.torpedoes_stake.close_right_visible.set(False)
+
+            heart = list(filter(lambda c: contour_area(c) > 50, contours))
+            if heart:
+                heart = min(heart, key=lambda c:cv2.matchShapes(heart_original, c, cv2.CONTOURS_MATCH_I1, 0))
+                h_centroid = contour_centroid(heart)
+                shm.torpedoes_stake.close_heart_x.set(h_centroid[0] + self.options['close_offset_x'])
+                shm.torpedoes_stake.close_heart_y.set(h_centroid[1] + self.options['close_offset_y'])
+                shm.torpedoes_stake.close_heart_size.set(contour_area(heart))
+                shm.torpedoes_stake.close_heart_visible.set(True)
+                cv2.drawContours(mat, [heart], -1, (0, 0, 255), thickness=5)
+            else:
+                    shm.torpedoes_stake.close_heart_visible.set(False)
+            
+            try:
+                cv2.drawContours(mat, [close[0]], -1, (255, 0, 0), thickness=5)
+                cv2.drawContours(mat, [close[1]], -1, (255, 0, 0), thickness=5)
+            except IndexError:
+                pass
+
         else:
-            shm.torpedoes_stake.close_visible.set(False)
+            # shm.torpedoes_stake.close_visible.set(False)
+            pass
 
     def process(self, *mats):
         # x = time.perf_counter()

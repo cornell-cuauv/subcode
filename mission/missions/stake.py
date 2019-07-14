@@ -50,14 +50,36 @@ def left_hole():
 def right_hole():
     return (shm.torpedoes_stake.right_hole_x.get(), shm.torpedoes_stake.right_hole_y.get())
 
-def close_visible():
-    return shm.torpedoes_stake.close_visible.get()
+def close_left_visible():
+    return shm.torpedoes_stake.close_left_visible.get()
 
-def close_size():
-    return shm.torpedoes_stake.close_size.get()
+def close_right_visible():
+    return close_left_visible()
 
-def close():
-    return (shm.torpedoes_stake.close_x.get(), shm.torpedoes_stake.close_y.get())
+def close_heart_visible():
+    return shm.torpedoes_stake.close_heart_visible.get()
+
+def close_left_size():
+    return shm.torpedoes_stake.close_left_size.get()
+
+def close_right_size():
+    if shm.torpedoes_stake.close_right_visible.get():
+        return shm.torpedoes_stake.close_right_size.get()
+    return close_left_size()
+
+def close_heart_size():
+    return shm.torpedoes_stake.close_heart_size.get()
+
+def close_heart():
+    return (shm.torpedoes_stake.close_heart_x.get(), shm.torpedoes_stake.close_heart_y.get())
+
+def close_left():
+    return (shm.torpedoes_stake.close_left_x.get(), shm.torpedoes_stake.close_left_y.get())
+
+def close_right():
+    if shm.torpedoes_stake.close_right_visible.get():
+        return (shm.torpedoes_stake.close_right_x.get(), shm.torpedoes_stake.close_right_y.get())
+    return close_left()
 
 def lever():
     return (shm.torpedoes_stake.lever_origin_x.get(), shm.torpedoes_stake.lever_origin_y.get())
@@ -174,12 +196,12 @@ def CenterBoard():
 
 
 # TODO: tune everything
-HOLE_SIZE=15000
-APPROACH_SIZE = 70000
+HOLE_SIZE=13000
+APPROACH_SIZE = 80000
 HEART_SIZE = 300000
 def ApproachCenterSize(sizef, centerf, alignf, visiblef, size_thresh, p=0.000003, px=0.0009, py=0.01, dx=0.00, dy=0.00, d=0, consistent_total=2.0, closedb=20, db=30000):
     return MasterConcurrent(
-            Consistent(lambda: abs(sizef()-size_thresh) < db and close_to(centerf(), CAM_CENTER, db=closedb), count=2.7, total=3.0, invert=False, result=True),
+            Consistent(lambda: abs(sizef()-size_thresh) < db and close_to(centerf(), CAM_CENTER, db=closedb), count=1.7, total=2.0, invert=False, result=True),
             Consistent(visiblef, count=1.3, total=consistent_total, invert=True, result=False),
             While(lambda: Center(centerf, visiblef, px=px, py=py, dx=dx, dy=dy), True),
             PIDStride(lambda: sizef()-size_thresh, p=p, d=d),
@@ -198,16 +220,27 @@ def ApproachHeart():
     return ApproachCenterSize(size, heart, align_h, visible, APPROACH_SIZE)
 @withApproachAlignOnFail
 def ApproachBelt():
-    return ApproachCenterSize(size, belt, align_h, visible, HEART_SIZE, p=0.0000007, db=50000, consistent_total=2.5, closedb=50)
+    return ApproachCenterSize(size, belt, align_h, visible, APPROACH_SIZE, consistent_total=3.0, closedb=50)
 @withApproachAlignOnFail
 def ApproachLeftHole():
     return ApproachCenterSize(size, left_hole, align_h, visible, APPROACH_SIZE, closedb=30, consistent_total=3.0)
 @withApproachAlignOnFail
 def ApproachRightHole():
     return ApproachCenterSize(size, right_hole, align_h, visible, APPROACH_SIZE, closedb=30, consistent_total=3.0)
+
 @withApproachAlignOnFail
 def ApproachClose():
-    return ApproachCenterSize(close_size, close, None, close_visible, HOLE_SIZE, p=0.000002, px=0.001, py=0.003, dy=0.005, db=4000, closedb=20, consistent_total=2.0)
+    return ApproachCenterSize(close_size, close, None, close_visible, HOLE_SIZE, p=0.000002, px=0.001, py=0.003, dy=0.005, db=4000, closedb=10, consistent_total=2.0)
+@withApproachAlignOnFail
+
+def ApproachCloseHeart():
+    return ApproachCenterSize(close_heart_size, close_heart, None, close_heart_visible, HOLE_SIZE, p=0.0000025, px=0.001, py=0.003, dy=0.005, dx=0.00005, db=4000, closedb=10, consistent_total=2.0)
+@withApproachAlignOnFail
+def ApproachCloseLeft():
+    return ApproachCenterSize(close_left_size, close_left, None, close_left_visible, HOLE_SIZE, p=0.0000025, px=0.001, py=0.003, dy=0.005, dx=0.00005, db=4000, closedb=10, consistent_total=2.0)
+@withApproachAlignOnFail
+def ApproachCloseRight():
+    return ApproachCenterSize(close_right_size, close_right, None, close_right_visible, HOLE_SIZE, p=0.0000025, px=0.001, py=0.003, dy=0.005, dx=0.00005, db=4000, closedb=10, consistent_total=2.0)
 
 @withReSearchBoardOnFail
 def ApproachAlign():
@@ -274,8 +307,8 @@ Full = \
 Test = \
     lambda: Sequential(
             ApproachAlign(),
-            ApproachRightHole(),
+            ApproachLeftHole(),
             Log('plox'),
-            ApproachClose(),
+            ApproachCloseLeft(),
             Log('what'),
-            FireActuator('bottom_torpedo', 0.3))
+            FireActuator('top_torpedo', 0.5))
