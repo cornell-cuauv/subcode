@@ -70,7 +70,7 @@ chpwd() {
 }
 
 # Useful aliases
-alias build="shm switches soft_kill 1; ninja -C \"${CUAUV_SOFTWARE}\" -k 1000" # Build the software repo
+alias build="shm switches soft_kill 1 > /dev/null; ninja -C \"${CUAUV_SOFTWARE}\" -k 1000" # Build the software repo
 alias cs="cd $CUAUV_SOFTWARE"
 alias e="emacsclient -ca ''"
 alias t="trogdor"
