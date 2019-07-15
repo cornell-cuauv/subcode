@@ -22,7 +22,7 @@ from mission.framework.position import MoveX
 from mission.framework.search import SearchFor, SwaySearch, VelocitySwaySearch, MoveX
 
 from mission.missions.will_common import Consistent
-from mission.missions.attilus_garbage import PIDStride, PIDSway
+from mission.missions.attilus_garbage import PIDStride, PIDSway, SwayOnlySearch
 from mission.missions.poly import polygon
 
 from mission.framework.timing import Timer, Timed, Timeout
@@ -106,14 +106,6 @@ def get_sway_direction():
     return not (getattr(shm.vamp_buoy_results, "%s_center_x"%last_seen).get() < CAM_CENTER[0])
 
 
-# Sway search but without moving forward
-def SwayOnlySearch(speed=0.3, width=2.5, right_first=True):
-    direction = 1 if right_first else -1
-    return Sequential( 
-            Timed(VelocityY(direction*speed), width/(2*speed)),
-            Timed(VelocityY(-direction*speed), width/(speed)),
-            Timed(VelocityY(direction*speed), width/(2*speed)),
-            Zero())
 
 # Search for buoy using SwayOnlySearch
 TinySearch = lambda backspeed=0.2, backtime=3: Sequential(

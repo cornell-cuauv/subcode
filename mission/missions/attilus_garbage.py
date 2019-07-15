@@ -4,7 +4,8 @@ from mission.framework.targeting import PIDLoop
 from mission.framework.movement import VelocityX, VelocityY, RelativeToCurrentHeading, RelativeToInitialHeading
 from mission.framework.position import MoveX
 from mission.framework.combinators import While, Sequential, MasterConcurrent
-from mission.framework.primitive import FunctionTask, Succeed
+from mission.framework.primitive import FunctionTask, Succeed, Zero, Log
+from mission.framework.timing import Timed
 
 import shm
 """
@@ -73,3 +74,12 @@ class StillHeadingSearch(Task):
         )
 
 
+# Sway search but without moving forward
+def SwayOnlySearch(speed=0.3, width=2.5, right_first=True):
+    direction = 1 if right_first else -1
+    return Sequential( 
+            Log('what'),
+            Timed(VelocityY(direction*speed), width/(2*speed)),
+            Timed(VelocityY(-direction*speed), width/(speed)),
+            Timed(VelocityY(direction*speed), width/(2*speed)),
+            Zero())

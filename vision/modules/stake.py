@@ -67,7 +67,7 @@ BELT = (1174, 3700)
 LEFT_CIRCLE = (390, 562)
 RIGHT_CIRCLE = (1900, 570)
 
-MOVE_DIRECTION=-1  # 1 if lever on left else -1 if on right
+MOVE_DIRECTION=1  # 1 if lever on left else -1 if on right
 
 class Stake(ModuleBase):
 
@@ -366,12 +366,13 @@ class Stake(ModuleBase):
             heart = list(filter(lambda c: contour_area(c) > 50, contours))
             if heart:
                 heart = min(heart, key=lambda c:cv2.matchShapes(heart_original, c, cv2.CONTOURS_MATCH_I1, 0))
-                h_centroid = contour_centroid(heart)
-                shm.torpedoes_stake.close_heart_x.set(h_centroid[0] + self.options['close_offset_x'])
-                shm.torpedoes_stake.close_heart_y.set(h_centroid[1] + self.options['close_offset_y'])
-                shm.torpedoes_stake.close_heart_size.set(contour_area(heart))
-                shm.torpedoes_stake.close_heart_visible.set(True)
-                cv2.drawContours(mat, [heart], -1, (0, 0, 255), thickness=5)
+                if not cv2.matchShapes(heart_original, heart, cv2.CONTOURS_MATCH_I1, 0) > 0.1:
+                    h_centroid = contour_centroid(heart)
+                    shm.torpedoes_stake.close_heart_x.set(h_centroid[0] + self.options['close_offset_x'])
+                    shm.torpedoes_stake.close_heart_y.set(h_centroid[1] + self.options['close_offset_y'])
+                    shm.torpedoes_stake.close_heart_size.set(contour_area(heart))
+                    shm.torpedoes_stake.close_heart_visible.set(True)
+                    cv2.drawContours(mat, [heart], -1, (0, 0, 255), thickness=5)
             else:
                     shm.torpedoes_stake.close_heart_visible.set(False)
             
