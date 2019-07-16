@@ -20,7 +20,7 @@ class Record(ModuleBase):
         if not self.recording and active_mission.active:
             self.recording = True
             log_dir = auv_log_dir if not active_mission.log_path else active_mission.log_path
-            make_filename = lambda d: "%s/%s_%s.avi" % (log_dir, d, str(datetime.now().time()))
+            make_filename = lambda d: "%s/%s_%s.avi" % (log_dir, d, str(datetime.now().today()))
             for d in self.directions:
                 print(make_filename(d))
             self.writers = \
