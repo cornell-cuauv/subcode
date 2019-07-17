@@ -101,13 +101,13 @@ class Recovery(ModuleBase):
     def find_garlic_angles(self, garlic_mask):
         lines = find_lines(garlic_mask, 2, pi/180, self.options['garlic_line_threshold'])[0]
         print(lines)
-        
+
         center = garlic_mask.shape[0]//2, garlic_mask.shape[1]//2
         def distance_from_center(line):
             num = abs((line[3]-line[1])*center[1]-(line[2]-line[0])*center[0] + line[2]*line[1]-line[3]*line[0])
             denom = sqrt((line[3]-line[1])**2 + (line[2]-line[0])**2)
             return num/denom
-            
+
 
         lines = list(filter(lambda x: distance_from_center(x) < 80, lines))
         angles = np.array([angle_to_unit_circle(lines_to_angles(l)) for l in lines], dtype=np.float32)

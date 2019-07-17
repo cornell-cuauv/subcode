@@ -82,7 +82,7 @@ def filter_contour_size(contours, size):
     return [c for c in contours if cv2.contourArea(c) > size]
 
 def filter_shapularity(area_function, contours, thresh):
-    return [c for c in contours if area_function(c) > cv2.contourArea(c)]
+    return [c for c in contours if cv2.contourArea(c)/area_function(c) > thresh]
 
 
 def find_yellow_circle(split, color, distance, erode_kernel, erode_iterations,

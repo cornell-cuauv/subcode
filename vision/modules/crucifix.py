@@ -14,7 +14,7 @@ from vision.framework.draw import draw_line
 
 from vision.modules.attilus_garbage import garlic_crucifix_opts as opts, lines_to_angles, angle_to_line, thresh_color_distance, find_yellow_circle, intersect_circles, crop_by_mask, kmeans_mask, outline_mask
 
-from auv_python_helpers.angles import average_headings_degrees
+from auv_python_helpers.angles import average_headings_degrees, heading_sub_degrees
 
 
 
@@ -26,8 +26,8 @@ COLORSPACE = 'lab'
 class Recovery(ModuleBase):
     def process(self, mat):
         self.post('org', mat)
-        # shm.recovery_crucifix.center_x.set(mat.shape[0]//2)
-        # shm.recovery_crucifix.center_y.set(mat.shape[1]//2)
+        shm.recovery_crucifix.cam_x.set(mat.shape[0]//2)
+        shm.recovery_crucifix.cam_y.set(mat.shape[1]//2)
         cvtmat, split = bgr_to_lab(mat)
         self.circles = find_yellow_circle(split,
                                           color=[self.options['yellow_{}'.format(s)] for s in COLORSPACE],
@@ -54,12 +54,14 @@ class Recovery(ModuleBase):
         self.post('crucifix', mask)
         circle_id, mask_c = intersect_circles(self.circles, mask, min_size=self.options['crucifix_size_min'])
         if circle_id is not None:
+            shm.recovery_crucifix.visible.set(True)
             (x, y), r = self.circles[circle_id]['circle']
-            # shm.recovery_crucifix.center_x.set(x)
-            # shm.recovery_crucifix.center_y.set(y)
+            shm.recovery_crucifix.center_x.set(x)
+            shm.recovery_crucifix.center_y.set(y)
+            shm.recovery_crucifix.size.set(pi * r**2)
             only_circle = cv2.bitwise_and(cvtmat, cvtmat, mask=mask_c)
             self.post('hmmm', only_circle)
-            only_circle = crop_by_mask(cvtmat, mask_c, x, y, r)  
+            only_circle = crop_by_mask(cvtmat, mask_c, x, y, r)
             cross = kmeans_mask(only_circle, x, y, r,
                                 target_centeroid=(self.options['green_l'], self.options['green_a'], self.options['green_b']),
                                 centeroids=3, remove_noise=False,
@@ -91,10 +93,12 @@ class Recovery(ModuleBase):
             denom = sqrt((line[3]-line[1])**2 + (line[2]-line[0])**2)
             return num/denom
 
-        lines = list(filter(lambda x: distance_from_center(x) < 40, lines))
+        lines = list(filter(lambda x: distance_from_center(x) < 20, lines))
         angles = np.array([lines_to_angles(l)*180/pi for l in lines], dtype=np.float32)
         average = average_headings_degrees(angles)
         print(average)
+
+        shm.recovery_crucifix.angle_offset.set(heading_sub_degrees(self.options['manipulator_angle'], average))
 
         return lines, average
 

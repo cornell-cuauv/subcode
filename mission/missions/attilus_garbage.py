@@ -51,7 +51,7 @@ class StillHeadingSearch(Task):
     the sub with highest probability. Edited from ozer_common
     """
 
-    def on_first_run(self, speed=20, db=10, *args, **kwargs):
+    def on_first_run(self, speed=40, db=10, *args, **kwargs):
         init_heading = None
 
         def set_init_heading():
@@ -77,7 +77,7 @@ class StillHeadingSearch(Task):
 # Sway search but without moving forward
 def SwayOnlySearch(speed=0.3, width=2.5, right_first=True):
     direction = 1 if right_first else -1
-    return Sequential( 
+    return Sequential(
             Log('what'),
             Timed(VelocityY(direction*speed), width/(2*speed)),
             Timed(VelocityY(-direction*speed), width/(speed)),
