@@ -14,9 +14,10 @@ from vision.framework.color import bgr_to_lab, gray_to_bgr, range_threshold
 from vision.framework.draw import draw_contours
 
 OPTS_ODYSSEUS = [
+    options.IntOption('lab_l_ref', 180, 0, 255),
     options.IntOption('lab_a_ref', 196, 0, 255),
     options.IntOption('lab_b_ref', 139, 0, 255),
-    options.IntOption('color_dist_thresh', 55, 0, 255),
+    options.IntOption('color_dist_thresh', 50, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.5, 0, 1),
@@ -29,9 +30,10 @@ OPTS_ODYSSEUS = [
 ]
 
 OPTS_AJAX = [
+    options.IntOption('lab_l_ref', 175, 0, 255),
     options.IntOption('lab_a_ref', 185, 0, 255),
-    options.IntOption('lab_b_ref', 129, 0, 255),
-    options.IntOption('color_dist_thresh', 35, 0, 255),
+    options.IntOption('lab_b_ref', 119, 0, 255),
+    options.IntOption('color_dist_thresh', 45, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.25, 0, 1),
@@ -53,13 +55,14 @@ def try_index(arr, idx):
     return None
 
 
-def thresh_color_distance(split, color, distance, ignore_channels=[]):
-    dists = np.zeros(split[0].shape)
+def thresh_color_distance(split, color, distance, ignore_channels=[], weights=[1, 1, 1]):
+    weights /= np.linalg.norm(weights)
+    dists = np.zeros(split[0].shape, dtype=np.float32)
     for i in range(3):
         if i in ignore_channels:
             continue
-        dists += (split[i] - color[i])**2
-    return range_threshold(dists, 0, distance**2)
+        dists += weights[i] * (np.float32(split[i]) - color[i])**2
+    return range_threshold(dists, 0, distance**2), np.uint8(np.sqrt(dists))
 
 
 class Gate(ModuleBase):
@@ -80,10 +83,11 @@ class Gate(ModuleBase):
         mat = simple_gaussian_blur(mat, to_odd(self.options['blur_kernel']),
                                    self.options['blur_std'])
         lab, lab_split = bgr_to_lab(mat)
-        threshed = thresh_color_distance(lab_split, [0, self.options['lab_a_ref'],
+        threshed, dists = thresh_color_distance(lab_split, [self.options['lab_l_ref'], self.options['lab_a_ref'],
                                                      self.options['lab_b_ref']],
-                                         self.options['color_dist_thresh'], ignore_channels=[0])
-        self.post('dist', threshed)
+                                         self.options['color_dist_thresh'], ignore_channels=[], weights=[1, 20, 5])
+        self.post('threshed', threshed)
+        self.post('dists', dists)
         dilated = dilate(threshed, rect_kernel(self.options['dilate_kernel']))
         self.post('dilated', dilated)
         contours = outer_contours(dilated)
