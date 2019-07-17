@@ -56,6 +56,8 @@ def try_index(arr, idx):
 
 
 def thresh_color_distance(split, color, distance, ignore_channels=[], weights=[1, 1, 1]):
+    for idx in ignore_channels:
+        weights[idx] = 0
     weights /= np.linalg.norm(weights)
     dists = np.zeros(split[0].shape, dtype=np.float32)
     for i in range(3):
