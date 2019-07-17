@@ -10,14 +10,15 @@ from vision.modules.base import ModuleBase
 from vision.framework.feature import outer_contours, contour_area, contour_centroid, min_enclosing_circle, min_enclosing_rect
 from vision.framework.transform import resize, simple_gaussian_blur, morph_remove_noise, morph_close_holes, dilate, erode, rect_kernel
 from vision.framework.helpers import to_umat, to_odd
-from vision.framework.color import bgr_to_lab, gray_to_bgr, range_threshold
-from vision.framework.draw import draw_contours
+from vision.framework.color import bgr_to_lab, bgr_to_hsv, range_threshold
+from vision.framework.draw import draw_contours, draw_circle
 
 OPTS_ODYSSEUS = [
     options.IntOption('lab_l_ref', 180, 0, 255),
     options.IntOption('lab_a_ref', 196, 0, 255),
     options.IntOption('lab_b_ref', 139, 0, 255),
-    options.IntOption('color_dist_thresh', 50, 0, 255),
+    options.IntOption('hsv_s_ref', 200, 0, 255),
+    options.IntOption('color_dist_thresh', 52, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.5, 0, 1),
@@ -32,10 +33,11 @@ OPTS_ODYSSEUS = [
 ]
 
 OPTS_AJAX = [
-    options.IntOption('lab_l_ref', 175, 0, 255),
-    options.IntOption('lab_a_ref', 185, 0, 255),
-    options.IntOption('lab_b_ref', 119, 0, 255),
-    options.IntOption('color_dist_thresh', 45, 0, 255),
+    options.IntOption('lab_l_ref', 178, 0, 255),
+    options.IntOption('lab_a_ref', 182, 0, 255),
+    options.IntOption('lab_b_ref', 115, 0, 255),
+    options.IntOption('hsv_s_ref', 188, 0, 255),
+    options.IntOption('color_dist_thresh', 43, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.25, 0, 1),
@@ -96,9 +98,11 @@ class Gate(ModuleBase):
         mat = simple_gaussian_blur(mat, to_odd(self.options['blur_kernel']),
                                    self.options['blur_std'])
         lab, lab_split = bgr_to_lab(mat)
-        threshed, dists = thresh_color_distance(lab_split, [self.options['lab_l_ref'], self.options['lab_a_ref'],
+        hsv, hsv_split = bgr_to_hsv(mat)
+        threshed, dists = thresh_color_distance([hsv_split[1], lab_split[1], lab_split[2]],
+                                                [self.options['hsv_s_ref'], self.options['lab_a_ref'],
                                                      self.options['lab_b_ref']],
-                                         self.options['color_dist_thresh'], ignore_channels=[0], weights=[0, 20, 5])
+                                         self.options['color_dist_thresh'], ignore_channels=[], weights=[2, 25, 5])
         self.post('threshed', threshed)
         self.post('dists', dists)
         dilated = dilate(threshed, rect_kernel(self.options['dilate_kernel']))
@@ -138,16 +142,19 @@ class Gate(ModuleBase):
         results.rightmost_visible = rightmost is not None
         if leftmost is not None:
             draw_contours(tmp, [leftmost.contour], color=(255, 0, 0), thickness=-1)
+            draw_circle(tmp, (leftmost.x, leftmost.y), 5, color=(255, 255, 255), thickness=-1)
             results.leftmost_x = leftmost.x
             results.leftmost_y = leftmost.y
             results.leftmost_len = leftmost.length
         if middle is not None:
             draw_contours(tmp, [middle.contour], color=(0, 255, 0), thickness=-1)
+            draw_circle(tmp, (middle.x, middle.y), 5, color=(255, 255, 255), thickness=-1)
             results.middle_x = middle.x
             results.middle_y = middle.y
             results.middle_len = middle.length
         if rightmost is not None:
             draw_contours(tmp, [rightmost.contour], color=(0, 0, 255), thickness=-1)
+            draw_circle(tmp, (rightmost.x, rightmost.y), 5, color=(255, 255, 255), thickness=-1)
             results.rightmost_x = rightmost.x
             results.rightmost_y = rightmost.y
             results.rightmost_len = rightmost.length
