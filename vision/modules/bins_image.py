@@ -168,15 +168,19 @@ class BinsImage(ModuleBase):
             lbs = contour_segment[lpts[:,1], lpts[:,0]]
             #print(lbs)
             #print(lbs.shape)
-            if n_segs <= 1: return output, None
-            msks = [lbs == i for i in range(1, n_segs)]
+            if n_segs < 1:
+                print('n_segs < 1')
+                return output, None
+            msks = [lbs == i for i in range(1, n_segs + 1)]
             mx = max(msks, key=lambda x: x.sum())
             #print(msks)
             #print(mx)
             src_pts = src_pts[mx]
             dst_pts = dst_pts[mx]
             g2 = [g for i, g in enumerate(good) if mx[i]]
-            if mx.sum() == 0: return output, None
+            if mx.sum() == 0:
+                print('mx.sum() == 0')
+                return output, None
             #pts = np.int0([x.pt for x in kp2])
             #labels = msk[pts]
 
@@ -185,7 +189,7 @@ class BinsImage(ModuleBase):
             matchesView = cv2.drawMatches(img1, kp1, img2, kp2, good, None)
             self.post('match_' + im1['name'], matchesView)
 
-            M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 1.0)
+            M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 3.0)
             if M is None:
                 print('No homography found', file=sys.stderr)
                 return output, None
@@ -282,6 +286,8 @@ class BinsImage(ModuleBase):
         CAMERA_SCALE = self.options['camera_scale']
 
         mat = resize(mats[0], int(mats[0].shape[1]*CAMERA_SCALE), int(mats[0].shape[0]*CAMERA_SCALE)) if CAMERA_SCALE else mats[0]
+        #rv, ccs = cv2.findChessboardCorners(mat, (1, 1))
+        #print(rv)
         mm = mat.astype(np.int16)
         dst = np.abs(mm[:,:,0] - self.options['l_trg']) + \
             np.abs(mm[:,:,1] - self.options['a_trg']) + \
@@ -293,6 +299,17 @@ class BinsImage(ModuleBase):
         self.post('yellow_mask', yellow_mask)
 
         img2 = cv2.cvtColor(to_umat(mat), cv2.COLOR_BGR2GRAY)
+        corners = cv2.cornerHarris(img2, 2, 3, .04)
+        #print(corners.get().dtype)
+        cg = corners.get()
+        #cg[cg <= 0] = cg[cg > 0].min()
+        #print(cg.max())
+        #print(cg.min(), cg.max())
+        ll = np.log(cg)
+        print(ll.min(), ll.max())
+        #self.post('harris', np.clip((ll * 5 + 128), 0, 255).astype(np.uint8))
+        #img2 = to_umat(np.pad(cv2.cvtColor(mat, cv2.COLOR_BGR2GRAY), ((PADDING, PADDING), (PADDING, PADDING)), 'constant', constant_values=255))
+        #mat = to_umat(np.pad(img2.get(), ((PADDING, PADDING), (PADDING, PADDING)), 'constant', constant_values=255))
 
         #img2 = resize(to_umat(mat), int(mat.shape[1]*camera_scale), int(mat.shape[0]*camera_scale)) if DOWNSIZE_CAMERA else mat  # trainImage
 
@@ -305,18 +322,19 @@ class BinsImage(ModuleBase):
         black_areas = cv2.dilate(black_areas, kernel, iterations=2)
         self.post('black_areas', black_areas)
         img, contours, hierarchy = cv2.findContours(black_areas, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        msk = np.zeros(mm.shape[:-1], dtype=np.uint8)
+        msk = np.zeros(mat.shape[:-1], dtype=np.uint8)
         #szcs = sorted(contours, key=cv2.contourArea, reverse=True)
         
         for i, x in enumerate(contours):#szcs[:2]:
-            #pts = cv2.boxPoints(cv2.minAreaRect(x))
+            pts = cv2.boxPoints(cv2.minAreaRect(x))
+            #mm = np.mean(x, axis=0)
+            mpp = np.mean(pts, axis=0)
             #print(pts)
             #print(np.mean(pts, axis=0))
-            #cv2.drawContours(msk, [np.int0((pts * 19 + np.mean(pts, axis=0)) / 20)], -1, 255, -1)
-            mm = np.mean(x, axis=0)
+            cv2.drawContours(msk, [np.int0(pts - (pts - (pts * 4 + mpp) / 5) * .1)], -1, i+1, -1)
             #print(x * 9 + mm, mm)
            # print(x)
-            cv2.drawContours(msk, [np.int0((x * 2 + mm) / 3)], -1, i+1, -1)
+            #cv2.drawContours(msk, [np.int0((x * 2 + mm) / 3)], -1, i+1, -1)
 
         #for p in szcs[0:2]:
         #    msk = cv2.fillPoly(msk, p, 255)
@@ -340,6 +358,9 @@ class BinsImage(ModuleBase):
 
         #img2 = cv2.UMat(np.pad(img2.get(), ((PADDING, PADDING), (PADDING, PADDING)), 'constant', constant_values=255)) # boo
         kp2, des2 = self.detector.detectAndCompute(img2, None)
+        if des2 is None:
+            print('No points found')
+            return
         #cv2.UMat(des2, [0, 1, 2])
         #print(dir(des2))
         #print(des2.get([0, 1, 2]))
@@ -347,6 +368,7 @@ class BinsImage(ModuleBase):
         #print(max(x.pt[1] for x in kp2))
         #print(max(x.pt[0] for x in kp2))
         p = resize(mats[0], int(mats[0].shape[1] * self.options['camera_scale']), int(mats[0].shape[0] * self.options['camera_scale']))
+        #p = cv2.copyMakeBorder(p, PADDING, PADDING, PADDING, PADDING, cv2.BORDER_CONSTANT, None, (255, 255, 255))
         if self.options['show_keypoints']:
             p = cv2.drawKeypoints(p, kp2, None, (0, 255, 255))
         #print([x.pt for x in kp2])
