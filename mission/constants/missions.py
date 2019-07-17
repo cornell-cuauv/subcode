@@ -3,7 +3,9 @@ from collections import namedtuple
 Gate = namedtuple('Gate', [
     'depth',
     'gate_width_threshold',
-    'charge_dist',
+    'pre_spin_charge_dist',
+    'spin_charge_dist',
+    'post_spin_charge_dist',
 ])
 
 Path = namedtuple('Path', [

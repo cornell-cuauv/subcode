@@ -9,7 +9,9 @@ NONSURFACE_MIN_DEPTH = 0.6
 gate = Gate(
     depth=2.0,
     gate_width_threshold=0.4,
-    charge_dist=16 if is_mainsub else 12
+    pre_spin_charge_dist=16 if is_mainsub else 12,
+    spin_charge_dist=16 if is_mainsub else 12,
+    post_spin_charge_dist=16 if is_mainsub else 12
 )
 
 path = Path(

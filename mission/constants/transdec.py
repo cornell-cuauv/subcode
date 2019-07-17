@@ -1,4 +1,5 @@
 from mission.constants.missions import Gate, Path, Dice, Highway, Track, Roulette, CashIn
+from mission.constants import teagle
 
 from mission.missions.will_common import is_mainsub
 
@@ -9,11 +10,12 @@ NONSURFACE_MIN_DEPTH = 1.0 if is_mainsub() else 1.5
 # Note: These values are copied straight from the Teagle configuration.
 # They need to be updated for Transdec!!
 
-gate = Gate(
-    depth=2.0,
-    gate_width_threshold=0.4,
-    charge_dist=16 if is_mainsub() else 12
-)
+gate = teagle.gate
+# gate = Gate(
+#     depth=2.0,
+#     gate_width_threshold=0.4,
+#     charge_dist=16 if is_mainsub() else 12
+# )
 
 path = Path(
     depth=1.2,
