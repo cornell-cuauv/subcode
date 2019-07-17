@@ -21,12 +21,9 @@ def _convert_colorspace(conv_type):
     return _inner
 
 
-_conversions = [cv2.COLOR_BGR2LAB, cv2.COLOR_BGR2HSV, cv2.COLOR_BGR2HLS, cv2.COLOR_BGR2YCrCb, cv2.COLOR_BGR2LUV]
-bgr_to_lab, bgr_to_hsv, bgr_to_hls, bgr_to_ycrcb, bgr_to_luv = [_convert_colorspace(c) for c in _conversions]
-
-
-def bgr_to_grayscale(mat):
-    return cv2.cvtColor(mat, cv2.COLOR_BGR2GRAY)
+_conversions = [cv2.COLOR_BGR2LAB, cv2.COLOR_BGR2HSV, cv2.COLOR_BGR2HLS, cv2.COLOR_BGR2YCrCb,
+                cv2.COLOR_BGR2LUV, cv2.COLOR_BGR2GRAY, cv2.COLOR_GRAY2BGR]
+bgr_to_lab, bgr_to_hsv, bgr_to_hls, bgr_to_ycrcb, bgr_to_luv, bgr_to_gray, gray_to_bgr = [_convert_colorspace(c) for c in _conversions]
 
 
 def color_dist(c1, c2):
