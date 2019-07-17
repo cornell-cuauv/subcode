@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+
+if [[ $TERM = "dumb" ]]; then
+    bash && exit
+fi
+
 export EMAIL='tennysontaylorbardwell@gmail.com'
 export NAME='Tennyson T Bardwell'
 
