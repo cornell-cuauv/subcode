@@ -8,7 +8,7 @@ from conf.vehicle import VEHICLE
 from vision import options
 from vision.modules.base import ModuleBase
 from vision.framework.feature import outer_contours, contour_area, contour_centroid, min_enclosing_circle, min_enclosing_rect
-from vision.framework.transform import resize, simple_gaussian_blur, morph_remove_noise, dilate, rect_kernel
+from vision.framework.transform import resize, simple_gaussian_blur, morph_remove_noise, morph_close_holes, dilate, erode, rect_kernel
 from vision.framework.helpers import to_umat, to_odd
 from vision.framework.color import bgr_to_lab, gray_to_bgr, range_threshold
 from vision.framework.draw import draw_contours
@@ -23,10 +23,12 @@ OPTS_ODYSSEUS = [
     options.DoubleOption('resize_width_scale', 0.5, 0, 1),
     options.DoubleOption('resize_height_scale', 0.5, 0, 1),
     options.IntOption('dilate_kernel', 7, 0, 255),
-    options.IntOption('min_contour_area', 20, 0, 500),
+    options.IntOption('erode_kernel', 3, 0, 255),
+    options.IntOption('min_contour_area', 100, 0, 500),
     options.DoubleOption('min_contour_rect', 0.75, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 30, 0, 500),
+    options.BoolOption('debug', True),
 ]
 
 OPTS_AJAX = [
@@ -39,10 +41,12 @@ OPTS_AJAX = [
     options.DoubleOption('resize_width_scale', 0.25, 0, 1),
     options.DoubleOption('resize_height_scale', 0.25, 0, 1),
     options.IntOption('dilate_kernel', 7, 0, 255),
-    options.IntOption('min_contour_area', 20, 0, 500),
+    options.IntOption('erode_kernel', 3, 0, 255),
+    options.IntOption('min_contour_area', 100, 0, 500),
     options.DoubleOption('min_contour_rect', 0.75, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 30, 0, 500),
+    options.BoolOption('debug', True),
 ]
 
 
@@ -72,6 +76,13 @@ class Gate(ModuleBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def post_contours(self, name, h, w, contour_feats):
+        if not self.options['debug']:
+            return
+        tmp = np.zeros((h, w, 3))
+        draw_contours(tmp, [c.contour for c in contour_feats], color=(255, 0, 0), thickness=-1)
+        self.post(name, tmp)
+
     def process(self, *mats):
         h, w, _ = mats[0].shape
         h = int(h * self.options['resize_height_scale'])
@@ -87,12 +98,14 @@ class Gate(ModuleBase):
         lab, lab_split = bgr_to_lab(mat)
         threshed, dists = thresh_color_distance(lab_split, [self.options['lab_l_ref'], self.options['lab_a_ref'],
                                                      self.options['lab_b_ref']],
-                                         self.options['color_dist_thresh'], ignore_channels=[], weights=[1, 20, 5])
+                                         self.options['color_dist_thresh'], ignore_channels=[0], weights=[0, 20, 5])
         self.post('threshed', threshed)
         self.post('dists', dists)
         dilated = dilate(threshed, rect_kernel(self.options['dilate_kernel']))
         self.post('dilated', dilated)
-        contours = outer_contours(dilated)
+        eroded = erode(dilated, rect_kernel(self.options['erode_kernel']))
+        self.post('eroded', eroded)
+        contours = outer_contours(eroded)
         areas = [*map(contour_area, contours)]
         centroids = [*map(contour_centroid, contours)]
         xs = [c[0] for c in centroids]
@@ -105,10 +118,14 @@ class Gate(ModuleBase):
         angles = [min(abs(90 - a - vehicle_roll), abs(-90 - a - vehicle_roll)) for a in angles]
         rectangularities = [a / (1e-30 + rect[1][0] * rect[1][1]) for (c, a, rect) in zip(contours, areas, rects)]
         contours = [ContourFeats(*feats) for feats in zip(contours, areas, xs, ys, rectangularities, angles, lengths)]
-        contours = filter(lambda c: c.angle < self.options['max_angle_from_vertical'], contours)
-        contours = filter(lambda c: c.length > self.options['min_length'], contours)
-        contours = filter(lambda c: c.area > self.options['min_contour_area'], contours)
-        contours = filter(lambda c: c.rect > self.options['min_contour_rect'], contours)
+        contours = [*filter(lambda c: c.area > self.options['min_contour_area'], contours)]
+        self.post_contours('area', h, w, contours)
+        contours = [*filter(lambda c: c.angle < self.options['max_angle_from_vertical'], contours)]
+        self.post_contours('angle', h, w, contours)
+        contours = [*filter(lambda c: c.length > self.options['min_length'], contours)]
+        self.post_contours('length', h, w, contours)
+        contours = [*filter(lambda c: c.rect > self.options['min_contour_rect'], contours)]
+        self.post_contours('rect', h, w, contours)
         contours = sorted(contours, key=lambda c: c.area)[:3]
         contours_by_x = sorted(contours, key=lambda c: c.x)
         leftmost = try_index(contours_by_x, 0)
