@@ -63,8 +63,12 @@ class Gate(ModuleBase):
         h, w, _ = mats[0].shape
         h = int(h * self.options['resize_height_scale'])
         w = int(w * self.options['resize_width_scale'])
-        mat = to_umat(resize(mats[0], w, h))
+        mat = resize(mats[0], w, h)
+        # Tuned for a 320x256 image
+        reflection_cutoff = min(h, int(max(0, 3 - shm.kalman.depth.get())**2 * 18))
+        mat[:reflection_cutoff] *= 0
         self.post('mat', mat)
+        mat = to_umat(mat)
         mat = simple_gaussian_blur(mat, to_odd(self.options['blur_kernel']),
                                    self.options['blur_std'])
         lab, lab_split = bgr_to_lab(mat)
@@ -84,7 +88,7 @@ class Gate(ModuleBase):
         vehicle_roll = shm.kalman.roll.get()
         lines = [cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01) for c in contours]
         angles = [np.degrees(np.arctan2(line[1], line[0]))[0] for line in lines]
-        angles = [min(abs(90 - a + vehicle_roll), abs(-90 - a + vehicle_roll)) for a in angles]
+        angles = [min(abs(90 - a - vehicle_roll), abs(-90 - a - vehicle_roll)) for a in angles]
         rectangularities = [a / (1e-30 + rect[1][0] * rect[1][1]) for (c, a, rect) in zip(contours, areas, rects)]
         contours = [ContourFeats(*feats) for feats in zip(contours, areas, xs, ys, rectangularities, angles, lengths)]
         contours = filter(lambda c: c.angle < self.options['max_angle_from_vertical'], contours)
