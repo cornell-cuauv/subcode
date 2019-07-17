@@ -92,6 +92,8 @@ class ModuleBase:
             image = from_umat(orig_image)
         else:
             image = np.array(orig_image, None, copy=True, order='C', ndmin=1)
+        if image.dtype != np.uint8:
+            image = np.uint8(image)
 
         if self.order_post_by_time:
             self.posted_images.append((tag, image))
