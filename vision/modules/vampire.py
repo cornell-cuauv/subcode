@@ -87,11 +87,11 @@ class Vampire(ModuleBase):
 
         contours = filter_shapularity(box_area, contours, min_rectangularity)
 
-        def rectangle_with_offset(contour):
+        def rectangle_with_offset(contour, offset=padding_offset):
             r = cv2.minAreaRect(contour)
-            return r[0], (max(r[1][0] * (1-padding_offset), 0), max(r[1][1] * (1-padding_offset), 0)), r[2]
+            return r[0], (max(r[1][0] * (1-offset), 0), max(r[1][1] * (1-offset), 0)), r[2]
 
-        return [{'contour': c, 'rectangle': rectangle_with_offset(c), 'rectangle_org': cv2.minAreaRect(c)} for c in contours]
+        return [{'contour': c, 'rectangle': rectangle_with_offset(c), 'rectangle_org': rectangle_with_offset(c, offset=0.2)} for c in contours]
 
 
     def find_vampire(self, mat, split, color, distance):
