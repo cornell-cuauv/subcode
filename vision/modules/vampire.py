@@ -15,6 +15,7 @@ from vision.framework.draw import draw_line
 from vision.options import IntOption, DoubleOption
 
 from vision.modules.attilus_garbage import thresh_color_distance, filter_contour_size, filter_shapularity, angle_to_line, MANIPULATOR_ANGLE
+from vision.modules.gate import thresh_color_distance
 
 opts = [
         IntOption('yellow_l', 186, 0, 255),  # 224
@@ -23,6 +24,7 @@ opts = [
         IntOption('purple_l', 39, 0, 255),  # 224
         IntOption('purple_a', 160, 0, 255),
         IntOption('purple_b', 80, 0, 255),
+        IntOption('yellow_color_distance', 50, 0, 255),
         IntOption('vampire_color_distance', 30, 0, 255),
         IntOption('contour_size_min', 1700, 0, 1000),
         IntOption('intersection_size_min', 20, 0, 1000),
@@ -42,8 +44,8 @@ COLORSPACE = "lab"
 class Vampire(ModuleBase):
     def process(self, mat):
         self.post('org', mat)
-        shm.recovery_vampire.cam_x.set(mat.shape[0]//2)
-        shm.recovery_vampire.cam_y.set(mat.shape[1]//2)
+        shm.recovery_vampire.cam_x.set(mat.shape[1]//2)
+        shm.recovery_vampire.cam_y.set(mat.shape[0]//2)
         # print(mat.shape)
         _, split = bgr_to_lab(mat)
         d = self.options['vampire_color_distance']
@@ -74,9 +76,11 @@ class Vampire(ModuleBase):
     def find_yellow_rectangle(self, split, color, distance, erode_kernel, erode_iterations,
                               dilate_kernel, dilate_iterations, min_contour_size,
                               min_rectangularity, padding_offset):
-        mask = thresh_color_distance(split, color, distance)
+        # mask = thresh_color_distance(split, color, distance, use_first_channel=False)
+        mask, _ = thresh_color_distance(split, color, distance, ignore_channels=[0])
         mask = erode(mask, rect_kernel(erode_kernel), iterations=erode_iterations)
         mask = dilate(mask, rect_kernel(dilate_kernel), iterations=dilate_iterations)
+        self.post('mask', mask)
 
         contours = outer_contours(mask)
         contours = filter_contour_size(contours, min_contour_size)
@@ -95,7 +99,8 @@ class Vampire(ModuleBase):
 
 
     def find_vampire(self, mat, split, color, distance):
-        mask = thresh_color_distance(split, color, distance)
+        # mask = thresh_color_distance(split, color, distance)
+        mask, _ = thresh_color_distance(split, color, distance, ignore_channels=[0])
         self.post('purple', mask)
         rects = self.intersect_rectangles(self.rectangles, mask, self.options['intersection_size_min'])
 
