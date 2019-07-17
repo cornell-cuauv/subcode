@@ -19,31 +19,35 @@ DEPTH = DEPTH_TEAGLE
 
 SIZE_THRESH = 9000
 
-CAM_CENTER = shm.recovery_vampire_closed.cam_x.get(), shm.recovery_vampire_closed.cam_y.get()
+CAM_CENTER = shm.recovery_vampire.cam_x.get(), shm.recovery_vampire_.cam_y.get()
 
-def visible():
+def visible_closed():
     return shm.recovery_vampire.visible.closed_get()
-def center():
+def center_closed():
     return shm.recovery_vampire.closed_center_x.get(), shm.recovery_vampire.closed_center_y.get()
-def angle_offset():
+def angle_offset_closed():
     return shm.recovery_vampire.closed_angle_offset.get()
-def size():
+def size_closed():
     return shm.recovery_vampire.closed_size.get()
 
 
-Search = lambda: Sequential(  # TODO: TIMEOUT?
+Search = lambda visiblef: Sequential(  # TODO: TIMEOUT?
             Log('Searching'),
             SearchFor(
                 SpiralSearch(),
-                visible,
+                visiblef,
                 consistent_frames=(5, 7)
             ),
             Zero())
 
-Center = lambda db=40, px=0.0008, py=0.0008: Sequential(
+close_to = lambda point1, point2, dbx=20, dby=20: abs(point1[0]-point2[0]) < dbx and abs(point1[1]-point2[1]) < dby
+
+Center = lambda centerf, visiblef, db=40, px=0.0008, py=0.0008: Sequential(
             Log('Centering'),
             MasterConcurrent(
-                DownwardTarget(point=center, target=CAM_CENTER, deadband=(db, db), px=px, py=py),
+                Consistent(lambda: close_to(centerf(), CAM_CENTER, db, db))
+                Consistent(visiblef, count=2.5, total=3.0, invert=True, result=False),
+                DownwardTarget(point=centerf, target=CAM_CENTER, deadband=(0, 0), px=px, py=py),
                 AlwaysLog(lambda: 'center = {}, target = {}'.format(center(), CAM_CENTER))))
 
 Descend = lambda depth=DEPTH, db=0.1, size_thresh=SIZE_THRESH: Sequential(  # TODO: FIND THE ACTUAL DEPTH1!!
@@ -55,12 +59,13 @@ Descend = lambda depth=DEPTH, db=0.1, size_thresh=SIZE_THRESH: Sequential(  # TO
 
 close_to = lambda point1, point2, db=10: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
 
-Align = lambda closedb=20, aligndb=3: Sequential(
+Align = lambda centerf, anglef, visiblef, closedb=20, aligndb=3: Sequential(
             Log('Aligning'),
             MasterConcurrent(
-                Consistent(lambda: close_to(center(), CAM_CENTER) and abs(angle_offset()) < aligndb, count=2.3, total=3, invert=False, result=True),
-                While(Center, True),
-                PIDHeading(angle_offset)),
+                Consistent(lambda: close_to(centerf(), CAM_CENTER) and abs(anglef()) < aligndb, count=2.3, total=3, invert=False, result=True),
+                Consistent(visiblef, count=2.5, total=3.0, invert=True, result=False),
+                While(lambda: Center(visiblef, centerf), True),
+                PIDHeading(anglef)),
             Zero())
 
 Grab = lambda: Sequential(
@@ -69,4 +74,26 @@ Grab = lambda: Sequential(
             FireActuator(),  # TODO
             )
 
+DeadReckonLid = lambda: None
 
+GrabVampireOpenCoffin = lambda: \
+    Sequential(
+        Depth(DEPTH),
+        Search(visible_closed),
+        Center(center_closed, visible_closed),
+        Align(center_closed, angle_offset_closed, visible_closed),
+        Grab(),  # ???
+        Depth(0),
+        # Release???
+    )
+
+GrabVampireClosedCoffin = lambda: \
+    Sequential(
+        Depth(DEPTH),
+        Search(visible_open),
+        Center(center_open, visible_open),
+        Align(center_open, angle_offset_open, visible_open),
+        # DeadReckonLid(),
+        Depth(DEPTH),
+        GrabVampireOpenCoffin()
+    )

@@ -99,6 +99,19 @@ class Vampire(ModuleBase):
         self.post('purple', mask)
         rects = self.intersect_rectangles(self.rectangles, mask, self.options['intersection_size_min'])
 
+        if self.rectangles:
+            empty = max([r['rectangle'] for r in self.rectangles], key=lambda r: r[1][0] * r[1][1])
+
+            align_angle = empty[2] + 90 if empty[1][1] > empty[1][0] else empty[2]
+            align_angle = 360 + align_angle if align_angle < 0 else align_angle
+            shm.recovery_vampire.empty_visible.set(True)
+            shm.recovery_vampire.empty_x.set(int(empty[0][0]))
+            shm.recovery_vampire.empty_y.set(int(empty[0][1]))
+            shm.recovery_vampire.empty_angle_offset.set(heading_sub_degrees(self.options['manipulator_angle'], align_angle))
+            shm.recovery_vampire.empty_size.set(empty[1][0] * empty[1][1])
+            cv2.circle(mat, (int(empty[0][0]), int(empty[0][1])), 20, color=(255, 255, 255), thickness=-1)
+
+
         opened = []
         closed = []
 
