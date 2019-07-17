@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from collections import namedtuple
 
+from conf.vehicle import VEHICLE
 from vision import options
 from vision.modules.base import ModuleBase
 from vision.framework.feature import outer_contours, contour_area, contour_centroid, min_enclosing_circle, min_enclosing_rect
@@ -13,7 +14,7 @@ from vision.framework.color import bgr_to_lab, gray_to_bgr, range_threshold
 from vision.framework.draw import draw_contours
 from attilus_garbage import thresh_color_distance
 
-OPTS = [
+OPTS_ODYSSEUS = [
     options.IntOption('lab_a_ref', 196, 0, 255),
     options.IntOption('lab_b_ref', 139, 0, 255),
     options.IntOption('color_dist_thresh', 50, 0, 255),
@@ -21,6 +22,21 @@ OPTS = [
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.5, 0, 1),
     options.DoubleOption('resize_height_scale', 0.5, 0, 1),
+    options.IntOption('dilate_kernel', 5, 0, 255),
+    options.IntOption('min_contour_area', 20, 0, 500),
+    options.DoubleOption('min_contour_rect', 0.55, 0, 1),
+    options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
+    options.DoubleOption('min_length', 30, 0, 500),
+]
+
+OPTS_AJAX = [
+    options.IntOption('lab_a_ref', 196, 0, 255),
+    options.IntOption('lab_b_ref', 139, 0, 255),
+    options.IntOption('color_dist_thresh', 50, 0, 255),
+    options.IntOption('blur_kernel', 3, 0, 255),
+    options.IntOption('blur_std', 10, 0, 500),
+    options.DoubleOption('resize_width_scale', 0.25, 0, 1),
+    options.DoubleOption('resize_height_scale', 0.25, 0, 1),
     options.IntOption('dilate_kernel', 5, 0, 255),
     options.IntOption('min_contour_area', 20, 0, 500),
     options.DoubleOption('min_contour_rect', 0.55, 0, 1),
@@ -105,4 +121,4 @@ class Gate(ModuleBase):
 
 
 if __name__ == '__main__':
-    Gate('forward', OPTS)()
+    Gate('forward', OPTS_ODYSSEUS if VEHICLE == 'odysseus' else OPTS_AJAX)()
