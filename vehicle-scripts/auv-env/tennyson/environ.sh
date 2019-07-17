@@ -4,13 +4,13 @@ if [[ $TERM = "dumb" ]]; then
     bash && exit
 fi
 
-export EMAIL='tennysontaylorbardwell@gmail.com'
-export NAME='Tennyson T Bardwell'
+export MY_EMAIL='tennysontaylorbardwell@gmail.com'
+export MY_NAME='Tennyson T Bardwell'
 
-export GIT_AUTHOR_NAME=$NAME
-export GIT_AUTHOR_EMAIL=$EMAIL
-export GIT_COMMITTER_NAME=$NAME
-export GIT_COMMITTER_EMAIL=$EMAIL
+export GIT_AUTHOR_NAME=$MY_NAME
+export GIT_AUTHOR_EMAIL=$MY_EMAIL
+export GIT_COMMITTER_NAME=$MY_NAME
+export GIT_COMMITTER_EMAIL=$MY_EMAIL
 
 export EDITOR="emacsclient -nw -c"
 export VISUAL=$EDITOR
