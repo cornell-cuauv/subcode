@@ -12,17 +12,16 @@ from vision.framework.transform import resize, simple_gaussian_blur, morph_remov
 from vision.framework.helpers import to_umat, to_odd
 from vision.framework.color import bgr_to_lab, gray_to_bgr, range_threshold
 from vision.framework.draw import draw_contours
-from attilus_garbage import thresh_color_distance
 
 OPTS_ODYSSEUS = [
     options.IntOption('lab_a_ref', 196, 0, 255),
     options.IntOption('lab_b_ref', 139, 0, 255),
-    options.IntOption('color_dist_thresh', 50, 0, 255),
+    options.IntOption('color_dist_thresh', 55, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.5, 0, 1),
     options.DoubleOption('resize_height_scale', 0.5, 0, 1),
-    options.IntOption('dilate_kernel', 5, 0, 255),
+    options.IntOption('dilate_kernel', 7, 0, 255),
     options.IntOption('min_contour_area', 20, 0, 500),
     options.DoubleOption('min_contour_rect', 0.75, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
@@ -37,7 +36,7 @@ OPTS_AJAX = [
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.25, 0, 1),
     options.DoubleOption('resize_height_scale', 0.25, 0, 1),
-    options.IntOption('dilate_kernel', 5, 0, 255),
+    options.IntOption('dilate_kernel', 7, 0, 255),
     options.IntOption('min_contour_area', 20, 0, 500),
     options.DoubleOption('min_contour_rect', 0.75, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
@@ -52,6 +51,15 @@ def try_index(arr, idx):
     if idx < len(arr):
         return arr[idx]
     return None
+
+
+def thresh_color_distance(split, color, distance, ignore_channels=[]):
+    dists = np.zeros(split[0].shape)
+    for i in range(3):
+        if i in ignore_channels:
+            continue
+        dists += (split[i] - color[i])**2
+    return range_threshold(dists, 0, distance**2)
 
 
 class Gate(ModuleBase):
@@ -74,7 +82,7 @@ class Gate(ModuleBase):
         lab, lab_split = bgr_to_lab(mat)
         threshed = thresh_color_distance(lab_split, [0, self.options['lab_a_ref'],
                                                      self.options['lab_b_ref']],
-                                         self.options['color_dist_thresh'], use_first_channel=False)
+                                         self.options['color_dist_thresh'], ignore_channels=[0])
         self.post('dist', threshed)
         dilated = dilate(threshed, rect_kernel(self.options['dilate_kernel']))
         self.post('dilated', dilated)
