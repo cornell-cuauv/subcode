@@ -24,22 +24,22 @@ OPTS_ODYSSEUS = [
     options.DoubleOption('resize_height_scale', 0.5, 0, 1),
     options.IntOption('dilate_kernel', 5, 0, 255),
     options.IntOption('min_contour_area', 20, 0, 500),
-    options.DoubleOption('min_contour_rect', 0.55, 0, 1),
+    options.DoubleOption('min_contour_rect', 0.75, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 30, 0, 500),
 ]
 
 OPTS_AJAX = [
-    options.IntOption('lab_a_ref', 196, 0, 255),
-    options.IntOption('lab_b_ref', 139, 0, 255),
-    options.IntOption('color_dist_thresh', 50, 0, 255),
+    options.IntOption('lab_a_ref', 185, 0, 255),
+    options.IntOption('lab_b_ref', 129, 0, 255),
+    options.IntOption('color_dist_thresh', 35, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.25, 0, 1),
     options.DoubleOption('resize_height_scale', 0.25, 0, 1),
     options.IntOption('dilate_kernel', 5, 0, 255),
     options.IntOption('min_contour_area', 20, 0, 500),
-    options.DoubleOption('min_contour_rect', 0.55, 0, 1),
+    options.DoubleOption('min_contour_rect', 0.75, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 30, 0, 500),
 ]
