@@ -25,6 +25,7 @@ OPTS_ODYSSEUS = [
     options.DoubleOption('resize_height_scale', 0.5, 0, 1),
     options.IntOption('dilate_kernel', 7, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
+    options.IntOption('s_dilate_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 100, 0, 500),
     options.DoubleOption('min_contour_rect', 0.75, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
@@ -44,6 +45,7 @@ OPTS_AJAX = [
     options.DoubleOption('resize_height_scale', 0.25, 0, 1),
     options.IntOption('dilate_kernel', 7, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
+    options.IntOption('s_dilate_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 100, 0, 500),
     options.DoubleOption('min_contour_rect', 0.75, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
@@ -94,24 +96,33 @@ class Gate(ModuleBase):
         results.img_width = w
         mat = resize(mats[0], w, h)
         # Tuned for a 320x256 image
-        reflection_cutoff = min(h, int(max(0, 3 - shm.kalman.depth.get())**2 * 18))
+        vehicle_depth = shm.kalman.depth.get()
+        reflection_cutoff = min(h, int(max(0, 3 - vehicle_depth)**2 * 18))
         mat[:reflection_cutoff] *= 0
-        self.post('mat', mat)
+        tmp = mat.copy()
+        draw_text(tmp, 'Depth: {:.2f}'.format(vehicle_depth), (30, 30), 0.5, color=(255, 255, 255))
+        self.post('mat', tmp)
         mat = to_umat(mat)
         mat = simple_gaussian_blur(mat, to_odd(self.options['blur_kernel']),
                                    self.options['blur_std'])
         lab, lab_split = bgr_to_lab(mat)
         hsv, hsv_split = bgr_to_hsv(mat)
-        threshed, dists = thresh_color_distance([hsv_split[1], lab_split[1], lab_split[2]],
+        s_channel = dilate(hsv_split[1], rect_kernel(self.options['s_dilate_kernel']))
+        if self.options['debug']:
+            self.post('s', s_channel)
+        threshed, dists = thresh_color_distance([s_channel, lab_split[1], lab_split[2]],
                                                 [self.options['hsv_s_ref'], self.options['lab_a_ref'],
                                                      self.options['lab_b_ref']],
                                          self.options['color_dist_thresh'], ignore_channels=[], weights=[2, 25, 5])
-        self.post('threshed', threshed)
-        self.post('dists', dists)
+        if self.options['debug']:
+            self.post('threshed', threshed)
+            self.post('dists', dists)
         dilated = dilate(threshed, rect_kernel(self.options['dilate_kernel']))
-        self.post('dilated', dilated)
+        if self.options['debug']:
+            self.post('dilated', dilated)
         eroded = erode(dilated, rect_kernel(self.options['erode_kernel']))
-        self.post('eroded', eroded)
+        if self.options['debug']:
+            self.post('eroded', eroded)
         contours = outer_contours(eroded)
         areas = [*map(contour_area, contours)]
         centroids = [*map(contour_centroid, contours)]
