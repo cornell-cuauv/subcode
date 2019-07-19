@@ -140,10 +140,10 @@ class Gate(ModuleBase):
         results.leftmost_visible = leftmost is not None
         results.middle_visible = middle is not None
         results.rightmost_visible = rightmost is not None
+        draw_text(tmp, 'Roll: {:.2f}'.format(vehicle_roll), (30, 30), 0.5, color=(255, 255, 255))
         if leftmost is not None:
             draw_contours(tmp, [leftmost.contour], color=(255, 0, 0), thickness=-1)
             draw_circle(tmp, (leftmost.x, leftmost.y), 5, color=(255, 255, 255), thickness=-1)
-            draw_text(tmp, 'Roll: {:.2f}'.format(vehicle_roll), (30, 30), 0.5, color=(255, 255, 255))
             results.leftmost_x = leftmost.x
             results.leftmost_y = leftmost.y
             results.leftmost_len = leftmost.length
