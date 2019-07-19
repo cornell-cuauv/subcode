@@ -3,13 +3,8 @@ from conf.vehicle import VEHICLE
 from mission.framework.combinators import Sequential, Concurrent, MasterConcurrent, While
 from mission.framework.movement import RelativeToInitialHeading, Depth, VelocityX, VelocityY, Roll
 from mission.framework.position import MoveX
-<<<<<<< Updated upstream
-from mission.framework.primitive import Log, NoOp
+from mission.framework.primitive import Log, NoOp, FunctionTask
 from mission.framework.targeting import PIDLoop, HeadingTarget
-=======
-from mission.framework.primitive import Log, FunctionTask
-from mission.framework.targeting import PIDLoop
->>>>>>> Stashed changes
 from mission.framework.timing import Timed
 from mission.framework.task import Task
 from mission.framework.helpers import ConsistencyCheck, call_if_function
@@ -110,7 +105,6 @@ gate = Sequential(
     SearchFor(
         Sequential(
             # manual list of "check here first, then just StillHeadingSearch"
-<<<<<<< Updated upstream
             FunctionTask(save_init_heading),
             Log('Searching for gate: using manual turning to right'),
             GradualHeading(init_heading + 90),
@@ -124,17 +118,6 @@ gate = Sequential(
             GradualHeading(init_heading + 270),
             GradualHeading(init_heading + 0),
             Log('Searching for gate: fall back on StillHeadingSearch'),
-=======
-            FunctionTask(hacky_get_init_heading),
-            GradualHeading(lambda: init_heading + 90),
-            GradualHeading(lambda: init_heading + 180),
-            GradualHeading(lambda: init_heading + 90),
-            GradualHeading(lambda: init_heading + 0),
-            GradualHeading(lambda: init_heading + 90),
-            GradualHeading(lambda: init_heading + 180),
-            GradualHeading(lambda: init_heading + 270),
-            GradualHeading(lambda: init_heading + 0),
->>>>>>> Stashed changes
             StillHeadingSearch()
         ),
         shm.gate.leftmost_visible.get
