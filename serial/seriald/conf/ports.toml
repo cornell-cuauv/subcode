@@ -3,7 +3,7 @@ ports = [
         #"/dev/serial/by-id/usb-CUAUV_ODAX_1_AUV-ODAX1-if01-port0",
         #"/dev/serial/by-id/usb-CUAUV_ODAX_1_AUV-ODAX1-if02-port0",
         #"/dev/serial/by-id/usb-CUAUV_ODAX_1_AUV-ODAX1-if03-port0",
-        # "/dev/serial/by-id/usb-CUAUV_ODAX_2_AUV-ODAX2-if00-port0",
+        "/dev/serial/by-id/usb-CUAUV_ODAX_2_AUV-ODAX2-if00-port0", # transmit
         #"/dev/serial/by-id/usb-CUAUV_ODAX_2_AUV-ODAX2-if01-port0",
         "/dev/serial/by-id/usb-CUAUV_ODAX_2_AUV-ODAX2-if02-port0", # HIM
         #"/dev/serial/by-id/usb-CUAUV_ODAX_2_AUV-ODAX2-if03-port0",

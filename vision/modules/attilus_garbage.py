@@ -10,6 +10,8 @@ from vision.framework.feature import outer_contours, contour_approx, contour_are
 from vision.framework.transform import erode, dilate, rect_kernel, morph_remove_noise, morph_close_holes, resize, elliptic_kernel
 from vision.framework.helpers import to_umat
 
+from vision.modules.gate import thresh_color_distance
+
 MANIPULATOR_ANGLE = 25
 
 garlic_crucifix_opts = [
@@ -71,12 +73,12 @@ def angle_to_line(angle, origin=(0, 0), length=1000):
     return origin, tuple([origin[i] + int(segment[i] * length) for i in range(len(origin))])
 
 
-def thresh_color_distance(split, color, distance, use_first_channel=False):
-    threshed = [range_threshold(split[i],
-                color[i] - distance, color[i] + distance)
-                for i in range(int(not use_first_channel), len(color))]
-    combined = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
-    return combined
+# def thresh_color_distance(split, color, distance, use_first_channel=False):
+#     threshed = [range_threshold(split[i],
+#                 color[i] - distance, color[i] + distance)
+#                 for i in range(int(not use_first_channel), len(color))]
+#     combined = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
+#     return combined
 
 def filter_contour_size(contours, size):
     return [c for c in contours if cv2.contourArea(c) > size]
@@ -87,7 +89,7 @@ def filter_shapularity(area_function, contours, thresh):
 
 def find_yellow_circle(split, color, distance, erode_kernel, erode_iterations,
                        dilate_kernel, dilate_iterations, min_contour_size, min_circularity, radius_offset):
-    mask = thresh_color_distance(split, color, distance)
+    mask, _ = thresh_color_distance(split, color, distance, ignore_channels=[0])
     mask = erode(mask, rect_kernel(erode_kernel), iterations=erode_iterations)
     mask = dilate(mask, rect_kernel(dilate_kernel), iterations=dilate_iterations)
     # mask = erode(mask, rect_kernel(self.options['circle_erode_kernel']),

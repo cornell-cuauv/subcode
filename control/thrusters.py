@@ -20,7 +20,7 @@ from conf import vehicle
 
 MODEL_DIR = os.path.join(os.environ['CUAUV_SOFTWARE'], 'control', 'bollard',
                          '2015-06-03')
-NEAR_SURFACE_THRESHOLD = 0.5 # Meters depth
+NEAR_SURFACE_THRESHOLD = 0.0 # Meters depth
 DEPTH_THRUSTER_NAMES = ['fore_port', 'fore_starboard', 'aft_port', 'aft_starboard']
 SURGE_THRUSTER_NAMES = ['port', 'starboard']
 SWAY_THRUSTER_NAMES = ['sway_aft', 'sway_fore']

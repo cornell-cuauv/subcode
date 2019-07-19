@@ -34,19 +34,39 @@ def angle_offset_closed():
 def size_closed():
     return shm.recovery_vampire.closed_size.get()
 
+def visible_open():
+    return shm.recovery_vampire.open_visible.get()
+def center_open():
+    print(shm.recovery_vampire.open_handle_x.get(), shm.recovery_vampire.open_handle_y.get())
+    return (shm.recovery_vampire.open_handle_x.get(), shm.recovery_vampire.open_handle_y.get())
+def angle_offset_open():
+    return shm.recovery_vampire.open_angle_offset.get()
+def size_open():
+    return shm.recovery_vampire.open_size.get()
+
+
+def visible_crucifix():
+    return shm.recovery_crucifix.visible.get()
+def center_crucifix():
+    return (shm.recovery_crucifix.center_x.get(), shm.recovery_crucifix.center_y.get())
+def angle_offset_crucifix():
+    return shm.recovery_crucifix.angle_offset.get()
+def size_crucifix():
+    return shm.recovery_crucifix.size.get()
+
 
 Search = lambda visiblef: Sequential(  # TODO: TIMEOUT?
             Log('Searching'),
             SearchFor(
                 SpiralSearch(),
                 visiblef,
-                consistent_frames=(5, 7)
+                consistent_frames=(15, 19)
             ),
             Zero())
 
 close_to = lambda point1, point2, dbx=20, dby=20: abs(point1[0]-point2[0]) < dbx and abs(point1[1]-point2[1]) < dby
 
-Center = lambda centerf, visiblef, db=40, px=0.0008, py=0.0005: Sequential(
+Center = lambda centerf, visiblef, db=40, px=0.0004, py=0.0003: Sequential(
             Log('Centering'),
             MasterConcurrent(
                 Consistent(lambda: close_to(centerf(), CAM_CENTER,  db), count=2.5, total=3.0, invert=False, result=True),
@@ -71,6 +91,9 @@ Align = lambda centerf, anglef, visiblef, closedb=20, aligndb=3: Sequential(
                 While(lambda: Center(centerf, visiblef), True),
                 PIDHeading(anglef, p=0.38)),
             Zero())
+
+_Grab = lambda: FireActuator('manipulator_grab', 0.1)
+_Release = lambda: FireActuator('manipulator_release', 0.1)
 
 Grab = lambda: Sequential(
             MoveY(-0.1),
@@ -101,3 +124,14 @@ GrabVampireClosedCoffin = lambda: \
         Depth(INITIAL_DEPTH), error=0.2,
         # GrabVampireOpenCoffin()
     )
+
+GrabCrucifix = lambda: \
+    Sequential(
+        Depth(INITIAL_DEPTH, error=0.2),
+        Search(visible_crucifix),
+        Center(center_crucifix, visible_crucifix),
+        Align(center_crucifix, angle_offset_crucifix, visible_crucifix)
+    )
+
+
+

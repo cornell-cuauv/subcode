@@ -1,13 +1,19 @@
 from conf.vehicle import VEHICLE
 
 from mission.framework.combinators import Sequential, Concurrent, MasterConcurrent, While
-from mission.framework.movement import RelativeToInitialHeading, Depth, VelocityX, VelocityY
+from mission.framework.movement import RelativeToInitialHeading, Depth, VelocityX, VelocityY, Roll
 from mission.framework.position import MoveX
+<<<<<<< Updated upstream
 from mission.framework.primitive import Log, NoOp
 from mission.framework.targeting import PIDLoop, HeadingTarget
+=======
+from mission.framework.primitive import Log, FunctionTask
+from mission.framework.targeting import PIDLoop
+>>>>>>> Stashed changes
 from mission.framework.timing import Timed
 from mission.framework.task import Task
 from mission.framework.helpers import ConsistencyCheck, call_if_function
+from mission.framework.search import SearchFor
 
 from .ozer_common import ConsistentTask, StillHeadingSearch, GradualHeading
 
@@ -36,8 +42,8 @@ import shm
 
 DEPTH_TARGET = settings.depth
 
-rolly_roll =
-    Concurent(
+rolly_roll = \
+    Concurrent(
         VelocityX(0.1),
         Sequential(
             Log('initiating rolly roll'),
@@ -90,6 +96,11 @@ def save_init_heading():
     global init_heading
     init_heading = shm.kalman.heading.get()
 
+init_heading = None
+def hacky_get_init_heading():
+    global init_heading
+    init_heading = shm.kalman.heading.get()
+
 # This is the unholy cross between my (Will's) and Zander's styles of mission-writing
 gate = Sequential(
     Log('Depthing...'),
@@ -99,6 +110,7 @@ gate = Sequential(
     SearchFor(
         Sequential(
             # manual list of "check here first, then just StillHeadingSearch"
+<<<<<<< Updated upstream
             FunctionTask(save_init_heading),
             Log('Searching for gate: using manual turning to right'),
             GradualHeading(init_heading + 90),
@@ -112,6 +124,17 @@ gate = Sequential(
             GradualHeading(init_heading + 270),
             GradualHeading(init_heading + 0),
             Log('Searching for gate: fall back on StillHeadingSearch'),
+=======
+            FunctionTask(hacky_get_init_heading),
+            GradualHeading(lambda: init_heading + 90),
+            GradualHeading(lambda: init_heading + 180),
+            GradualHeading(lambda: init_heading + 90),
+            GradualHeading(lambda: init_heading + 0),
+            GradualHeading(lambda: init_heading + 90),
+            GradualHeading(lambda: init_heading + 180),
+            GradualHeading(lambda: init_heading + 270),
+            GradualHeading(lambda: init_heading + 0),
+>>>>>>> Stashed changes
             StillHeadingSearch()
         ),
         shm.gate.leftmost_visible.get
@@ -148,9 +171,8 @@ gate = Sequential(
     Log('Pre Spin Charging...'),
     Timed(VelocityX(0.5 if is_mainsub() else 0.2), settings.pre_spin_charge_dist),
     Log('Spin Charging...'),
-    Concurent(
+    Concurrent(
         Timed(VelocityX(0.25 if is_mainsub() else 0.1), settings.spin_charge_dist),
-        )
     ),
     Log('Post Spin Charging...'),
     Timed(VelocityX(0.5 if is_mainsub() else 0.2), settings.post_spin_charge_dist),

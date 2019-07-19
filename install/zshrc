@@ -1,3 +1,5 @@
+echo called
+echo $TERM
 if [[ $TERM = "dumb" ]]; then
     bash && exit
 fi

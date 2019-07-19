@@ -12,9 +12,11 @@ from vision.framework.transform import dilate, erode, rect_kernel
 from vision.framework.feature import find_lines
 from vision.framework.draw import draw_line
 
-from vision.modules.attilus_garbage import garlic_crucifix_opts as opts, lines_to_angles, angle_to_line, thresh_color_distance, find_yellow_circle, intersect_circles, crop_by_mask, kmeans_mask, outline_mask
+from vision.modules.attilus_garbage import garlic_crucifix_opts as opts, lines_to_angles, angle_to_line, find_yellow_circle, intersect_circles, crop_by_mask, kmeans_mask, outline_mask
+from vision.modules.gate import thresh_color_distance
 
 from auv_python_helpers.angles import average_headings_degrees, heading_sub_degrees
+
 
 
 
@@ -48,7 +50,7 @@ class Recovery(ModuleBase):
     def find_crucifix(self, cvtmat, split):
         color = [self.options['green_{}'.format(s)] for s in COLORSPACE]
         distance = self.options['crucifix_color_distance']
-        mask = thresh_color_distance(split, color, distance)
+        mask, _ = thresh_color_distance(split, color, distance, ignore_channels=[0])
         mask = erode(mask, rect_kernel(self.options['crucifix_erode_kernel']), iterations=self.options['crucifix_erode_iterations'])
         mask = dilate(mask, rect_kernel(self.options['crucifix_dilate_kernel']), iterations=self.options['crucifix_dilate_iterations'])
         self.post('crucifix', mask)
@@ -82,6 +84,8 @@ class Recovery(ModuleBase):
 
             self.post('angles', cvtmat)
             self.post('hmm', cross)
+        else:
+            shm.recovery_crucifix.visible.set(False)
 
     def find_crucifix_angles(self, garlic_mask):
         lines = find_lines(garlic_mask, 2, pi/180, self.options['garlic_line_threshold'])[0]
