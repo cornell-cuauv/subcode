@@ -31,6 +31,7 @@ class PIDLoop(Task):
             # TODO: Should this zero on finish? Or set to I term?
             self.finish()
 
+
 class CameraTarget(Task):
     def on_run(self, point, target, deadband=(0.01875, 0.01875), px=None, ix=0, dx=0, py=None, iy=0, dy=0,
                max_out=None, valid=True, min_target_x=None, max_target_x=None,
@@ -56,6 +57,24 @@ class CameraTarget(Task):
         if self.pid_loop_x.finished and self.pid_loop_y.finished:
             # TODO: Should the output be zeroed on finish?
             self.finish()
+
+
+class ForwardApproach(CameraTarget):
+    '''pid loop for approaching a point until it is a target size
+
+    uses heading and x velocity
+    '''
+    def on_first_run(self, current_size, current_x, target_size, depth_bounds=(None, None), *args, **kwargs):
+        self.pid_loop_x = PIDLoop(output_function=RelativeToCurrentHeading(), negate=True)
+        self.pid_loop_x_vel = PIDLoop(output_function=VelocityX(), negate=True)
+        self.pid_loop_y = PIDLoop(output_function=RelativeToCurrentDepth(min_target=depth_bounds[0], max_target=depth_bounds[1]), negate=True)
+        self.px_default = 8
+        self.py_default = 0.8
+
+    def stop(self):
+        RelativeToCurrentDepth(0)()
+        RelativeToCurrentHeading(0)()
+
 
 class ForwardTarget(CameraTarget):
     def on_first_run(self, depth_bounds=(None, None), *args, **kwargs):
