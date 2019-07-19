@@ -37,7 +37,7 @@ OPTS_AJAX = [
     options.IntOption('lab_a_ref', 182, 0, 255),
     options.IntOption('lab_b_ref', 115, 0, 255),
     options.IntOption('hsv_s_ref', 188, 0, 255),
-    options.IntOption('color_dist_thresh', 43, 0, 255),
+    options.IntOption('color_dist_thresh', 50, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.25, 0, 1),
@@ -86,9 +86,12 @@ class Gate(ModuleBase):
         self.post(name, tmp)
 
     def process(self, *mats):
+        results = shm.gate_vision.get()
         h, w, _ = mats[0].shape
         h = int(h * self.options['resize_height_scale'])
         w = int(w * self.options['resize_width_scale'])
+        results.img_height = h
+        results.img_width = w
         mat = resize(mats[0], w, h)
         # Tuned for a 320x256 image
         reflection_cutoff = min(h, int(max(0, 3 - shm.kalman.depth.get())**2 * 18))
@@ -136,7 +139,6 @@ class Gate(ModuleBase):
         middle = try_index(contours_by_x, 1)
         rightmost = try_index(contours_by_x, 2)
         tmp = np.zeros((h, w, 3))
-        results = shm.gate_vision.get()
         results.leftmost_visible = leftmost is not None
         results.middle_visible = middle is not None
         results.rightmost_visible = rightmost is not None
