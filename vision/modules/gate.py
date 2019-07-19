@@ -11,7 +11,7 @@ from vision.framework.feature import outer_contours, contour_area, contour_centr
 from vision.framework.transform import resize, simple_gaussian_blur, morph_remove_noise, morph_close_holes, dilate, erode, rect_kernel
 from vision.framework.helpers import to_umat, to_odd
 from vision.framework.color import bgr_to_lab, bgr_to_hsv, range_threshold
-from vision.framework.draw import draw_contours, draw_circle
+from vision.framework.draw import draw_contours, draw_circle, draw_text
 
 OPTS_ODYSSEUS = [
     options.IntOption('lab_l_ref', 180, 0, 255),
@@ -143,6 +143,7 @@ class Gate(ModuleBase):
         if leftmost is not None:
             draw_contours(tmp, [leftmost.contour], color=(255, 0, 0), thickness=-1)
             draw_circle(tmp, (leftmost.x, leftmost.y), 5, color=(255, 255, 255), thickness=-1)
+            draw_text(tmp, 'Roll: {:.2f}'.format(vehicle_roll), (30, 30), 0.5, color=(255, 255, 255))
             results.leftmost_x = leftmost.x
             results.leftmost_y = leftmost.y
             results.leftmost_len = leftmost.length
