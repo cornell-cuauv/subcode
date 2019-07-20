@@ -18,7 +18,7 @@ OPTS_ODYSSEUS = [
     options.IntOption('lab_a_ref', 196, 0, 255),
     options.IntOption('lab_b_ref', 139, 0, 255),
     options.IntOption('hsv_s_ref', 200, 0, 255),
-    options.IntOption('color_dist_thresh', 52, 0, 255),
+    options.IntOption('color_dist_thresh', 55, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.5, 0, 1),
@@ -113,7 +113,7 @@ class Gate(ModuleBase):
         threshed, dists = thresh_color_distance([s_channel, lab_split[1], lab_split[2]],
                                                 [self.options['hsv_s_ref'], self.options['lab_a_ref'],
                                                      self.options['lab_b_ref']],
-                                         self.options['color_dist_thresh'], ignore_channels=[], weights=[2, 25, 5])
+                                         self.options['color_dist_thresh'], ignore_channels=[], weights=[2, 35, 5])
         if self.options['debug']:
             self.post('threshed', threshed)
             self.post('dists', dists)
