@@ -27,7 +27,7 @@ opts = [
     options.IntOption('min_match_count', 10, 0, 255),
     options.DoubleOption('good_ratio', 0.8, 0, 1),
     options.BoolOption('show_keypoints', True),
-    options.IntOption('min_gray', 50, 0, 255),
+    options.IntOption('min_gray', 83, 0, 255),
     #options.IntOption('img_l_trg', 71, 0, 255),
     #options.IntOption('img_a_trg', 94, 0, 255),
     #options.IntOption('img_b_trg', 164, 0, 255),
@@ -240,34 +240,6 @@ class BinsImage(ModuleBase):
         draw_circle(output, tuple(pt[0][0]), 1, color, thickness=3)
         return pt
 
-
-    def post_shm(self, mat, p, M):
-        shm.torpedoes_stake.camera_x.set(p.shape[1]//2)
-        shm.torpedoes_stake.camera_y.set(p.shape[0]//2)
-
-        if M is not None:
-            left_hole = self.locate_source_point('board', M, self.left_circle(), p)
-            right_hole = self.locate_source_point('board', M, self.right_circle(), p)
-            shm.torpedoes_stake.left_hole_x.set(left_hole[0][0][0])
-            shm.torpedoes_stake.left_hole_y.set(left_hole[0][0][1])
-            shm.torpedoes_stake.right_hole_x.set(right_hole[0][0][0])
-            shm.torpedoes_stake.right_hole_y.set(right_hole[0][0][1])
-            shm.torpedoes_stake.board_visible.set(True)
-
-            lever_origin = (self.options['lever_position_x'], self.options['lever_position_y'])
-            lever_origin_board = self.locate_source_point('board', M, lever_origin, p, color=(255, 0, 255))
-            shm.torpedoes_stake.lever_origin_x.set(lever_origin_board[0][0][0])
-            shm.torpedoes_stake.lever_origin_y.set(lever_origin_board[0][0][1])
-
-            heart = self.locate_source_point('board', M, self.heart(), p)
-            shm.torpedoes_stake.heart_x.set(heart[0][0][0])
-            shm.torpedoes_stake.heart_y.set(heart[0][0][1])
-        else:
-            shm.torpedoes_stake.board_visible.set(False)
-
-        shm.torpedoes_stake.lever_finished.set(self.lever_finished(mat, 'board', M, p))
-        # print(self.lever_finished(mat, 'board', M, p))
-
     def process(self, *mats):
         # x = time.perf_counter()
         CAMERA_SCALE = self.options['camera_scale']
@@ -276,6 +248,9 @@ class BinsImage(ModuleBase):
 
 
         mat = resize(mats[0], int(mats[0].shape[1]*CAMERA_SCALE), int(mats[0].shape[0]*CAMERA_SCALE)) if CAMERA_SCALE else mats[0]
+        temp = mat.astype(np.uint16) * 2#self.options_dict['PPX_contrast'].value
+        mat = np.clip(temp, 0, 255).astype(np.uint8)
+        p = mat.copy()
         #rv, ccs = cv2.findChessboardCorners(mat, (1, 1))
         #print(rv)
         #l_mat = cv2.cvtColor(mat, cv2.COLOR_BGR2Lab)
@@ -365,7 +340,7 @@ class BinsImage(ModuleBase):
         #print(kp2)
         #print(max(x.pt[1] for x in kp2))
         #print(max(x.pt[0] for x in kp2))
-        p = resize(mats[0], int(mats[0].shape[1] * self.options['camera_scale']), int(mats[0].shape[0] * self.options['camera_scale']))
+        #p = resize(mats[0], int(mats[0].shape[1] * self.options['camera_scale']), int(mats[0].shape[0] * self.options['camera_scale']))
         #p = cv2.copyMakeBorder(p, PADDING, PADDING, PADDING, PADDING, cv2.BORDER_CONSTANT, None, (255, 255, 255))
         if self.options['show_keypoints']:
             p = cv2.drawKeypoints(p, kp2, None, (0, 255, 255))
@@ -380,10 +355,32 @@ class BinsImage(ModuleBase):
             p = cv2.drawKeypoints(p, kp2, None, (255, 255, 0))
         p_mat = p.copy()
 
+        def get_center_ang(img, mat):
+            ii = img['img']
+            pts = np.float32([[ii.shape[1] / 2, ii.shape[0] / 2], [ii.shape[1] / 2, 0]]).reshape(-1, 1, 2) + PADDING
+            middle, top = cv2.perspectiveTransform(pts, mat)[:,0,:]
+            up_vec = top - middle
+            return middle, np.arctan2(up_vec[1], up_vec[0])
+
         if kp2:
             print('m', time.perf_counter() - t); t = time.perf_counter()
             p, M1 = self.match(bat, cam, p, (0, 0, 255), msk, len(contours))
             p, M2 = self.match(wolf, cam, p, (0, 255, 0), msk, len(contours))
+            if M1 is not None:
+                ctr, ang = get_center_ang(bat, M1)
+                shm.bins_status.bat_x.set(ctr[0] / mat.shape[1] - .5)
+                shm.bins_status.bat_y.set((ctr[1] - mat.shape[0] / 2) / mat.shape[1])
+                shm.bins_status.bat_angle.set(ang)
+            shm.bins_status.bat_visible.set(M1 is not None)
+
+            if M2 is not None:
+                ctr, ang = get_center_ang(bat, M2)
+                shm.bins_status.wolf_x.set(ctr[0] / mat.shape[1] - .5)
+                shm.bins_status.wolf_y.set((ctr[1] - mat.shape[0] / 2) / mat.shape[1])
+                shm.bins_status.wolf_angle.set(ang)
+            shm.bins_status.wolf_visible.set(M2 is not None)
+
+            
         print('n', time.perf_counter() - t); t = time.perf_counter()
 
         assert p is not None

@@ -116,13 +116,15 @@ class BinsCover(ModuleBase):
             if centers:
                 mx = max(centers, key=lambda h: h[3])
                 center, d1, d2, score, long_axis, short_axis, sm = mx
+                if long_axis.imag < 0: long_axis *= -1
+                if short_axis.real < 0: short_axis *= -1
                 #self.post('sm', sm)
                 shm.bins_status.cover_x.set(center.real / mat.shape[1] - .5)
                 shm.bins_status.cover_y.set((center.imag - mat.shape[0] / 2) / mat.shape[1])
                 shm.bins_status.cover_maj_x.set(long_axis.real)
                 shm.bins_status.cover_maj_y.set(long_axis.imag)
-                shm.bins_status.cover_maj_x.set(short_axis.real)
-                shm.bins_status.cover_maj_y.set(short_axis.imag)
+                shm.bins_status.cover_min_x.set(short_axis.real)
+                shm.bins_status.cover_min_y.set(short_axis.imag)
                 shm.bins_status.cover_visible.set(True)
 
                 for ax, clr in ((short_axis, (255, 0, 0)), (long_axis, (0, 255, 0))):
