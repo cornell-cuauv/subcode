@@ -13,9 +13,10 @@ from vision.framework.transform import elliptic_kernel, dilate, erode, rect_kern
 from vision.framework.feature import outer_contours, find_lines
 from vision.framework.draw import draw_line
 
-from vision.modules.attilus_garbage import garlic_crucifix_opts as opts, KMEANS_ITER, lines_to_angles, vectors_to_degrees, angle_to_unit_circle, angle_to_line, thresh_color_distance, find_yellow_circle, intersect_circles, crop_by_mask, kmeans_mask, outline_mask
+from vision.modules.attilus_garbage import garlic_crucifix_opts as opts, KMEANS_ITER, lines_to_angles, vectors_to_degrees, angle_to_unit_circle, angle_to_line, find_yellow_circle, intersect_circles, crop_by_mask, kmeans_mask, outline_mask
 
 from auv_python_helpers.angles import abs_heading_sub_degrees, heading_sub_degrees
+from vision.modules.gate import thresh_color_distance
 
 
 
@@ -27,6 +28,7 @@ COLORSPACE = 'lab'
 class Recovery(ModuleBase):
     def process(self, mat):
         self.post('org', mat)
+        mat = resize(mat, mat.shape[1]//2, mat.shape[0]//2)
         shm.bins_garlic.center_x.set(mat.shape[0]//2)
         shm.bins_garlic.center_y.set(mat.shape[1]//2)
         cvtmat, split = bgr_to_lab(mat)
@@ -49,7 +51,7 @@ class Recovery(ModuleBase):
     def find_red_garlic(self, cvtmat, split):
         color = [self.options['red_{}'.format(s)] for s in COLORSPACE]
         distance = self.options['garlic_color_distance']
-        mask = thresh_color_distance(split, color, distance)
+        mask, _ = thresh_color_distance(split, color, distance, ignore_channels=[0])
         mask = erode(mask, rect_kernel(self.options['garlic_erode_kernel']), iterations=self.options['garlic_erode_iterations'])
         mask = dilate(mask, rect_kernel(self.options['garlic_dilate_kernel']), iterations=self.options['garlic_dilate_iterations'])
         self.post('garlic', mask)

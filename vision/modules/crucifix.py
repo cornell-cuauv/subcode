@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from math import pi, sqrt
+import time
 
 import cv2
 import numpy as np
@@ -8,7 +9,7 @@ import shm
 
 from vision.modules.base import ModuleBase
 from vision.framework.color import bgr_to_lab
-from vision.framework.transform import dilate, erode, rect_kernel
+from vision.framework.transform import dilate, erode, rect_kernel, resize
 from vision.framework.feature import find_lines
 from vision.framework.draw import draw_line
 
@@ -28,8 +29,10 @@ COLORSPACE = 'lab'
 class Recovery(ModuleBase):
     def process(self, mat):
         self.post('org', mat)
-        shm.recovery_crucifix.cam_x.set(mat.shape[0]//2)
-        shm.recovery_crucifix.cam_y.set(mat.shape[1]//2)
+        mat = resize(mat, mat.shape[1]//2, mat.shape[0]//2)
+        print(mat.shape)
+        shm.recovery_crucifix.cam_x.set(mat.shape[1]//2)
+        shm.recovery_crucifix.cam_y.set(mat.shape[0]//2)
         cvtmat, split = bgr_to_lab(mat)
         self.circles = find_yellow_circle(split,
                                           color=[self.options['yellow_{}'.format(s)] for s in COLORSPACE],
@@ -48,22 +51,33 @@ class Recovery(ModuleBase):
         self.find_crucifix(cvtmat, split)
 
     def find_crucifix(self, cvtmat, split):
+        t = time.time()
         color = [self.options['green_{}'.format(s)] for s in COLORSPACE]
         distance = self.options['crucifix_color_distance']
         mask, _ = thresh_color_distance(split, color, distance, ignore_channels=[0])
+        print('a', time.time() - t)
+        t = time.time()
         mask = erode(mask, rect_kernel(self.options['crucifix_erode_kernel']), iterations=self.options['crucifix_erode_iterations'])
         mask = dilate(mask, rect_kernel(self.options['crucifix_dilate_kernel']), iterations=self.options['crucifix_dilate_iterations'])
+        print('b', time.time() - t)
+        t = time.time()
         self.post('crucifix', mask)
         circle_id, mask_c = intersect_circles(self.circles, mask, min_size=self.options['crucifix_size_min'])
+        print('c', time.time() - t)
+        t = time.time()
         if circle_id is not None:
             shm.recovery_crucifix.visible.set(True)
             (x, y), r = self.circles[circle_id]['circle']
             shm.recovery_crucifix.center_x.set(x)
             shm.recovery_crucifix.center_y.set(y)
+            shm.recovery_crucifix.offset_x.set(int(x + self.options['crucifix_offset_x'] * r))
+            shm.recovery_crucifix.offset_y.set(y)
             shm.recovery_crucifix.size.set(pi * r**2)
             only_circle = cv2.bitwise_and(cvtmat, cvtmat, mask=mask_c)
             self.post('hmmm', only_circle)
             only_circle = crop_by_mask(cvtmat, mask_c, x, y, r)
+            print('d', time.time() - t)
+            t = time.time()
             cross = kmeans_mask(only_circle, x, y, r,
                                 target_centeroid=(self.options['green_l'], self.options['green_a'], self.options['green_b']),
                                 centeroids=3, remove_noise=False,
@@ -71,9 +85,13 @@ class Recovery(ModuleBase):
                                 morph_iterations=self.options['kmeans_morph_iterations'])
             # cross = dilate(cross, rect_kernel(self.options['kmeans_morph_kernel']))
             # cross = erode(cross, rect_kernel(self.options['kmeans_morph_kernel']))
+            print('e', time.time() - t)
+            t = time.time()
             self.post('crus', cross)
             cross = outline_mask(cross, simplify=False)
             lines, angle = self.find_crucifix_angles(cross)
+            print('f', time.time() - t)
+            t = time.time()
             cross = cv2.cvtColor(cross, cv2.COLOR_GRAY2BGR)
             for l in lines:
                 draw_line(cross, (int(l[0]), int(l[1])), (int(l[2]), int(l[3])), thickness=5)
@@ -86,10 +104,11 @@ class Recovery(ModuleBase):
             self.post('hmm', cross)
         else:
             shm.recovery_crucifix.visible.set(False)
+        print('done')
 
     def find_crucifix_angles(self, garlic_mask):
         lines = find_lines(garlic_mask, 2, pi/180, self.options['garlic_line_threshold'])[0]
-        print(lines)
+        # print(lines)
         center = garlic_mask.shape[0]//2, garlic_mask.shape[1]//2
 
         def distance_from_center(line):
@@ -99,8 +118,8 @@ class Recovery(ModuleBase):
 
         lines = list(filter(lambda x: distance_from_center(x) < 20, lines))
         angles = np.array([lines_to_angles(l)*180/pi for l in lines], dtype=np.float32)
-        average = average_headings_degrees(angles)
-        print(average)
+        average = average_headings_degrees(angles) + 90
+        # print(average)
 
         shm.recovery_crucifix.angle_offset.set(heading_sub_degrees(self.options['manipulator_angle'], average))
 

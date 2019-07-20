@@ -50,6 +50,7 @@ garlic_crucifix_opts = [
         IntOption('crucifix_erode_iterations', 4, 1, 50),
         IntOption('crucifix_dilate_iterations', 1, 1, 50),
         IntOption('crucifix_size_min', 100, 0, 1000),
+        DoubleOption('crucifix_offset_x', 2, 0, 10),
 ]
 
 KMEANS_ITER = 5
@@ -117,9 +118,19 @@ def intersect_circles(circles, mask, min_size):
     return None, None
 
 def crop_by_mask(cvtmat, mask, x, y, r, shrink=False):
+    import time
+    t = time.time()
     cvtmat = cvtmat[:, :, 1:]  # TODO: make this adjustable
-    cropped = cv2.bitwise_and(cvtmat, cvtmat, mask=mask)
-    cropped = cropped[y-r:y+r, x-r:x+r]
+    print('foo a', time.time() - t)
+    t = time.time()
+    mask = mask[y-r:y+r, x-r:x+r]
+    print('foo b', time.time() - t)
+    t = time.time()
+    cropped = cvtmat[y-r:y+r, x-r:x+r]
+    print('foo c', time.time() - t)
+    t = time.time()
+    cropped = cv2.bitwise_and(cropped, cropped, mask=mask)
+    print('foo d', time.time()-t)
     if shrink:
         size = min(cropped.shape[0], cropped.shape[1], shrink)
         cropped = resize(cropped, size, size)
