@@ -2,7 +2,7 @@ from collections import namedtuple
 
 Gate = namedtuple('Gate', [
     'depth',
-    'initial_approach_target_len',
+    'initial_approach_target_percent_of_screen',
     'gate_width_threshold',
     'pre_spin_charge_dist',
     'spin_charge_dist',

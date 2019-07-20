@@ -70,51 +70,61 @@ rolly_roll = \
         )
     )
 
+def focus_elem(elem_x):
+    return HeadingTarget(
+        point=[elem_x.get, 0],
+        target=lambda: [shm.gate.img_width.get() / 2, 0],
+        px=0.5,
+        deadband=(20,1)
+    )
+
+focus_left = focus_elem(shm.gate.leftmost_x)
+focus_middle = focus_elem(shm.gate.middle_x)
+
+hold_depth = While(task_func=lambda: Depth(DEPTH_TARGET), condition=True)
+
+align_on_two_elem = \
+    MasterConcurrent(
+        # while we CAN NOT see all gates
+        While(NoOp, condition=lambda: not can_see_all_gate_elements()),
+        PIDLoop(
+            input_value=lambda: shm.gate.leftmost_len() / shm.gate.middle_len.get(),
+            target=1,
+            output_value=VelocityY
+        ),
+        ConsistentTask(Concurrent(
+            Depth(DEPTH_TARGET),
+            # pick the element that is smallest
+            While(focus_elem(
+                shm.gate.leftmost_x.get
+                if shm.gate.leftmost_len.get() < shm.gate.middle_len.get()
+                else shm.gate.middle_x.get
+            ), condition=True)
+        ))
+    )
+
+align_on_three_elem = \
+    MasterConcurrent(
+        # while we CAN see all gates
+        While(NoOp, condition=lambda: can_see_all_gate()),
+        PIDLoop(
+            input_value=lambda: shm.gate.leftmost_len() / shm.gate.rightmost_len.get(),
+            target=1,
+            output_value=VelocityY
+        ),
+        ConsistentTask(Concurrent(
+            hold_depth,
+            focus_middle
+        ))
+    )
+
 align_task = \
     While(
         Sequential(
-            MasterConcurrent(
-                # while we CAN NOT see all gates
-                While(NoOp, condition=lambda: not can_see_all_gate()),
-                PIDLoop(
-                    input_value=lambda: shm.gate.leftmost_len() / shm.gate.middle_len.get(),
-                    output_value=VelocityY
-                ),
-                ConsistentTask(Concurrent(
-                    Depth(DEPTH_TARGET),
-                    HeadingTarget(
-                        point=[
-                            # pick the element that is smallest
-                            shm.gate.leftmost_x.get
-                            if shm.gate.leftmost_len.get() < shm.gate.middle_len.get()
-                            else shm.gate.middle_x.get
-                            , 0],
-                        target=lambda: [shm.gate.img_width.get() / 2, 0],
-                        px=0.5,
-                        deadband=(40,1)
-                    ),
-                    finite=False
-                ))
-            ),
-            MasterConcurrent(
-                # while we CAN see all gates
-                While(NoOp, condition=lambda: can_see_all_gate()),
-                PIDLoop(
-                    input_value=lambda: shm.gate.leftmost_len() / shm.gate.rightmost_len.get(),
-                    output_value=VelocityY
-                ),
-                ConsistentTask(Concurrent(
-                    Depth(DEPTH_TARGET),
-                    HeadingTarget(
-                        # point at middle gate
-                        point=[shm.gate.middle_x.get, 0],
-                        target=lambda: [shm.gate.img_width.get() / 2, 0],
-                        px=0.5,
-                        deadband=(40,1)
-                    ),
-                    finite=False
-                ))
-            )
+            Log('Can see at least two elements (hopefully)'),
+            align_on_two_elem,
+            Log('Can see all three elements'),
+            align_on_three_elem
         ),
         condition=lambda: not is_aligned()
     )
@@ -147,38 +157,29 @@ search_task = \
 
 gate = Sequential(
     Log('Depthing...'),
-    BigDepth(DEPTH_TARGET),
+    Depth(DEPTH_TARGET),
 
     Log('Searching for gate'),
     search_task,
 
     Log('Gate is located, HeadingTarget on (leftmost) leg of gate'),
-    ConsistentTask(Concurrent(
-        Depth(DEPTH_TARGET),
-        HeadingTarget(
-            point=[shm.gate.leftmost_x.get, 0],
-            target=lambda: [shm.gate.img_width.get() / 2, 0],
-            px=0.5,
-            deadband=(40,1)
-        ),
+    ConsistentTask(MasterConcurrent(
+        focus_left,
+        hold_depth,
         finite=False
     )),
 
     Log('Forward Approach...'),
-    ConsistentTask(Concurrent(
-        Depth(DEPTH_TARGET),
-        HeadingTarget(
-            point=[shm.gate.leftmost_x.get,0],
-            target=lambda: [shm.gate.img_width.get() / 2,0],
-            px=0.3,
-            deadband=(20,1)
-        ),
+    ConsistentTask(MasterConcurrent(
         PIDLoop(
-            input_value=shm.gate.leftmost_len.get,
+            input_value=lambda: shm.gate.leftmost_len.get() / shm.gate.img_height.get(),
+            target=settings.initial_approach_target_percent_of_screen,
             output_function=VelocityX,
-            p=0.5,
+            p=40,
             deadband=20
         ),
+        focus_left,
+        hold_depth,
         finite=False
     )),
 

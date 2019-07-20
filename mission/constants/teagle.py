@@ -7,8 +7,8 @@ HYDROPHONES_PINGER_DEPTH = 3.0
 NONSURFACE_MIN_DEPTH = 0.6
 
 gate = Gate(
-    depth=2.0,
-    initial_approach_target_len=20,
+    depth=1.0,
+    initial_approach_target_percent_of_screen=.7,
     gate_width_threshold=0.4,
     pre_spin_charge_dist=16 if is_mainsub else 12,
     spin_charge_dist=16 if is_mainsub else 12,
