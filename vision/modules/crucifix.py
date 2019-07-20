@@ -54,11 +54,13 @@ class Recovery(ModuleBase):
         t = time.time()
         color = [self.options['green_{}'.format(s)] for s in COLORSPACE]
         distance = self.options['crucifix_color_distance']
-        mask, _ = thresh_color_distance(split, color, distance, ignore_channels=[0])
+        mask, _ = thresh_color_distance(split, color, distance, weights=[0.5, 2, 2])
         print('a', time.time() - t)
         t = time.time()
-        mask = erode(mask, rect_kernel(self.options['crucifix_erode_kernel']), iterations=self.options['crucifix_erode_iterations'])
-        mask = dilate(mask, rect_kernel(self.options['crucifix_dilate_kernel']), iterations=self.options['crucifix_dilate_iterations'])
+        # mask = erode(mask, rect_kernel(self.options['crucifix_erode_kernel']), iterations=self.options['crucifix_erode_iterations'])
+        # mask = dilate(mask, rect_kernel(self.options['crucifix_dilate_kernel']), iterations=self.options['crucifix_dilate_iterations'])
+        mask = erode(mask, rect_kernel(3), iterations=1)
+        mask = dilate(mask, rect_kernel(3), iterations=1)
         print('b', time.time() - t)
         t = time.time()
         self.post('crucifix', mask)

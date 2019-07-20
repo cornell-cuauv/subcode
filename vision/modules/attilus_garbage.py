@@ -41,16 +41,16 @@ garlic_crucifix_opts = [
         IntOption('kmeans_shrink_size', 300, 1, 1000),
         IntOption('garlic_line_threshold', 35, 0, 5000),
         IntOption('manipulator_angle', MANIPULATOR_ANGLE, 0, 359),
-        IntOption('green_l', 228, 0, 255),
-        IntOption('green_a', 131, 0, 255),
-        IntOption('green_b', 190, 0, 255),
-        IntOption('crucifix_color_distance', 24, 0, 255),
+        IntOption('green_l', 80, 0, 255),
+        IntOption('green_a', 119, 0, 255),
+        IntOption('green_b', 147, 0, 255),
+        IntOption('crucifix_color_distance', 12, 0, 255),
         IntOption('crucifix_erode_kernel', 5, 1, 50),
         IntOption('crucifix_dilate_kernel', 5, 1, 50),
         IntOption('crucifix_erode_iterations', 4, 1, 50),
         IntOption('crucifix_dilate_iterations', 1, 1, 50),
         IntOption('crucifix_size_min', 100, 0, 1000),
-        DoubleOption('crucifix_offset_x', 2, 0, 10),
+        DoubleOption('crucifix_offset_x', 1.3, 0, 10),
 ]
 
 KMEANS_ITER = 5
