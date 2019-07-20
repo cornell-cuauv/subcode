@@ -5,7 +5,7 @@ from functools import reduce
 import traceback
 import sys
 
-# import time
+import time
 
 import numpy as np
 from vision.modules.base import ModuleBase  # , UndefinedModuleOption
@@ -25,19 +25,20 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.DoubleOption('camera_scale', 0.35, 0, 1),
            options.IntOption('min_match_count', 10, 0, 255),
            options.DoubleOption('good_ratio', 0.8, 0, 1),
-           options.BoolOption('show_keypoints', False),
-           options.IntOption('min_gray', 25, 0, 255),
+           options.BoolOption('show_keypoints', True),
+           options.IntOption('min_gray', 50, 0, 255),
             #options.IntOption('img_l_trg', 71, 0, 255),
             #options.IntOption('img_a_trg', 94, 0, 255),
             #options.IntOption('img_b_trg', 164, 0, 255),
-            options.IntOption('lid_l_trg', 106, 0, 255),
-            options.IntOption('lid_a_trg', 219, 0, 255),
-            options.IntOption('lid_b_trg', 239, 0, 255),
+            options.IntOption('lid_l_trg', 172, 0, 255),
+            options.IntOption('lid_a_trg', 142, 0, 255),
+            options.IntOption('lid_b_trg', 255, 0, 255),
             #options.IntOption('img_d_thresh', 96, 0, 255), # 128
-            options.IntOption('lid_d_thresh', 96, 0, 255), # 128
-            options.IntOption('canny1', 659, 0, 1000), # 25
+            options.IntOption('lid_d_thresh', 110, 0, 255), # 128
+            options.IntOption('canny1', 459, 0, 1000), # 25
             options.IntOption('canny2', 496, 0, 1000), # 93
             options.IntOption('houghness', 51, 0, 1000),
+            options.DoubleOption('min_cross_score', .15, 0, 1),
 #           options.IntOption('board_separation', 450, 0, 4000),
 #           options.IntOption('board_horizontal_offset', 70, -1000, 1000),
 #           options.IntOption('lever_position_x', -500, -3000, 3000),
@@ -60,7 +61,8 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
 
 
 def make_poly(d1, d2):
-    return np.complex64([0, d1, (d1[0] + d2[0]), d2[0]])[:,np.newaxis]
+    #print(d1, d2)
+    return np.complex64([0, d1, (d1 + d2), d2])[:,np.newaxis]
 PADDING = 50
 GUTTER_PAD = 500
 BLUR_KERNEL = 7
@@ -84,7 +86,7 @@ class BinsImage(ModuleBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.detector = cv2.xfeatures2d.SIFT_create(contrastThreshold=.02)
+        self.detector = cv2.xfeatures2d.SIFT_create(contrastThreshold=.04)
         FLANN_INDEX_KDTREE = 0
         index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)  # For SIFT
         search_params = dict(checks=50)
@@ -146,11 +148,12 @@ class BinsImage(ModuleBase):
         img1 = im1["img"]
         img2 = im2["img"]
 
+        #if des1.size == 0 or des2.size == 0: return (output if output is not None else img2), None
         try:
             matches = self.flann.knnMatch(des1, des2, k=2)
         except cv2.error as e:
             matches = []
-            print(e)
+            #print(e)
 
         if output is None: output = img2
 
@@ -293,11 +296,15 @@ class BinsImage(ModuleBase):
     def process(self, *mats):
         # x = time.perf_counter()
         CAMERA_SCALE = self.options['camera_scale']
+        t = time.perf_counter()
+        print('a', time.perf_counter() - t); t = time.perf_counter()
+
 
         mat = resize(mats[0], int(mats[0].shape[1]*CAMERA_SCALE), int(mats[0].shape[0]*CAMERA_SCALE)) if CAMERA_SCALE else mats[0]
         #rv, ccs = cv2.findChessboardCorners(mat, (1, 1))
         #print(rv)
-        mm = mat.astype(np.int16)
+        l_mat = cv2.cvtColor(mat, cv2.COLOR_BGR2Lab)
+        mm = l_mat.astype(np.int16)
         #dst = np.abs(mm[:,:,0] - self.options['img_l_trg']) + \
         #    np.abs(mm[:,:,1] - self.options['img_a_trg']) + \
         #    np.abs(mm[:,:,2] - self.options['img_b_trg'])
@@ -316,13 +323,16 @@ class BinsImage(ModuleBase):
         self.post('yellow_mask_lid', yellow_mask_lid)
 
         img2 = cv2.cvtColor(to_umat(mat), cv2.COLOR_BGR2GRAY)
+        print('b', time.perf_counter() - t); t = time.perf_counter()
         edg = cv2.Canny(img2, self.options['canny1'], self.options['canny2'], apertureSize=3)
-        yellow_edg_msk = cv2.erode(yellow_mask_lid, kernel)
-        yellow_edg_msk = cv2.dilate(yellow_edg_msk, kernel, iterations=2)
-        #print(edg.get().dtype, edg.get().shape, yellow_edg_msk.get().dtype, yellow_edg_msk.get().shape)
-        edg = cv2.bitwise_and(edg, yellow_edg_msk)
+        #yellow_edg_msk = cv2.erode(yellow_mask_lid, kernel)
+        #yellow_edg_msk = cv2.dilate(yellow_edg_msk, kernel, iterations=4)
+        #self.post('edg0', edg)
+        #edg = cv2.bitwise_and(edg, yellow_edg_msk)
+        self.post('edg', edg)
         #edg = to_umat(yellow_edg_msk & edg.get())
         lines = cv2.HoughLines(edg, 1, np.pi/180, self.options['houghness']).get()
+        print('c', time.perf_counter() - t); t = time.perf_counter()
         clrs = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 255, 0), (255, 0, 255), (0, 0, 128), (0, 128, 0), (128, 0, 0)]
         if lines is not None:
             lines[lines[:,0,0] < 0,:,1] += np.pi
@@ -330,25 +340,26 @@ class BinsImage(ModuleBase):
             lvecs = np.exp(1j * lines[:,:,1])
             mlvecs = lvecs ** 2
             #print(lvecs)
-            self.post('edg', edg)
-            for i, (dst, vect) in enumerate(zip(lines[:,0,0], lvecs[:,0])):
-                ctr = vect * dst
-                vc = vect * 1j
-                p1 = ctr + 1000 * vc
-                p2 = ctr - 1000 * vc
-                mat = cv2.line(mat, (int(p1.real), int(p1.imag)), (int(p2.real), int(p2.imag)), (0, 0, 200), 2)
-                print(vect, dst)
+            #for i, (dst, vect) in enumerate(zip(lines[:,0,0], lvecs[:,0])):
+            #    ctr = vect * dst
+            #    vc = vect * 1j
+            #    p1 = ctr + 1000 * vc
+            #    p2 = ctr - 1000 * vc
+            #    mat = cv2.line(mat, (int(p1.real), int(p1.imag)), (int(p2.real), int(p2.imag)), (0, 0, 200), 2)
+                #print(vect, dst)
             m = cv2.BFMatcher(cv2.NORM_L2)
             #print(mlvecs[:,np.newaxis])
             cc = mlvecs.astype(np.complex64).view(np.float32)
             #print(mlvecs, -mlvecs, sep='\n')
             centers = []
+            print('d', time.perf_counter() - t); t = time.perf_counter()
             if len(mlvecs) > 1:
                 res = m.match(cc, -cc)
                 for m in res:
                     if m.distance > .05: continue
-                    d1 = lvecs[m.trainIdx], lines[m.trainIdx,0,0]
-                    d2 = lvecs[m.queryIdx], lines[m.queryIdx,0,0]
+                    #print('lvecs', lvecs)
+                    d1 = lvecs[m.trainIdx,0], lines[m.trainIdx,0,0]
+                    d2 = lvecs[m.queryIdx,0], lines[m.queryIdx,0,0]
                     try:
                         center = np.linalg.solve(np.complex64([d1[0] / abs(d1[0]), d2[0] / abs(d2[0])]).view(np.float32).reshape(2,-1), [[d1[1]], [d2[1]]])[:,0].astype(np.float64)#.view(np.complex64)[0]
                     except np.linalg.linalg.LinAlgError:
@@ -367,25 +378,39 @@ class BinsImage(ModuleBase):
                     #mz2 = mz2.astype(np.bool_)
                     m1, sd1 = cv2.meanStdDev(img2, mask=mz)
                     m2, sd2 = cv2.meanStdDev(img2, mask=mz2)
+                    print('e', time.perf_counter() - t); t = time.perf_counter()
                     m1, sd1, m2, sd2 = (x.get()[0,0] for x in (m1, sd1, m2, sd2))
                     score = abs(m1 - m2) / (sd1 * sd2)
                     
-                    d1, d2 = (d1, d2) if np.cross(*np.complex128([[d1[0]], [d2[0]]]).view(np.float64)) > 0 else (d2, d1)
+                    no_swap = np.cross(*np.complex128([[d1[0]], [d2[0]]]).view(np.float64)) > 0
+                    d1, d2 = (d1, d2) if no_swap else (d2, d1)
                     long_axis = d1[0] if m1 < m2 else d2[0]
+                    short_axis = d2[0] if m1 < m2 else d1[0]
+                    #print(l_mat[0,0])
+                    sm = mz if (m1 > m2) else mz2 #  ^ no_swap
+                    m_color = cv2.mean(l_mat, mask=sm)[0:3]
                     #self.post('msk1', mz)
                     #self.post('msk2', mz2)
-                    centers.append((cC, d1, d2, score, long_axis))
+                    passes_color = cv2.norm(np.float32(m_color), np.float32([self.options['lid_l_trg'], self.options['lid_a_trg'], self.options['lid_b_trg']])) < self.options['lid_d_thresh']
+                    if passes_color:
+                        centers.append((cC, d1, d2, score, long_axis, short_axis, sm))
                     try:
-                        mat = cv2.circle(mat, (int(center[0]), int(center[1])), 10, (255, 0, 0), 2)
+                        mat = cv2.circle(mat, (int(center[0]), int(center[1])), 10, (255, 0, 0) if passes_color else (0, 200, 200), 2)
                     except (ValueError, OverflowError):
                         pass
+                    print('f', time.perf_counter() - t); t = time.perf_counter()
                 if centers:
                     mx = max(centers, key=lambda h: h[3])
-                    center, d1, d2, score, long_axis = mx
-                    mat = cv2.circle(mat, (int(center.real), int(center.imag)), 10, (0, 255, 0), 2)
-                    p1 = center + long_axis * 1000
-                    p2 = center - long_axis * 1000
-                    mat = cv2.line(mat, (int(p1.real), int(p1.imag)), (int(p2.real), int(p2.imag)), (0, 200, 0), 2)
+                    center, d1, d2, score, long_axis, short_axis, sm = mx
+                    self.post('sm', sm)
+                    if score > self.options['min_cross_score']:
+                        mat = cv2.circle(mat, (int(center.real), int(center.imag)), 10, (0, 255, 0), 2)
+                        for ax, clr in ((short_axis, (255, 0, 0)), (long_axis, (0, 255, 0))):
+                        #print('score', score)
+                            p1 = center + ax * 1000
+                            p2 = center - ax * 1000
+                            mat = cv2.line(mat, (int(p1.real), int(p1.imag)), (int(p2.real), int(p2.imag)), clr, 2)
+                    print('g', time.perf_counter() - t); t = time.perf_counter()
 
                     
                 #print(dir(res[0]))
@@ -405,8 +430,10 @@ class BinsImage(ModuleBase):
 
         #img2 = resize(to_umat(mat), int(mat.shape[1]*camera_scale), int(mat.shape[0]*camera_scale)) if DOWNSIZE_CAMERA else mat  # trainImage
 
+        print('h', time.perf_counter() - t); t = time.perf_counter()
         bat = self.static_process('bat')
         wolf = self.static_process('wolf')
+        print('i', time.perf_counter() - t); t = time.perf_counter()
 
         #black_areas = img2 < self.options['min_gray']
         res, black_areas = cv2.threshold(img2, self.options['min_gray'], 255, cv2.THRESH_BINARY_INV)
@@ -416,6 +443,7 @@ class BinsImage(ModuleBase):
         img, contours, hierarchy = cv2.findContours(black_areas, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         msk = np.zeros(mat.shape[:-1], dtype=np.uint8)
         #szcs = sorted(contours, key=cv2.contourArea, reverse=True)
+        print('j', time.perf_counter() - t); t = time.perf_counter()
         
         for i, x in enumerate(contours):#szcs[:2]:
             pts = cv2.boxPoints(cv2.minAreaRect(x))
@@ -432,6 +460,7 @@ class BinsImage(ModuleBase):
         #    msk = cv2.fillPoly(msk, p, 255)
         colors = np.uint8([(0, 0, 0), (0, 0, 255), (0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 255, 0), (255, 0, 255), (255, 255, 255)])
         self.post('blk_fill', colors[np.clip(msk, 0, 7)])
+        print('k', time.perf_counter() - t); t = time.perf_counter()
                 
 
         #print(szcs)
@@ -449,7 +478,9 @@ class BinsImage(ModuleBase):
         # find the keypoints and descriptors with SIFT
 
         #img2 = cv2.UMat(np.pad(img2.get(), ((PADDING, PADDING), (PADDING, PADDING)), 'constant', constant_values=255)) # boo
+        print('l', time.perf_counter() - t); t = time.perf_counter()
         kp2, des2 = self.detector.detectAndCompute(img2, None)
+        print('l1', time.perf_counter() - t); t = time.perf_counter()
         if des2 is None:
             print('No points found')
             return
@@ -474,8 +505,11 @@ class BinsImage(ModuleBase):
             p = cv2.drawKeypoints(p, kp2, None, (255, 255, 0))
         p_mat = p.copy()
 
-        p, M1 = self.match(bat, cam, p, (0, 0, 255), msk, len(contours))
-        p, M2 = self.match(wolf, cam, p, (0, 255, 0), msk, len(contours))
+        if kp2:
+            print('m', time.perf_counter() - t); t = time.perf_counter()
+            p, M1 = self.match(bat, cam, p, (0, 0, 255), msk, len(contours))
+            p, M2 = self.match(wolf, cam, p, (0, 255, 0), msk, len(contours))
+        print('n', time.perf_counter() - t); t = time.perf_counter()
 
         assert p is not None
 
