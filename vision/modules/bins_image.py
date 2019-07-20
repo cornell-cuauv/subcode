@@ -17,47 +17,22 @@ from vision.framework.color import bgr_to_lab, range_threshold
 
 from vision import options
 
-opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
-           options.DoubleOption('source_x_scale_bat', 0.1, 0, 1),
-           options.DoubleOption('source_y_scale_bat', 0.1, 0, 1),
-           options.DoubleOption('source_x_scale_wolf', 0.1, 0, 1),
-           options.DoubleOption('source_y_scale_wolf', 0.1, 0, 1),
-           options.DoubleOption('camera_scale', 0.35, 0, 1),
-           options.IntOption('min_match_count', 10, 0, 255),
-           options.DoubleOption('good_ratio', 0.8, 0, 1),
-           options.BoolOption('show_keypoints', True),
-           options.IntOption('min_gray', 50, 0, 255),
-            #options.IntOption('img_l_trg', 71, 0, 255),
-            #options.IntOption('img_a_trg', 94, 0, 255),
-            #options.IntOption('img_b_trg', 164, 0, 255),
-            options.IntOption('lid_l_trg', 172, 0, 255),
-            options.IntOption('lid_a_trg', 142, 0, 255),
-            options.IntOption('lid_b_trg', 255, 0, 255),
-            #options.IntOption('img_d_thresh', 96, 0, 255), # 128
-            options.IntOption('lid_d_thresh', 110, 0, 255), # 128
-            options.IntOption('canny1', 459, 0, 1000), # 25
-            options.IntOption('canny2', 496, 0, 1000), # 93
-            options.IntOption('houghness', 51, 0, 1000),
-            options.DoubleOption('min_cross_score', .15, 0, 1),
-#           options.IntOption('board_separation', 450, 0, 4000),
-#           options.IntOption('board_horizontal_offset', 70, -1000, 1000),
-#           options.IntOption('lever_position_x', -500, -3000, 3000),
-#           options.IntOption('lever_position_y', 2500, 0, 6000),
-#           options.IntOption('heart_offset_x', 0, -3000, 3000),
-#           options.IntOption('heart_offset_y', 0, -3000, 3000),
-#           options.IntOption('left_circle_offset_x', -60, -3000, 3000),
-#           options.IntOption('left_circle_offset_y', -112, -3000, 3000),
-#           options.IntOption('right_circle_offset_x', -148, -3000, 3000),
-#           options.IntOption('right_circle_offset_y', -110, -3000, 3000),
-#           options.IntOption('lever_l', 129, 0, 255),
-#           options.IntOption('lever_a', 201, 0, 255),
-#           options.IntOption('lever_b', 183, 0, 255),
-#           options.IntOption('lever_color_distance', 50, 0, 255),
-#           options.IntOption('contour_size_min', 5, 0, 1000),
-#           options.IntOption('lever_endzone_left', 1793, 0, 6000),
-#           options.IntOption('lever_gutter_top', 2238, 0, 6000),
-#           options.IntOption('lever_gutter_bot', 2887, 0, 6000),
-           ]
+opts = [
+    options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
+    options.DoubleOption('source_x_scale_bat', 0.1, 0, 1),
+    options.DoubleOption('source_y_scale_bat', 0.1, 0, 1),
+    options.DoubleOption('source_x_scale_wolf', 0.1, 0, 1),
+    options.DoubleOption('source_y_scale_wolf', 0.1, 0, 1),
+    options.DoubleOption('camera_scale', 0.35, 0, 1),
+    options.IntOption('min_match_count', 10, 0, 255),
+    options.DoubleOption('good_ratio', 0.8, 0, 1),
+    options.BoolOption('show_keypoints', True),
+    options.IntOption('min_gray', 50, 0, 255),
+    #options.IntOption('img_l_trg', 71, 0, 255),
+    #options.IntOption('img_a_trg', 94, 0, 255),
+    #options.IntOption('img_b_trg', 164, 0, 255),
+    #options.IntOption('img_d_thresh', 96, 0, 255), # 128
+]
 
 
 def make_poly(d1, d2):
@@ -303,119 +278,19 @@ class BinsImage(ModuleBase):
         mat = resize(mats[0], int(mats[0].shape[1]*CAMERA_SCALE), int(mats[0].shape[0]*CAMERA_SCALE)) if CAMERA_SCALE else mats[0]
         #rv, ccs = cv2.findChessboardCorners(mat, (1, 1))
         #print(rv)
-        l_mat = cv2.cvtColor(mat, cv2.COLOR_BGR2Lab)
-        mm = l_mat.astype(np.int16)
+        #l_mat = cv2.cvtColor(mat, cv2.COLOR_BGR2Lab)
+        #mm = l_mat.astype(np.int16)
         #dst = np.abs(mm[:,:,0] - self.options['img_l_trg']) + \
         #    np.abs(mm[:,:,1] - self.options['img_a_trg']) + \
         #    np.abs(mm[:,:,2] - self.options['img_b_trg'])
-        dst_lid = np.abs(mm[:,:,0] - self.options['lid_l_trg']) + \
-            np.abs(mm[:,:,1] - self.options['lid_a_trg']) + \
-            np.abs(mm[:,:,2] - self.options['lid_b_trg'])
         #self.post('yellowness', (dst // 3).astype(np.uint8))
-        self.post('yellowness_lid', (dst_lid // 3).astype(np.uint8))
         #np.clip(dst, 0, 255, out=dst)
         #dst = dst.astype(np.uint8)
-        np.clip(dst_lid, 0, 255, out=dst_lid)
-        dst_lid = dst_lid.astype(np.uint8)
         #res, yellow_mask = cv2.threshold(dst, self.options['img_d_thresh'], 255, cv2.THRESH_BINARY_INV)
-        res, yellow_mask_lid = cv2.threshold(to_umat(dst_lid), self.options['lid_d_thresh'], 255, cv2.THRESH_BINARY_INV)
         #self.post('yellow_mask', yellow_mask)
-        self.post('yellow_mask_lid', yellow_mask_lid)
 
         img2 = cv2.cvtColor(to_umat(mat), cv2.COLOR_BGR2GRAY)
         print('b', time.perf_counter() - t); t = time.perf_counter()
-        edg = cv2.Canny(img2, self.options['canny1'], self.options['canny2'], apertureSize=3)
-        #yellow_edg_msk = cv2.erode(yellow_mask_lid, kernel)
-        #yellow_edg_msk = cv2.dilate(yellow_edg_msk, kernel, iterations=4)
-        #self.post('edg0', edg)
-        #edg = cv2.bitwise_and(edg, yellow_edg_msk)
-        self.post('edg', edg)
-        #edg = to_umat(yellow_edg_msk & edg.get())
-        lines = cv2.HoughLines(edg, 1, np.pi/180, self.options['houghness']).get()
-        print('c', time.perf_counter() - t); t = time.perf_counter()
-        clrs = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 255, 0), (255, 0, 255), (0, 0, 128), (0, 128, 0), (128, 0, 0)]
-        if lines is not None:
-            lines[lines[:,0,0] < 0,:,1] += np.pi
-            lines[:,:,0] = np.abs(lines[:,:,0])
-            lvecs = np.exp(1j * lines[:,:,1])
-            mlvecs = lvecs ** 2
-            #print(lvecs)
-            #for i, (dst, vect) in enumerate(zip(lines[:,0,0], lvecs[:,0])):
-            #    ctr = vect * dst
-            #    vc = vect * 1j
-            #    p1 = ctr + 1000 * vc
-            #    p2 = ctr - 1000 * vc
-            #    mat = cv2.line(mat, (int(p1.real), int(p1.imag)), (int(p2.real), int(p2.imag)), (0, 0, 200), 2)
-                #print(vect, dst)
-            m = cv2.BFMatcher(cv2.NORM_L2)
-            #print(mlvecs[:,np.newaxis])
-            cc = mlvecs.astype(np.complex64).view(np.float32)
-            #print(mlvecs, -mlvecs, sep='\n')
-            centers = []
-            print('d', time.perf_counter() - t); t = time.perf_counter()
-            if len(mlvecs) > 1:
-                res = m.match(cc, -cc)
-                for m in res:
-                    if m.distance > .05: continue
-                    #print('lvecs', lvecs)
-                    d1 = lvecs[m.trainIdx,0], lines[m.trainIdx,0,0]
-                    d2 = lvecs[m.queryIdx,0], lines[m.queryIdx,0,0]
-                    try:
-                        center = np.linalg.solve(np.complex64([d1[0] / abs(d1[0]), d2[0] / abs(d2[0])]).view(np.float32).reshape(2,-1), [[d1[1]], [d2[1]]])[:,0].astype(np.float64)#.view(np.complex64)[0]
-                    except np.linalg.linalg.LinAlgError:
-                        print('singular matrix')
-                        continue
-                    cC = complex(*center)
-                    mz = np.zeros(mat.shape[:-1], dtype=np.uint8)
-                    mz2 = np.zeros(mat.shape[:-1], dtype=np.uint8)
-                    poly = make_poly(d1[0], d2[0])
-                    rpoly = make_poly(d1[0], -d2[0])
-                    mz = cv2.fillConvexPoly(mz, (cC + 40 * poly).view(np.float32).astype(np.int32), 255)
-                    mz = cv2.fillConvexPoly(mz, (cC - 40 * poly).view(np.float32).astype(np.int32), 255)
-                    mz2 = cv2.fillConvexPoly(mz2, (cC + 40 * rpoly).view(np.float32).astype(np.int32), 255)
-                    mz2 = cv2.fillConvexPoly(mz2, (cC - 40 * rpoly).view(np.float32).astype(np.int32), 255)
-                    #mz = mz.astype(np.bool_)
-                    #mz2 = mz2.astype(np.bool_)
-                    m1, sd1 = cv2.meanStdDev(img2, mask=mz)
-                    m2, sd2 = cv2.meanStdDev(img2, mask=mz2)
-                    print('e', time.perf_counter() - t); t = time.perf_counter()
-                    m1, sd1, m2, sd2 = (x.get()[0,0] for x in (m1, sd1, m2, sd2))
-                    score = abs(m1 - m2) / (sd1 * sd2)
-                    
-                    no_swap = np.cross(*np.complex128([[d1[0]], [d2[0]]]).view(np.float64)) > 0
-                    d1, d2 = (d1, d2) if no_swap else (d2, d1)
-                    long_axis = d1[0] if m1 < m2 else d2[0]
-                    short_axis = d2[0] if m1 < m2 else d1[0]
-                    #print(l_mat[0,0])
-                    sm = mz if (m1 > m2) else mz2 #  ^ no_swap
-                    m_color = cv2.mean(l_mat, mask=sm)[0:3]
-                    #self.post('msk1', mz)
-                    #self.post('msk2', mz2)
-                    passes_color = cv2.norm(np.float32(m_color), np.float32([self.options['lid_l_trg'], self.options['lid_a_trg'], self.options['lid_b_trg']])) < self.options['lid_d_thresh']
-                    if passes_color:
-                        centers.append((cC, d1, d2, score, long_axis, short_axis, sm))
-                    try:
-                        mat = cv2.circle(mat, (int(center[0]), int(center[1])), 10, (255, 0, 0) if passes_color else (0, 200, 200), 2)
-                    except (ValueError, OverflowError):
-                        pass
-                    print('f', time.perf_counter() - t); t = time.perf_counter()
-                if centers:
-                    mx = max(centers, key=lambda h: h[3])
-                    center, d1, d2, score, long_axis, short_axis, sm = mx
-                    self.post('sm', sm)
-                    if score > self.options['min_cross_score']:
-                        mat = cv2.circle(mat, (int(center.real), int(center.imag)), 10, (0, 255, 0), 2)
-                        for ax, clr in ((short_axis, (255, 0, 0)), (long_axis, (0, 255, 0))):
-                        #print('score', score)
-                            p1 = center + ax * 1000
-                            p2 = center - ax * 1000
-                            mat = cv2.line(mat, (int(p1.real), int(p1.imag)), (int(p2.real), int(p2.imag)), clr, 2)
-                    print('g', time.perf_counter() - t); t = time.perf_counter()
-
-                    
-                #print(dir(res[0]))
-                #print(res)
-            self.post('lines', mat)
         #corners = cv2.cornerHarris(img2, 2, 3, .04)
         #print(corners.get().dtype)
         #cg = corners.get()
