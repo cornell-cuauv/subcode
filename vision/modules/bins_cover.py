@@ -75,6 +75,8 @@ class BinsCover(ModuleBase):
         cc = mlvecs.astype(np.complex64).view(np.float32)
         centers = []
         if len(mlvecs) > 1:
+            dsst = 2.83 - shm.kalman.depth.get()
+            plen = 75 / dsst if dsst > 0 else 1000
             res = m.match(cc, -cc)
             for m in res:
                 if m.distance > .05: continue
@@ -90,10 +92,11 @@ class BinsCover(ModuleBase):
                 mz2 = np.zeros(mat.shape[:-1], dtype=np.uint8)
                 poly = make_poly(d1[0], d2[0])
                 rpoly = make_poly(d1[0], -d2[0])
-                mz = cv2.fillConvexPoly(mz, (cC + 40 * poly).view(np.float32).astype(np.int32), 255)
-                mz = cv2.fillConvexPoly(mz, (cC - 40 * poly).view(np.float32).astype(np.int32), 255)
-                mz2 = cv2.fillConvexPoly(mz2, (cC + 40 * rpoly).view(np.float32).astype(np.int32), 255)
-                mz2 = cv2.fillConvexPoly(mz2, (cC - 40 * rpoly).view(np.float32).astype(np.int32), 255)
+
+                mz = cv2.fillConvexPoly(mz, (cC + plen * poly).view(np.float32).astype(np.int32), 255)
+                mz = cv2.fillConvexPoly(mz, (cC - plen * poly).view(np.float32).astype(np.int32), 255)
+                mz2 = cv2.fillConvexPoly(mz2, (cC + plen * rpoly).view(np.float32).astype(np.int32), 255)
+                mz2 = cv2.fillConvexPoly(mz2, (cC - plen * rpoly).view(np.float32).astype(np.int32), 255)
                 m1, sd1 = cv2.meanStdDev(img2, mask=mz)
                 m2, sd2 = cv2.meanStdDev(img2, mask=mz2)
 
@@ -116,6 +119,11 @@ class BinsCover(ModuleBase):
             if centers:
                 mx = max(centers, key=lambda h: h[3])
                 center, d1, d2, score, long_axis, short_axis, sm = mx
+                #dsst = 4.26 - shm.kalman.depth.get() - .762
+                pts = (np.complex64([long_axis + short_axis, long_axis - short_axis, -long_axis - short_axis, -long_axis + short_axis])[:,np.newaxis] * plen + center).view(np.float32).astype(np.int32)
+                print(pts)
+                mat = cv2.polylines(mat, [pts], True, (255, 255, 255))
+                print(score, shm.kalman.depth.get())
                 if long_axis.imag < 0: long_axis *= -1
                 if short_axis.real < 0: short_axis *= -1
                 #self.post('sm', sm)
