@@ -2,35 +2,39 @@ import shm
 
 from mission.framework.search import SearchFor, SwaySearch, SpiralSearch
 from mission.framework.combinators import Sequential, MasterConcurrent, While
-from mission.framework.primitive import Zero, Log, AlwaysLog
+from mission.framework.primitive import Zero, Log, AlwaysLog, FunctionTask
 from mission.framework.targeting import DownwardTarget
-from mission.framework.movement import Depth, RelativeToInitialDepth
+from mission.framework.movement import Depth, RelativeToInitialDepth, RelativeToCurrentDepth, VelocityY
 from mission.framework.position import MoveY
-from mission.framework.timing import Timeout, Timer
+from mission.framework.timing import Timeout, Timer, Timed
 from mission.framework.actuators import FireActuator, SetActuators
 
 from mission.missions.will_common import Consistent
 from mission.missions.attilus_garbage import PIDHeading
 
-INITIAL_DEPTH_TEAGLE=2
+INITIAL_DEPTH_TEAGLE=1.8
 DEPTH_TEAGLE = 2.5
 INITIAL_DEPTH_TRANSDECK = None
 DEPTH_TRANSDECK = None
 
 INITIAL_DEPTH = INITIAL_DEPTH_TEAGLE
 DEPTH = DEPTH_TEAGLE
-DESCEND_DEPTH = 0.7
+DESCEND_DEPTH = .3
 
 SIZE_THRESH = 9000
 
-# CAM_CENTER = shm.recovery_vampire.cam_x.get(), shm.recovery_vampire.cam_y.get()
-CAM_CENTER = shm.recovery_crucifix.cam_x.get(), shm.recovery_crucifix.cam_y.get()
+# TODO: FIX THIS SKETCHY GARBAGE
+CAM_CENTER = shm.recovery_vampire.cam_x.get(), shm.recovery_vampire.cam_y.get()
+# CAM_CENTER = shm.recovery_crucifix.cam_x.get(), shm.recovery_crucifix.cam_y.get()
 
 def visible_closed():
     return shm.recovery_vampire.closed_visible.get()
 def center_closed():
-    print(shm.recovery_vampire.closed_handle_x.get(), shm.recovery_vampire.closed_handle_y.get())
     return (shm.recovery_vampire.closed_handle_x.get(), shm.recovery_vampire.closed_handle_y.get())
+def offset_closed():
+    return (shm.recovery_vampire.closed_offset_x.get(), shm.recovery_vampire.closed_offset_y.get())
+def direction_closed():
+    return shm.recovery_vampire.closed_handle_direction.get()
 def angle_offset_closed():
     return shm.recovery_vampire.closed_angle_offset.get()
 def size_closed():
@@ -39,8 +43,9 @@ def size_closed():
 def visible_open():
     return shm.recovery_vampire.open_visible.get()
 def center_open():
-    print(shm.recovery_vampire.open_handle_x.get(), shm.recovery_vampire.open_handle_y.get())
     return (shm.recovery_vampire.open_handle_x.get(), shm.recovery_vampire.open_handle_y.get())
+def offset_open():
+    return (shm.recovery_vampire.open_offset_x.get(), shm.recovery_vampire.open_offset_y.get())
 def angle_offset_open():
     return shm.recovery_vampire.open_angle_offset.get()
 def size_open():
@@ -70,7 +75,7 @@ Search = lambda visiblef: Sequential(  # TODO: TIMEOUT?
 
 close_to = lambda point1, point2, dbx=20, dby=20: abs(point1[0]-point2[0]) < dbx and abs(point1[1]-point2[1]) < dby
 
-Center = lambda centerf, visiblef, db=15, px=0.0008, py=0.00095: Sequential(
+Center = lambda centerf, visiblef, db=15, px=0.001, py=0.001, dx=0.00005, dy=0.00005: Sequential(
             Log('Centering'),
             MasterConcurrent(
                 Consistent(lambda: close_to(centerf(), CAM_CENTER,  db), count=2.5, total=3.0, invert=False, result=True),
@@ -85,7 +90,7 @@ Descend = lambda depth=DEPTH, db=0.1, size_thresh=SIZE_THRESH: Sequential(  # TO
                 Depth(depth)),  # TODO: BigDepth?
             Zero())
 
-close_to = lambda point1, point2, db=15: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
+close_to = lambda point1, point2, db=20: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
 
 Align = lambda centerf, anglef, visiblef, closedb=10, aligndb=7: Sequential(
             Log('Aligning'),
@@ -93,7 +98,8 @@ Align = lambda centerf, anglef, visiblef, closedb=10, aligndb=7: Sequential(
                 Consistent(lambda: close_to(centerf(), CAM_CENTER) and abs(anglef()) < aligndb, count=2.3, total=3, invert=False, result=True),
                 While(lambda: Consistent(visiblef, count=2.5, total=3.0, invert=True, result=False), True),
                 While(lambda: Center(centerf, visiblef), True),
-                PIDHeading(anglef, p=0.47)),
+                PIDHeading(anglef, p=0.47),
+                AlwaysLog(lambda: 'align %s' % str(anglef()))),
             Zero())
 
 _Grab = lambda: SetActuators(on_triggers=['manipulator_grab'])
@@ -114,12 +120,28 @@ GrabVampireOpenCoffin = lambda: \
     Sequential(
         Depth(INITIAL_DEPTH, error=0.2),
         Search(visible_open),
-        Center(center_open, visible_closed),
-        Align(centerf=center_open, anglef=angle_offset_closed, visiblef=visible_closed),
+        Center(center_open, visible_open, db=20),
+        Align(centerf=center_open, anglef=angle_offset_open, visiblef=visible_open),
+        Center(offset_open, visible_open, db=10),
+        MasterConcurrent(
+            Sequential(
+                Timer(15),
+                _Grab()),
+            RelativeToCurrentDepth(DESCEND_DEPTH, error=0.2),
+            ),
         # Grab(),  # ???
         Depth(0),
         # Release???
     )
+
+LID_DEPTH = 0.4
+LID_DEPTH_1 = 0.5
+
+initial_depth = 3
+
+def record_depth():
+    global initial_depth
+    initial_depth = shm.kalman.depth.get()
 
 GrabVampireClosedCoffin = lambda: \
     Sequential(
@@ -127,11 +149,36 @@ GrabVampireClosedCoffin = lambda: \
         Search(visible_closed),
         Center(center_closed, visible_closed),
         Align(center_closed, angle_offset_closed, visible_closed),
-        Center(center_closed, visible_closed),
-        # DeadReckonLid(),
-        Depth(INITIAL_DEPTH, error=0.2),
+        Center(offset_closed, visible_closed, db=10),
+        MasterConcurrent(
+            Sequential(
+                Timer(15),
+                _Grab()),
+            RelativeToCurrentDepth(DESCEND_DEPTH, error=0.2),
+            ),
+        RelativeToInitialDepth(-LID_DEPTH_1, error=0.25),
+        Log('what'),
+        Yike()
+        # MasterConcurrent(
+        #     Timer(10),
+        #     RelativeToCurrentDepth(-LID_DEPTH),
+        #     VelocityY(0.2 * direction_closed())
+        # ),
+        # # DeadReckonLid(),
+        # Depth(INITIAL_DEPTH, error=0.2),
         # GrabVampireOpenCoffin()
     )
+
+Yike = lambda: \
+    Sequential(
+        MasterConcurrent(
+            Timer(10),
+            Sequential(Timed(RelativeToCurrentDepth(-LID_DEPTH), 3), RelativeToCurrentDepth(0)),
+            VelocityY(0.2 * direction_closed())
+        ),
+        # DeadReckonLid(),
+        Depth(INITIAL_DEPTH, error=0.2),)
+        # GrabVampireOpenCoffin())
 
 GrabCrucifix = lambda: \
     Sequential(
@@ -139,17 +186,16 @@ GrabCrucifix = lambda: \
         Search(visible_crucifix),
         Center(center_crucifix, visible_crucifix),
         Align(center_crucifix, angle_offset_crucifix, visible_crucifix),
-        Center(offset_crucifix, visible_crucifix),
+        Center(offset_crucifix, visible_crucifix, db=15),
         MasterConcurrent(
             Sequential(
-                Timer(5),
-                _Grab())
-            RelativeToInitialDepth(DESCEND_DEPTH, error=0.2),
+                Timer(15),
+                _Grab()),
+            RelativeToCurrentDepth(DESCEND_DEPTH, error=0.2),
             ),
         Depth(INITIAL_DEPTH, error=0.2),
-        Timeout(Consistent(visible_crucifix, count=1.5, total=2.0, invert=True, result=True), 5),
+        Timeout(Consistent(visible_crucifix, count=1.5, total=2.0, invert=True, result=True), 10),
     )
 
 
 
-# Move = MoveY(0.1, error=0.05)

@@ -5,11 +5,12 @@ from functools import reduce
 
 import cv2
 import numpy as np
+import time
 import shm
 
 from vision.modules.base import ModuleBase
 from vision.framework.color import bgr_to_lab, range_threshold
-from vision.framework.transform import elliptic_kernel, dilate, erode, rect_kernel
+from vision.framework.transform import elliptic_kernel, dilate, erode, rect_kernel, resize
 from vision.framework.feature import outer_contours, find_lines, contour_centroid, contour_area
 from vision.framework.draw import draw_line
 from vision.options import IntOption, DoubleOption
@@ -19,23 +20,24 @@ from vision.modules.gate import thresh_color_distance
 
 opts = [
         IntOption('yellow_l', 186, 0, 255),  # 224
-        IntOption('yellow_a', 144, 0, 255),
-        IntOption('yellow_b', 185, 0, 255),
+        IntOption('yellow_a', 130, 0, 255),
+        IntOption('yellow_b', 200, 0, 255),
         IntOption('purple_l', 39, 0, 255),  # 224
         IntOption('purple_a', 160, 0, 255),
         IntOption('purple_b', 80, 0, 255),
-        IntOption('yellow_color_distance', 50, 0, 255),
+        IntOption('yellow_color_distance', 20, 0, 255),
         IntOption('vampire_color_distance', 30, 0, 255),
         IntOption('contour_size_min', 1700, 0, 1000),
         IntOption('intersection_size_min', 20, 0, 1000),
-        IntOption('erode_kernel_size', 5, 0, 100),
-        IntOption('erode_iterations', 3, 0, 100),
-        IntOption('dilate_kernel_size', 5, 0, 100),
-        IntOption('dilate_iterations', 6, 0, 10),
+        IntOption('erode_kernel_size', 3, 0, 100),
+        IntOption('erode_iterations', 1, 0, 100),
+        IntOption('dilate_kernel_size', 3, 0, 100),
+        IntOption('dilate_iterations', 1, 0, 10),
         IntOption('line_thresh', 210, 0, 5000),
         IntOption('manipulator_angle', MANIPULATOR_ANGLE, 0, 359),
-        DoubleOption('rectangle_padding', 0.4, -1, 1),
+        DoubleOption('rectangle_padding', 0.7, -1, 1),
         DoubleOption('rectangularity_thresh', 0.8, 0, 1),
+        DoubleOption('manipulator_offset', 0.27, 0, 2),
 ]
 
 COLORSPACE = "lab"
@@ -43,9 +45,13 @@ COLORSPACE = "lab"
 
 class Vampire(ModuleBase):
     def process(self, mat):
+        t = time.perf_counter()
         self.post('org', mat)
+        mat = resize(mat, mat.shape[1]//2, mat.shape[0]//2)
         shm.recovery_vampire.cam_x.set(mat.shape[1]//2)
         shm.recovery_vampire.cam_y.set(mat.shape[0]//2)
+        # tt = time.perf_counter()
+        # print('1 %f' % (tt - t))
         # print(mat.shape)
         _, split = bgr_to_lab(mat)
         d = self.options['vampire_color_distance']
@@ -57,6 +63,8 @@ class Vampire(ModuleBase):
                                                 self.options['contour_size_min'],
                                                 self.options['rectangularity_thresh'],
                                                 -self.options['rectangle_padding'])
+        # t = time.perf_counter()
+        # print('2 %f' % (t - tt))
 
         for y in self.rectangles:
             rectangle = cv2.boxPoints(y['rectangle'])
@@ -68,28 +76,39 @@ class Vampire(ModuleBase):
         # purple_contours = self.contours_and_filter(purple, self.options['contour_size_min'])
         self.find_vampire(mat, split, color, d)
 
+        # tt = time.perf_counter()
+        # print('3 %f' % (tt-t))
+
         mat = cv2.drawContours(mat, [r['contour'] for r in self.rectangles], -1, (0, 255, 0), 10)
         # mat = cv2.drawContours(mat, purple_contours, -1, (0, 255, 0), 10)
         self.post('yellow_contours', mat)
+        # print('4 %f' % (time.perf_counter() - tt))
 
 
     def find_yellow_rectangle(self, split, color, distance, erode_kernel, erode_iterations,
                               dilate_kernel, dilate_iterations, min_contour_size,
                               min_rectangularity, padding_offset):
         # mask = thresh_color_distance(split, color, distance, use_first_channel=False)
+        # t = time.perf_counter()
         mask, _ = thresh_color_distance(split, color, distance, ignore_channels=[0])
         mask = erode(mask, rect_kernel(erode_kernel), iterations=erode_iterations)
         mask = dilate(mask, rect_kernel(dilate_kernel), iterations=dilate_iterations)
         self.post('mask', mask)
+        # tt = time.perf_counter()
+        # print('f %f' % (tt-t))
 
         contours = outer_contours(mask)
         contours = filter_contour_size(contours, min_contour_size)
+
+        # ttt = time.perf_counter()
+        # print('fo %f' % (ttt-tt))
 
         def box_area(contour):
             r = cv2.minAreaRect(contour)
             return r[1][0] * r[1][1]
 
         contours = filter_shapularity(box_area, contours, min_rectangularity)
+        # print('foo %f' % (time.perf_counter() - ttt))
 
         def rectangle_with_offset(contour, offset=padding_offset):
             r = cv2.minAreaRect(contour)
@@ -100,7 +119,7 @@ class Vampire(ModuleBase):
 
     def find_vampire(self, mat, split, color, distance):
         # mask = thresh_color_distance(split, color, distance)
-        mask, _ = thresh_color_distance(split, color, distance, ignore_channels=[0])
+        mask, _ = thresh_color_distance(split, color, distance, weights=[0.5, 2, 2])
         self.post('purple', mask)
         rects = self.intersect_rectangles(self.rectangles, mask, self.options['intersection_size_min'])
 
@@ -112,9 +131,11 @@ class Vampire(ModuleBase):
             shm.recovery_vampire.empty_visible.set(True)
             shm.recovery_vampire.empty_x.set(int(empty[0][0]))
             shm.recovery_vampire.empty_y.set(int(empty[0][1]))
+            shm.recovery_vampire.empty_offset_x.set(int(empty[0][0] + min(empty[1]) * 0.3))
+            shm.recovery_vampire.empty_offset_y.set(int(empty[0][1]))
             shm.recovery_vampire.empty_angle_offset.set(heading_sub_degrees(self.options['manipulator_angle'], align_angle))
             shm.recovery_vampire.empty_size.set(empty[1][0] * empty[1][1])
-            cv2.circle(mat, (int(empty[0][0]), int(empty[0][1])), 20, color=(255, 255, 255), thickness=-1)
+            cv2.circle(mat, (int(empty[0][0]), int(empty[0][1])), 5, color=(255, 255, 255), thickness=-1)
 
 
         opened = []
@@ -128,9 +149,9 @@ class Vampire(ModuleBase):
             purple_contours = outer_contours(purple)
 
             purple_center = contour_centroid(max(purple_contours, key=contour_area))
-            print(purple_center)
+            # print(purple_center)
 
-            align_angle = self.rectangles[i]['rectangle'][2] + 90 if self.rectangles[i]['rectangle'][1][1] > self.rectangles[i]['rectangle'][1][0] else self.rectangles[i]['rectangle'][2]
+            align_angle = self.rectangles[i]['rectangle'][2] if self.rectangles[i]['rectangle'][1][1] > self.rectangles[i]['rectangle'][1][0] else self.rectangles[i]['rectangle'][2] + 90
             align_angle = 360 + align_angle if align_angle < 0 else align_angle
 
             def point_in_rectangle(point, rect):
@@ -139,10 +160,10 @@ class Vampire(ModuleBase):
 
             if point_in_rectangle(purple_center, self.rectangles[i]['rectangle_org']) > 0:
                 color = (0, 0, 255)
-                opened.append({'center': purple_center, 'align': align_angle, 'size': self.rectangles[i]['rectangle'][1][0] * self.rectangles[i]['rectangle'][1][1]})
+                opened.append({'center': purple_center, 'align': align_angle, 'size': self.rectangles[i]['rectangle'][1][0] * self.rectangles[i]['rectangle'][1][1], 'offset': int(min(self.rectangles[i]['rectangle'][1]) * self.options['manipulator_offset'])})
             else:
                 color = (255, 0, 0)
-                closed.append({'center': purple_center, 'align': align_angle, 'size': self.rectangles[i]['rectangle'][1][0] * self.rectangles[i]['rectangle'][1][1]})
+                closed.append({'center': purple_center, 'align': align_angle, 'size': self.rectangles[i]['rectangle'][1][0] * self.rectangles[i]['rectangle'][1][1], 'offset': int(min(self.rectangles[i]['rectangle'][1]) * self.options['manipulator_offset']), 'direction': 1 if self.rectangles[i]['rectangle'][0][0] > purple_center[0] else -1})
 
             # cv2.circle(mat, purple_center, 20, color=color, thickness=-1)
             # draw_line(mat, *angle_to_line(self.options['manipulator_angle'], origin=purple_center), thickness=5)
@@ -153,13 +174,15 @@ class Vampire(ModuleBase):
 
 
         if opened:
-            cv2.circle(mat, opened['center'], 20, color=(0, 0, 255), thickness=-1)
+            cv2.circle(mat, opened['center'], 5, color=(0, 0, 255), thickness=-1)
             draw_line(mat, *angle_to_line(opened['align'], origin=opened['center']), color=(0, 0, 255), thickness=5)
             draw_line(mat, *angle_to_line(self.options['manipulator_angle'], origin=opened['center']), thickness=5)
-            print('nani %d' % opened['align'])
+            # print('nani %d' % opened['align'])
             shm.recovery_vampire.open_visible.set(True)
             shm.recovery_vampire.open_handle_x.set(opened['center'][0])
             shm.recovery_vampire.open_handle_y.set(opened['center'][1])
+            shm.recovery_vampire.open_offset_x.set(opened['center'][0] + opened['offset'])
+            shm.recovery_vampire.open_offset_y.set(opened['center'][1])
             shm.recovery_vampire.open_angle_offset.set(heading_sub_degrees(self.options['manipulator_angle'], opened['align']))
             shm.recovery_vampire.open_size.set(opened['size'])
         else:
@@ -167,11 +190,14 @@ class Vampire(ModuleBase):
         if closed:
             draw_line(mat, *angle_to_line(closed['align'], origin=closed['center']), color=(0, 255, 0), thickness=5)
             draw_line(mat, *angle_to_line(self.options['manipulator_angle'], origin=closed['center']), thickness=5)
-            print('what %d' % closed['align'])
-            cv2.circle(mat, closed['center'], 20, color=(0, 255, 0), thickness=-1)
+            # print('what %d' % closed['align'])
+            cv2.circle(mat, closed['center'], 5, color=(0, 255, 0), thickness=-1)
             shm.recovery_vampire.closed_visible.set(True)
             shm.recovery_vampire.closed_handle_x.set(closed['center'][0])
             shm.recovery_vampire.closed_handle_y.set(closed['center'][1])
+            shm.recovery_vampire.closed_handle_direction.set(closed['direction'])
+            shm.recovery_vampire.closed_offset_x.set(closed['center'][0] + closed['offset'])
+            shm.recovery_vampire.closed_offset_y.set(closed['center'][1])
             shm.recovery_vampire.closed_angle_offset.set(heading_sub_degrees(self.options['manipulator_angle'], closed['align']))
             shm.recovery_vampire.closed_size.set(closed['size'])
         else:
