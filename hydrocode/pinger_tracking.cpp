@@ -140,7 +140,7 @@ void computeHeading(triple_sample ping_phase, float frequency, float &heading, f
     }
     else
     {
-        heading = fmod(atan2(path_diff_1, -path_diff_2) * 180.0 / M_PI /*+ gx4_data.heading*/, 360.0);
+        heading = fmod(atan2(-path_diff_1, path_diff_2) * 180.0 / M_PI + gx4_data.heading, 360.0);
     }
     
     cos_elevation = sqrt((path_diff_1 * path_diff_1 + path_diff_2 * path_diff_2)) / nipple_distance;
