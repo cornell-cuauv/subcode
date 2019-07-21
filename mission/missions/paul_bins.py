@@ -8,11 +8,11 @@ from conf.vehicle import VEHICLE
 
 from mission.framework.combinators import Sequential, Concurrent, MasterConcurrent, Retry, Conditional, While, Either
 from mission.framework.helpers import get_downward_camera_center, ConsistencyCheck
-from mission.framework.movement import Depth, Heading, Pitch, VelocityX, VelocityY, RelativeToCurrentHeading
+from mission.framework.movement import Depth, Heading, Pitch, VelocityX, VelocityY, RelativeToCurrentHeading, RelativeToInitialHeading
 from mission.framework.position import PositionalControl
 from mission.framework.primitive import Zero, Log, FunctionTask, Fail, NoOp
 from mission.framework.search import SearchFor, VelocityTSearch, SwaySearch, PitchSearch, VelocitySwaySearch
-from mission.framework.targeting import DownwardTarget, PIDLoop, HeadingTarget
+from mission.framework.targeting import DownwardTarget, PIDLoop, HeadingTarget, ForwardTarget
 from mission.framework.task import Task
 from mission.framework.timing import Timer, Timed
 from mission.framework.jank import TrackMovementY, RestorePosY
@@ -65,6 +65,57 @@ def is_done(heading_vect, heading, pos, trg, dst, deadband):
     #print(vv)
     return vv
 
+
+#ForwardTarget(point=centerf, target=CAM_CENTER, px=px, py=py, dx=d, dy=d, deadband=(db,db))
+
+def PushLever():
+    def TargetLever(py):
+        return ForwardTarget(
+            point=lambda: (shm.bins_status.lever_x.get(), shm.bins_status.lever_y.get()),
+            #target=lambda: (0, .3 * min(100, shm.bins_status.lever_sz.get()) / 100),
+            target=(0, .15),
+            valid=shm.bins_status.lever_visible.get,
+            deadband=(DEADBAND, DEADBAND), px=1, py=py, ix=.05, iy=.05
+        )
+    return Sequential(
+        FunctionTask(VelocityX(.2)),
+        MasterConcurrent(
+            Consistent(lambda: shm.bins_status.lever_sz.get() > 30, count=.5, total=.75, invert=False, result=True),
+            While(lambda: TargetLever(1.5), lambda: True),
+            While(lambda: FunctionTask(
+                    VelocityX(.2 / (1 + 2 * (abs(shm.bins_status.lever_x.get()) + abs(shm.bins_status.lever_y.get()-.15))))
+                ), lambda: True)
+        ),
+        Log("Higher P"),
+        MasterConcurrent(
+            Consistent(lambda: shm.bins_status.lever_sz.get() > 100, count=.5, total=.75, invert=False, result=True),
+            While(lambda: TargetLever(.8), lambda: True),
+            While(lambda: FunctionTask(
+                    VelocityX(.2 / (1 + 2 * (abs(shm.bins_status.lever_x.get()) + abs(shm.bins_status.lever_y.get()-.15))))
+                ), lambda: True)
+        ),
+        #Log("targeting"),
+        #TargetLever(),
+        Log("zoom zoom"),
+        FunctionTask(VelocityX(1)),
+        Timer(3.5),
+        #Timed(
+        #    While(TargetLever, lambda: True),
+        #    5
+        #),
+        Timed(VelocityX(-.8), .5),
+        VelocityX(0),
+        Timer(2.5),
+        #RelativeToInitialHeading(0),
+        Timed(VelocityX(-.8), 1),
+        #RelativeToInitialHeading(0),
+        FunctionTask(VelocityX(0)),
+        Log("waiting"),
+        Timer(5),
+        #TargetLever()
+    )
+
+push_lever = PushLever()
 
 def PipeAlign(get_center, heading_vect, heading, get_visible, trg, dst, deadband): return Sequential(
     Log("PipeAlign start"),
@@ -139,7 +190,7 @@ def get_bat_center():
     return (shm.bins_status.bat_x.get(), shm.bins_status.bat_y.get())
 
 center_cover = lambda: PipeAlign(get_cover_center, get_cover_vect, lambda: vector_to_heading(get_cover_vect()), shm.bins_status.cover_visible.get, math.pi/2, 0, DEADBAND)
-center_wolf = lambda: PipeAlign(get_wolf_center, lambda: heading_to_vector(shm.bins_status.wolf_angle.get()), shm.bins_status.wolf_angle.get, shm.bins_status.wolf_visible.get, math.pi/2, 0, DEADBAND)
+center_wolf = lambda: PipeAlign(get_wolf_center, lambda: heading_to_vector(shm.bins_status.wolf_angle.get()), shm.bins_status.wolf_angle.get, shm.bins_status.wolf_visible.get, math.pi/2, -.2j, DEADBAND)
 center_bat = lambda: PipeAlign(get_bat_center, lambda: heading_to_vector(shm.bins_status.bat_angle.get()), shm.bins_status.bat_angle.get, shm.bins_status.bat_visible.get, math.pi/2, -.02-.15j, DEADBAND)
 
 cb = center_bat()
