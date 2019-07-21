@@ -19,7 +19,7 @@ shm.gate = shm.gate_vision
 
 # settings ####################################################################
 
-DEPTH_TARGET                              = 0.5
+DEPTH_TARGET                              = 0.3
 initial_approach_target_percent_of_screen = 0.35
 alignment_tolerance_fraction              = 0.05
 gate_width_threshold                      = 0.4
@@ -43,8 +43,17 @@ def biggest_gate_element():
         shm.gate.rightmost_len.get() if shm.gate.rightmost_visible.get() else 0
     ])
 
+def gate_elems():
+    if shm.gate.rightmost_visible.get():
+        return 3
+    if shm.gate.middle_visible.get():
+        return 2
+    if shm.gate.leftmost_visible.get():
+        return 1
+    return 0
+
 def can_see_all_gate_elements():
-    return shm.gate.rightmost_visible.get()
+    return gate_elems() == 3
 
 def is_aligned():
     if not can_see_all_gate_elements():
@@ -58,6 +67,15 @@ def is_aligned():
     return lbound <= l/r <= rbound
 
 # tasks #######################################################################
+
+class FinishIf(Task):
+    def on_run(self, task, condition, **kwargs):
+        success = condition()
+        if success:
+            self.finish(success=success)
+        else:
+            self.finished = False
+            task()
 
 rolly_roll = \
     Concurrent(
@@ -81,7 +99,7 @@ def focus_elem(elem_x):
     return HeadingTarget(
         point=[elem_x.get, 0],
         target=lambda: [shm.gate.img_width.get() / 2, 0],
-        px=0.2,
+        px=0.3,
         deadband=(20,1)
     )
 
@@ -89,6 +107,9 @@ focus_left = lambda: focus_elem(lambda: shm.gate.leftmost_x)
 focus_middle = lambda: focus_elem(lambda: shm.gate.middle_x)
 
 hold_depth = While(task_func=lambda: Depth(DEPTH_TARGET), condition=True)
+
+def show():
+    print(gate_elems())
 
 align_on_two_elem = \
     Sequential(
@@ -101,15 +122,18 @@ align_on_two_elem = \
                      Log('Targeting smallest'),
                      # pick the element that is smallest
                      focus_elem(lambda: shm.gate.leftmost_x
-                         if shm.gate.leftmost_len.get() < shm.gate.middle_len.get()
+                         if not shm.gate.middle_visible.get() or shm.gate.leftmost_len.get() < shm.gate.middle_len.get()
                          else shm.gate.middle_x),
                      VelocityX(-0.1),
+                     FunctionTask(show),
                      finite=False,
                  ),
                  condition=lambda: can_see_all_gate_elements()
              )
         ),
+        Log('Found all three elements'),
         Zero(),
+        finite=False
     )
 
 align_on_three_elem = \
@@ -123,20 +147,24 @@ align_on_three_elem = \
                     PIDLoop(
                         input_value=lambda: shm.gate.rightmost_len.get() / shm.gate.leftmost_len.get(),
                         target=1,
-                        px=0.03,
+                        p=0.005,
+                        db=0,
                         output_function=VelocityY()
                     ),
                     PIDLoop(
                         input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.rightmost_x.get()) / 2,
                         target=lambda: shm.gate.img_width.get() / 2,
-                        px=0.01,
+                        p=0.001,
+                        db=0,
                         output_function=RelativeToCurrentHeading()
                     ),
                     finite=False
                 ),
                 condition=lambda: can_see_all_gate_elements() and is_aligned()
             )
-        )
+        ),
+        Zero(),
+        finite=False
     )
 
 align_on_passageway = \
@@ -144,7 +172,7 @@ align_on_passageway = \
         PIDLoop(
             input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
             target=lambda: shm.gate.img_width.get() / 2,
-            px=1,
+            p=1,
             output_function=VelocityY()
         ),
     )
@@ -154,7 +182,7 @@ hold_on_passageway = \
         PIDLoop(
             input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
             target=shm.gate.img_width.get() / 2,
-            px=1,
+            p=1,
             output_function=VelocityY()
         ),
         condition=True
@@ -162,12 +190,9 @@ hold_on_passageway = \
 
 align_task = \
     Sequential(
-        While(
-            task_func=lambda: \
-                FunctionTask(lambda: align_on_two_elem() if not can_see_all_gate_elements() else align_on_three_elem())
-            condition=lambda: not is_aligned()
-        ),
-        align_on_passageway
+        Conditional(main_task=align_on_two_elem, on_success=align_on_three_elem, on_fail=Log('Aligning on two elements failed')),
+        #align_on_passageway
+        finite=False,
     )
 
 approach_passageway_task = \
@@ -231,19 +256,19 @@ gate = Sequential(
             Log('Approach to gate complete. Beginning alignment'),
             align_task,
 
-            Log('Approaching passageway'),
-            approach_passageway_task,
+            #Log('Approaching passageway'),
+            #approach_passageway_task,
 
-            Log('Pre Spin Charging...'),
-            Timed(VelocityX(0.5 if is_mainsub else 0.2), pre_spin_charge_dist),
+            #Log('Pre Spin Charging...'),
+            #Timed(VelocityX(0.5 if is_mainsub else 0.2), pre_spin_charge_dist),
 
-            Log('Spin Charging...'),
-            rolly_roll,
+            #Log('Spin Charging...'),
+            #rolly_roll,
 
-            Log('Post Spin Charging...'),
-            Timed(VelocityX(0.5 if is_mainsub else 0.2), post_spin_charge_dist),
+            #Log('Post Spin Charging...'),
+            #Timed(VelocityX(0.5 if is_mainsub else 0.2), post_spin_charge_dist),
 
-            Log('Through gate!')
+            #Log('Through gate!')
         )
     )
 )
