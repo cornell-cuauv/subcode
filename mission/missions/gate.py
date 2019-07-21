@@ -1,9 +1,9 @@
 from conf.vehicle import VEHICLE
 
 from mission.framework.combinators import Sequential, Concurrent, MasterConcurrent, While
-from mission.framework.movement import RelativeToInitialHeading, Depth, VelocityX, VelocityY, Roll, Heading
+from mission.framework.movement import RelativeToCurrentHeading, RelativeToInitialHeading, Depth, VelocityX, VelocityY, Roll, Heading
 from mission.framework.position import MoveX
-from mission.framework.primitive import Log, NoOp, FunctionTask
+from mission.framework.primitive import Log, NoOp, FunctionTask, Zero
 from mission.framework.targeting import PIDLoop, HeadingTarget, ForwardApproach
 from mission.framework.timing import Timed
 from mission.framework.task import Task
@@ -19,8 +19,8 @@ shm.gate = shm.gate_vision
 
 # settings ####################################################################
 
-DEPTH_TARGET                              = 1.0
-initial_approach_target_percent_of_screen = 0.45
+DEPTH_TARGET                              = 0.5
+initial_approach_target_percent_of_screen = 0.35
 alignment_tolerance_fraction              = 0.05
 gate_width_threshold                      = 0.4
 pre_spin_charge_dist                      = 16 if is_mainsub else 12
@@ -54,7 +54,7 @@ def is_aligned():
     db = alignment_tolerance_fraction
     lbound = 1/(1+db)
     rbound = 1+db
-    print('{} <= {} <= {}'.format(lbound, l/r, rbound))
+    # print('{} <= {} <= {}'.format(lbound, l/r, rbound))
     return lbound <= l/r <= rbound
 
 # tasks #######################################################################
@@ -77,6 +77,7 @@ rolly_roll = \
     )
 
 def focus_elem(elem_x):
+    elem_x = elem_x()
     return HeadingTarget(
         point=[elem_x.get, 0],
         target=lambda: [shm.gate.img_width.get() / 2, 0],
@@ -84,48 +85,65 @@ def focus_elem(elem_x):
         deadband=(20,1)
     )
 
-focus_left = lambda: focus_elem(shm.gate.leftmost_x)
-focus_middle = lambda: focus_elem(shm.gate.middle_x)
+focus_left = lambda: focus_elem(lambda: shm.gate.leftmost_x)
+focus_middle = lambda: focus_elem(lambda: shm.gate.middle_x)
 
 hold_depth = While(task_func=lambda: Depth(DEPTH_TARGET), condition=True)
 
 align_on_two_elem = \
-    ConsistentTask(MasterConcurrent(
-        # while we CAN NOT see all gates
-        While(task_func=lambda: NoOp(), condition=lambda: not can_see_all_gate_elements()),
-        # pick the element that is smallest
-        While(task_func=lambda: \
-            Sequential(
-                focus_elem(shm.gate.leftmost_x
-                    if shm.gate.leftmost_len.get() < shm.gate.middle_len.get()
-                    else shm.gate.middle_x),
-                VelocityX(-0.1),
-            ), condition=True)
-        , finite=False)
+    Sequential(
+        Log('Can see at least two elements (hopefully)'),
+        ConsistentTask(
+            # while we CAN NOT see all gates
+            # Note: While only consistently succeeds if the inner task finishes and the condition is true
+            FinishIf(
+                task=Concurrent(
+                     Log('Targeting smallest'),
+                     # pick the element that is smallest
+                     focus_elem(lambda: shm.gate.leftmost_x
+                         if shm.gate.leftmost_len.get() < shm.gate.middle_len.get()
+                         else shm.gate.middle_x),
+                     VelocityX(-0.1),
+                     finite=False,
+                 ),
+                 condition=lambda: can_see_all_gate_elements()
+             )
+        ),
+        Zero(),
     )
 
 align_on_three_elem = \
-    ConsistentTask(MasterConcurrent(
-        # while we CAN see all gates
-        While(NoOp, condition=lambda: can_see_all_gate_elements() and not is_aligned()),
-        PIDLoop(
-            input_value=lambda: shm.gate.leftmost_len.get() / shm.gate.rightmost_len.get(),
-            target=1,
-            output_function=VelocityY()
-        ),
-        HeadingTarget(
-            point=lambda: [(shm.gate.leftmost_x.get() + shm.gate.rightmost_x.get()) / 2, 0],
-            target=lambda: [shm.gate.img_width.get() / 2, 0],
-            px=0.3,
-            deadband=(0,1)
+    Sequential(
+        Log('Can see all three elements'),
+        ConsistentTask(
+            # while we CAN see all gates
+            FinishIf(
+                task=Concurrent(
+                    Log('Aligning normal to left and right'),
+                    PIDLoop(
+                        input_value=lambda: shm.gate.rightmost_len.get() / shm.gate.leftmost_len.get(),
+                        target=1,
+                        px=0.03,
+                        output_function=VelocityY()
+                    ),
+                    PIDLoop(
+                        input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.rightmost_x.get()) / 2,
+                        target=lambda: shm.gate.img_width.get() / 2,
+                        px=0.01,
+                        output_function=RelativeToCurrentHeading()
+                    ),
+                    finite=False
+                ),
+                condition=lambda: can_see_all_gate_elements() and is_aligned()
+            )
         )
-    ))
+    )
 
 align_on_passageway = \
     ConsistentTask(
         PIDLoop(
             input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
-            target=shm.gate.img_width.get() / 2,
+            target=lambda: shm.gate.img_width.get() / 2,
             px=1,
             output_function=VelocityY()
         ),
@@ -145,12 +163,8 @@ hold_on_passageway = \
 align_task = \
     Sequential(
         While(
-            task_func=lambda: Sequential(
-                Log('Can see at least two elements (hopefully)'),
-                align_on_two_elem,
-                Log('Can see all three elements'),
-                align_on_three_elem
-            ),
+            task_func=lambda: \
+                FunctionTask(lambda: align_on_two_elem() if not can_see_all_gate_elements() else align_on_three_elem())
             condition=lambda: not is_aligned()
         ),
         align_on_passageway
@@ -158,7 +172,7 @@ align_task = \
 
 approach_passageway_task = \
     MasterConcurrent(
-        While(NoOp, condition=shm.gate.middle_visible.get),
+            While(task_func=lambda: NoOp(), condition=shm.gate.middle_visible.get),
         VelocityX(0.3),
         hold_on_passageway
     )
@@ -203,7 +217,7 @@ gate = Sequential(
             ConsistentTask(focus_left()),
 
             Log('Forward Approach...'),
-            ConsistentTask(
+            ConsistentTask(MasterConcurrent(
                 PIDLoop(
                     input_value=lambda: shm.gate.leftmost_len.get() / shm.gate.img_height.get(),
                     target=initial_approach_target_percent_of_screen,
@@ -211,7 +225,8 @@ gate = Sequential(
                     p=3,
                     deadband=0.05
                 ),
-            ),
+                ConsistentTask(focus_left()),
+            )),
 
             Log('Approach to gate complete. Beginning alignment'),
             align_task,
@@ -232,3 +247,14 @@ gate = Sequential(
         )
     )
 )
+
+class FinishIf(Task):
+
+    def on_run(self, task, condition, **kwargs):
+        success = condition()
+        if success:
+            self.finish(success=success)
+        else:
+            self.finished = False
+            task()
+

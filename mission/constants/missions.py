@@ -1,14 +1,14 @@
 from collections import namedtuple
 
-# Gate = namedtuple('Gate', [
-#     'depth',
-#     'initial_approach_target_percent_of_screen',
-#     'gate_width_threshold',
-#     'alignment_tolerance_fraction',
-#     'pre_spin_charge_dist',
-#     'spin_charge_dist',
-#     'post_spin_charge_dist',
-# ])
+Gate = namedtuple('Gate', [
+    'depth',
+    'initial_approach_target_percent_of_screen',
+    'gate_width_threshold',
+    'alignment_tolerance_fraction',
+    'pre_spin_charge_dist',
+    'spin_charge_dist',
+    'post_spin_charge_dist',
+])
 
 #Path = namedtuple('Path', [
 #    'depth',

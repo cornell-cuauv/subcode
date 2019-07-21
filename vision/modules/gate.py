@@ -46,10 +46,10 @@ OPTS_AJAX = [
     options.IntOption('dilate_kernel', 7, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
     options.IntOption('s_dilate_kernel', 3, 0, 255),
-    options.IntOption('min_contour_area', 100, 0, 500),
+    options.IntOption('min_contour_area', 80, 0, 500),
     options.DoubleOption('min_contour_rect', 0.75, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
-    options.DoubleOption('min_length', 30, 0, 500),
+    options.DoubleOption('min_length', 15, 0, 500),
     options.BoolOption('debug', True),
 ]
 
@@ -113,7 +113,7 @@ class Gate(ModuleBase):
         threshed, dists = thresh_color_distance([s_channel, lab_split[1], lab_split[2]],
                                                 [self.options['hsv_s_ref'], self.options['lab_a_ref'],
                                                      self.options['lab_b_ref']],
-                                         self.options['color_dist_thresh'], ignore_channels=[], weights=[2, 35, 5])
+                                         self.options['color_dist_thresh'], ignore_channels=[0], weights=[2, 35, 5])
         if self.options['debug']:
             self.post('threshed', threshed)
             self.post('dists', dists)
