@@ -83,6 +83,25 @@ def thresh_color_distance(split, color, distance, auto_distance_percentile=None,
     return range_threshold(dists, 0, distance), np.uint8(np.sqrt(dists))
 
 
+def filter_duplicates_sorted_by_x(contour_feats):
+    MIN_DIST_BETWEEN_PIPES = 30
+    res = []
+    last_x = -MIN_DIST_BETWEEN_PIPES
+    last_len = 0
+    for c in contour_feats:
+        if c.x - last_x > MIN_DIST_BETWEEN_PIPES:
+            last_x = c.x
+            last_len = c.length
+            res.append(c)
+        elif last_len < c.length:
+            last_x = c.x
+            last_len = c.length
+            if res:
+                res.pop(-1)
+            res.append(c)
+    return res
+
+
 class Gate(ModuleBase):
 
     def __init__(self, *args, **kwargs):
@@ -155,6 +174,7 @@ class Gate(ModuleBase):
         self.post_contours('rect', h, w, contours)
         contours = sorted(contours, key=lambda c: c.area)[:3]
         contours_by_x = sorted(contours, key=lambda c: c.x)
+        contours_by_x = filter_duplicates_sorted_by_x(contours_by_x)
         leftmost = try_index(contours_by_x, 0)
         middle = try_index(contours_by_x, 1)
         rightmost = try_index(contours_by_x, 2)
