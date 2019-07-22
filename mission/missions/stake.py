@@ -298,7 +298,7 @@ def DeadReckonLever():
             _DeadReckonLever(),
             Backup(),
             ApproachAlign(),
-            Timeout(Consistent(lambda: shm.torpedoes_stake.lever_finished.get(), count=1.5, total=2.0, invert=False, result=True), 5)), attempts=2)
+            Timeout(Consistent(lambda: shm.torpedoes_stake.lever_finished.get(), count=1.5, total=2.0, invert=False, result=True), 10)), attempts=2)
 
 
 ALIGN_SIZE = 27000

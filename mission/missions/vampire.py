@@ -122,8 +122,9 @@ GrabVampireOpenCoffin = lambda: \
                 _Grab()),
             RelativeToCurrentDepth(DESCEND_DEPTH, error=0.2),
             ),
-        Depth(INITIAL_DEPTH),
+        Depth(SEARCH_DEPTH),
         markers.go_to('before_grab'),
+        markers.unset('before_grab'),
         Timeout(Consistent(visible_open, count=1.5, total=2.0, invert=False, result=True), 10),
         # Grab(),  # ???
         Depth(0),
@@ -174,8 +175,8 @@ Yike = lambda: \
             VelocityY(0.2 * direction_closed())
         ),
         Timed(VelocityY(0.3), 3),
-        markers.go_to('before_grab'),
         Depth(SEARCH_DEPTH, error=0.2),
+        markers.go_to('before_grab'),
         Timeout(Consistent(visible_open, count=1.5, total=2.0, invert=False, result=True), 10),
         Log('Opened Coffin Successfully'),
         markers.unset('before_grab'),
@@ -183,8 +184,11 @@ Yike = lambda: \
 
 
 
-MarkerSetTest = lambda: markers.set('test')
+MarkerTest = lambda: \
+    Sequential(
+        markers.set('test'),
+        Timer(10),
+        markers.go_to('test'))
 
-MarkerGoToTest = lambda: markers.go_to('test')
 
 
