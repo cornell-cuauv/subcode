@@ -12,20 +12,21 @@ from mission.framework.actuators import FireActuator, SetActuators
 from mission.missions.will_common import Consistent
 from mission.missions.attilus_garbage import PIDHeading
 
-INITIAL_DEPTH_TEAGLE=1.8
+INITIAL_DEPTH_TEAGLE = 1.8
 DEPTH_TEAGLE = 2.5
+SEARCH_DEPTH_TEAGLE = 1
 INITIAL_DEPTH_TRANSDECK = None
 DEPTH_TRANSDECK = None
+SEARCH_DEPTH_TRANSDECK = None
 
 INITIAL_DEPTH = INITIAL_DEPTH_TEAGLE
+SEARCH_DEPTH = SEARCH_DEPTH_TEAGLE
 DEPTH = DEPTH_TEAGLE
 DESCEND_DEPTH = .3
 
 SIZE_THRESH = 9000
 
-# TODO: FIX THIS SKETCHY GARBAGE
-# CAM_CENTER = shm.recovery_vampire.cam_x.get(), shm.recovery_vampire.cam_y.get()
-CAM_CENTER = shm.recovery_crucifix.cam_x.get(), shm.recovery_crucifix.cam_y.get()
+CAM_CENTER = shm.recovery_vampire.cam_x.get(), shm.recovery_vampire.cam_y.get()
 
 # TODO: Search Depth
 # TODO: Search Empty Circle After Grab
@@ -58,26 +59,16 @@ def center_empty():
     return (shm.recovery_vampire.empty_x.get(), shm.recovery_vampire.empty_y.get())
 
 
-def visible_crucifix():
-    return shm.recovery_crucifix.visible.get()
-def center_crucifix():
-    return (shm.recovery_crucifix.center_x.get(), shm.recovery_crucifix.center_y.get())
-def offset_crucifix():
-    return (shm.recovery_crucifix.offset_x.get(), shm.recovery_crucifix.offset_y.get())
-def angle_offset_crucifix():
-    return shm.recovery_crucifix.angle_offset.get()
-def size_crucifix():
-    return shm.recovery_crucifix.size.get()
-
-
 Search = lambda visiblef: Sequential(  # TODO: TIMEOUT?
             Log('Searching'),
+            Depth(SEARCH_DEPTH, error=0.2),
             SearchFor(
                 SpiralSearch(),
                 visiblef,
                 consistent_frames=(15, 19)
             ),
-            Zero())
+            Zero(),
+            Depth(INITIAL_DEPTH, error=0.2))
 
 close_to = lambda point1, point2, dbx=20, dby=20: abs(point1[0]-point2[0]) < dbx and abs(point1[1]-point2[1]) < dby
 
@@ -124,7 +115,6 @@ DeadReckonLid = lambda: None
 
 GrabVampireOpenCoffin = lambda: \
     Sequential(
-        Depth(INITIAL_DEPTH, error=0.2),
         Search(visible_open),
         Center(center_open, visible_open, db=20),
         Align(centerf=center_open, anglef=angle_offset_open, visiblef=visible_open),
@@ -151,7 +141,6 @@ def record_depth():
 
 GrabVampireClosedCoffin = lambda: \
     Sequential(
-        Depth(INITIAL_DEPTH, error=0.2),
         Search(visible_closed),
         Center(center_closed, visible_closed),
         Align(center_closed, angle_offset_closed, visible_closed),
@@ -182,26 +171,11 @@ Yike = lambda: \
             Sequential(Timed(RelativeToCurrentDepth(-LID_DEPTH), 4), RelativeToCurrentDepth(0)),
             VelocityY(0.2 * direction_closed())
         ),
-        # DeadReckonLid(),
-        Depth(INITIAL_DEPTH, error=0.2),)
-        # GrabVampireOpenCoffin())
+        Timed(VelocityY(-0.2 * direction_closed())),
+        Depth(SEARCH_DEPTH, error=0.2),
+        Timeout(Consistent(visible_open, count=1.5, total=2.0, invert=True, result=True), 10),
+        Log('Opened Coffin Successfully? Wait this isn't possible'))
 
-GrabCrucifix = lambda: \
-    Sequential(
-        Depth(INITIAL_DEPTH, error=0.2),
-        Search(visible_crucifix),
-        Center(center_crucifix, visible_crucifix),
-        Align(center_crucifix, angle_offset_crucifix, visible_crucifix),
-        Center(offset_crucifix, visible_crucifix, db=10),
-        MasterConcurrent(
-            Sequential(
-                Timer(15),
-                _Grab()),
-            RelativeToCurrentDepth(DESCEND_DEPTH, error=0.2),
-            ),
-        Depth(INITIAL_DEPTH, error=0.2),
-        Timeout(Consistent(visible_crucifix, count=1.5, total=2.0, invert=True, result=True), 10),
-    )
 
 RandomCenter = lambda: \
         Center(center_empty, visible_closed)

@@ -163,7 +163,8 @@ class Vampire(ModuleBase):
                 opened.append({'center': purple_center, 'align': align_angle, 'size': self.rectangles[i]['rectangle'][1][0] * self.rectangles[i]['rectangle'][1][1], 'offset': int(min(self.rectangles[i]['rectangle'][1]) * self.options['manipulator_offset'])})
             else:
                 color = (255, 0, 0)
-                closed.append({'center': purple_center, 'align': align_angle, 'size': self.rectangles[i]['rectangle'][1][0] * self.rectangles[i]['rectangle'][1][1], 'offset': int(min(self.rectangles[i]['rectangle'][1]) * self.options['manipulator_offset']), 'direction': 1 if self.rectangles[i]['rectangle'][0][0] > purple_center[0] else -1})
+                direction = 1 if self.rectangles[i]['rectangle'][0][0] > purple_center[0] else -1
+                closed.append({'center': purple_center, 'align': ((align_angle + 180) % 360) if direction == 1 else align_angle, 'size': self.rectangles[i]['rectangle'][1][0] * self.rectangles[i]['rectangle'][1][1], 'offset': int(min(self.rectangles[i]['rectangle'][1]) * self.options['manipulator_offset']), 'direction': direction})
 
             # cv2.circle(mat, purple_center, 20, color=color, thickness=-1)
             # draw_line(mat, *angle_to_line(self.options['manipulator_angle'], origin=purple_center), thickness=5)
