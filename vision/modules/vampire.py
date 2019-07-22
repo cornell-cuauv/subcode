@@ -133,7 +133,7 @@ class Vampire(ModuleBase):
             shm.recovery_vampire.empty_visible.set(True)
             shm.recovery_vampire.empty_x.set(int(empty[0][0]))
             shm.recovery_vampire.empty_y.set(int(empty[0][1]))
-            shm.recovery_vampire.empty_offset_x.set(int(empty[0][0] + min(empty[1]) * 0.3))
+            shm.recovery_vampire.empty_offset_x.set(int(empty[0][0] + min(empty[1]) * self.options['open_offset']))
             shm.recovery_vampire.empty_offset_y.set(int(empty[0][1]))
             shm.recovery_vampire.empty_angle_offset.set(heading_sub_degrees(self.options['manipulator_angle'], align_angle))
             shm.recovery_vampire.empty_size.set(empty[1][0] * empty[1][1])

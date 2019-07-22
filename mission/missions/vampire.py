@@ -10,7 +10,7 @@ from mission.framework.timing import Timeout, Timer, Timed
 from mission.framework.actuators import FireActuator, SetActuators
 
 from mission.missions.will_common import Consistent
-from mission.missions.attilus_garbage import PIDHeading
+from mission.missions.attilus_garbage import PIDHeading, PositionMarkers
 
 INITIAL_DEPTH_TEAGLE = 1.8
 DEPTH_TEAGLE = 2.5
@@ -27,6 +27,8 @@ DESCEND_DEPTH = .3
 SIZE_THRESH = 9000
 
 CAM_CENTER = shm.recovery_vampire.cam_x.get(), shm.recovery_vampire.cam_y.get()
+
+markers = PositionMarkers()
 
 # TODO: Search Depth
 # TODO: Search Empty Circle After Grab
@@ -61,9 +63,11 @@ def center_empty():
 
 Search = lambda visiblef: Sequential(  # TODO: TIMEOUT?
             Log('Searching'),
-            Depth(SEARCH_DEPTH, error=0.2),
             SearchFor(
-                SpiralSearch(),
+                Sequential(
+                    Depth(SEARCH_DEPTH, error=0.2),
+                    SpiralSearch(),
+                ),
                 visiblef,
                 consistent_frames=(15, 19)
             ),
@@ -80,12 +84,12 @@ Center = lambda centerf, visiblef, db=15, px=0.001, py=0.001, dx=0.00005, dy=0.0
                 While(lambda: DownwardTarget(point=centerf, target=CAM_CENTER, deadband=(0, 0), px=px, py=py), True),
                 AlwaysLog(lambda: 'center = {}, target = {}'.format(centerf(), CAM_CENTER))))
 
-Descend = lambda depth=DEPTH, db=0.1, size_thresh=SIZE_THRESH: Sequential(  # TODO: FIND THE ACTUAL DEPTH1!!
-            Log('Descent into Madness'),
-            MasterConcurrent(  # TODO: TIMEOUT
-                Consistent(lambda: abs(shm.kalman.depth.get() - depth) < db or size() > size_thresh, count=2.3, total=3, invert=False, result=True),
-                Depth(depth)),  # TODO: BigDepth?
-            Zero())
+# Descend = lambda depth=DEPTH, db=0.1, size_thresh=SIZE_THRESH: Sequential(  # TODO: FIND THE ACTUAL DEPTH1!!
+#             Log('Descent into Madness'),
+#             MasterConcurrent(  # TODO: TIMEOUT
+#                 Consistent(lambda: abs(shm.kalman.depth.get() - depth) < db or size() > size_thresh, count=2.3, total=3, invert=False, result=True),
+#                 Depth(depth)),  # TODO: BigDepth?
+#             Zero())
 
 close_to = lambda point1, point2, db=20: abs(point1[0]-point2[0]) < db and abs(point1[1]-point2[1]) < db
 
@@ -105,18 +109,11 @@ _Release = lambda: Sequential(
                     Timer(0.3),
                     SetActuators(off_triggers=['manipulator_release']))
 
-Grab = lambda: Sequential(
-            MoveY(-0.1),
-            Timeout(RelativeToInitialDepth(0.5), 20),
-            FireActuator(),  # TODO
-            )
-
-DeadReckonLid = lambda: None
-
 GrabVampireOpenCoffin = lambda: \
     Sequential(
         Search(visible_open),
         Center(center_open, visible_open, db=20),
+        markers.set('before_grab'),
         Align(centerf=center_open, anglef=angle_offset_open, visiblef=visible_open),
         Center(offset_open, visible_open, db=10),
         MasterConcurrent(
@@ -125,8 +122,12 @@ GrabVampireOpenCoffin = lambda: \
                 _Grab()),
             RelativeToCurrentDepth(DESCEND_DEPTH, error=0.2),
             ),
+        Depth(INITIAL_DEPTH),
+        markers.go_to('before_grab'),
+        Timeout(Consistent(visible_open, count=1.5, total=2.0, invert=False, result=True), 10),
         # Grab(),  # ???
         Depth(0),
+        _Release(),
         # Release???
     )
 
@@ -143,6 +144,7 @@ GrabVampireClosedCoffin = lambda: \
     Sequential(
         Search(visible_closed),
         Center(center_closed, visible_closed),
+        markers.set('before_grab'),
         Align(center_closed, angle_offset_closed, visible_closed),
         Center(offset_closed, visible_closed, db=10),
         MasterConcurrent(
@@ -153,7 +155,8 @@ GrabVampireClosedCoffin = lambda: \
             ),
         RelativeToInitialDepth(-LID_DEPTH_1, error=0.25),
         Log('what'),
-        Conditional(Yike(), on_fail=Fail(_Release()))
+        Conditional(Yike(), on_fail=Fail(_Release())),
+        GrabVampireOpenCoffin()
         # MasterConcurrent(
         #     Timer(10),
         #     RelativeToCurrentDepth(-LID_DEPTH),
@@ -171,15 +174,17 @@ Yike = lambda: \
             VelocityY(0.2 * direction_closed())
         ),
         Timed(VelocityY(0.3), 3),
-        Timed(VelocityY(-0.2 * direction_closed()), 10),
-        VelocityY(0, error=100),
+        markers.go_to('before_grab'),
         Depth(SEARCH_DEPTH, error=0.2),
-        Timeout(Consistent(visible_open, count=1.5, total=2.0, invert=True, result=True), 10),
-        Log('Opened Coffin Successfully? Wait this isnt possible'))
+        Timeout(Consistent(visible_open, count=1.5, total=2.0, invert=False, result=True), 10),
+        Log('Opened Coffin Successfully'),
+        markers.unset('before_grab'),
+        )
 
 
-RandomCenter = lambda: \
-        Center(center_empty, visible_closed)
 
+MarkerSetTest = lambda: markers.set('test')
+
+MarkerGoToTest = lambda: markers.go_to('test')
 
 
