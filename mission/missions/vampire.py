@@ -24,8 +24,11 @@ DESCEND_DEPTH = .3
 SIZE_THRESH = 9000
 
 # TODO: FIX THIS SKETCHY GARBAGE
-CAM_CENTER = shm.recovery_vampire.cam_x.get(), shm.recovery_vampire.cam_y.get()
-# CAM_CENTER = shm.recovery_crucifix.cam_x.get(), shm.recovery_crucifix.cam_y.get()
+# CAM_CENTER = shm.recovery_vampire.cam_x.get(), shm.recovery_vampire.cam_y.get()
+CAM_CENTER = shm.recovery_crucifix.cam_x.get(), shm.recovery_crucifix.cam_y.get()
+
+# TODO: Search Depth
+# TODO: Search Empty Circle After Grab
 
 def visible_closed():
     return shm.recovery_vampire.closed_visible.get()
@@ -50,6 +53,9 @@ def angle_offset_open():
     return shm.recovery_vampire.open_angle_offset.get()
 def size_open():
     return shm.recovery_vampire.open_size.get()
+
+def center_empty():
+    return (shm.recovery_vampire.empty_x.get(), shm.recovery_vampire.empty_y.get())
 
 
 def visible_crucifix():
@@ -173,7 +179,7 @@ Yike = lambda: \
     Sequential(
         MasterConcurrent(
             Timer(10),
-            Sequential(Timed(RelativeToCurrentDepth(-LID_DEPTH), 3), RelativeToCurrentDepth(0)),
+            Sequential(Timed(RelativeToCurrentDepth(-LID_DEPTH), 4), RelativeToCurrentDepth(0)),
             VelocityY(0.2 * direction_closed())
         ),
         # DeadReckonLid(),
@@ -186,7 +192,7 @@ GrabCrucifix = lambda: \
         Search(visible_crucifix),
         Center(center_crucifix, visible_crucifix),
         Align(center_crucifix, angle_offset_crucifix, visible_crucifix),
-        Center(offset_crucifix, visible_crucifix, db=15),
+        Center(offset_crucifix, visible_crucifix, db=10),
         MasterConcurrent(
             Sequential(
                 Timer(15),
@@ -196,6 +202,9 @@ GrabCrucifix = lambda: \
         Depth(INITIAL_DEPTH, error=0.2),
         Timeout(Consistent(visible_crucifix, count=1.5, total=2.0, invert=True, result=True), 10),
     )
+
+RandomCenter = lambda: \
+        Center(center_empty, visible_closed)
 
 
 

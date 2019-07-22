@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
+import sys
 import shm
 import cv2
 import numpy as np
 from collections import namedtuple
 
-from conf.vehicle import VEHICLE
+from conf.vehicle import VEHICLE, is_mainsub
 from vision import options
 from vision.modules.base import ModuleBase
 from vision.framework.feature import outer_contours, contour_area, contour_centroid, min_enclosing_circle, min_enclosing_rect
 from vision.framework.transform import resize, simple_gaussian_blur, morph_remove_noise, morph_close_holes, dilate, erode, rect_kernel
 from vision.framework.helpers import to_umat, to_odd
-from vision.framework.color import bgr_to_lab, bgr_to_hsv, range_threshold
+from vision.framework.color import bgr_to_lab, range_threshold
 from vision.framework.draw import draw_contours, draw_circle, draw_text
 
 OPTS_ODYSSEUS = [
     options.IntOption('lab_l_ref', 180, 0, 255),
     options.IntOption('lab_a_ref', 196, 0, 255),
     options.IntOption('lab_b_ref', 139, 0, 255),
-    options.IntOption('hsv_s_ref', 200, 0, 255),
     options.IntOption('color_dist_thresh', 65, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
@@ -25,11 +25,11 @@ OPTS_ODYSSEUS = [
     options.DoubleOption('resize_height_scale', 0.5, 0, 1),
     options.IntOption('dilate_kernel', 7, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
-    options.IntOption('s_dilate_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 80, 0, 500),
     options.DoubleOption('min_contour_rect', 0.6, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
+    options.IntOption('auto_distance_percentile', 15, 0, 100),
     options.BoolOption('debug', True),
 ]
 
@@ -37,7 +37,6 @@ OPTS_AJAX = [
     options.IntOption('lab_l_ref', 178, 0, 255),
     options.IntOption('lab_a_ref', 182, 0, 255),
     options.IntOption('lab_b_ref', 115, 0, 255),
-    options.IntOption('hsv_s_ref', 188, 0, 255),
     options.IntOption('color_dist_thresh', 50, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
@@ -45,13 +44,16 @@ OPTS_AJAX = [
     options.DoubleOption('resize_height_scale', 0.25, 0, 1),
     options.IntOption('dilate_kernel', 7, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
-    options.IntOption('s_dilate_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 80, 0, 500),
     options.DoubleOption('min_contour_rect', 0.75, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
+    options.IntOption('auto_distance_percentile', 15, 0, 100),
     options.BoolOption('debug', True),
 ]
+
+
+CUTOFF_SCALAR = 18 if is_mainsub else 17
 
 
 ContourFeats = namedtuple('ContourFeats', ['contour', 'area', 'x', 'y', 'rect', 'angle', 'length'])
@@ -63,7 +65,7 @@ def try_index(arr, idx):
     return None
 
 
-def thresh_color_distance(split, color, distance, ignore_channels=[], weights=[1, 1, 1]):
+def thresh_color_distance(split, color, distance, auto_distance_percentile=None, ignore_channels=[], weights=[1, 1, 1]):
     for idx in ignore_channels:
         weights[idx] = 0
     weights /= np.linalg.norm(weights)
@@ -72,7 +74,12 @@ def thresh_color_distance(split, color, distance, ignore_channels=[], weights=[1
         if i in ignore_channels:
             continue
         dists += weights[i] * (np.float32(split[i]) - color[i])**2
-    return range_threshold(dists, 0, distance**2), np.uint8(np.sqrt(dists))
+    if auto_distance_percentile:
+        distance = min(np.percentile(dists, auto_distance_percentile), distance**2)
+        print('Auto distance: {:.2f}'.format(distance))
+    else:
+        distance = distance**2
+    return range_threshold(dists, 0, distance), np.uint8(np.sqrt(dists))
 
 
 class Gate(ModuleBase):
@@ -97,7 +104,7 @@ class Gate(ModuleBase):
         mat = resize(mats[0], w, h)
         # Tuned for a 320x256 image
         vehicle_depth = shm.kalman.depth.get()
-        reflection_cutoff = min(h, int(max(0, 3 - vehicle_depth)**2 * 17))
+        reflection_cutoff = min(h, int(max(0, 3 - vehicle_depth)**2 * CUTOFF_SCALAR))
         mat[:reflection_cutoff] *= 0
         tmp = mat.copy()
         draw_text(tmp, 'Depth: {:.2f}'.format(vehicle_depth), (30, 30), 0.5, color=(255, 255, 255))
@@ -106,14 +113,11 @@ class Gate(ModuleBase):
         mat = simple_gaussian_blur(mat, to_odd(self.options['blur_kernel']),
                                    self.options['blur_std'])
         lab, lab_split = bgr_to_lab(mat)
-        hsv, hsv_split = bgr_to_hsv(mat)
-        s_channel = dilate(hsv_split[1], rect_kernel(self.options['s_dilate_kernel']))
-        if self.options['debug']:
-            self.post('s', s_channel)
-        threshed, dists = thresh_color_distance([s_channel, lab_split[1], lab_split[2]],
-                                                [self.options['hsv_s_ref'], self.options['lab_a_ref'],
+        threshed, dists = thresh_color_distance([lab_split[0], lab_split[1], lab_split[2]],
+                                                [self.options['lab_l_ref'], self.options['lab_a_ref'],
                                                      self.options['lab_b_ref']],
-                                         self.options['color_dist_thresh'], ignore_channels=[0], weights=[2, 35, 5])
+                                         self.options['color_dist_thresh'], auto_distance_percentile=self.options['auto_distance_percentile'],
+                                         ignore_channels=([0]), weights=[2, 45, 5])
         if self.options['debug']:
             self.post('threshed', threshed)
             self.post('dists', dists)

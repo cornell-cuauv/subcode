@@ -50,7 +50,7 @@ garlic_crucifix_opts = [
         IntOption('crucifix_erode_iterations', 4, 1, 50),
         IntOption('crucifix_dilate_iterations', 1, 1, 50),
         IntOption('crucifix_size_min', 100, 0, 1000),
-        DoubleOption('crucifix_offset_x', 1.3, 0, 10),
+        DoubleOption('crucifix_offset_x', 1.29, 0, 10),
 ]
 
 KMEANS_ITER = 5
