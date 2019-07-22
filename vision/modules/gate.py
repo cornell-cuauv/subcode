@@ -10,15 +10,15 @@ from vision import options
 from vision.modules.base import ModuleBase
 from vision.framework.feature import outer_contours, contour_area, contour_centroid, min_enclosing_circle, min_enclosing_rect
 from vision.framework.transform import resize, simple_gaussian_blur, morph_remove_noise, morph_close_holes, dilate, erode, rect_kernel
-from vision.framework.helpers import to_umat, to_odd
-from vision.framework.color import bgr_to_lab, range_threshold
+from vision.framework.helpers import to_umat, from_umat, to_odd
+from vision.framework.color import bgr_to_lab, gray_to_bgr, range_threshold
 from vision.framework.draw import draw_contours, draw_circle, draw_text
 
 OPTS_ODYSSEUS = [
     options.IntOption('lab_l_ref', 180, 0, 255),
     options.IntOption('lab_a_ref', 196, 0, 255),
     options.IntOption('lab_b_ref', 139, 0, 255),
-    options.IntOption('color_dist_thresh', 65, 0, 255),
+    options.IntOption('color_dist_thresh', 55, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.5, 0, 1),
@@ -30,6 +30,7 @@ OPTS_ODYSSEUS = [
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
+    options.IntOption('nonblack_thresh', 90, 0, 255),
     options.BoolOption('debug', True),
 ]
 
@@ -49,6 +50,7 @@ OPTS_AJAX = [
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
+    options.IntOption('nonblack_thresh', 90, 0, 255),
     options.BoolOption('debug', True),
 ]
 
@@ -109,6 +111,10 @@ class Gate(ModuleBase):
         tmp = mat.copy()
         draw_text(tmp, 'Depth: {:.2f}'.format(vehicle_depth), (30, 30), 0.5, color=(255, 255, 255))
         self.post('mat', tmp)
+        rgb_split = cv2.split(np.float32(mat))
+        nonblack_mask, _ = gray_to_bgr(np.uint8(255 * ((rgb_split[0]**2 + rgb_split[1]**2 + rgb_split[2]**2) > 3 * self.options['nonblack_thresh']**2)))
+        self.post('nonblack', nonblack_mask)
+        mat &= nonblack_mask
         mat = to_umat(mat)
         mat = simple_gaussian_blur(mat, to_odd(self.options['blur_kernel']),
                                    self.options['blur_std'])
