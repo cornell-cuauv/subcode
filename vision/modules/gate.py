@@ -26,11 +26,11 @@ OPTS_ODYSSEUS = [
     options.IntOption('dilate_kernel', 7, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 80, 0, 500),
-    options.DoubleOption('min_contour_rect', 0.6, 0, 1),
+    options.DoubleOption('min_contour_rect', 0.4, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
-    options.IntOption('nonblack_thresh', 50, 0, 255),
+    options.IntOption('nonblack_thresh', 70, 0, 255),
     options.BoolOption('debug', True),
 ]
 
@@ -46,7 +46,7 @@ OPTS_AJAX = [
     options.IntOption('dilate_kernel', 7, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 80, 0, 500),
-    options.DoubleOption('min_contour_rect', 0.75, 0, 1),
+    options.DoubleOption('min_contour_rect', 0.4, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
@@ -110,8 +110,8 @@ class Gate(ModuleBase):
         tmp = mat.copy()
         draw_text(tmp, 'Depth: {:.2f}'.format(vehicle_depth), (30, 30), 0.5, color=(255, 255, 255))
         self.post('mat', tmp)
-        rgb_split = cv2.split(np.float32(mat))
-        nonblack_mask, _ = gray_to_bgr(np.uint8(255 * ((rgb_split[0]**2 + rgb_split[1]**2 + rgb_split[2]**2) > 3 * self.options['nonblack_thresh']**2)))
+        lab, lab_split = bgr_to_lab(mat)
+        nonblack_mask, _ = gray_to_bgr(np.uint8(255 * (lab_split[0] > self.options['nonblack_thresh'])))
         self.post('nonblack', nonblack_mask)
         mat &= nonblack_mask
         mat = to_umat(mat)
