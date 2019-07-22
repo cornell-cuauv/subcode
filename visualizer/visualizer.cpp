@@ -488,6 +488,7 @@ void handle_mouse_move(GLFWwindow *window, double x, double y) {
 
 Light light1;
 Light light2;
+Light light3;
 void update_transformations() {
   for (const auto &object : scene_objects) {
     object->update_transformation();
@@ -514,6 +515,7 @@ void update_transformations() {
   sub_pos.z = 0;
   light1.position = glm::vec3(-1, 1, -11) + sub_pos;
   light2.position = glm::vec3(1, -1, -11) + sub_pos;
+  light3.position = glm::vec3(0, 0, -7);
 }
 
 bool done = false;
@@ -989,6 +991,7 @@ int main(int argc, char **argv) {
 
   add_light(&light1);
   add_light(&light2);
+  add_light(&light3);
 
   for (auto &point_manager : point_managers) {
     point_manager->start_update_thread();
