@@ -334,6 +334,10 @@ class BinsImage(ModuleBase):
         if des2 is None:
             print('No points found')
             return
+        dg = des2.get()
+        if dg is None:
+            print('No points found')
+            return
         #cv2.UMat(des2, [0, 1, 2])
         #print(dir(des2))
         #print(des2.get([0, 1, 2]))
@@ -347,7 +351,7 @@ class BinsImage(ModuleBase):
         #print([x.pt for x in kp2])
         idxs = [i for (i, x) in enumerate(kp2) if (0 < x.pt[1] < target_area.shape[0]) and (0 < x.pt[0] < target_area.shape[1]) and target_area[int(x.pt[1]), int(x.pt[0])]]
         kp2 = [kp2[i] for i in idxs]
-        des2 = cv2.UMat(des2.get()[idxs])
+        des2 = cv2.UMat(dg[idxs])
         #print(kp2[0].pt)
         cam = {"img": img2, "kp": kp2, "des": des2}
 
@@ -371,6 +375,7 @@ class BinsImage(ModuleBase):
                 shm.bins_status.bat_x.set(ctr[0] / mat.shape[1] - .5)
                 shm.bins_status.bat_y.set((ctr[1] - mat.shape[0] / 2) / mat.shape[1])
                 shm.bins_status.bat_angle.set(ang)
+                shm.bins_status.bat_visible_frames.set(shm.bins_status.bat_visible_frames.get()+1)
             shm.bins_status.bat_visible.set(M1 is not None)
 
             if M2 is not None:
@@ -378,6 +383,7 @@ class BinsImage(ModuleBase):
                 shm.bins_status.wolf_x.set(ctr[0] / mat.shape[1] - .5)
                 shm.bins_status.wolf_y.set((ctr[1] - mat.shape[0] / 2) / mat.shape[1])
                 shm.bins_status.wolf_angle.set(ang)
+                shm.bins_status.wolf_visible_frames.set(shm.bins_status.wolf_visible_frames.get()+1)
             shm.bins_status.wolf_visible.set(M2 is not None)
 
             
