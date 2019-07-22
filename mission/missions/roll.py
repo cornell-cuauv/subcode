@@ -29,11 +29,14 @@ class RollDegrees(Task):
         if self.progress > abs(N): self.finish()
 
 pv = shm.settings_roll.kP.get()
-t = Sequential(
+roll = lambda: Sequential(
         FunctionTask(lambda: shm.settings_roll.kP.set(.6)),
         #*([RelativeToInitialRoll(90)] * 8),
         #Timed(RelativeToCurrentRoll(90), 6),
-        MasterConcurrent(RollDegrees(720 - 45), RelativeToCurrentRoll(90), VelocityX(.55)),
+        MasterConcurrent(RollDegrees(720 - 45), RelativeToCurrentRoll(90), VelocityX(.35)),
+        #MasterConcurrent(RollDegrees(360), RelativeToCurrentRoll(90), VelocityX(.35)),
+        #Timer(.5),
+        #MasterConcurrent(RollDegrees(360 - 45), RelativeToCurrentRoll(90), VelocityX(.35)),
         #MasterConcurrent(RollDegrees(-720 + 45), RelativeToCurrentRoll(-90)),
         FunctionTask(lambda: shm.settings_roll.kP.set(pv)),
         Concurrent(
