@@ -30,7 +30,7 @@ OPTS_ODYSSEUS = [
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
-    options.IntOption('nonblack_thresh', 90, 0, 255),
+    options.IntOption('nonblack_thresh', 50, 0, 255),
     options.BoolOption('debug', True),
 ]
 
@@ -50,7 +50,7 @@ OPTS_AJAX = [
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
-    options.IntOption('nonblack_thresh', 90, 0, 255),
+    options.IntOption('nonblack_thresh', 50, 0, 255),
     options.BoolOption('debug', True),
 ]
 
@@ -78,7 +78,6 @@ def thresh_color_distance(split, color, distance, auto_distance_percentile=None,
         dists += weights[i] * (np.float32(split[i]) - color[i])**2
     if auto_distance_percentile:
         distance = min(np.percentile(dists, auto_distance_percentile), distance**2)
-        print('Auto distance: {:.2f}'.format(distance))
     else:
         distance = distance**2
     return range_threshold(dists, 0, distance), np.uint8(np.sqrt(dists))
@@ -123,7 +122,7 @@ class Gate(ModuleBase):
                                                 [self.options['lab_l_ref'], self.options['lab_a_ref'],
                                                      self.options['lab_b_ref']],
                                          self.options['color_dist_thresh'], auto_distance_percentile=self.options['auto_distance_percentile'],
-                                         ignore_channels=([0]), weights=[2, 45, 5])
+                                         ignore_channels=[], weights=[2, 45, 10])
         if self.options['debug']:
             self.post('threshed', threshed)
             self.post('dists', dists)
