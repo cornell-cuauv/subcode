@@ -27,7 +27,7 @@ class PIDLoop(Task):
 
         output_function(output)
 
-        if within_deadband(input_value, target, deadband=deadband, use_mod_error=modulo_error):
+        if within_deadband(input_value, target, deadband=call_if_function(deadband), use_mod_error=modulo_error):
             # TODO: Should this zero on finish? Or set to I term?
             self.finish()
 
