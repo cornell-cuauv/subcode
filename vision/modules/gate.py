@@ -18,7 +18,7 @@ OPTS_ODYSSEUS = [
     options.IntOption('lab_l_ref', 180, 0, 255),
     options.IntOption('lab_a_ref', 196, 0, 255),
     options.IntOption('lab_b_ref', 139, 0, 255),
-    options.IntOption('color_dist_thresh', 55, 0, 255),
+    options.IntOption('color_dist_thresh', 70, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.5, 0, 1),
