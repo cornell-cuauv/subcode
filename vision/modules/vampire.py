@@ -37,7 +37,9 @@ opts = [
         IntOption('manipulator_angle', MANIPULATOR_ANGLE, 0, 359),
         DoubleOption('rectangle_padding', 0.7, -1, 1),
         DoubleOption('rectangularity_thresh', 0.8, 0, 1),
-        DoubleOption('manipulator_offset', 0.27, 0, 2),
+        DoubleOption('closed_offset', 0.27, 0, 2),
+        DoubleOption('open_offset', 0.27, 0, 2),
+        DoubleOption('vert_offset', -0.1, -2, 2),
 ]
 
 COLORSPACE = "lab"
@@ -160,11 +162,11 @@ class Vampire(ModuleBase):
 
             if point_in_rectangle(purple_center, self.rectangles[i]['rectangle_org']) > 0:
                 color = (0, 0, 255)
-                opened.append({'center': purple_center, 'align': align_angle, 'size': self.rectangles[i]['rectangle'][1][0] * self.rectangles[i]['rectangle'][1][1], 'offset': int(min(self.rectangles[i]['rectangle'][1]) * self.options['manipulator_offset'])})
+                opened.append({'center': purple_center, 'align': align_angle, 'size': self.rectangles[i]['rectangle'][1][0] * self.rectangles[i]['rectangle'][1][1], 'offset': (int(min(self.rectangles[i]['rectangle'][1]) * self.options['open_offset']), int(max(self.rectangles[i]['rectangle'][1]) * self.options['vert_offset']))})
             else:
                 color = (255, 0, 0)
                 direction = 1 if self.rectangles[i]['rectangle'][0][0] > purple_center[0] else -1
-                closed.append({'center': purple_center, 'align': ((align_angle + 180) % 360) if direction == 1 else align_angle, 'size': self.rectangles[i]['rectangle'][1][0] * self.rectangles[i]['rectangle'][1][1], 'offset': int(min(self.rectangles[i]['rectangle'][1]) * self.options['manipulator_offset']), 'direction': direction})
+                closed.append({'center': purple_center, 'align': ((align_angle + 180) % 360) if direction == 1 else align_angle, 'size': self.rectangles[i]['rectangle'][1][0] * self.rectangles[i]['rectangle'][1][1], 'offset': (int(min(self.rectangles[i]['rectangle'][1]) * self.options['closed_offset']), int(max(self.rectangles[i]['rectangle'][1]) * self.options['vert_offset'])), 'direction': direction})
 
             # cv2.circle(mat, purple_center, 20, color=color, thickness=-1)
             # draw_line(mat, *angle_to_line(self.options['manipulator_angle'], origin=purple_center), thickness=5)
@@ -182,8 +184,8 @@ class Vampire(ModuleBase):
             shm.recovery_vampire.open_visible.set(True)
             shm.recovery_vampire.open_handle_x.set(opened['center'][0])
             shm.recovery_vampire.open_handle_y.set(opened['center'][1])
-            shm.recovery_vampire.open_offset_x.set(opened['center'][0] + opened['offset'])
-            shm.recovery_vampire.open_offset_y.set(opened['center'][1])
+            shm.recovery_vampire.open_offset_x.set(opened['center'][0] + opened['offset'][0])
+            shm.recovery_vampire.open_offset_y.set(opened['center'][1] + opened['offset'][1])
             shm.recovery_vampire.open_angle_offset.set(heading_sub_degrees(self.options['manipulator_angle'], opened['align']))
             shm.recovery_vampire.open_size.set(opened['size'])
         else:
@@ -197,7 +199,7 @@ class Vampire(ModuleBase):
             shm.recovery_vampire.closed_handle_x.set(closed['center'][0])
             shm.recovery_vampire.closed_handle_y.set(closed['center'][1])
             shm.recovery_vampire.closed_handle_direction.set(closed['direction'])
-            shm.recovery_vampire.closed_offset_x.set(closed['center'][0] + closed['offset'])
+            shm.recovery_vampire.closed_offset_x.set(closed['center'][0] + closed['offset'][0])
             shm.recovery_vampire.closed_offset_y.set(closed['center'][1])
             shm.recovery_vampire.closed_angle_offset.set(heading_sub_degrees(self.options['manipulator_angle'], closed['align']))
             shm.recovery_vampire.closed_size.set(closed['size'])

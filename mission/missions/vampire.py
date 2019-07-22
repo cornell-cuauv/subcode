@@ -1,8 +1,8 @@
 import shm
 
 from mission.framework.search import SearchFor, SwaySearch, SpiralSearch
-from mission.framework.combinators import Sequential, MasterConcurrent, While
-from mission.framework.primitive import Zero, Log, AlwaysLog, FunctionTask
+from mission.framework.combinators import Sequential, MasterConcurrent, While, Conditional
+from mission.framework.primitive import Zero, Log, AlwaysLog, FunctionTask, Fail
 from mission.framework.targeting import DownwardTarget
 from mission.framework.movement import Depth, RelativeToInitialDepth, RelativeToCurrentDepth, VelocityY
 from mission.framework.position import MoveY
@@ -21,7 +21,7 @@ SEARCH_DEPTH_TRANSDECK = None
 
 INITIAL_DEPTH = INITIAL_DEPTH_TEAGLE
 SEARCH_DEPTH = SEARCH_DEPTH_TEAGLE
-DEPTH = DEPTH_TEAGLE
+DEPTH = DEPTH_TEAGLE, Conditional
 DESCEND_DEPTH = .3
 
 SIZE_THRESH = 9000
@@ -153,7 +153,7 @@ GrabVampireClosedCoffin = lambda: \
             ),
         RelativeToInitialDepth(-LID_DEPTH_1, error=0.25),
         Log('what'),
-        Yike()
+        Conditional(Yike(), on_fail=Fail(_Release()))
         # MasterConcurrent(
         #     Timer(10),
         #     RelativeToCurrentDepth(-LID_DEPTH),
@@ -167,14 +167,15 @@ GrabVampireClosedCoffin = lambda: \
 Yike = lambda: \
     Sequential(
         MasterConcurrent(
-            Timer(10),
-            Sequential(Timed(RelativeToCurrentDepth(-LID_DEPTH), 4), RelativeToCurrentDepth(0)),
+            Sequential(Timed(RelativeToCurrentDepth(-LID_DEPTH), 3.5), RelativeToCurrentDepth(0)),
             VelocityY(0.2 * direction_closed())
         ),
-        Timed(VelocityY(-0.2 * direction_closed())),
+        Timed(VelocityY(0.3), 3),
+        Timed(VelocityY(-0.2 * direction_closed()), 10),
+        VelocityY(0, error=100),
         Depth(SEARCH_DEPTH, error=0.2),
         Timeout(Consistent(visible_open, count=1.5, total=2.0, invert=True, result=True), 10),
-        Log('Opened Coffin Successfully? Wait this isn't possible'))
+        Log('Opened Coffin Successfully? Wait this isnt possible'))
 
 
 RandomCenter = lambda: \
