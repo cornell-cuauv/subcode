@@ -26,7 +26,9 @@ initial_approach_target_percent_of_screen = 0.35
 alignment_tolerance_fraction              = 0.05
 gate_width_threshold                      = 0.4
 pre_spin_charge_dist                      = 3 if is_mainsub else 3
-post_spin_charge_dist                     = 1 if is_mainsub else 3
+post_spin_charge_dist                     = 1 if is_mainsub else 2
+pre_spin_charge_vel                       = 1 if is_mainsub else 1
+post_spin_charge_vel                      = 1 if is_mainsub else 1
 
 
 # flags /indicators ###########################################################
@@ -284,7 +286,7 @@ gate = Sequential(
 
             Log('Pre Spin Charging...'),
             FunctionTask(save_heading),
-            Timed(VelocityX(0.5 if is_mainsub else 0.2), pre_spin_charge_dist),
+            Timed(VelocityX(pre_spin_charge_vel), pre_spin_charge_dist),
 
             Log('Spin Charging...'),
             rolly_roll,
@@ -294,7 +296,7 @@ gate = Sequential(
             Timer(1),
 
             Log('Post Spin Charging...'),
-            Timed(VelocityX(0.5 if is_mainsub else 0.2), post_spin_charge_dist),
+            Timed(VelocityX(post_spin_charge_vel), post_spin_charge_dist),
             Zero(),
             Timer(1),
             Heading(lambda: saved_heading),
