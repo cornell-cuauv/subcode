@@ -25,8 +25,8 @@ alignment_tolerance_fraction              = 0.1
 gate_width_threshold                      = 0.4
 pre_spin_charge_dist                      = 3 if is_mainsub else 3
 post_spin_charge_dist                     = 1 if is_mainsub else 2
-pre_spin_charge_vel                       = 1 if is_mainsub else 1
-post_spin_charge_vel                      = 1 if is_mainsub else 1
+pre_spin_charge_vel                       = 0.8 if is_mainsub else 0.7
+post_spin_charge_vel                      = 0.8 if is_mainsub else 0.7
 
 
 # flags /indicators ###########################################################
@@ -217,12 +217,12 @@ align_task = \
                         on_success=align_on_three_elem,
                         on_fail=Sequential(
                             Log('we see less than two elems, failed'),
-                            Fail()
+                            Timed(VelocityX(-0.3), 2),
                         )
                     )
                 ),
-                #Zero(),
-                #Timer(1),
+                Zero(),
+                Timer(1),
                 finite=False
             ),
             condition=lambda: not is_aligned()
