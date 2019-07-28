@@ -281,8 +281,7 @@ gate = Sequential(
     Log('Depthing...'),
     Depth(DEPTH_TARGET, error=0.12),
 
-    Concurrent(
-        hold_depth,
+    MasterConcurrent(
         Sequential(
             Log('Searching for gate'),
             search_task,
@@ -326,8 +325,9 @@ gate = Sequential(
             Heading(lambda: saved_heading),
 
             Log('Through gate!')
-        )
-    )
+        ),
+        hold_depth,
+    ),
 )
 
 class FinishIf(Task):
