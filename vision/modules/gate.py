@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import sys
 import shm
 import cv2
@@ -13,6 +14,9 @@ from vision.framework.transform import resize, simple_gaussian_blur, morph_remov
 from vision.framework.helpers import to_umat, from_umat, to_odd
 from vision.framework.color import bgr_to_lab, gray_to_bgr, range_threshold
 from vision.framework.draw import draw_contours, draw_circle, draw_text
+
+
+CUAUV_LOCALE = os.environ['CUAUV_LOCALE']
 
 OPTS_ODYSSEUS = [
     options.IntOption('lab_l_ref', 180, 0, 255),
@@ -43,6 +47,26 @@ OPTS_AJAX = [
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.25, 0, 1),
     options.DoubleOption('resize_height_scale', 0.25, 0, 1),
+    options.IntOption('dilate_kernel', 7, 0, 255),
+    options.IntOption('erode_kernel', 3, 0, 255),
+    options.IntOption('min_contour_area', 80, 0, 500),
+    options.DoubleOption('min_contour_rect', 0.4, 0, 1),
+    options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
+    options.DoubleOption('min_length', 15, 0, 500),
+    options.IntOption('auto_distance_percentile', 15, 0, 100),
+    options.IntOption('nonblack_thresh', 50, 0, 255),
+    options.BoolOption('debug', True),
+]
+
+OPTS_SIM = [
+    options.IntOption('lab_l_ref', 0, 0, 255),
+    options.IntOption('lab_a_ref', 170, 0, 255),
+    options.IntOption('lab_b_ref', 180, 0, 255),
+    options.IntOption('color_dist_thresh', 35, 0, 255),
+    options.IntOption('blur_kernel', 3, 0, 255),
+    options.IntOption('blur_std', 10, 0, 500),
+    options.DoubleOption('resize_width_scale', 0.5, 0, 1),
+    options.DoubleOption('resize_height_scale', 0.5, 0, 1),
     options.IntOption('dilate_kernel', 7, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 80, 0, 500),
@@ -141,7 +165,7 @@ class Gate(ModuleBase):
                                                 [self.options['lab_l_ref'], self.options['lab_a_ref'],
                                                      self.options['lab_b_ref']],
                                          self.options['color_dist_thresh'], auto_distance_percentile=self.options['auto_distance_percentile'],
-                                         ignore_channels=[], weights=[2, 45, 10])
+                                         ignore_channels=[], weights=[2, 45, 20])
         if self.options['debug']:
             self.post('threshed', threshed)
             self.post('dists', dists)
@@ -206,4 +230,4 @@ class Gate(ModuleBase):
 
 
 if __name__ == '__main__':
-    Gate('forward', OPTS_ODYSSEUS if VEHICLE == 'odysseus' else OPTS_AJAX)()
+    Gate('forward', OPTS_SIM if CUAUV_LOCALE == 'simulator' else OPTS_ODYSSEUS if VEHICLE == 'odysseus' else OPTS_AJAX)()
