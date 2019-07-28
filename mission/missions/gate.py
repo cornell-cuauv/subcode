@@ -218,8 +218,10 @@ align_task = \
                         on_fail=Sequential(
                             Log('we see less than two elems, failed'),
                             Timed(VelocityX(-0.3), 2),
+                        finite=False
                         )
-                    )
+                    ),
+                    finite=False
                 ),
                 Zero(),
                 Timer(1),
