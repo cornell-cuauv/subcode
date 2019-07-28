@@ -96,10 +96,6 @@ class Recovery(ModuleBase):
                 self.post('hmm', cross)
 
 
-    def find_crucifix(self):
-        pass
-
-
     def find_garlic_angles(self, garlic_mask):
         lines = find_lines(garlic_mask, 2, pi/180, self.options['garlic_line_threshold'])[0]
         print(lines)
