@@ -2,7 +2,7 @@ import shm
 
 from mission.framework.search import SearchFor, SwaySearch, SpiralSearch
 from mission.framework.combinators import Sequential, MasterConcurrent, While, Conditional
-from mission.framework.primitive import Zero, Log, AlwaysLog, FunctionTask, Fail
+from mission.framework.primitive import Zero, Log, AlwaysLog, FunctionTask, Fail, Succeed
 from mission.framework.targeting import DownwardTarget
 from mission.framework.movement import Depth, RelativeToInitialDepth, RelativeToCurrentDepth, VelocityY
 from mission.framework.position import MoveY
@@ -10,7 +10,7 @@ from mission.framework.timing import Timeout, Timer, Timed
 from mission.framework.actuators import FireActuator, SetActuators
 
 from mission.missions.will_common import Consistent
-from mission.missions.attilus_garbage import PIDHeading, PositionMarkers
+from mission.missions.attilus_garbage import PIDHeading, PositionMarkers, CheckedTimer, DualConsistency, MoveNE
 
 INITIAL_DEPTH_TEAGLE = 1.8
 DEPTH_TEAGLE = 2.5
@@ -60,6 +60,17 @@ def size_open():
 def center_empty():
     return (shm.recovery_vampire.empty_x.get(), shm.recovery_vampire.empty_y.get())
 
+visibles = ['closed', 'open']
+def which_visible():
+    for v in visibles:
+        if getattr(shm.recovery_vampire, '%s_visible' % v).get():
+            return v
+    return False
+
+def center_any():
+    if which_visible():
+        return getattr(shm.recovery_vampire, '%s_visible' % which_visible()).get()
+
 
 Search = lambda visiblef: Sequential(  # TODO: TIMEOUT?
             Log('Searching'),
@@ -74,6 +85,8 @@ Search = lambda visiblef: Sequential(  # TODO: TIMEOUT?
             Zero(),
             Depth(INITIAL_DEPTH, error=0.2))
 
+SearchAnyVampire = lambda: Search(which_visible)
+
 close_to = lambda point1, point2, dbx=20, dby=20: abs(point1[0]-point2[0]) < dbx and abs(point1[1]-point2[1]) < dby
 
 Center = lambda centerf, visiblef, db=15, px=0.001, py=0.001, dx=0.00005, dy=0.00005: Sequential(
@@ -83,6 +96,8 @@ Center = lambda centerf, visiblef, db=15, px=0.001, py=0.001, dx=0.00005, dy=0.0
                 Consistent(visiblef, count=2.5, total=3.0, invert=True, result=False),
                 While(lambda: DownwardTarget(point=centerf, target=CAM_CENTER, deadband=(0, 0), px=px, py=py), True),
                 AlwaysLog(lambda: 'center = {}, target = {}'.format(centerf(), CAM_CENTER))))
+
+CenterAny = lambda: Center(center_any, which_visible)
 
 # Descend = lambda depth=DEPTH, db=0.1, size_thresh=SIZE_THRESH: Sequential(  # TODO: FIND THE ACTUAL DEPTH1!!
 #             Log('Descent into Madness'),
@@ -127,8 +142,6 @@ GrabVampireOpenCoffin = lambda: \
         markers.unset('before_grab'),
         Timeout(Consistent(visible_open, count=1.5, total=2.0, invert=False, result=True), 10),
         # Grab(),  # ???
-        Depth(0),
-        _Release(),
         # Release???
     )
 
@@ -158,14 +171,6 @@ GrabVampireClosedCoffin = lambda: \
         Log('what'),
         Conditional(Yike(), on_fail=Fail(_Release())),
         GrabVampireOpenCoffin()
-        # MasterConcurrent(
-        #     Timer(10),
-        #     RelativeToCurrentDepth(-LID_DEPTH),
-        #     VelocityY(0.2 * direction_closed())
-        # ),
-        # # DeadReckonLid(),
-        # Depth(INITIAL_DEPTH, error=0.2),
-        # GrabVampireOpenCoffin()
     )
 
 Yike = lambda: \
@@ -182,6 +187,35 @@ Yike = lambda: \
         markers.unset('before_grab'),
         )
 
+grabbing = False
+
+def get_grabbing():
+    global grabbing
+    return grabbing
+
+def set_grabbing(value):
+    global grabbing
+    grabbing = value
+    return Succeed()
+
+GrabVampire = lambda: \
+    MasterConcurrent(
+        Conditional(
+                DualConsistency(visible_open, visible_closed, count=1.5, total=2.0, invert=False),
+                on_success=Sequential(set_grabbing(True), GrabVampireOpenCoffin(), set_grabbing(False)),
+                on_fail=Sequential(set_grabbing(True), GrabVampireClosedCoffin(), set_grabbing(False))
+        ),
+        Fail(CheckedTimer(30, get_grabbing, False)),
+    )
+
+ReleaseVampire = lambda edge: \
+    Sequential(
+        MoveNE(edge),
+        Depth(0),
+        _Release(),
+        Depth(SEARCH_DEPTH)
+    )
+
 
 
 MarkerTest = lambda: \
@@ -189,6 +223,3 @@ MarkerTest = lambda: \
         markers.set('test'),
         Timer(10),
         markers.go_to('test'))
-
-
-

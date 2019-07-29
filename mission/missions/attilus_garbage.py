@@ -5,7 +5,7 @@ from mission.framework.movement import VelocityX, VelocityY, RelativeToCurrentHe
 from mission.framework.position import MoveX, WithPositionalControl
 from mission.framework.combinators import While, Sequential, MasterConcurrent, Concurrent
 from mission.framework.primitive import FunctionTask, Succeed, Zero, Log, Fail
-from mission.framework.timing import Timed
+from mission.framework.timing import Timed, Timer
 
 import shm
 """
@@ -62,15 +62,19 @@ class StillHeadingSearch(Task):
         set_init_heading()
 
         self.use_task(
-            While(lambda: Sequential(
-                RelativeToInitialHeading(speed),
-                MasterConcurrent(
-                    FunctionTask(lambda: abs(shm.desires.heading.get() - init_heading) < db, finite=False),
-                    RelativeToCurrentHeading(speed)),
-                # Move back a bit, we might be too close
-                MoveX(-1),
-                Succeed(FunctionTask(set_init_heading))
-            ), True),
+            # TODO: DO WE NEED THE WHILE OR DO WE WANT IT TO TERMINATE
+            # While(lambda: \
+                Sequential(
+                    RelativeToInitialHeading(speed),
+                    MasterConcurrent(
+                        FunctionTask(lambda: abs(shm.desires.heading.get() - init_heading) < db, finite=False),
+                        RelativeToCurrentHeading(speed)),
+                    # Move back a bit, we might be too close
+                    # TODO: DO WE EVEN NEED THIS?
+                    # MoveX(-1),
+                    # Succeed(FunctionTask(set_init_heading))
+                )
+            # , True),
         )
 
 
@@ -96,8 +100,9 @@ class PositionMarkers:
     def __init__(self):
         self._markers = {}
 
-    def _set(self, marker):
-        value = (shm.kalman.north.get(), shm.kalman.east.get())
+    def _set(self, marker, value=None):
+        if value is None:
+            value = (shm.kalman.north.get(), shm.kalman.east.get())
         self._markers[marker] = value
         return value
 
@@ -127,3 +132,40 @@ class PositionMarkers:
         if target is not None:
             return Sequential(Log('Moving to marker {} at {}'.format(marker, target)), MoveNE(target, deadband))
         return Sequential(Log('Going to nonexistent marker {}'.format(marker)), Fail())
+
+def singleton(cls):
+    instances = {}
+    def wrapper(*args, **kwargs):
+        if cls not in instances:
+          instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+    return wrapper
+
+PositionMarkers = singleton(PositionMarkers)
+
+
+class DualConsistency(Task):
+    """edited from will_common"""
+    def on_first_run(self, test_success, test_fail, count, total, invert):
+        # Multiply by 60 to specify values in seconds, not ticks
+        self.checker_success = ConsistencyCheck(count*60, total*60, default=False)
+        self.checker_fail = ConsistencyCheck(count*60, total*60)
+
+    def on_run(self, test_success, test_fail, count, total, invert):
+        test_result_success = call_if_function(test_success)
+        test_result_fail = call_if_function(test_fail)
+        if self.checker_success.check(not test_result_success if invert else test_result_success):
+            self.finish(success=True)
+        elif self.checker_fail.check(not test_result_fail if invert else test_result_fail):
+            self.finish(success=False)
+
+class CheckedTimer(Task):
+    """ A timer that only finishes when the timer is finished and a certain value is passed to it"""
+
+    def on_first_run(self, seconds, function, value, *args, **kwargs):
+        self.timer = Timer(seconds)
+
+    def on_run(self, seconds, function, value, *args, **kwargs):
+        self.timer()
+        if call_if_function(function) == value and self.timer.finished:
+            self.finish()

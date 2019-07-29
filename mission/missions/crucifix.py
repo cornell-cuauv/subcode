@@ -46,3 +46,4 @@ GrabCrucifix = lambda: \
         Log('crucifix grabbed successfully'),
     )
 
+SearchCrucifix = lambda: Search(visible_crucifix)

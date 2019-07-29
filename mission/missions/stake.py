@@ -18,7 +18,7 @@ from mission.framework.combinators import (
 )
 from mission.framework.targeting import ForwardTarget, HeadingTarget
 from mission.framework.search import SearchFor, SwaySearch
-from mission.framework.movement import RelativeToCurrentDepth, VelocityY, VelocityX
+from mission.framework.movement import RelativeToCurrentDepth, VelocityY, VelocityX, Depth
 from mission.framework.position import MoveX, MoveY
 from mission.framework.timing import Timeout
 from mission.framework.actuators import FireActuator
@@ -28,6 +28,7 @@ from mission.missions.attilus_garbage import PIDStride, PIDSway, StillHeadingSea
 
 from vision.modules.stake import MOVE_DIRECTION
 
+BOARD_DEPTH = None
 
 import shm
 
@@ -317,7 +318,8 @@ def Backup(speed=0.2):
 Full = \
     lambda: Sequential(
         Log('Starting Stake'),
-        Timeout(SearchBoard(), 120),
+        # Depth(BOARD_DEPTH, error=0.2),
+        # Timeout(SearchBoard(), 120),
         ApproachAlign(),
         Zero(),
         ApproachBelt(),
