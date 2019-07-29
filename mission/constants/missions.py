@@ -10,17 +10,17 @@ Gate = namedtuple('Gate', [
     'post_spin_charge_dist',
 ])
 
-#Path = namedtuple('Path', [
-#    'depth',
-#    'search_forward',
-#    'search_stride',
-#    'search_right_first',
-#    'search_speed',
-#    'post_dist',
-#    'failure_back_up_dist',
-#    'failure_back_up_speed',
-#])
-#
+Path = namedtuple('Path', [
+    'depth',
+    'search_forward',
+    'search_stride',
+    'search_right_first',
+    'search_speed',
+    'post_dist',
+    'failure_back_up_dist',
+    'failure_back_up_speed',
+])
+
 #Dice = namedtuple('Dice', [
 #    'depth',
 #    'max_depth',

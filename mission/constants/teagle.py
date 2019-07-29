@@ -1,4 +1,4 @@
-from mission.constants.missions import Gate
+from mission.constants.missions import Gate, Path
 
 from conf.vehicle import is_mainsub
 
@@ -15,17 +15,17 @@ NONSURFACE_MIN_DEPTH = 0.6
 #     post_spin_charge_dist=16 if is_mainsub else 12
 # )
 
-#path = Path(
-#    depth=1.0,
-#    search_forward=6 if is_mainsub else 2,
-#    search_stride = 10 if is_mainsub else 8,
-#    search_right_first=True,
-#    search_speed=0.1,
-#    post_dist=2.5,
-#    failure_back_up_dist=0.5 if is_mainsub else 0.1,
-#    failure_back_up_speed=0.2 if is_mainsub else 0.1,
-#)
-#
+path = Path(
+    depth=1.0,
+    search_forward=6 if is_mainsub else 2,
+    search_stride = 10 if is_mainsub else 8,
+    search_right_first=True,
+    search_speed=0.1,
+    post_dist=2.5,
+    failure_back_up_dist=0.5 if is_mainsub else 0.1,
+    failure_back_up_speed=0.2 if is_mainsub else 0.1,
+)
+
 #dice = Dice(
 #    depth=3.3,
 #    max_depth=4,
