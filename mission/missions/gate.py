@@ -90,7 +90,7 @@ rolly_roll = \
         MasterConcurrent(
             RollDegrees(360 * 2 - 180),
             RelativeToCurrentRoll(90),
-            VelocityX(.35)
+            VelocityX(.15)
         ),
         Timer(1),
         FunctionTask(lambda: shm.settings_roll.kP.set(pv))
