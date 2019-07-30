@@ -31,6 +31,7 @@ OPTS_ODYSSEUS = [
     options.IntOption('erode_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 80, 0, 500),
     options.DoubleOption('min_contour_rect', 0.4, 0, 1),
+    options.DoubleOption('min_contour_ratio', 3, 0, 10),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
@@ -50,6 +51,7 @@ OPTS_AJAX = [
     options.IntOption('dilate_kernel', 7, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 80, 0, 500),
+    options.DoubleOption('min_contour_ratio', 3, 0, 10),
     options.DoubleOption('min_contour_rect', 0.4, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
@@ -71,6 +73,7 @@ OPTS_AJAX = [
 #    options.IntOption('erode_kernel', 3, 0, 255),
 #    options.IntOption('min_contour_area', 80, 0, 500),
 #    options.DoubleOption('min_contour_rect', 0.4, 0, 1),
+#    options.DoubleOption('min_contour_ratio', 3, 0, 10),
 #    options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
 #    options.DoubleOption('min_length', 15, 0, 500),
 #    options.IntOption('auto_distance_percentile', 15, 0, 100),
@@ -85,7 +88,7 @@ OPTS_SIM = OPTS_ODYSSEUS if VEHICLE == 'odysseus' else OPTS_AJAX
 CUTOFF_SCALAR = 18 if is_mainsub else 17
 
 
-ContourFeats = namedtuple('ContourFeats', ['contour', 'area', 'x', 'y', 'rect', 'angle', 'length'])
+ContourFeats = namedtuple('ContourFeats', ['contour', 'area', 'x', 'y', 'rect', 'angle', 'length', 'ratio'])
 
 
 def try_index(arr, idx):
@@ -186,12 +189,13 @@ class Gate(ModuleBase):
         ys = [c[1] for c in centroids]
         rects = [*map(min_enclosing_rect, contours)]
         lengths = [max(r[1]) for r in rects]
+        ratios = [max(r[1]) / (1e-30 + min(r[1])) for r in rects]
         vehicle_roll = shm.kalman.roll.get()
         lines = [cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01) for c in contours]
         angles = [np.degrees(np.arctan2(line[1], line[0]))[0] for line in lines]
         angles = [min(abs(90 - a - vehicle_roll), abs(-90 - a - vehicle_roll)) for a in angles]
         rectangularities = [a / (1e-30 + rect[1][0] * rect[1][1]) for (c, a, rect) in zip(contours, areas, rects)]
-        contours = [ContourFeats(*feats) for feats in zip(contours, areas, xs, ys, rectangularities, angles, lengths)]
+        contours = [ContourFeats(*feats) for feats in zip(contours, areas, xs, ys, rectangularities, angles, lengths, ratios)]
         contours = [*filter(lambda c: c.area > self.options['min_contour_area'], contours)]
         self.post_contours('area', h, w, contours)
         contours = [*filter(lambda c: c.angle < self.options['max_angle_from_vertical'], contours)]
@@ -200,6 +204,8 @@ class Gate(ModuleBase):
         self.post_contours('length', h, w, contours)
         contours = [*filter(lambda c: c.rect > self.options['min_contour_rect'], contours)]
         self.post_contours('rect', h, w, contours)
+        contours = [*filter(lambda c: c.ratio > self.options['min_contour_ratio'], contours)]
+        self.post_contours('ratio', h, w, contours)
         contours = sorted(contours, key=lambda c: c.area)[:6]
         contours_by_x = sorted(contours, key=lambda c: c.x)
         contours_by_x = filter_duplicates_sorted_by_x(contours_by_x)
