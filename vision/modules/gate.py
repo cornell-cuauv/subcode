@@ -22,19 +22,19 @@ OPTS_ODYSSEUS = [
     options.IntOption('lab_l_ref', 204, 0, 255),
     options.IntOption('lab_a_ref', 153, 0, 255),
     options.IntOption('lab_b_ref', 142, 0, 255),
-    options.IntOption('color_dist_thresh', 12, 0, 255),
+    options.IntOption('color_dist_thresh', 35, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.5, 0, 1),
     options.DoubleOption('resize_height_scale', 0.5, 0, 1),
-    options.IntOption('dilate_kernel', 13, 0, 255),
+    options.IntOption('dilate_kernel', 3, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 80, 0, 500),
     options.DoubleOption('min_contour_rect', 0.4, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
-    options.IntOption('nonblack_thresh', 195, 0, 255),
+    options.IntOption('nonblack_thresh', 1200, 0, 10000),
     options.BoolOption('debug', True),
 ]
 
@@ -156,8 +156,9 @@ class Gate(ModuleBase):
         tmp = mat.copy()
         draw_text(tmp, 'Depth: {:.2f}'.format(vehicle_depth), (30, 30), 0.5, color=(255, 255, 255))
         self.post('mat', tmp)
-        lab, lab_split = bgr_to_lab(mat)
-        nonblack_mask, _ = gray_to_bgr(np.uint8(255 * (lab_split[0] > self.options['nonblack_thresh'])))
+        #lab, lab_split = bgr_to_lab(mat)
+        #nonblack_mask, _ = gray_to_bgr(np.uint8(255 * (lab_split[0] > self.options['nonblack_thresh'])))
+        nonblack_mask, _ = gray_to_bgr(np.uint8(255 * (np.var(mat, axis=2) > self.options['nonblack_thresh'])))
         self.post('nonblack', nonblack_mask)
         mat &= nonblack_mask
         mat = to_umat(mat)
@@ -199,7 +200,7 @@ class Gate(ModuleBase):
         self.post_contours('length', h, w, contours)
         contours = [*filter(lambda c: c.rect > self.options['min_contour_rect'], contours)]
         self.post_contours('rect', h, w, contours)
-        contours = sorted(contours, key=lambda c: c.area)[:3]
+        contours = sorted(contours, key=lambda c: c.area)[:6]
         contours_by_x = sorted(contours, key=lambda c: c.x)
         contours_by_x = filter_duplicates_sorted_by_x(contours_by_x)
         leftmost = try_index(contours_by_x, 0)
