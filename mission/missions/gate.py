@@ -21,7 +21,7 @@ shm.gate = shm.gate_vision
 
 DEPTH_TARGET                              = 1.5
 initial_approach_target_percent_of_screen = 0.35
-alignment_tolerance_fraction              = 0.1
+alignment_tolerance_fraction              = 0.15
 gate_width_threshold                      = 0.4
 pre_spin_charge_dist                      = 3 if is_mainsub else 3
 post_spin_charge_dist                     = 1 if is_mainsub else 2
@@ -166,7 +166,7 @@ align_on_three_elem = \
                         input_value=lambda: shm.gate.rightmost_len.get() / shm.gate.leftmost_len.get(),
                         target=1,
                         p=0.5,
-                        db=0.1,
+                        deadband=0.1,
                         output_function=VelocityY()
                     ),
                     # align to the center of the leftmost and rightmost
@@ -174,7 +174,7 @@ align_on_three_elem = \
                         input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.rightmost_x.get()) / 2,
                         target=lambda: shm.gate.img_width.get() / 2,
                         p=0.2,
-                        db=alignment_tolerance_fraction,
+                        deadband=alignment_tolerance_fraction,
                         output_function=RelativeToCurrentHeading(),
                         negate=True
                     ),
@@ -224,7 +224,7 @@ align_task = \
                     finite=False
                 ),
                 Zero(),
-                Timer(1),
+                #Timer(1),
                 finite=False
             ),
             condition=lambda: not is_aligned()
@@ -232,7 +232,7 @@ align_task = \
         finite=False,
     )
 
-approach_passageway_task = \
+approach_left_passageway_task = \
     MasterConcurrent(
         # Align distance in between the left and middle poles
         PIDLoop(
@@ -246,7 +246,29 @@ approach_passageway_task = \
         # Align to middle of left and middle poles
         PIDLoop(
             input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
-            target=shm.gate.img_width.get() / 2,
+            target=lambda: shm.gate.img_width.get() / 2,
+            p=0.3,
+            deadband=0,
+            output_function=RelativeToCurrentHeading(),
+            negate=True
+        )
+    )
+
+approach_right_passageway_task = \
+    MasterConcurrent(
+        # Align distance in between the right and middle poles
+        PIDLoop(
+            input_value=lambda: shm.gate.rightmost_x.get() - shm.gate.middle_x.get() if shm.gate.rightmost_visible.get() else shm.gate.middle_x.get() - shm.gate.leftmost_x.get() ,
+            target=lambda: shm.gate.img_width.get() * 0.6,
+            deadband=lambda: shm.gate.img_width.get() * 0.05,
+            p=0.002,
+            output_function=VelocityX()
+            # negate=True
+        ),
+        # Align to middle of right and middle poles
+        PIDLoop(
+            input_value=lambda: (shm.gate.rightmost_x.get() + shm.gate.middle_x.get()) / 2 if shm.gate.rightmost_visible.get() else (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
+            target=lambda: shm.gate.img_width.get() / 2,
             p=0.3,
             deadband=0,
             output_function=RelativeToCurrentHeading(),
@@ -307,7 +329,8 @@ gate = Sequential(
             align_task,
 
             Log('Approaching passageway'),
-            approach_passageway_task,
+            approach_left_passageway_task,
+            #approach_right_passageway_task,
 
             Log('Pre Spin Charging...'),
             FunctionTask(save_heading),
