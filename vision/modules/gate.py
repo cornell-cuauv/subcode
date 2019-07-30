@@ -42,7 +42,7 @@ OPTS_AJAX = [
     options.IntOption('lab_l_ref', 178, 0, 255),
     options.IntOption('lab_a_ref', 182, 0, 255),
     options.IntOption('lab_b_ref', 115, 0, 255),
-    options.IntOption('color_dist_thresh', 50, 0, 255),
+    options.IntOption('color_dist_thresh', 40, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.25, 0, 1),
@@ -54,7 +54,7 @@ OPTS_AJAX = [
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
-    options.IntOption('nonblack_thresh', 50, 0, 255),
+    options.IntOption('nonblack_thresh', 100, 0, 255),
     options.BoolOption('debug', True),
 ]
 
@@ -79,7 +79,7 @@ OPTS_AJAX = [
 #]
 
 
-OPTS_SIM = OPTS_ODYSSEUS
+OPTS_SIM = OPTS_ODYSSEUS if VEHICLE == 'odysseus' else OPTS_AJAX
 
 
 CUTOFF_SCALAR = 18 if is_mainsub else 17
