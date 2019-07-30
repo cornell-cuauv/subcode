@@ -20,7 +20,7 @@ shm.gate = shm.gate_vision
 # settings ####################################################################
 
 DEPTH_TARGET                              = 1.5
-initial_approach_target_percent_of_screen = 0.35
+initial_approach_target_percent_of_screen = 0.15
 alignment_tolerance_fraction              = 0.15
 gate_width_threshold                      = 0.4
 dead_reckon_forward_dist                  = 4 if is_mainsub else 4

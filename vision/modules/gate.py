@@ -19,22 +19,22 @@ from vision.framework.draw import draw_contours, draw_circle, draw_text
 CUAUV_LOCALE = os.environ['CUAUV_LOCALE']
 
 OPTS_ODYSSEUS = [
-    options.IntOption('lab_l_ref', 180, 0, 255),
-    options.IntOption('lab_a_ref', 196, 0, 255),
-    options.IntOption('lab_b_ref', 139, 0, 255),
-    options.IntOption('color_dist_thresh', 70, 0, 255),
+    options.IntOption('lab_l_ref', 204, 0, 255),
+    options.IntOption('lab_a_ref', 153, 0, 255),
+    options.IntOption('lab_b_ref', 142, 0, 255),
+    options.IntOption('color_dist_thresh', 12, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.5, 0, 1),
     options.DoubleOption('resize_height_scale', 0.5, 0, 1),
-    options.IntOption('dilate_kernel', 7, 0, 255),
+    options.IntOption('dilate_kernel', 13, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 80, 0, 500),
     options.DoubleOption('min_contour_rect', 0.4, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
-    options.IntOption('nonblack_thresh', 70, 0, 255),
+    options.IntOption('nonblack_thresh', 195, 0, 255),
     options.BoolOption('debug', True),
 ]
 
@@ -58,25 +58,28 @@ OPTS_AJAX = [
     options.BoolOption('debug', True),
 ]
 
-OPTS_SIM = [
-    options.IntOption('lab_l_ref', 0, 0, 255),
-    options.IntOption('lab_a_ref', 170, 0, 255),
-    options.IntOption('lab_b_ref', 180, 0, 255),
-    options.IntOption('color_dist_thresh', 35, 0, 255),
-    options.IntOption('blur_kernel', 3, 0, 255),
-    options.IntOption('blur_std', 10, 0, 500),
-    options.DoubleOption('resize_width_scale', 0.5, 0, 1),
-    options.DoubleOption('resize_height_scale', 0.5, 0, 1),
-    options.IntOption('dilate_kernel', 7, 0, 255),
-    options.IntOption('erode_kernel', 3, 0, 255),
-    options.IntOption('min_contour_area', 80, 0, 500),
-    options.DoubleOption('min_contour_rect', 0.4, 0, 1),
-    options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
-    options.DoubleOption('min_length', 15, 0, 500),
-    options.IntOption('auto_distance_percentile', 15, 0, 100),
-    options.IntOption('nonblack_thresh', 50, 0, 255),
-    options.BoolOption('debug', True),
-]
+#OPTS_SIM = [
+#    options.IntOption('lab_l_ref', 0, 0, 255),
+#    options.IntOption('lab_a_ref', 170, 0, 255),
+#    options.IntOption('lab_b_ref', 180, 0, 255),
+#    options.IntOption('color_dist_thresh', 35, 0, 255),
+#    options.IntOption('blur_kernel', 3, 0, 255),
+#    options.IntOption('blur_std', 10, 0, 500),
+#    options.DoubleOption('resize_width_scale', 0.5, 0, 1),
+#    options.DoubleOption('resize_height_scale', 0.5, 0, 1),
+#    options.IntOption('dilate_kernel', 7, 0, 255),
+#    options.IntOption('erode_kernel', 3, 0, 255),
+#    options.IntOption('min_contour_area', 80, 0, 500),
+#    options.DoubleOption('min_contour_rect', 0.4, 0, 1),
+#    options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
+#    options.DoubleOption('min_length', 15, 0, 500),
+#    options.IntOption('auto_distance_percentile', 15, 0, 100),
+#    options.IntOption('nonblack_thresh', 50, 0, 255),
+#    options.BoolOption('debug', True),
+#]
+
+
+OPTS_SIM = OPTS_ODYSSEUS
 
 
 CUTOFF_SCALAR = 18 if is_mainsub else 17
