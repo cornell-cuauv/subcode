@@ -23,8 +23,10 @@ DEPTH_TARGET                              = 1.5
 initial_approach_target_percent_of_screen = 0.35
 alignment_tolerance_fraction              = 0.15
 gate_width_threshold                      = 0.4
+dead_reckon_forward_dist                  = 4 if is_mainsub else 4
 pre_spin_charge_dist                      = 3 if is_mainsub else 3
 post_spin_charge_dist                     = 1 if is_mainsub else 2
+dead_reckon_forward_vel                   = 0.6 if is_mainsub else 0.5
 pre_spin_charge_vel                       = 0.8 if is_mainsub else 0.7
 post_spin_charge_vel                      = 0.8 if is_mainsub else 0.7
 
@@ -307,6 +309,9 @@ gate = Sequential(
 
     MasterConcurrent(
         Sequential(
+            Log('Dead reckoning forward'),
+            Timed(VelocityX(dead_reckon_forward_vel), dead_reckon_forward_dist),
+
             Log('Searching for gate'),
             search_task,
 
