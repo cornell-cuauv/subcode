@@ -48,7 +48,7 @@ OPTS_AJAX = [
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.25, 0, 1),
     options.DoubleOption('resize_height_scale', 0.25, 0, 1),
-    options.IntOption('dilate_kernel', 7, 0, 255),
+    options.IntOption('dilate_kernel', 3, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
     options.IntOption('min_contour_area', 80, 0, 500),
     options.DoubleOption('min_contour_ratio', 3, 0, 10),
@@ -202,8 +202,8 @@ class Gate(ModuleBase):
         self.post_contours('angle', h, w, contours)
         contours = [*filter(lambda c: c.length > self.options['min_length'], contours)]
         self.post_contours('length', h, w, contours)
-        contours = [*filter(lambda c: c.rect > self.options['min_contour_rect'], contours)]
-        self.post_contours('rect', h, w, contours)
+        #contours = [*filter(lambda c: c.rect > self.options['min_contour_rect'], contours)]
+        #self.post_contours('rect', h, w, contours)
         contours = [*filter(lambda c: c.ratio > self.options['min_contour_ratio'], contours)]
         self.post_contours('ratio', h, w, contours)
         contours = sorted(contours, key=lambda c: c.area)[:6]
