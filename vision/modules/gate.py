@@ -84,7 +84,7 @@ OPTS_AJAX = [
 OPTS_SIM = OPTS_ODYSSEUS if VEHICLE == 'odysseus' else OPTS_AJAX
 
 REFERENCE_BRIGHTNESS = 190 if is_mainsub else 190
-CUTOFF_SCALAR = 18 if is_mainsub else 17
+CUTOFF_SCALAR = 10 if is_mainsub else 17
 
 ContourFeats = namedtuple('ContourFeats', ['contour', 'area', 'x', 'y', 'rect', 'angle', 'length', 'ratio'])
 
