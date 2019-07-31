@@ -372,7 +372,7 @@ gate_full = Sequential(
 )
 
 
-gate = Sequential(
+gate_side = lambda approach_side_task: Sequential(
     Log('Depthing...'),
     Depth(DEPTH_TARGET, error=0.12),
     MasterConcurrent(
@@ -398,7 +398,7 @@ gate = Sequential(
                             ),
                             on_fail=Conditional(
                                 main_task=FunctionTask(lambda: gate_elems() >= 2),
-                                on_success=approach_left_passageway_task,
+                                on_success=approach_side_task,
                                 on_fail=Sequential(
                                     Log('we see no elems, failed'),
                                     Timed(VelocityX(-0.2), 2)
@@ -438,3 +438,7 @@ gate = Sequential(
         hold_depth,
     )
 )
+
+gate_left = gate_side(approach_left_passageway_task)
+gate_right = gate_side(approach_right_passageway_task)
+gate = gate_side(approach_left_passageway_task)
