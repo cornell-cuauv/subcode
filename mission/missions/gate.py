@@ -20,6 +20,7 @@ shm.gate = shm.gate_vision
 # settings ####################################################################
 
 DEPTH_TARGET                              = 0.75
+SPIN_DEPTH_TARGET                         = 1.25
 initial_approach_target_percent_of_screen = 0.15
 alignment_tolerance_fraction              = 0.15
 gate_width_threshold                      = 0.4
@@ -112,8 +113,6 @@ def focus_elem(elem_x, offset=0):
 
 focus_left = lambda: focus_elem(lambda: shm.gate.leftmost_x)
 focus_middle = lambda: focus_elem(lambda: shm.gate.middle_x)
-
-hold_depth = While(task_func=lambda: Depth(DEPTH_TARGET), condition=True)
 
 
 def show():
@@ -310,64 +309,63 @@ gate_full = Sequential(
     Log('Depthing...'),
     Depth(DEPTH_TARGET, error=0.15),
 
-    MasterConcurrent(
-        Sequential(
-            #Log('Dead reckoning forward'),
-            #Timed(VelocityX(dead_reckon_forward_vel), dead_reckon_forward_dist),
+    Sequential(
+        #Log('Dead reckoning forward'),
+        #Timed(VelocityX(dead_reckon_forward_vel), dead_reckon_forward_dist),
 
-            #Log('Searching for gate'),
-            #search_task,
-            Log('Moving forward until we see the gate'),
-            ConsistentTask(
-                FinishIf(
-                    task=VelocityX(simple_approach_vel),
-                    condition=shm.gate.leftmost_visible.get
-                )
-            ),
-
-            Log('Gate is located, HeadingTarget on (leftmost) leg of gate'),
-            ConsistentTask(focus_left()),
-
-            Log('Forward Approach...'),
-            ConsistentTask(MasterConcurrent(
-                PIDLoop(
-                    input_value=lambda: shm.gate.leftmost_len.get() / shm.gate.img_height.get(),
-                    target=initial_approach_target_percent_of_screen,
-                    output_function=VelocityX(),
-                    p=3,
-                    deadband=0.05
-                ),
-                ConsistentTask(focus_left()),
-            )),
-
-            Log('Approach to gate complete. Beginning alignment'),
-            align_task,
-
-            Log('Approaching passageway'),
-            approach_left_passageway_task,
-            #approach_right_passageway_task,
-
-            Log('Pre Spin Charging...'),
-            FunctionTask(save_heading),
-            Timed(VelocityX(pre_spin_charge_vel), pre_spin_charge_dist),
-
-            Log('Spin Charging...'),
-            rolly_roll,
-
-            Log('Spin Complete, pausing...'),
-            Zero(),
-            Timer(1),
-
-            Log('Post Spin Charging...'),
-            Timed(VelocityX(post_spin_charge_vel), post_spin_charge_dist),
-            Zero(),
-
-            Log('Restoring heading'),
-            Timeout(Heading(lambda: saved_heading, error=5), 5),
-
-            Log('Through gate!')
+        #Log('Searching for gate'),
+        #search_task,
+        Log('Moving forward until we see the gate'),
+        ConsistentTask(
+            FinishIf(
+                task=VelocityX(simple_approach_vel),
+                condition=shm.gate.leftmost_visible.get
+            )
         ),
-        hold_depth,
+
+        Log('Gate is located, HeadingTarget on (leftmost) leg of gate'),
+        ConsistentTask(focus_left()),
+
+        Log('Forward Approach...'),
+        ConsistentTask(MasterConcurrent(
+            PIDLoop(
+                input_value=lambda: shm.gate.leftmost_len.get() / shm.gate.img_height.get(),
+                target=initial_approach_target_percent_of_screen,
+                output_function=VelocityX(),
+                p=3,
+                deadband=0.05
+            ),
+            ConsistentTask(focus_left()),
+        )),
+
+        Log('Approach to gate complete. Beginning alignment'),
+        align_task,
+
+        Log('Approaching passageway'),
+        approach_left_passageway_task,
+        #approach_right_passageway_task,
+
+        Log('Pre Spin Charging...'),
+        FunctionTask(save_heading),
+        Depth(SPIN_DEPTH_TARGET, error=0.15),
+        Timed(VelocityX(pre_spin_charge_vel), pre_spin_charge_dist),
+
+        Log('Spin Charging...'),
+        rolly_roll,
+
+        Log('Spin Complete, pausing...'),
+        Zero(),
+        Timer(1),
+
+        Log('Post Spin Charging...'),
+        Timed(VelocityX(post_spin_charge_vel), post_spin_charge_dist),
+        Zero(),
+
+        Log('Restoring heading'),
+        Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
+        Depth(DEPTH_TARGET, error=0.15),
+
+        Log('Through gate!')
     ),
 )
 
@@ -375,68 +373,67 @@ gate_full = Sequential(
 gate_side = lambda approach_side_task: Sequential(
     Log('Depthing...'),
     Depth(DEPTH_TARGET, error=0.15),
-    MasterConcurrent(
-        Sequential(
-            Log('Moving forward until we see the gate'),
-            ConsistentTask(
-                FinishIf(
-                    task=VelocityX(simple_approach_vel),
-                    condition=shm.gate.leftmost_visible.get
-                )
-            ),
-            Log('Approaching until we are aligned with two elements'),
-            Timeout(
-                While(
-                    condition=lambda: not (approach_left_passageway_task.finished and
-                                           approach_left_passageway_task.success),
-                    task_func=lambda: Sequential(
-                        Conditional(
-                            main_task=FunctionTask(lambda: gate_elems() == 1),
-                            on_success=MasterConcurrent(
-                                focus_elem(lambda: shm.gate.leftmost_x, offset=-50),
-                                VelocityX(0.2),
-                            ),
-                            on_fail=Conditional(
-                                main_task=FunctionTask(lambda: gate_elems() >= 2),
-                                on_success=approach_side_task,
-                                on_fail=Sequential(
-                                    Log('we see no elems, failed'),
-                                    Timed(VelocityX(-0.2), 2)
-                                ),
-                                finite=False
+    Sequential(
+        Log('Moving forward until we see the gate'),
+        ConsistentTask(
+            FinishIf(
+                task=VelocityX(simple_approach_vel),
+                condition=shm.gate.leftmost_visible.get
+            )
+        ),
+        Log('Approaching until we are aligned with two elements'),
+        Timeout(
+            While(
+                condition=lambda: not (approach_left_passageway_task.finished and
+                                       approach_left_passageway_task.success),
+                task_func=lambda: Sequential(
+                    Conditional(
+                        main_task=FunctionTask(lambda: gate_elems() == 1),
+                        on_success=MasterConcurrent(
+                            focus_elem(lambda: shm.gate.leftmost_x, offset=-50),
+                            VelocityX(0.2),
+                        ),
+                        on_fail=Conditional(
+                            main_task=FunctionTask(lambda: gate_elems() >= 2),
+                            on_success=approach_side_task,
+                            on_fail=Sequential(
+                                Log('we see no elems, failed'),
+                                Timed(VelocityX(-0.2), 2)
                             ),
                             finite=False
                         ),
-                        Zero(),
                         finite=False
                     ),
+                    Zero(),
+                    finite=False
                 ),
-                60
             ),
-            Log('Pre Spin Charging...'),
-            FunctionTask(save_heading),
-            Timed(VelocityX(pre_spin_charge_vel), pre_spin_charge_dist),
-
-            Log('Spin Charging...'),
-            rolly_roll,
-
-            Log('Spin Complete, pausing...'),
-            Zero(),
-            Timer(1),
-            Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
-
-            Log('Post Spin Charging...'),
-            Timed(VelocityX(post_spin_charge_vel), post_spin_charge_dist),
-            Zero(),
-
-            Log('Restoring heading'),
-            Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
-
-            Log('Through gate!')
-
+            60
         ),
-        hold_depth,
-    )
+        Log('Pre Spin Charging...'),
+        FunctionTask(save_heading),
+        Depth(SPIN_DEPTH_TARGET, error=0.15),
+        Timed(VelocityX(pre_spin_charge_vel), pre_spin_charge_dist),
+
+        Log('Spin Charging...'),
+        rolly_roll,
+
+        Log('Spin Complete, pausing...'),
+        Zero(),
+        Timer(1),
+        Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
+
+        Log('Post Spin Charging...'),
+        Timed(VelocityX(post_spin_charge_vel), post_spin_charge_dist),
+        Zero(),
+
+        Log('Restoring heading and depth'),
+        Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
+        Depth(DEPTH_TARGET, error=0.15),
+
+        Log('Through gate!')
+
+    ),
 )
 
 gate_left = gate_side(approach_left_passageway_task)
