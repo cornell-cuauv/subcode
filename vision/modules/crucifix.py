@@ -26,7 +26,7 @@ COLORSPACE = 'lab'
 
 
 
-class Recovery(ModuleBase):
+class Crucifix(ModuleBase):
     def process(self, mat):
         self.post('org', mat)
         mat = resize(mat, mat.shape[1]//2, mat.shape[0]//2)
@@ -131,4 +131,4 @@ class Recovery(ModuleBase):
 
 
 if __name__ == '__main__':
-    Recovery('downward', opts)()
+    Crucifix('downward', opts)()

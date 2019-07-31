@@ -15,9 +15,9 @@ from vision.modules.gate import thresh_color_distance
 MANIPULATOR_ANGLE = 25
 
 garlic_crucifix_opts = [
-        IntOption('yellow_l', 186, 0, 255),  # 224
-        IntOption('yellow_a', 144, 0, 255),  # 130
-        IntOption('yellow_b', 185, 0, 255),
+        IntOption('yellow_l', 255, 0, 255),  # 224 186
+        IntOption('yellow_a', 128, 0, 255),  # 130 144
+        IntOption('yellow_b', 129, 0, 255),  #     185
         IntOption('circle_color_distance', 24, 0, 255),
         IntOption('circle_erode_kernel', 5, 1, 50),
         IntOption('circle_dilate_kernel', 5, 1, 50),
@@ -90,7 +90,7 @@ def filter_shapularity(area_function, contours, thresh):
 
 def find_yellow_circle(split, color, distance, erode_kernel, erode_iterations,
                        dilate_kernel, dilate_iterations, min_contour_size, min_circularity, radius_offset):
-    mask, _ = thresh_color_distance(split, color, distance, ignore_channels=[0])
+    mask, _ = thresh_color_distance(split, color, distance, weights=[0.5, 2, 2])
     mask = erode(mask, rect_kernel(erode_kernel), iterations=erode_iterations)
     mask = dilate(mask, rect_kernel(dilate_kernel), iterations=dilate_iterations)
     # mask = erode(mask, rect_kernel(self.options['circle_erode_kernel']),

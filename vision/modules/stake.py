@@ -14,6 +14,8 @@ from vision.framework.helpers import to_umat  # , from_umat
 from vision.framework.draw import draw_circle
 from vision.framework.color import bgr_to_lab, range_threshold
 
+from vision.modules.gate import thresh_color_distance
+
 from vision.modules.heart import heart as heart_original
 
 
@@ -46,10 +48,10 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.IntOption('lever_endzone_left', 1793, 0, 6000),
            options.IntOption('lever_gutter_top', 2238, 0, 6000),
            options.IntOption('lever_gutter_bot', 2887, 0, 6000),
-           options.IntOption('color_l', 139, 0, 255),
-           options.IntOption('color_a', 113, 0, 255),
-           options.IntOption('color_b', 159, 0, 255),
-           options.IntOption('color_distance', 15, 0, 255),
+           options.IntOption('color_l', 170, 0, 255),
+           options.IntOption('color_a', 129, 0, 255),
+           options.IntOption('color_b', 155, 0, 255),
+           options.IntOption('color_distance', 30, 0, 255),
            options.IntOption('close_offset_x', -70, -255, 255),
            options.IntOption('close_offset_y', -10, -255, 255),
            options.DoubleOption('min_eccentricity', 0.6, 0, 1),
@@ -300,7 +302,7 @@ class Stake(ModuleBase):
             center = (M['m10']/M['m00'], M['m01']/M['m00'])
             print(center)
             draw_circle(p, (int(center[0]), int(center[1])), 1, (0, 255, 0), thickness=3)
-            
+
             return center[0] > lever_endzone_left[0][0][0] if MOVE_DIRECTION==1 else lever_endzone_left[0][0][0] > center[0]
 
 
@@ -311,10 +313,11 @@ class Stake(ModuleBase):
     def close_point(self, mat, split, colorspace):
         color = [self.options['color_%s' % s] for s in colorspace]
         distance = self.options['color_distance']
-        threshed = [range_threshold(split[i],
-                    color[i] - distance, color[i] + distance)
-                    for i in range(1, len(color))]
-        mask = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
+        # threshed = [range_threshold(split[i],
+        #             color[i] - distance, color[i] + distance)
+        #             for i in range(1, len(color))]
+        # mask = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
+        mask, _ = thresh_color_distance(split, color, distance, weights=[0.5, 2, 2])
 
         contours = outer_contours(mask)
         if contours is not None and len(contours) > 0:
@@ -331,13 +334,13 @@ class Stake(ModuleBase):
 
             close = list(filter(filter_ellipses , contours))
             close.sort(key=contour_area)
-            
+
             close1 = None
             close2 = None
             try:
                 close1 = {'contour': close[0], 'centroid': contour_centroid(close[0]), 'area': contour_area(close[0])}
                 close2 = {'contour': close[1], 'centroid': contour_centroid(close[1]), 'area': contour_area(close[1])}
-            
+
                 if close1['centroid'][0] > close2['centroid'][0]:
                     temp = close2
                     close2 = close1
@@ -375,7 +378,7 @@ class Stake(ModuleBase):
                     cv2.drawContours(mat, [heart], -1, (0, 0, 255), thickness=5)
             else:
                     shm.torpedoes_stake.close_heart_visible.set(False)
-            
+
             try:
                 cv2.drawContours(mat, [close[0]], -1, (255, 0, 0), thickness=5)
                 cv2.drawContours(mat, [close[1]], -1, (255, 0, 0), thickness=5)
