@@ -10,7 +10,7 @@ from mission.framework.timing import Timeout, Timer, Timed
 from mission.framework.actuators import FireActuator, SetActuators
 
 from mission.missions.will_common import Consistent
-from mission.missions.attilus_garbage import PIDHeading, PositionMarkers, CheckedTimer, DualConsistency, MoveNE
+from mission.missions.attilus_garbage import PIDHeading, CheckedTimer, DualConsistency, MoveNE, SetMarker, UnsetMarker, GoToMarker
 
 INITIAL_DEPTH_TEAGLE = 1.8
 DEPTH_TEAGLE = 2.5
@@ -28,7 +28,6 @@ SIZE_THRESH = 9000
 
 CAM_CENTER = shm.recovery_vampire.cam_x.get(), shm.recovery_vampire.cam_y.get()
 
-markers = PositionMarkers()
 
 # TODO: Search Depth
 # TODO: Search Empty Circle After Grab
@@ -58,18 +57,33 @@ def size_open():
     return shm.recovery_vampire.open_size.get()
 
 def center_empty():
-    return (shm.recovery_vampire.empty_x.get(), shm.recovery_vampire.empty_y.get())
+    return (shm.recovery_vampire.empty_offset_x.get(), shm.recovery_vampire.empty_offsest_y.get())
+def visible_empty():
+    return shm.recovery_vampire.empty_visible.get()
+
+last_visible = False
 
 visibles = ['closed', 'open']
 def which_visible():
+    global last_visible
     for v in visibles:
         if getattr(shm.recovery_vampire, '%s_visible' % v).get():
+            last_visible = v
             return v
+    return last_visible
+
+
+def any_visible():
+    for v in visibles:
+        if getattr(shm.recovery_vampire, '%s_visible' % v).get():
+            return True
     return False
+
 
 def center_any():
     if which_visible():
-        return getattr(shm.recovery_vampire, '%s_visible' % which_visible()).get()
+        return getattr(shm.recovery_vampire, '%s_handle_x' % which_visible()).get(), getattr(shm.recovery_vampire, '%s_handle_y' % which_visible()).get()
+
 
 
 Search = lambda visiblef: Sequential(  # TODO: TIMEOUT?
@@ -85,7 +99,7 @@ Search = lambda visiblef: Sequential(  # TODO: TIMEOUT?
             Zero(),
             Depth(INITIAL_DEPTH, error=0.2))
 
-SearchAnyVampire = lambda: Search(which_visible)
+SearchAnyVampire = lambda: Search(any_visible)
 
 close_to = lambda point1, point2, dbx=20, dby=20: abs(point1[0]-point2[0]) < dbx and abs(point1[1]-point2[1]) < dby
 
@@ -97,7 +111,7 @@ Center = lambda centerf, visiblef, db=15, px=0.001, py=0.001, dx=0.00005, dy=0.0
                 While(lambda: DownwardTarget(point=centerf, target=CAM_CENTER, deadband=(0, 0), px=px, py=py), True),
                 AlwaysLog(lambda: 'center = {}, target = {}'.format(centerf(), CAM_CENTER))))
 
-CenterAny = lambda: Center(center_any, which_visible)
+CenterAny = lambda: Center(center_any, any_visible)
 
 # Descend = lambda depth=DEPTH, db=0.1, size_thresh=SIZE_THRESH: Sequential(  # TODO: FIND THE ACTUAL DEPTH1!!
 #             Log('Descent into Madness'),
@@ -128,7 +142,7 @@ GrabVampireOpenCoffin = lambda: \
     Sequential(
         Search(visible_open),
         Center(center_open, visible_open, db=20),
-        markers.set('before_grab'),
+        SetMarker('before_grab'),
         Align(centerf=center_open, anglef=angle_offset_open, visiblef=visible_open),
         Center(offset_open, visible_open, db=10),
         MasterConcurrent(
@@ -138,8 +152,8 @@ GrabVampireOpenCoffin = lambda: \
             RelativeToCurrentDepth(DESCEND_DEPTH, error=0.2),
             ),
         Depth(SEARCH_DEPTH),
-        markers.go_to('before_grab'),
-        markers.unset('before_grab'),
+        GoToMarker('before_grab'),
+        UnsetMarker('before_grab'),
         Timeout(Consistent(visible_open, count=1.5, total=2.0, invert=False, result=True), 10),
         # Grab(),  # ???
         # Release???
@@ -158,7 +172,7 @@ GrabVampireClosedCoffin = lambda: \
     Sequential(
         Search(visible_closed),
         Center(center_closed, visible_closed),
-        markers.set('before_grab'),
+        SetMarker('before_grab'),
         Align(center_closed, angle_offset_closed, visible_closed),
         Center(offset_closed, visible_closed, db=10),
         MasterConcurrent(
@@ -181,10 +195,10 @@ Yike = lambda: \
         ),
         Timed(VelocityY(0.3), 3),
         Depth(SEARCH_DEPTH, error=0.2),
-        markers.go_to('before_grab'),
+        GoToMarker('before_grab'),
         Timeout(Consistent(visible_open, count=1.5, total=2.0, invert=False, result=True), 10),
         Log('Opened Coffin Successfully'),
-        markers.unset('before_grab'),
+        UnsetMarker('before_grab'),
         )
 
 grabbing = False
@@ -213,13 +227,28 @@ ReleaseVampire = lambda edge: \
         MoveNE(edge),
         Depth(0),
         _Release(),
+        Timer(2),
         Depth(SEARCH_DEPTH)
     )
 
 
+ReleaseCrucifix = lambda: \
+    Sequential(
+        Search(visible_empty),
+        Depth(DESCEND_DEPTH),
+        Center(center_empty, visible_empty),
+        _Release(),
+    )
+
 
 MarkerTest = lambda: \
     Sequential(
-        markers.set('test'),
+        SetMarker('test'),
         Timer(10),
-        markers.go_to('test'))
+        SetMarker('test2', (0,0)),
+        GoToMarker('test'),
+        GoToMarker('test2'),
+        UnsetMarker('test'),
+        GoToMarker('test'))
+
+PosTest = lambda: AlwaysLog(lambda: '{}, {}'.format(shm.kalman.north.get(), shm.kalman.east.get()))

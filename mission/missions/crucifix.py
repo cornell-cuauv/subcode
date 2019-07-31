@@ -47,3 +47,4 @@ GrabCrucifix = lambda: \
     )
 
 SearchCrucifix = lambda: Search(visible_crucifix)
+CenterCrucifix = lambda: Center(center_crucifix, visible_crucifix)
