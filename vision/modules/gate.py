@@ -29,7 +29,7 @@ OPTS_ODYSSEUS = [
     options.DoubleOption('resize_height_scale', 0.5, 0, 1),
     options.IntOption('dilate_kernel', 3, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
-    options.IntOption('min_contour_area', 80, 0, 500),
+    options.IntOption('min_contour_area', 50, 0, 500),
     options.DoubleOption('min_contour_rect', 0.4, 0, 1),
     options.DoubleOption('min_contour_ratio', 3, 0, 10),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
@@ -50,7 +50,7 @@ OPTS_AJAX = [
     options.DoubleOption('resize_height_scale', 0.25, 0, 1),
     options.IntOption('dilate_kernel', 3, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
-    options.IntOption('min_contour_area', 80, 0, 500),
+    options.IntOption('min_contour_area', 50, 0, 500),
     options.DoubleOption('min_contour_ratio', 3, 0, 10),
     options.DoubleOption('min_contour_rect', 0.4, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
@@ -69,9 +69,9 @@ OPTS_AJAX = [
 #    options.IntOption('blur_std', 10, 0, 500),
 #    options.DoubleOption('resize_width_scale', 0.5, 0, 1),
 #    options.DoubleOption('resize_height_scale', 0.5, 0, 1),
-#    options.IntOption('dilate_kernel', 7, 0, 255),
+#    options.IntOption('dilate_kernel', 3, 0, 255),
 #    options.IntOption('erode_kernel', 3, 0, 255),
-#    options.IntOption('min_contour_area', 80, 0, 500),
+#    options.IntOption('min_contour_area', 50, 0, 500),
 #    options.DoubleOption('min_contour_rect', 0.4, 0, 1),
 #    options.DoubleOption('min_contour_ratio', 3, 0, 10),
 #    options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
@@ -81,12 +81,9 @@ OPTS_AJAX = [
 #    options.BoolOption('debug', True),
 #]
 
-
 OPTS_SIM = OPTS_ODYSSEUS if VEHICLE == 'odysseus' else OPTS_AJAX
 
-
 CUTOFF_SCALAR = 18 if is_mainsub else 17
-
 
 ContourFeats = namedtuple('ContourFeats', ['contour', 'area', 'x', 'y', 'rect', 'angle', 'length', 'ratio'])
 

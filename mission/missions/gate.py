@@ -3,7 +3,7 @@ from mission.framework.movement import RelativeToCurrentHeading, RelativeToIniti
 from mission.framework.position import MoveX
 from mission.framework.primitive import Log, NoOp, FunctionTask, Zero, Fail
 from mission.framework.targeting import PIDLoop, HeadingTarget, ForwardApproach
-from mission.framework.timing import Timed, Timer
+from mission.framework.timing import Timed, Timer, Timeout
 from mission.framework.task import Task
 from mission.framework.helpers import ConsistencyCheck, call_if_function
 from mission.framework.search import SearchFor
@@ -29,6 +29,8 @@ post_spin_charge_dist                     = 1 if is_mainsub else 2
 dead_reckon_forward_vel                   = 0.6 if is_mainsub else 0.5
 pre_spin_charge_vel                       = 0.8 if is_mainsub else 0.7
 post_spin_charge_vel                      = 0.8 if is_mainsub else 0.7
+
+simple_approach_vel = 0.4 if is_mainsub else 0.3
 
 
 # flags /indicators ###########################################################
@@ -60,6 +62,7 @@ def gate_elems():
 
 def can_see_all_gate_elements():
     return gate_elems() == 3
+
 
 def is_aligned():
     if not can_see_all_gate_elements():
@@ -99,10 +102,10 @@ rolly_roll = \
     )
 
 
-def focus_elem(elem_x):
+def focus_elem(elem_x, offset=0):
     return HeadingTarget(
         point=[lambda: elem_x().get(), 0],
-        target=lambda: [shm.gate.img_width.get() / 2, 0],
+        target=lambda: [shm.gate.img_width.get() / 2 + offset, 0],
         px=0.3,
         deadband=(20, 1)
     )
@@ -210,6 +213,7 @@ align_on_passageway = \
 align_task = \
     Sequential(
         While(
+            condition=lambda: not is_aligned(),
             task_func=lambda: Sequential(
                 Conditional(
                     main_task=FunctionTask(lambda: gate_elems() == 2),
@@ -220,8 +224,8 @@ align_task = \
                         on_fail=Sequential(
                             Log('we see less than two elems, failed'),
                             Timed(VelocityX(-0.3), 2),
+                        ),
                         finite=False
-                        )
                     ),
                     finite=False
                 ),
@@ -229,7 +233,6 @@ align_task = \
                 #Timer(1),
                 finite=False
             ),
-            condition=lambda: not is_aligned()
         ),
         finite=False,
     )
@@ -303,17 +306,24 @@ search_task = \
 
 # main task ###################################################################
 
-gate = Sequential(
+gate_full = Sequential(
     Log('Depthing...'),
     Depth(DEPTH_TARGET, error=0.12),
 
     MasterConcurrent(
         Sequential(
-            Log('Dead reckoning forward'),
-            Timed(VelocityX(dead_reckon_forward_vel), dead_reckon_forward_dist),
+            #Log('Dead reckoning forward'),
+            #Timed(VelocityX(dead_reckon_forward_vel), dead_reckon_forward_dist),
 
-            Log('Searching for gate'),
-            search_task,
+            #Log('Searching for gate'),
+            #search_task,
+            Log('Moving forward until we see the gate'),
+            ConsistentTask(
+                FinishIf(
+                    task=VelocityX(simple_approach_vel),
+                    condition=shm.gate.leftmost_visible.get
+                )
+            ),
 
             Log('Gate is located, HeadingTarget on (leftmost) leg of gate'),
             ConsistentTask(focus_left()),
@@ -360,13 +370,68 @@ gate = Sequential(
     ),
 )
 
-class FinishIf(Task):
 
-    def on_run(self, task, condition, **kwargs):
-        success = condition()
-        if success:
-            self.finish(success=success)
-        else:
-            self.finished = False
-            task()
+gate = Sequential(
+    Log('Depthing...'),
+    Depth(DEPTH_TARGET, error=0.12),
+    MasterConcurrent(
+        Sequential(
+            Log('Moving forward until we see the gate'),
+            ConsistentTask(
+                FinishIf(
+                    task=VelocityX(simple_approach_vel),
+                    condition=shm.gate.leftmost_visible.get
+                )
+            ),
+            Log('Approaching until we are aligned with two elements'),
+            Timeout(
+                While(
+                    condition=lambda: not (approach_left_passageway_task.finished and
+                                           approach_left_passageway_task.success),
+                    task_func=lambda: Sequential(
+                        Conditional(
+                            main_task=FunctionTask(lambda: gate_elems() == 1),
+                            on_success=MasterConcurrent(
+                                focus_elem(lambda: shm.gate.leftmost_x, offset=20),
+                                VelocityX(0.2),
+                            ),
+                            on_fail=Conditional(
+                                main_task=FunctionTask(lambda: gate_elems() >= 2),
+                                on_success=approach_left_passageway_task,
+                                on_fail=Sequential(
+                                    Log('we see no elems, failed'),
+                                    Timed(VelocityX(-0.2), 2)
+                                ),
+                                finite=False
+                            ),
+                            finite=False
+                        ),
+                        Zero(),
+                        finite=False
+                    ),
+                ),
+                60
+            ),
+            Log('Pre Spin Charging...'),
+            FunctionTask(save_heading),
+            Timed(VelocityX(pre_spin_charge_vel), pre_spin_charge_dist),
 
+            Log('Spin Charging...'),
+            rolly_roll,
+
+            Log('Spin Complete, pausing...'),
+            Zero(),
+            Timer(1),
+
+            Log('Post Spin Charging...'),
+            Timed(VelocityX(post_spin_charge_vel), post_spin_charge_dist),
+            Zero(),
+            Heading(lambda: saved_heading),
+            Timer(1),
+
+            Log('Through gate!')
+
+        ),
+        hold_depth,
+    )
+)
