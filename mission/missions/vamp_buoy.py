@@ -17,7 +17,7 @@ from mission.framework.combinators import (
 )
 from mission.framework.targeting import ForwardTarget, PIDLoop, HeadingTarget
 from mission.framework.task import Task
-from mission.framework.movement import VelocityY, VelocityX
+from mission.framework.movement import VelocityY, VelocityX, RelativeToInitialHeading
 from mission.framework.position import MoveX
 from mission.framework.search import SearchFor, SwaySearch, VelocitySwaySearch, MoveX
 
@@ -131,8 +131,7 @@ ReSearch = lambda: Sequential(
 # Decorator that wraps a task to search for the called side of the buoy if it fails
 withReSearchCalledOnFail = lambda task: lambda: Retry(lambda: \
         Conditional(main_task=task(), on_fail= \
-            Fail(Conditional(main_task=TinySearch(), on_fail= \
-                Fail(Conditional(main_task=ReSearch(), on_fail=RamAnything()))))), attempts=2)
+            Fail(TinySearch())), attempts=2)
 
 
 # The final fallback case. If the called side cannot be found, attempt to ram any side of the triangular buoy if possible.
@@ -193,14 +192,13 @@ SearchTriangle = lambda stride=2: Sequential( #stride=1.25
 )
 
 
-# Search for the called buoy by "circling" the buoy with a hexagon
-@withRamAnythingOnFail
+# @withRamAnythingOnFail
 def SearchCalled():
     return Sequential(
         Log('Searching for called buoy'),
         Zero(),
         SearchFor(
-            polygon,
+            While(lambda: VelocityY(0.3), True),
             call_buoy_visible,
             consistent_frames=(1.7*60, 2.0*60) #TODO: Check consistent frames
             ),
@@ -313,16 +311,11 @@ SearchAndApproach = lambda: Sequential(SearchCalled(), AlignCalledNormal(), Appr
 # The full mission for the triangular buoy
 TriangleOnly = lambda: Sequential(
         Log('Searching for buoy'),
-        Timeout(SearchTriangle(), 250),
+        Timeout(SearchCalled(), 40),
         Log('Found buoy, aligning'),
-        AlignAnyNormal(),
-        Log('Approaching buoy'),
-        ApproachAny(),
-        # Log('Aligning again'),
-        # AlignAnyNormal(),
-        Log('Searching for face'),
-        Conditional(FunctionTask(lambda: which_buoy_visible() == CALL), on_fail=SearchAndApproach()),
-        Log('Face found, ramming'),
+        AlignCalledNormal(),
+        ApproachCalled(),
+        Log('Ramming'),
         RamV(),
         Log('Vamp_Buoy Complete')
      )
@@ -332,19 +325,30 @@ SearchSingle = lambda: Sequential(
         Log('Searching for singular buoy'),
         SearchFor(
             VelocitySwaySearch(width=2.5, stride=2),
-            lambda: shm.vamp_buoy_results.jiangshi_visible.get() and single_buoy_size() > SEARCH_SIZE_THRESH,
+            shm.vamp_buoy_results.jiangshi_visible.get,
+            # lambda: shm.vamp_buoy_results.jiangshi_visible.get() and single_buoy_size() > SEARCH_SIZE_THRESH,
             consistent_frames=(1.7*60, 2.0*60)
             ),
+        Log('Singular Found'),
         Zero()
 )
 
+DeadReckonStupid = lambda: \
+    Sequential(
+        Timed(VelocityY(0.3, error=40), 3),
+        VelocityY(0, error=40),
+        Timed(VelocityX(0.3, error=40), 4),
+        VelocityX(0, error=40),
+        RelativeToInitialHeading(180, error=10),
+    )
+
 # The full mission for the single target buoy
 # TODO: Edge cases
-SingleOnly = Sequential(
-                SearchSingle(),
+SingleOnly = lambda: Sequential(
+                Timeout(SearchSingle(), 100),
                 AlignSingleNormal(),
                 ApproachSingle(),
                 RamVSingle()
             )
 
-Full = lambda backtime=20, backspeed=0.2: Sequential(SingleOnly(), Timed(VelX(-backspeed), backtime), TriangleOnly())
+Full = lambda: Sequential(SingleOnly(), DeadReckonStupid(), TriangleOnly())
