@@ -165,8 +165,8 @@ class Gate(ModuleBase):
         median_b = np.median(lab_split[2])
         median_filter_a = range_threshold(lab_split[1], median_a - self.options['water_a_thresh'], median_a + self.options['water_a_thresh'])
         median_filter_b = range_threshold(lab_split[2], median_b - self.options['water_b_thresh'], median_b + self.options['water_b_thresh'])
-        self.post('median filter a', median_filter_a)
-        self.post('median filter b', median_filter_b)
+        #self.post('median filter a', median_filter_a)
+        #self.post('median filter b', median_filter_b)
         nonwater_mask, _ = gray_to_bgr(255 - (median_filter_a & median_filter_b))
         self.post('nonwater', nonwater_mask)
         # Tuned for a 320x256 image
