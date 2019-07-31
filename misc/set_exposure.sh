@@ -13,5 +13,5 @@ else
     #sed -i "s/^Exposure=[.0-9]*/Exposure=$DOWN/" ~/cuauv/software/vision/c/configs/ueye_downward_ajax.ini
 fi
 
-shm camera forward_exposure $FORE
-shm camera downward_exposure $DOWN
+auv-shm-cli camera forward_exposure $FORE
+auv-shm-cli camera downward_exposure $DOWN
