@@ -392,7 +392,7 @@ gate = Sequential(
                         Conditional(
                             main_task=FunctionTask(lambda: gate_elems() == 1),
                             on_success=MasterConcurrent(
-                                focus_elem(lambda: shm.gate.leftmost_x, offset=20),
+                                focus_elem(lambda: shm.gate.leftmost_x, offset=50),
                                 VelocityX(0.2),
                             ),
                             on_fail=Conditional(
