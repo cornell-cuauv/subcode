@@ -19,23 +19,23 @@ from vision.framework.draw import draw_contours, draw_circle, draw_text
 CUAUV_LOCALE = os.environ['CUAUV_LOCALE']
 
 OPTS_ODYSSEUS = [
-    options.IntOption('lab_l_ref', 204, 0, 255),
-    options.IntOption('lab_a_ref', 153, 0, 255),
-    options.IntOption('lab_b_ref', 142, 0, 255),
+    options.IntOption('lab_l_ref', 144, 0, 255),
+    options.IntOption('lab_a_ref', 163, 0, 255),
+    options.IntOption('lab_b_ref', 166, 0, 255),
     options.IntOption('color_dist_thresh', 35, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.5, 0, 1),
     options.DoubleOption('resize_height_scale', 0.5, 0, 1),
-    options.IntOption('dilate_kernel', 3, 0, 255),
+    options.IntOption('dilate_kernel', 1, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
-    options.IntOption('min_contour_area', 50, 0, 500),
+    options.IntOption('min_contour_area', 30, 0, 500),
     options.DoubleOption('min_contour_rect', 0.4, 0, 1),
     options.DoubleOption('min_contour_ratio', 3, 0, 10),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
-    options.IntOption('nonblack_thresh', 1200, 0, 10000),
+    options.IntOption('nonblack_thresh', 900, 0, 10000),
     options.BoolOption('debug', True),
 ]
 
@@ -48,15 +48,15 @@ OPTS_AJAX = [
     options.IntOption('blur_std', 10, 0, 500),
     options.DoubleOption('resize_width_scale', 0.25, 0, 1),
     options.DoubleOption('resize_height_scale', 0.25, 0, 1),
-    options.IntOption('dilate_kernel', 3, 0, 255),
+    options.IntOption('dilate_kernel', 1, 0, 255),
     options.IntOption('erode_kernel', 3, 0, 255),
-    options.IntOption('min_contour_area', 50, 0, 500),
+    options.IntOption('min_contour_area', 30, 0, 500),
     options.DoubleOption('min_contour_ratio', 3, 0, 10),
     options.DoubleOption('min_contour_rect', 0.4, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 15, 0, 100),
-    options.IntOption('nonblack_thresh', 100, 0, 255),
+    options.IntOption('nonblack_thresh', 1000, 0, 255),
     options.BoolOption('debug', True),
 ]
 
@@ -83,6 +83,7 @@ OPTS_AJAX = [
 
 OPTS_SIM = OPTS_ODYSSEUS if VEHICLE == 'odysseus' else OPTS_AJAX
 
+REFERENCE_BRIGHTNESS = 190 if is_mainsub else 190
 CUTOFF_SCALAR = 18 if is_mainsub else 17
 
 ContourFeats = namedtuple('ContourFeats', ['contour', 'area', 'x', 'y', 'rect', 'angle', 'length', 'ratio'])
@@ -149,6 +150,8 @@ class Gate(ModuleBase):
         results.img_height = h
         results.img_width = w
         mat = resize(mats[0], w, h)
+        avg_brightness_ratio = np.mean(mat) / REFERENCE_BRIGHTNESS
+        nonblack_thresh_dist = self.options['nonblack_thresh'] * avg_brightness_ratio
         # Tuned for a 320x256 image
         vehicle_depth = shm.kalman.depth.get()
         reflection_cutoff = min(h, int(max(0, 3 - vehicle_depth)**2 * CUTOFF_SCALAR))
@@ -158,7 +161,7 @@ class Gate(ModuleBase):
         self.post('mat', tmp)
         #lab, lab_split = bgr_to_lab(mat)
         #nonblack_mask, _ = gray_to_bgr(np.uint8(255 * (lab_split[0] > self.options['nonblack_thresh'])))
-        nonblack_mask, _ = gray_to_bgr(np.uint8(255 * (np.var(mat, axis=2) > self.options['nonblack_thresh'])))
+        nonblack_mask, _ = gray_to_bgr(np.uint8(255 * (np.var(mat, axis=2) > nonblack_thresh_dist)))
         self.post('nonblack', nonblack_mask)
         mat &= nonblack_mask
         mat = to_umat(mat)
