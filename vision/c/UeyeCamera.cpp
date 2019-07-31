@@ -125,6 +125,7 @@ bool UeyeCamera::setup_capture_source() {
 
   double exposure = 0;
   ret = is_Exposure(pimpl->m_camera, IS_EXPOSURE_CMD_GET_EXPOSURE, (void *) &exposure, sizeof(exposure));
+  shm_init();
   if (ret == IS_SUCCESS) {
       if (this->m_direction.compare("forward") == 0) {
           shm_set(camera, forward_exposure, exposure);
