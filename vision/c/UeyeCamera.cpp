@@ -123,6 +123,16 @@ bool UeyeCamera::setup_capture_source() {
     return false;
   }
 
+  double exposure = 0;
+  ret = is_Exposure(pimpl->m_camera, IS_EXPOSURE_CMD_GET_EXPOSURE, (void *) &exposure, sizeof(exposure));
+  if (ret == IS_SUCCESS) {
+      if (this->m_direction.compare("forward") == 0) {
+          shm_set(camera, forward_exposure, exposure);
+      } else if (this->m_direction.compare("downward") == 0) {
+          shm_set(camera, downward_exposure, exposure);
+      }
+  }
+
   if (is_SetColorMode(pimpl->m_camera, IS_CM_BGR8_PACKED) != IS_SUCCESS) {
     std::cout << "Failed to set color mode" << std::endl;
     return false;
@@ -268,6 +278,18 @@ std::experimental::optional<std::pair<cv::Mat, long>> UeyeCamera::acquire_next_i
       std::cout << "Failed to unlock last image buffer: " << ret << std::endl;
     }
     pimpl->last_buffer_loc = NULL;
+  }
+  double exposure = 0;
+  if (this->m_direction.compare("forward") == 0) {
+      shm_get(camera, forward_exposure, exposure);
+  } else if (this->m_direction.compare("downward") == 0) {
+      shm_get(camera, downward_exposure, exposure);
+  }
+  if (exposure != 0) {
+      int ret = is_Exposure(pimpl->m_camera, IS_EXPOSURE_CMD_SET_EXPOSURE, (void *) &exposure, sizeof(exposure));
+      if (ret != IS_SUCCESS) {
+          std::cout << "Failed to set camera exposure: " << ret << std::endl;
+      }
   }
 
   if ((is_WaitEvent(pimpl->m_camera, IS_SET_EVENT_FRAME, 1000)) != IS_SUCCESS) {
