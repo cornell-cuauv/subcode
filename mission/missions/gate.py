@@ -426,7 +426,7 @@ gate = Sequential(
             Log('Post Spin Charging...'),
             Timed(VelocityX(post_spin_charge_vel), post_spin_charge_dist),
             Zero(),
-            Heading(lambda: saved_heading),
+            Heading(lambda: saved_heading, error=5),
             Timer(1),
 
             Log('Through gate!')
