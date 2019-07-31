@@ -17,7 +17,7 @@ class PIDSway(Task):
     def on_first_run(self, *args, **kwargs):
         self.pid_loop = PIDLoop(output_function=VelocityY())
 
-    def on_run(self, error, p=0.0005,  i=0, d=0.0, db=0.01875, max_out=0.5, negate=False, *args, **kwargs):
+    def on_run(self, error, p=0.0005, i=0, d=0.0, db=0.01875, max_out=0.5, negate=False, *args, **kwargs):
         self.pid_loop(input_value=error, p=p, i=i, d=d, target=0, modulo_error=False, deadband=db, negate=negate, max_out=max_out)
 
     def stop(self):
@@ -89,37 +89,33 @@ def SwayOnlySearch(speed=0.3, width=2.5, right_first=True):
             Zero())
 
 
-def MoveNE(vector, deadband=0.1):
-    return WithPositionalControl(
-            Concurrent(PositionN(target=vector[0], error=deadband),
-                       PositionE(target=vector[1], error=deadband),
-                       finite=False))
+class MoveNE(Task):
+    def on_first_run(self, vector, deadband=0.1):
+        vector = call_if_function(vector)
+        self.use_task(
+                WithPositionalControl(
+                Concurrent(PositionN(target=vector[0], error=deadband),
+                           PositionE(target=vector[1], error=deadband),
+                           finite=False))
+        )
 
 
 class PositionMarkers:
     def __init__(self):
         self._markers = {}
 
-    def _set(self, marker, value=None):
+    def set(self, marker, value=None):
         if value is None:
             value = (shm.kalman.north.get(), shm.kalman.east.get())
         self._markers[marker] = value
         return value
 
-    def set(self, marker):
-        return Log('Setting marker {} as {}'.format(marker, self._set(marker)))
-
-    def _unset(self, marker):
+    def unset(self, marker):
         try:
             del self._markers[marker]
             return True
         except KeyError:
             return False
-
-    def unset(self, marker):
-        if self._unset(marker):
-            return Log('Marker {} successfully unset'.format(marker))
-        return Sequential(Log('Attempting to unset nonexistent marker {}'.format(marker)), Fail())
 
     def get(self, marker):
         try:
@@ -142,6 +138,34 @@ def singleton(cls):
     return wrapper
 
 PositionMarkers = singleton(PositionMarkers)
+
+class SetMarker(Task):
+    def on_run(self, marker, value=None):
+        marker = call_if_function(marker)
+        value = call_if_function(value)
+        self.log("Setting marker {} at {}".format(marker, PositionMarkers().set(marker, value)), level='info')
+        self.finish()
+
+class GoToMarker(Task):
+    def on_first_run(self, marker, deadband=0.2):
+        marker = call_if_function(marker)
+        target = PositionMarkers().get(marker)
+        if target is not None:
+            self.log('Moving to marker {} at {}'.format(marker, target), level='info')
+            self.use_task(MoveNE(target, deadband))
+            return
+        self.log('Attempted to move to nonexistent marker {}'.format(marker), level='error')
+        self.finish(success=False)
+
+class UnsetMarker(Task):
+    def on_run(self, marker):
+        marker = call_if_function(marker)
+        if PositionMarkers().unset(marker):
+            self.log('Marker {} unset'.format(marker), level='info')
+            self.finish(success=True)
+            return
+        self.log('Attempted to unset nonexistent marker {}'.format(marker), level='error')
+        self.finish(success=False)
 
 
 class DualConsistency(Task):
