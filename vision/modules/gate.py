@@ -42,9 +42,9 @@ OPTS_ODYSSEUS = [
 ]
 
 OPTS_AJAX = [
-    options.IntOption('lab_l_ref', 178, 0, 255),
-    options.IntOption('lab_a_ref', 182, 0, 255),
-    options.IntOption('lab_b_ref', 115, 0, 255),
+    options.IntOption('lab_l_ref', 255, 0, 255),
+    options.IntOption('lab_a_ref', 175, 0, 255),
+    options.IntOption('lab_b_ref', 169, 0, 255),
     options.IntOption('color_dist_thresh', 40, 0, 255),
     options.IntOption('blur_kernel', 3, 0, 255),
     options.IntOption('blur_std', 10, 0, 500),
@@ -57,10 +57,10 @@ OPTS_AJAX = [
     options.DoubleOption('min_contour_rect', 0.4, 0, 1),
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
-    options.IntOption('auto_distance_percentile', 15, 0, 100),
+    options.IntOption('auto_distance_percentile', 25, 0, 100),
     options.IntOption('nonblack_thresh', 1000, 0, 255),
     options.IntOption('water_a_thresh', 20, 0, 255),
-    options.IntOption('water_b_thresh', 25, 0, 255),
+    options.IntOption('water_b_thresh', 15, 0, 255),
     options.BoolOption('debug', True),
 ]
 
@@ -90,7 +90,7 @@ OPTS_AJAX = [
 OPTS_SIM = OPTS_ODYSSEUS if VEHICLE == 'odysseus' else OPTS_AJAX
 
 REFERENCE_BRIGHTNESS = 190 if is_mainsub else 190
-CUTOFF_SCALAR = 10 if is_mainsub else 17
+CUTOFF_SCALAR = 10 if is_mainsub else 10
 
 ContourFeats = namedtuple('ContourFeats', ['contour', 'area', 'x', 'y', 'rect', 'angle', 'length', 'ratio'])
 
