@@ -361,8 +361,9 @@ gate_full = Sequential(
             Log('Post Spin Charging...'),
             Timed(VelocityX(post_spin_charge_vel), post_spin_charge_dist),
             Zero(),
-            Heading(lambda: saved_heading),
-            Timer(1),
+
+            Log('Restoring heading'),
+            Timeout(Heading(lambda: saved_heading, error=5), 5),
 
             Log('Through gate!')
         ),
@@ -426,8 +427,9 @@ gate = Sequential(
             Log('Post Spin Charging...'),
             Timed(VelocityX(post_spin_charge_vel), post_spin_charge_dist),
             Zero(),
-            Heading(lambda: saved_heading, error=5),
-            Timer(1),
+
+            Log('Restoring heading'),
+            Timeout(Heading(lambda: saved_heading, error=5), 5),
 
             Log('Through gate!')
 
