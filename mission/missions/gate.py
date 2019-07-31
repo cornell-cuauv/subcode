@@ -1,7 +1,7 @@
 from mission.framework.combinators import Sequential, Concurrent, MasterConcurrent, While, Conditional
 from mission.framework.movement import RelativeToCurrentHeading, RelativeToInitialHeading, Depth, VelocityX, VelocityY, Roll, Heading, RelativeToCurrentRoll
 from mission.framework.position import MoveX
-from mission.framework.primitive import Log, NoOp, FunctionTask, Zero, Fail
+from mission.framework.primitive import Log, NoOp, FunctionTask, Zero, Fail, Succeed
 from mission.framework.targeting import PIDLoop, HeadingTarget, ForwardApproach
 from mission.framework.timing import Timed, Timer, Timeout
 from mission.framework.task import Task
@@ -19,16 +19,16 @@ shm.gate = shm.gate_vision
 
 # settings ####################################################################
 
-DEPTH_TARGET                              = 1.5
+DEPTH_TARGET                              = 0.5
 initial_approach_target_percent_of_screen = 0.15
 alignment_tolerance_fraction              = 0.15
 gate_width_threshold                      = 0.4
 dead_reckon_forward_dist                  = 4 if is_mainsub else 4
-pre_spin_charge_dist                      = 3 if is_mainsub else 3
-post_spin_charge_dist                     = 1 if is_mainsub else 2
+pre_spin_charge_dist                      = 4 if is_mainsub else 3
+post_spin_charge_dist                     = 4 if is_mainsub else 3
 dead_reckon_forward_vel                   = 0.6 if is_mainsub else 0.5
-pre_spin_charge_vel                       = 0.8 if is_mainsub else 0.7
-post_spin_charge_vel                      = 0.8 if is_mainsub else 0.7
+pre_spin_charge_vel                       = 0.7 if is_mainsub else 0.7
+post_spin_charge_vel                      = 0.7 if is_mainsub else 0.7
 
 simple_approach_vel = 0.4 if is_mainsub else 0.3
 
@@ -95,7 +95,7 @@ rolly_roll = \
         MasterConcurrent(
             RollDegrees(360 * 2 - 180),
             RelativeToCurrentRoll(90),
-            VelocityX(.15)
+            VelocityX(0)
         ),
         Timer(1),
         FunctionTask(lambda: shm.settings_roll.kP.set(pv))
@@ -423,13 +423,14 @@ gate = Sequential(
             Log('Spin Complete, pausing...'),
             Zero(),
             Timer(1),
+            Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
 
             Log('Post Spin Charging...'),
             Timed(VelocityX(post_spin_charge_vel), post_spin_charge_dist),
             Zero(),
 
             Log('Restoring heading'),
-            Timeout(Heading(lambda: saved_heading, error=5), 5),
+            Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
 
             Log('Through gate!')
 
