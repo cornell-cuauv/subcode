@@ -24,11 +24,11 @@ initial_approach_target_percent_of_screen = 0.15
 alignment_tolerance_fraction              = 0.15
 gate_width_threshold                      = 0.4
 dead_reckon_forward_dist                  = 4 if is_mainsub else 4
-pre_spin_charge_dist                      = 4 if is_mainsub else 3
-post_spin_charge_dist                     = 4 if is_mainsub else 3
+pre_spin_charge_dist                      = 5 if is_mainsub else 4
+post_spin_charge_dist                     = 5 if is_mainsub else 4
 dead_reckon_forward_vel                   = 0.6 if is_mainsub else 0.5
-pre_spin_charge_vel                       = 0.7 if is_mainsub else 0.7
-post_spin_charge_vel                      = 0.7 if is_mainsub else 0.7
+pre_spin_charge_vel                       = 0.4 if is_mainsub else 0.4
+post_spin_charge_vel                      = 0.4 if is_mainsub else 0.4
 
 simple_approach_vel = 0.4 if is_mainsub else 0.3
 
