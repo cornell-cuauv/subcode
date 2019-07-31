@@ -19,13 +19,13 @@ shm.gate = shm.gate_vision
 
 # settings ####################################################################
 
-DEPTH_TARGET                              = 0.5
+DEPTH_TARGET                              = 0.75
 initial_approach_target_percent_of_screen = 0.15
 alignment_tolerance_fraction              = 0.15
 gate_width_threshold                      = 0.4
 dead_reckon_forward_dist                  = 4 if is_mainsub else 4
-pre_spin_charge_dist                      = 5 if is_mainsub else 4
-post_spin_charge_dist                     = 5 if is_mainsub else 4
+pre_spin_charge_dist                      = 7 if is_mainsub else 4
+post_spin_charge_dist                     = 6 if is_mainsub else 4
 dead_reckon_forward_vel                   = 0.6 if is_mainsub else 0.5
 pre_spin_charge_vel                       = 0.4 if is_mainsub else 0.4
 post_spin_charge_vel                      = 0.4 if is_mainsub else 0.4
@@ -308,7 +308,7 @@ search_task = \
 
 gate_full = Sequential(
     Log('Depthing...'),
-    Depth(DEPTH_TARGET, error=0.12),
+    Depth(DEPTH_TARGET, error=0.15),
 
     MasterConcurrent(
         Sequential(
@@ -374,7 +374,7 @@ gate_full = Sequential(
 
 gate_side = lambda approach_side_task: Sequential(
     Log('Depthing...'),
-    Depth(DEPTH_TARGET, error=0.12),
+    Depth(DEPTH_TARGET, error=0.15),
     MasterConcurrent(
         Sequential(
             Log('Moving forward until we see the gate'),
@@ -393,7 +393,7 @@ gate_side = lambda approach_side_task: Sequential(
                         Conditional(
                             main_task=FunctionTask(lambda: gate_elems() == 1),
                             on_success=MasterConcurrent(
-                                focus_elem(lambda: shm.gate.leftmost_x, offset=50),
+                                focus_elem(lambda: shm.gate.leftmost_x, offset=-50),
                                 VelocityX(0.2),
                             ),
                             on_fail=Conditional(
