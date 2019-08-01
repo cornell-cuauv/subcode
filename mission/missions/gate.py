@@ -35,6 +35,11 @@ simple_approach_target_percent_of_screen = 0.3
 left_offset = -20
 right_offset = 20
 
+dead_simple_reckon_forward_vel = 0.4 if is_mainsub else 0.4
+dead_simple_reckon_forward_dist = 12 if is_mainsub else 12
+dead_simple_post_reckon_forward_vel = 0.4 if is_mainsub else 0.4
+dead_simple_post_reckon_forward_dist = 12 if is_mainsub else 12
+
 
 # flags /indicators ###########################################################
 
@@ -101,7 +106,8 @@ rolly_roll = \
             VelocityX(0)
         ),
         Timer(1),
-        FunctionTask(lambda: shm.settings_roll.kP.set(pv))
+        FunctionTask(lambda: shm.settings_roll.kP.set(pv)),
+        Roll(0, error=10)
     )
 
 
@@ -510,6 +516,19 @@ gate_side = lambda approach_side_task, offset: Sequential(
         Log('Through gate!')
 
     ),
+)
+
+dead_simple = Sequential(
+    FunctionTask(save_heading),
+    Log('Dead reckoning forward'),
+    Timed(VelocityX(dead_simple_reckon_forward_vel), dead_simple_reckon_forward_dist),
+
+    Log('Rolling'),
+    rolly_roll,
+    Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
+
+    Log('Dead reckoning forward (post)'),
+    Timed(VelocityX(dead_simple_post_reckon_forward_vel), dead_simple_post_reckon_forward_dist),
 )
 
 gate_left = gate_side(approach_left_passageway_task, offset=left_offset)
