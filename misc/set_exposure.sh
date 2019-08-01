@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ $CUAUV_VEHICLE_TYPE = "mainsub" ]; then
-    FORE=$(python3 -c "print(0.3*$1)")
-    DOWN=$(python3 -c "print(1.5*$1)")
+    FORE=$(python3 -c "print(0.6*$1)")
+    DOWN=$(python3 -c "print(0.8*$1)")
 
     #sed -i "s/^Exposure=[.0-9]*/Exposure=$FORE/" ~/cuauv/software/vision/c/configs/ueye_forward_odysseus.ini
     #sed -i "s/^Exposure=[.0-9]*/Exposure=$DOWN/" ~/cuauv/software/vision/c/configs/ueye_downward_odysseus.ini
