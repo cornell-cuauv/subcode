@@ -60,6 +60,8 @@ module_dir_name, module_no_dir_name = module_name.rsplit(".",1)
 # Get new log directory name
 cuauv_log = os.environ['CUAUV_LOG']
 dirname_base = "{}_{}".format(module_no_dir_name,task_name)
+initially_recording = shm.vision_modules.Record.get()
+
 if not args.no_record:
     try:
         dirs = glob.glob(os.path.join(cuauv_log, 'current', dirname_base) + '[0-9][0-9]*')
@@ -158,15 +160,17 @@ def cleanup():
     if not args.no_record:
           logger('Disabling "Record" vision module', copy_to_stdout = True)
           shm.vision_modules.Debug.set(False)
-          shm.vision_modules.Record.set(False)
+          if not initially_recording:
+              shm.vision_modules.Record.set(False)
 
           # Stop shmlogging
           shmlog_proc.kill()
 
           active_mission = shm.active_mission.get()
-          active_mission.active = False
-          active_mission.name = bytes("", encoding="utf-8")
+          if not initially_recording:
+              active_mission.active = False
           active_mission.log_path = bytes("", encoding="utf-8")
+          active_mission.name = bytes("", encoding="utf-8")
           shm.active_mission.set(active_mission)
 
 has_caught_sigint = False
