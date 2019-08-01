@@ -156,7 +156,7 @@ SearchTriangleOnFail = lambda backspeed=0.2, backtime=10: Sequential(
         Timeout(SearchTriangle(), 120))
 
 SearchSingleOnFail = lambda backspeed=0.2, backtime=10: Sequential(
-        Log('Failed, backing up'),
+        Log('backing up'),
         Zero(),
         Timed(VelocityX(-backspeed), backtime),
         Zero(),
@@ -198,7 +198,7 @@ def SearchCalled():
         Log('Searching for called buoy'),
         Zero(),
         SearchFor(
-            While(lambda: VelocityY(0.3), True),
+            While(lambda: VelocityY(-0.3), True),
             call_buoy_visible,
             consistent_frames=(1.7*60, 2.0*60) #TODO: Check consistent frames
             ),
@@ -335,9 +335,9 @@ SearchSingle = lambda: Sequential(
 
 DeadReckonStupid = lambda: \
     Sequential(
-        Timed(VelocityY(0.3, error=40), 3),
+        Timed(VelocityY(0.3, error=40), 7),
         VelocityY(0, error=40),
-        Timed(VelocityX(0.3, error=40), 4),
+        Timed(VelocityX(0.3, error=40), 15),
         VelocityX(0, error=40),
         RelativeToInitialHeading(180, error=10),
     )
@@ -345,10 +345,12 @@ DeadReckonStupid = lambda: \
 # The full mission for the single target buoy
 # TODO: Edge cases
 SingleOnly = lambda: Sequential(
-                Timeout(SearchSingle(), 100),
-                AlignSingleNormal(),
+                Timeout(SearchSingle(), 30),
+                # AlignSingleNormal(),
                 ApproachSingle(),
-                RamVSingle()
+                RamVSingle(),
+                # SearchSingleOnFail(),
+                # Succeed(Timeout(AlignSingleNormal(), 20))
             )
 
 Full = lambda: Sequential(SingleOnly(), DeadReckonStupid(), TriangleOnly())
