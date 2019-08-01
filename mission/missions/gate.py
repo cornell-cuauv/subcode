@@ -375,7 +375,7 @@ gate_full_side = lambda approach_side_task: Sequential(
         Log('Forward Approach...'),
         ConsistentTask(MasterConcurrent(
             PIDLoop(
-                input_value=lambda: shm.gate.leftmost_len.get() / shm.gate.img_height.get(),
+                input_value=lambda: shm.gate.leftmost_len.get() / (1e-30 + shm.gate.img_height.get()),
                 target=initial_approach_target_percent_of_screen,
                 output_function=VelocityX(),
                 p=3,
@@ -442,7 +442,7 @@ gate_side = lambda approach_side_task, offset: Sequential(
             on_success=Concurrent(
                 focus_elem(lambda: shm.gate.leftmost_x, offset=offset),
                 PIDLoop(
-                    input_value=lambda: shm.gate.leftmost_len.get() / shm.gate.img_height.get(),
+                    input_value=lambda: shm.gate.leftmost_len.get() / (1e-30 + shm.gate.img_height.get()),
                     target=simple_approach_target_percent_of_screen,
                     output_function=VelocityX(),
                     p=3,
