@@ -48,8 +48,8 @@ def calc_speed():
     diff = angle_diff(get_target_heading(), shm.kalman.heading.get())
     print("diff: " + str(diff))
     if diff < 45:
-        print(min((45 - diff) / 20, 0.6))
-        return min((45 - diff) / 20, 0.6)
+        print(min((45 - diff) / 20, 0.4))
+        return min((45 - diff) / 20, 0.4)
     else:
         print("0")
         return 0
@@ -77,7 +77,7 @@ class _TrackPinger(Task):
 
     def update(self):
         self.shmval = shm.hydrophones_results_track.tracked_ping_heading.get()
-        print('last: ' + str(self.last_shmval) + ', new: ' + str(self.shmval))
+        # print('last: ' + str(self.last_shmval) + ', new: ' + str(self.shmval))
         if self.last_shmval is None or self.shmval != self.last_shmval:
             self.last_shmval = self.shmval
             self.last_target_heading = self.shmval
@@ -101,8 +101,8 @@ class _TrackPinger(Task):
         diff = self.angle_diff(self.get_target_heading(), shm.kalman.heading.get())
         print("diff: " + str(diff))
         if diff < 45:
-            print(min((45 - diff) / 20, 0.6))
-            return min((45 - diff) / 20, 0.6)
+            print(min((45 - diff) / 20, 0.4))
+            return min((45 - diff) / 20, 0.4)
         else:
             print("0")
             return 0

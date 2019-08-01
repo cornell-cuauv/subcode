@@ -205,6 +205,9 @@ void Display::handleInput() {
       inputMessage("");
       break;
     case ' ': // kill signal is space
+      shm_set(actuator_desires, trigger_06, 0);
+      // shm_set(actuator_desires, trigger_02, 1);
+      // shm_set(actuator_desires, trigger_02, 0);
       shm_set(switches, soft_kill, 1);
       inputMessage("KILLED");
       break;

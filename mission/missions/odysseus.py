@@ -152,11 +152,14 @@ def TrackerSearch():
             Conditional(FunctionTask(set_second_task_if_possible), on_fail= \
                     Sequential(
                         Depth(BOARD_DEPTH, error=0.2),
-                        # PingerTracker goes here
+                        Either(
+                            TrackPinger(), 
+                            Consistent(shm.torpedoes_stake.board_visible.get, count=2, total=4, invert=False, result=True)),
                         Conditional(SearchBoard(), on_success=FunctionTask(lambda: set_pinger_task(Stake)), on_fail= \
                                 Sequential(
+                                    Log('we cant see jack'),
                                     markers.set('center'),
-                                    FunctionTask(lambda: set_pinger_task(Recovery))
+                                    FunctionTask(lambda: set_pinger_task(Surface))
                                 )
                         )
                     )
@@ -172,36 +175,23 @@ track = lambda: MissionTask(
     timeout=timeouts['track'],
 )
 
-# This is used for testing, not used in the actual master mission
-# TestTrack = Sequential(
-#     TrackerGetter(
-#         # found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
-#         # found_cash_in=FunctionTask(lambda: find_task(CASH_IN)),
-#         found_roulette=FunctionTask(lambda: False),
-#         found_cash_in=FunctionTask(lambda: False),
-#         enable_roulette=True,
-#         enable_cash_in=True,
-#     ),
-    # TrackCleanup(),
-# )
 
 
-tasks = [
-    #gate,
+tasks_nonrandom = [
     lambda: gate,
-    #get_path(PATH_1_BEND_RIGHT),
-    #highway,
-    #get_path(PATH_2_BEND_RIGHT),
-    # lambda: track(roulette=True, cash_in=True),
-    # get_found_task,
-    # lambda: track(roulette=True, cash_in=True),
-    # get_found_task,
-    # lambda: track(roulette=True, cash_in=True),
-    # get_found_task,
     track_pinger,
     lambda: stake,
     track_pinger,
     lambda: surface,
 ]
 
+tasks = [
+    lambda: gate,
+    track_pinger,
+    get_pinger_task,
+    track_pinger,
+    get_pinger_task
+]
+
+Master_Backup = RunAll(tasks_nonrandom)
 Master = RunAll(tasks)

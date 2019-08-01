@@ -139,8 +139,8 @@ class Stake(ModuleBase):
                     im = self.static[image]["org"]
                 return find_key_descriptors(im)
         else:
-            im1 = cv2.imread('stake_images/%s.png' % image1, 0)
-            im2 = cv2.imread('stake_images/%s.png' % image2, 0)
+            im1 = cv2.imread('/home/software/cuauv/software/vision/modules/stake_images/%s.png' % image1, 0)
+            im2 = cv2.imread('/home/software/cuauv/software/vision/modules/stake_images/%s.png' % image2, 0)
             self.static[image1] = {"org": im1}
             self.static[image2] = {"org": im2}
             im = stitch(im1, im2)
@@ -326,12 +326,12 @@ class Stake(ModuleBase):
 
         contours = outer_contours(mask)
 
-        canny_post = np.zeros(mat.shape)
-        canny = simple_canny(mat)
-        contours = outer_contours(canny)
-        for i in range(len((contours))):
-            cv2.drawContours(canny_post, contours, i, (i*20, i*20, i*20))
-        self.post('canny', canny)
+        # canny_post = np.zeros(mat.shape)
+        # canny = simple_canny(mat)
+        # contours = outer_contours(canny)
+        # for i in range(len((contours))):
+        #     cv2.drawContours(canny_post, contours, i, (i*20, i*20, i*20))
+        # self.post('canny', canny)
         if contours is not None and len(contours) > 0:
             # shm.torpedoes_stake.close_visible.set(True)
 
@@ -378,7 +378,7 @@ class Stake(ModuleBase):
                 shm.torpedoes_stake.close_left_visible.set(False)
                 shm.torpedoes_stake.close_right_visible.set(False)
 
-            _, contours, _ = cv2.findContours(canny, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            # _, contours, _ = cv2.findContours(canny, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
             heart = [c for c in contours if cv2.contourArea(c) > 300]
             if heart:

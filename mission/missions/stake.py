@@ -26,7 +26,7 @@ from mission.framework.actuators import FireActuator
 from mission.missions.will_common import Consistent
 from mission.missions.attilus_garbage import PIDStride, PIDSway, StillHeadingSearch, SwayOnlySearch
 
-from vision.modules.stake import MOVE_DIRECTION
+MOVE_DIRECTION = 1
 
 BOARD_DEPTH = 2.7
 
@@ -344,4 +344,4 @@ Test = \
             Log('plox'),
             ApproachCloseLeft(),
             Log('what'),
-            FireActuator('top_torpedo', 0.5))
+            FireActuator('bottom_torpedo', 0.5))
