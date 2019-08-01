@@ -12,12 +12,16 @@ from mission.framework.movement import RelativeToCurrentHeading, Depth
 from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup, DriveToSecondPath
 
 from mission.missions.will_common import BigDepth, Consistent, FakeMoveX
+from mission.missions.attilus_garbage import PositionMarkers
 
 from mission.missions.gate import gate as Gate
 from mission.missions.path import get_path as PathGetter
-from mission.missions.stake import Full as Stake, SearchBoard
+from mission.missions.stake import Full as Stake, SearchBoard, BOARD_DEPTH
+from mission.missions.vampire import SearchAnyVampire as SearchVampire
 
 from mission.constants.timeout import timeouts
+
+markers = PositionMarkers()
 
 # TODO: TIMEOUTS
 
@@ -29,22 +33,22 @@ gate = MissionTask(
     timeout=timeouts['gate'],
 )
 
-get_path = lambda bend_right: lambda: MissionTask(
-    name='Path',
-    cls=PathGetter(bend_right),
-    modules=[shm.vision_modules.Pipes],
-    surfaces=False,
-    timeout=timeouts['path'],
-    on_timeout=RelativeToInitialHeading(45 if bend_right else -45),
-)
+# get_path = lambda bend_right: lambda: MissionTask(
+#     name='Path',
+#     cls=PathGetter(bend_right),
+#     modules=[shm.vision_modules.Pipes],
+#     surfaces=False,
+#     timeout=timeouts['path'],
+#     on_timeout=RelativeToInitialHeading(45 if bend_right else -45),
+# )
 
-highway = MissionTask(
-    name='Highway',
-    cls=DriveToSecondPath,
-    modules=None,
-    surfaces=False,
-    timeout=timeouts['highway'],
-)
+# highway = MissionTask(
+#     name='Highway',
+#     cls=DriveToSecondPath,
+#     modules=None,
+#     surfaces=False,
+#     timeout=timeouts['highway'],
+# )
 
 stake = MissionTask(
     name='Stake',
@@ -99,10 +103,20 @@ Recovery = MissionTask(
 # pinger task should be a function that returns a task
 # TODO: MAKE SURE THIS WORKS
 pinger_task = None
+pinger_tasks = [Recovery, Stake]
 
 def set_pinger_task(task):
     global pinger_task
     pinger_task = task
+
+def set_second_task_if_possible():
+    global pinger_task
+    if pinger_task in pinger_tasks:
+        for p in pinger_tasks:
+            if pinger_task != p:
+                pinger_task = p
+                return True
+        return False
 
 def get_pinger_track():
     global pinger_task
@@ -112,14 +126,21 @@ def get_pinger_track():
 
 # This is semi psuedocode
 def TrackerSearch():
+    return \
     Retry(
         Sequential(
-            Depth(BOARD_DEPTH, error=0.2),
-            # PingerTracker goes here
-            Conditional(InvertSuccess(SearchBoard()), on_fail=FunctionTask(lambda: set_pinger_task(Recovery))),
-            Conditional(InvertSuccess(SearchVampire()), on_fail=FunctionTask(lambda: set_pinger_task(Stake))),
-            Fail()
-        ), attempts=3
+            Conditional(FunctionTask(set_second_task_if_possible), on_fail= \
+                    Sequential(
+                        Depth(BOARD_DEPTH, error=0.2),
+                        # PingerTracker goes here
+                        Conditional(SearchBoard(), on_success=FunctionTask(lambda: set_pinger_task(Recovery)), on_fail= \
+                                Sequential(
+                                    markers.set('center'),
+                                )
+                        )
+                    )
+                )
+            ), attempts=3
     )
 
 track = lambda: MissionTask(
@@ -131,17 +152,17 @@ track = lambda: MissionTask(
 )
 
 # This is used for testing, not used in the actual master mission
-TestTrack = Sequential(
-    TrackerGetter(
-        # found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
-        # found_cash_in=FunctionTask(lambda: find_task(CASH_IN)),
-        found_roulette=FunctionTask(lambda: False),
-        found_cash_in=FunctionTask(lambda: False),
-        enable_roulette=True,
-        enable_cash_in=True,
-    ),
+# TestTrack = Sequential(
+#     TrackerGetter(
+#         # found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
+#         # found_cash_in=FunctionTask(lambda: find_task(CASH_IN)),
+#         found_roulette=FunctionTask(lambda: False),
+#         found_cash_in=FunctionTask(lambda: False),
+#         enable_roulette=True,
+#         enable_cash_in=True,
+#     ),
     # TrackCleanup(),
-)
+# )
 
 tasks = [
     #gate,

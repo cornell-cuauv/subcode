@@ -22,7 +22,7 @@ from mission.framework.position import MoveX
 from mission.framework.search import SearchFor, SwaySearch, VelocitySwaySearch, MoveX
 
 from mission.missions.will_common import Consistent
-from mission.missions.attilus_garbage import PIDStride, PIDSway, SwayOnlySearch
+from mission.missions.attilus_garbage import PIDStride, PIDSway, SwayOnlySearch, SlowHeading
 from mission.missions.poly import polygon
 
 from mission.framework.timing import Timer, Timed, Timeout
@@ -38,6 +38,8 @@ single = "jiangshi"
 CALL = "draugr"
 
 SIZE_THRESH = 8000
+
+DIRECTION = 1  # -1 if left
 
 last_visible = None
 
@@ -137,7 +139,6 @@ withReSearchCalledOnFail = lambda task: lambda: Retry(lambda: \
 # The final fallback case. If the called side cannot be found, attempt to ram any side of the triangular buoy if possible.
 RamAnything = lambda backspeed=0.2, backtime=10: Sequential(
         Log('Failed, backing up'),
-        Timed(VelocityX(-backspeed), backtime),
         Zero(),
         Timeout(SearchTriangle(), 200),
         AlignAnyNormal(),
@@ -198,7 +199,7 @@ def SearchCalled():
         Log('Searching for called buoy'),
         Zero(),
         SearchFor(
-            While(lambda: VelocityY(-0.3), True),
+            While(lambda: VelocityY(DIRECTION * -0.2), True),
             call_buoy_visible,
             consistent_frames=(1.7*60, 2.0*60) #TODO: Check consistent frames
             ),
@@ -285,7 +286,7 @@ def ApproachSingle():
 Ram = lambda: Sequential(Concurrent(AlignAnyNormal(), MoveX(1)), Zero())
 
 # Ram the buoy by approaching it until it is decently sized then moving forward a set amount of time
-BIG_SIZE_THRESH = 30000
+BIG_SIZE_THRESH = 10000
 RamV = lambda: Sequential(Log('Ramming!'),
         MasterConcurrent(
             Consistent(lambda: any_buoy_size() > BIG_SIZE_THRESH, count=0.2, total=0.3, invert=False, result=True),
@@ -312,8 +313,7 @@ SearchAndApproach = lambda: Sequential(SearchCalled(), AlignCalledNormal(), Appr
 TriangleOnly = lambda: Sequential(
         Log('Searching for buoy'),
         Timeout(SearchCalled(), 40),
-        Log('Found buoy, aligning'),
-        AlignCalledNormal(),
+        Log('Found buoy'),
         ApproachCalled(),
         Log('Ramming'),
         RamV(),
@@ -324,7 +324,7 @@ TriangleOnly = lambda: Sequential(
 SearchSingle = lambda: Sequential(
         Log('Searching for singular buoy'),
         SearchFor(
-            VelocitySwaySearch(width=2.5, stride=2),
+            VelocitySwaySearch(width=3, stride=4),
             shm.vamp_buoy_results.jiangshi_visible.get,
             # lambda: shm.vamp_buoy_results.jiangshi_visible.get() and single_buoy_size() > SEARCH_SIZE_THRESH,
             consistent_frames=(1.7*60, 2.0*60)
@@ -335,18 +335,17 @@ SearchSingle = lambda: Sequential(
 
 DeadReckonStupid = lambda: \
     Sequential(
-        Timed(VelocityY(0.3, error=40), 7),
+        Timed(VelocityY(DIRECTION * 0.3, error=40), 3),
         VelocityY(0, error=40),
         Timed(VelocityX(0.3, error=40), 15),
         VelocityX(0, error=40),
-        RelativeToInitialHeading(180, error=10),
+        SlowHeading(),
     )
 
 # The full mission for the single target buoy
 # TODO: Edge cases
 SingleOnly = lambda: Sequential(
-                Timeout(SearchSingle(), 30),
-                # AlignSingleNormal(),
+                Timeout(SearchSingle(), 100),
                 ApproachSingle(),
                 RamVSingle(),
                 # SearchSingleOnFail(),

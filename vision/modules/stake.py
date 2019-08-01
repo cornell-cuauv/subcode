@@ -3,20 +3,20 @@ import shm
 import cv2
 from functools import reduce
 from math import pi
+from pickle import load
 
 # import time
 
 import numpy as np
 from vision.modules.base import ModuleBase  # , UndefinedModuleOption
 from vision.framework.transform import resize, simple_gaussian_blur
-from vision.framework.feature import outer_contours, contour_centroid, contour_area
+from vision.framework.feature import outer_contours, contour_centroid, contour_area, simple_canny
 from vision.framework.helpers import to_umat  # , from_umat
 from vision.framework.draw import draw_circle
 from vision.framework.color import bgr_to_lab, range_threshold
 
 from vision.modules.gate import thresh_color_distance
 
-from vision.modules.heart import heart as heart_original
 
 
 from vision import options
@@ -55,6 +55,7 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.IntOption('close_offset_x', -70, -255, 255),
            options.IntOption('close_offset_y', -10, -255, 255),
            options.DoubleOption('min_eccentricity', 0.6, 0, 1),
+           options.DoubleOption('max_eccentricity', 0.8, 0, 1),
            options.DoubleOption('min_elllipsish_thing', 0.9, 0, 1),
            ]
 
@@ -70,6 +71,8 @@ LEFT_CIRCLE = (390, 562)
 RIGHT_CIRCLE = (1900, 570)
 
 MOVE_DIRECTION=1  # 1 if lever on left else -1 if on right
+
+heart_original = load(open('./heart', 'rb'))
 
 class Stake(ModuleBase):
 
@@ -319,7 +322,16 @@ class Stake(ModuleBase):
         # mask = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
         mask, _ = thresh_color_distance(split, color, distance, weights=[0.5, 2, 2])
 
+        self.post('something', mask)
+
         contours = outer_contours(mask)
+
+        canny_post = np.zeros(mat.shape)
+        canny = simple_canny(mat)
+        contours = outer_contours(canny)
+        for i in range(len((contours))):
+            cv2.drawContours(canny_post, contours, i, (i*20, i*20, i*20))
+        self.post('canny', canny)
         if contours is not None and len(contours) > 0:
             # shm.torpedoes_stake.close_visible.set(True)
 
@@ -328,7 +340,7 @@ class Stake(ModuleBase):
                 if contour_area(contour) < 20: return False
                 _, (MA, ma), _ = cv2.fitEllipse(contour)
                 try:
-                    return (1-(MA**2)/(ma**2))**(1/2) > self.options['min_eccentricity'] and contour_area(contour)/(MA * ma / 4 * pi) > self.options['min_elllipsish_thing']
+                    return (self.options['max_eccentricity'] > 1-(MA**2)/(ma**2))**(1/2) > self.options['min_eccentricity'] and contour_area(contour)/(MA * ma / 4 * pi) > self.options['min_elllipsish_thing']
                 except ZeroDivisionError:
                     return False
 
@@ -366,10 +378,13 @@ class Stake(ModuleBase):
                 shm.torpedoes_stake.close_left_visible.set(False)
                 shm.torpedoes_stake.close_right_visible.set(False)
 
-            heart = list(filter(lambda c: contour_area(c) > 50, contours))
+            _, contours, _ = cv2.findContours(canny, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+            heart = [c for c in contours if cv2.contourArea(c) > 300]
             if heart:
                 heart = min(heart, key=lambda c:cv2.matchShapes(heart_original, c, cv2.CONTOURS_MATCH_I1, 0))
-                if not cv2.matchShapes(heart_original, heart, cv2.CONTOURS_MATCH_I1, 0) > 0.1:
+                print(cv2.matchShapes(heart_original, heart, cv2.CONTOURS_MATCH_I1, 0))
+                if not cv2.matchShapes(heart_original, heart, cv2.CONTOURS_MATCH_I1, 0) > 0.25:
                     h_centroid = contour_centroid(heart)
                     shm.torpedoes_stake.close_heart_x.set(h_centroid[0] + self.options['close_offset_x'])
                     shm.torpedoes_stake.close_heart_y.set(h_centroid[1] + self.options['close_offset_y'])

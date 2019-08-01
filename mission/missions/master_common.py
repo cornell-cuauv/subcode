@@ -256,40 +256,40 @@ def ConfigureHydromath(enable, gain_high=True):
     )
 
 
-TrackerGetter = lambda found_roulette, found_cash_in, enable_roulette=True, enable_cash_in=True: Sequential(
-  # Turn on hydromathd
-  ConfigureHydromath(True, enable_cash_in),
-  # Don't kill CPU with vision
-  VisionFramePeriod(track_settings.vision_frame_period),
-  Log('Roulette: ' + str(enable_roulette) + ', Cash-in:' + str(enable_cash_in)),
-  MasterConcurrent(
-    Conditional(
-      # Find either roulette or cash-in
-      Either(
-        Consistent(test=lambda: shm.bins_vision.board_visible.get() if enable_roulette else False,
-                   count=1, total=1.5, invert=False, result=True),
-        Consistent(test=lambda: shm.recovery_vision_downward_bin_red.probability.get() > 0 if enable_cash_in else False,
-                   count=1, total=1.5, invert=False, result=False),
-      ),
-      # Success is roulette
-      on_success=found_roulette,
-      # Failure is cash-in
-      on_fail=found_cash_in,
-    ),
-    # Track with hydrophones
-    Hydrophones(),
-  ),
-  Zero(),
-  # This should end up getting run twice because we call it in on_exit... but just in case
-  TrackerCleanup(),
-)
+# TrackerGetter = lambda found_roulette, found_cash_in, enable_roulette=True, enable_cash_in=True: Sequential(
+#   # Turn on hydromathd
+#   ConfigureHydromath(True, enable_cash_in),
+#   # Don't kill CPU with vision
+#   VisionFramePeriod(track_settings.vision_frame_period),
+#   Log('Roulette: ' + str(enable_roulette) + ', Cash-in:' + str(enable_cash_in)),
+#   MasterConcurrent(
+#     Conditional(
+#       # Find either roulette or cash-in
+#       Either(
+#         Consistent(test=lambda: shm.bins_vision.board_visible.get() if enable_roulette else False,
+#                    count=1, total=1.5, invert=False, result=True),
+#         Consistent(test=lambda: shm.recovery_vision_downward_bin_red.probability.get() > 0 if enable_cash_in else False,
+#                    count=1, total=1.5, invert=False, result=False),
+#       ),
+#       # Success is roulette
+#       on_success=found_roulette,
+#       # Failure is cash-in
+#       on_fail=found_cash_in,
+#     ),
+#     # Track with hydrophones
+#     Hydrophones(),
+#   ),
+#   Zero(),
+#   # This should end up getting run twice because we call it in on_exit... but just in case
+#   TrackerCleanup(),
+# )
 
-TrackerCleanup = lambda: Sequential(
-  # Turn off hydromathd
-  ConfigureHydromath(False, True),
-  # Go back to normal vision settings
-  VisionFramePeriod(0.1), # this should be default
-)
+# TrackerCleanup = lambda: Sequential(
+#   # Turn off hydromathd
+#   ConfigureHydromath(False, True),
+#   # Go back to normal vision settings
+#   VisionFramePeriod(0.1), # this should be default
+# )
 
 DriveToSecondPath = Sequential(
     BigDepth(highway_settings.high_depth),

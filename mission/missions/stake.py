@@ -28,7 +28,7 @@ from mission.missions.attilus_garbage import PIDStride, PIDSway, StillHeadingSea
 
 from vision.modules.stake import MOVE_DIRECTION
 
-BOARD_DEPTH = None
+BOARD_DEPTH = 2.7
 
 import shm
 
@@ -318,8 +318,8 @@ def Backup(speed=0.2):
 Full = \
     lambda: Sequential(
         Log('Starting Stake'),
-        # Depth(BOARD_DEPTH, error=0.2),
-        # Timeout(SearchBoard(), 120),
+        Depth(BOARD_DEPTH, error=0.2),
+        Timeout(SearchBoard(), 60),
         ApproachAlign(),
         Zero(),
         ApproachBelt(),

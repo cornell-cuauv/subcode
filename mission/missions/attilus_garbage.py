@@ -78,6 +78,35 @@ class StillHeadingSearch(Task):
         )
 
 
+class SlowHeading(Task):
+
+    def on_first_run(self, speed=40, db=7, target=180, *args, **kwargs):
+        init_heading = None
+
+        def set_init_heading():
+            nonlocal init_heading
+            init_heading = shm.kalman.heading.get()
+            return True
+
+        set_init_heading()
+
+        self.use_task(
+            # TODO: DO WE NEED THE WHILE OR DO WE WANT IT TO TERMINATE
+            # While(lambda: \
+                Sequential(
+                    RelativeToInitialHeading(speed),
+                    MasterConcurrent(
+                        FunctionTask(lambda: (abs(shm.desires.heading.get() - (init_heading + target)) % 360) < db, finite=False),
+                        RelativeToCurrentHeading(speed)),
+                    # Move back a bit, we might be too close
+                    # TODO: DO WE EVEN NEED THIS?
+                    # MoveX(-1),
+                    # Succeed(FunctionTask(set_init_heading))
+                )
+            # , True),
+        )
+
+
 # Sway search but without moving forward
 def SwayOnlySearch(speed=0.3, width=2.5, right_first=True):
     direction = 1 if right_first else -1
