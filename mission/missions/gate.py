@@ -326,6 +326,24 @@ approach_right_passageway_task = \
         )
     )
 
+charge_align_left_task = PIDLoop(
+    input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
+    target=lambda: shm.gate.img_width.get() / 2,
+    p=0.001,
+    deadband=0,
+    output_function=VelocityY(),
+    negate=True
+)
+
+charge_align_right_task = PIDLoop(
+    input_value=lambda: (shm.gate.rightmost_x.get() + shm.gate.middle_x.get()) / 2 if shm.gate.rightmost_visible.get() else (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
+    target=lambda: shm.gate.img_width.get() / 2,
+    p=0.001,
+    deadband=0,
+    output_function=VelocityY(),
+    negate=True
+),
+
 search_task = \
     SearchFor(
         Sequential(
@@ -424,7 +442,7 @@ gate_full_side = lambda approach_side_task: Sequential(
     ),
 )
 
-gate_side = lambda approach_side_task, offset: Sequential(
+gate_side = lambda approach_side_task, charge_align_side_task, offset: Sequential(
     Log('Depthing...'),
     Depth(DEPTH_TARGET, error=0.15),
     Sequential(
@@ -482,7 +500,12 @@ gate_side = lambda approach_side_task, offset: Sequential(
                         output_function=RelativeToCurrentHeading(),
                         negate=True
                     ),
-                    on_fail=NoOp(),
+                    on_fail=Conditional(
+                        main_task=FunctionTask(lambda: gate_elems() == 3),
+                        on_success=charge_align_side_task,
+                        on_fail=VelocityY(0),
+                        finite=False
+                    ),
                     finite=False
                 ),
                 finite=False
@@ -531,8 +554,8 @@ dead_simple = Sequential(
     Timed(VelocityX(dead_simple_post_reckon_forward_vel), dead_simple_post_reckon_forward_dist),
 )
 
-gate_left = gate_side(approach_left_passageway_task, offset=left_offset)
-gate_right = gate_side(approach_right_passageway_task, offset=right_offset)
+gate_left = gate_side(approach_left_passageway_task, charge_align_left_task, offset=left_offset)
+gate_right = gate_side(approach_right_passageway_task, charge_align_right_task, offset=right_offset)
 
 gate_full_left = gate_full_side(approach_left_passageway_task)
 gate_full_right = gate_full_side(approach_right_passageway_task)
