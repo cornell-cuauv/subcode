@@ -9,15 +9,16 @@ from mission.framework.primitive import FunctionTask, Zero, NoOp, InvertSuccess,
 from mission.framework.timing import Timer
 from mission.framework.movement import RelativeToCurrentHeading, Depth
 
-from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup, DriveToSecondPath
+from mission.missions.master_common import RunAll, MissionTask  # , TrackerGetter, TrackerCleanup, DriveToSecondPath
 
 from mission.missions.will_common import BigDepth, Consistent, FakeMoveX
 from mission.missions.attilus_garbage import PositionMarkers
 
-from mission.missions.gate import gate as Gate
-from mission.missions.path import get_path as PathGetter
+from mission.missions.gate import gate_full as Gate
+# from mission.missions.path import get_path as PathGetter
 from mission.missions.stake import Full as Stake, SearchBoard, BOARD_DEPTH
 from mission.missions.vampire import SearchAnyVampire as SearchVampire
+from mission.missions.pinger_tracker import TrackPinger
 
 from mission.constants.timeout import timeouts
 
@@ -58,13 +59,32 @@ stake = MissionTask(
     timeout=timeouts['stake'],
 )
 
+Surface = lambda: Sequential(Zero(), Depth(0))
+
+surface = MissionTask(
+        name='Surface',
+        cls=lambda: Surface(),
+        modules=[],
+        surfaces=True,
+        timeout=timeouts['surface'],
+)
+
+track_pinger = lambda: MissionTask(
+        name='Track',
+        cls=lambda: TrackPinger(),
+        modules=[],
+        surfaces=False,
+        timeout=timeouts['track_pinger']
+)
+
 # TODO: Recovery + Pinger
-Recovery = MissionTask(
+Recovery = None
+    # MissionTask(
     # name="SurfaceCashIn",
     # cls=lambda: SurfaceCashIn(),
     # modules=None,
     # surfaces=True,
-)
+# )
 
 
 # Which task have we found at random pinger?
@@ -133,9 +153,10 @@ def TrackerSearch():
                     Sequential(
                         Depth(BOARD_DEPTH, error=0.2),
                         # PingerTracker goes here
-                        Conditional(SearchBoard(), on_success=FunctionTask(lambda: set_pinger_task(Recovery)), on_fail= \
+                        Conditional(SearchBoard(), on_success=FunctionTask(lambda: set_pinger_task(Stake)), on_fail= \
                                 Sequential(
                                     markers.set('center'),
+                                    FunctionTask(lambda: set_pinger_task(Recovery))
                                 )
                         )
                     )
@@ -164,18 +185,23 @@ track = lambda: MissionTask(
     # TrackCleanup(),
 # )
 
+
 tasks = [
     #gate,
     lambda: gate,
     #get_path(PATH_1_BEND_RIGHT),
     #highway,
     #get_path(PATH_2_BEND_RIGHT),
-    lambda: track(roulette=True, cash_in=True),
-    get_found_task,
-    lambda: track(roulette=True, cash_in=True),
-    get_found_task,
-    lambda: track(roulette=True, cash_in=True),
-    get_found_task,
+    # lambda: track(roulette=True, cash_in=True),
+    # get_found_task,
+    # lambda: track(roulette=True, cash_in=True),
+    # get_found_task,
+    # lambda: track(roulette=True, cash_in=True),
+    # get_found_task,
+    track_pinger,
+    lambda: stake,
+    track_pinger,
+    lambda: surface,
 ]
 
 Master = RunAll(tasks)
