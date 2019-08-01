@@ -72,7 +72,7 @@ RIGHT_CIRCLE = (1900, 570)
 
 MOVE_DIRECTION=1  # 1 if lever on left else -1 if on right
 
-heart_original = load(open('./heart', 'rb'))
+heart_original = load(open('/home/software/cuauv/software/vision/modules/heart', 'rb'))
 
 class Stake(ModuleBase):
 

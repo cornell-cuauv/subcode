@@ -16,13 +16,8 @@ from termcolor import colored
 import shm, time, numpy, traceback
 
 all_modules = [
-  shm.vision_modules.BicolorGate,
-  shm.vision_modules.CashInDownward,
-  shm.vision_modules.CashInForward,
-  shm.vision_modules.Dice,
-  shm.vision_modules.Pipes,
-  shm.vision_modules.Roulette,
-  shm.vision_modules.Torpedoes,
+  shm.vision_modules.Gate,
+  shm.vision_modules.Stake,
   shm.vision_modules.Debug, # don't know what this is
 ]
 

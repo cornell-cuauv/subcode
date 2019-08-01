@@ -1,40 +1,32 @@
-# POLLUX MASTER MISSION
+# CASTOR MASTER MISSION
 # CUAUV ROBOSUB 2018
 
 import shm
 
-from mission.framework.combinators import MasterConcurrent, Sequential
+from mission.framework.task import Task
+from mission.framework.combinators import Sequential, MasterConcurrent, Conditional, Either, Retry
+from mission.framework.primitive import FunctionTask, Zero, NoOp, InvertSuccess, Fail
 from mission.framework.timing import Timer
-from mission.framework.primitive import FunctionTask, Log, Zero, NoOp
-from mission.framework.targeting import DownwardTarget
-from mission.framework.movement import RelativeToCurrentHeading, RelativeToInitialHeading
+from mission.framework.movement import RelativeToCurrentHeading, Depth
 
-from mission.missions.will_common import BigDepth, FakeMoveX
+from mission.missions.master_common import RunAll, MissionTask  # , TrackerGetter, TrackerCleanup, DriveToSecondPath
 
-from mission.missions.master_common import RunAll, MissionTask, TrackerGetter, TrackerCleanup, DriveToSecondPath
+from mission.missions.will_common import BigDepth, Consistent, FakeMoveX
+from mission.missions.attilus_garbage import PositionMarkers
 
-from mission.missions.gate import gate as Gate
-from mission.missions.path import get_path as PathGetter
+from mission.missions.gate import gate_full as Gate
+# from mission.missions.path import get_path as PathGetter
 from mission.missions.vamp_buoy import Full as VampBuoy
+from mission.missions.paul_bins import DecideAndPush as Bins
+from mission.missions.stake import Full as Stake, SearchBoard, BOARD_DEPTH
+from mission.missions.vampire import SearchAnyVampire as SearchVampire
+from mission.missions.pinger_tracker import TrackPinger
 
-from mission.missions.cash_in import norm_to_vision_downward
-
-from mission.constants.region import PATH_1_BEND_RIGHT, PATH_2_BEND_RIGHT
 from mission.constants.timeout import timeouts
 
-def time_left():
-    # TODO test this?
-    #time_in = Master.this_run_time - Master.first_run_time
-    return 0 #20 * 60 - time_in
+markers = PositionMarkers()
 
-WaitForTime = Sequential(
-    Zero(),
-    Log('Waiting until five minutes left...'),
-    Log('Time left: {}, so waiting {} seconds.'.format(time_left(), max(time_left() - 5 * 60, 0))),
-    # Wait until five minutes left
-    Timer(max(time_left() - 5 * 60, 0)),
-)
-
+# TODO: TIMEOUTS
 
 gate = MissionTask(
     name='Gate',
@@ -44,106 +36,170 @@ gate = MissionTask(
     timeout=timeouts['gate'],
 )
 
-fake_path = lambda bend_right: lambda: MissionTask(
-    name='FakePath',
-    cls=Sequential(
-        FakeMoveX(dist=0.5, speed=0.2),
-        RelativeToInitialHeading(45 if bend_right else -45),
-    ),
-    modules=None,
-    surfaces=False,
-)
+# get_path = lambda bend_right: lambda: MissionTask(
+#     name='Path',
+#     cls=PathGetter(bend_right),
+#     modules=[shm.vision_modules.Pipes],
+#     surfaces=False,
+#     timeout=timeouts['path'],
+#     on_timeout=RelativeToInitialHeading(45 if bend_right else -45),
+# )
 
-get_path = lambda bend_right: lambda: MissionTask(
-    name='Path',
-    cls=PathGetter(bend_right),
-    modules=[shm.vision_modules.Pipes],
-    surfaces=False,
-    timeout=timeouts['path'],
-    on_timeout=RelativeToInitialHeading(45 if bend_right else -45),
-)
+# highway = MissionTask(
+#     name='Highway',
+#     cls=DriveToSecondPath,
+#     modules=None,
+#     surfaces=False,
+#     timeout=timeouts['highway'],
+# )
 
 vamp_buoy = MissionTask(
     name='VampBuoy',
-    cls=VampBuoy,
-    modules= [shm.vision_modules.VampBuoy],
+    cls=lambda: VampBuoy(),
+    modules=[shm.vision_modules.VampBuoy],
     surfaces=False,
     timeout=timeouts['vamp_buoy'],
 )
 
-highway = MissionTask(
-    name='Highway',
-    cls=DriveToSecondPath,
-    modules=None,
-    surfaces=False,
-    timeout=timeouts['highway'],
+
+bins = MissionTask(
+        name='Bins',
+        cls=lambda: Bins(),
+        modules=[shm.vision_modules.BinsCover, shm.vision_modules.BinsImage, shm.vision_modules.BinsLever],
+        surfaces=True,
+        timeout=timeouts['bins'],
 )
 
-wait_for_track = MissionTask(
-    name='StuckInTraffic',
-    cls=WaitForTime,
-    modules=None,
-    surfaces=False,
-)
+# track_pinger = lambda: MissionTask(
+#         name='Track',
+#         cls=lambda: TrackPinger(),
+#         modules=[],
+#         surfaces=False,
+#         timeout=timeouts['track_pinger']
+# )
 
-track = MissionTask(
-    name='Track',
-    cls=TrackerGetter(
-        # We can't actually find roulette because the vision module is disabled
-        found_roulette=NoOp(),
-        found_cash_in=NoOp(),
-        enable_roulette=False,
-    ),
-    modules=[shm.vision_modules.CashInDownward],
+# TODO: Recovery + Pinger
+Recovery = None
+    # MissionTask(
+    # name="SurfaceCashIn",
+    # cls=lambda: SurfaceCashIn(),
+    # modules=None,
+    # surfaces=True,
+# )
+
+
+# Which task have we found at random pinger?
+
+#ROULETTE = 1
+#CASH_IN = -1
+#found_task = 0
+
+#cash_in_surfaced = False
+
+#def find_task(task):
+#    global found_task, cash_in_surfaced
+#    found_task = task
+
+#def get_found_task():
+#    global cash_in_surfaced
+
+#    if found_task == ROULETTE:
+#        cash_in_surfaced = True
+#        return roulette
+#    else:
+#        #found_task == CASH_IN:
+#        if cash_in_surfaced:
+#            return cash_in
+#        else:
+#            cash_in_surfaced = True
+#            return surface_cash_in
+
+    # print('found_task:', found_task)
+    # print('cash_in_surfaced:', cash_in_surfaced)
+    # return surface_cash_in
+
+    #else:
+    #    return MissionTask(name="Failure", cls=NoOp(), modules=None, surfaces=False)
+
+# pinger task should be a function that returns a task
+# TODO: MAKE SURE THIS WORKS
+pinger_task = None
+pinger_tasks = [Recovery, Stake]
+
+def set_pinger_task(task):
+    global pinger_task
+    pinger_task = task
+
+def set_second_task_if_possible():
+    global pinger_task
+    if pinger_task in pinger_tasks:
+        for p in pinger_tasks:
+            if pinger_task != p:
+                pinger_task = p
+                return True
+        return False
+
+def get_pinger_track():
+    global pinger_task
+    if pinger_task is None:
+        return Fail()
+    return pinger_task()
+
+# This is semi psuedocode
+def TrackerSearch():
+    return \
+    Retry(
+        Sequential(
+            Conditional(FunctionTask(set_second_task_if_possible), on_fail= \
+                    Sequential(
+                        Depth(BOARD_DEPTH, error=0.2),
+                        # PingerTracker goes here
+                        Conditional(SearchBoard(), on_success=FunctionTask(lambda: set_pinger_task(Stake)), on_fail= \
+                                Sequential(
+                                    markers.set('center'),
+                                    FunctionTask(lambda: set_pinger_task(Recovery))
+                                )
+                        )
+                    )
+                )
+            ), attempts=3
+    )
+
+track = lambda: MissionTask(
+    name="Track",
+    cls=TrackerSearch,
+    modules=[shm.vision_modules.Vampire, shm.vision_modules.Stake],
     surfaces=False,
-    on_exit=TrackerCleanup(),
     timeout=timeouts['track'],
 )
 
-# get a little closer to cash-in before we start tracking
-interlude = lambda dist, speed: lambda: MissionTask(
-    name='Interlude',
-    cls=Sequential(
-        FakeMoveX(dist=dist, speed=speed),
-    ),
-    modules=None,
-    surfaces=False,
-)
-
-surface_cash_in = MissionTask(
-    name='SurfaceCashIn',
-    cls=SurfaceAtCashIn,
-    modules=[shm.vision_modules.CashInDownward],
-    surfaces=True,
-)
-
 # This is used for testing, not used in the actual master mission
-TestTrack = Sequential(
-    TrackerGetter(
-        # found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
-        # found_cash_in=FunctionTask(lambda: find_task(CASH_IN)),
-        found_roulette=FunctionTask(lambda: False),
-        found_cash_in=FunctionTask(lambda: False),
-        enable_roulette=True,
-        enable_cash_in=True,
-    ),
+# TestTrack = Sequential(
+#     TrackerGetter(
+#         # found_roulette=FunctionTask(lambda: find_task(ROULETTE)),
+#         # found_cash_in=FunctionTask(lambda: find_task(CASH_IN)),
+#         found_roulette=FunctionTask(lambda: False),
+#         found_cash_in=FunctionTask(lambda: False),
+#         enable_roulette=True,
+#         enable_cash_in=True,
+#     ),
     # TrackCleanup(),
-)
+# )
+
 
 tasks = [
     #gate,
-    lambda: gate_dead_reckon,
+    lambda: gate,
     #get_path(PATH_1_BEND_RIGHT),
-    fake_path(PATH_1_BEND_RIGHT),
-    interlude(dist=3.0, speed=0.2),
-    lambda: dice,
-    lambda: highway,
+    #highway,
     #get_path(PATH_2_BEND_RIGHT),
-    fake_path(PATH_2_BEND_RIGHT),
-    interlude(dist=4.0, speed=0.2),
-    #wait_for_track,
-    track,
-    surface_cash_in,
+    # lambda: track(roulette=True, cash_in=True),
+    # get_found_task,
+    # lambda: track(roulette=True, cash_in=True),
+    # get_found_task,
+    # lambda: track(roulette=True, cash_in=True),
+    # get_found_task,
+    lambda: vamp_buoy
 ]
 
 Master = RunAll(tasks)

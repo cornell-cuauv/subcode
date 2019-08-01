@@ -67,13 +67,13 @@ track = Sequential(
     )
 )
 
-class TrackPinger(Task):
+class _TrackPinger(Task):
 
     def on_first_run(self):
         self.last_shmval = None
         self.last_target_heading = None
         self.last_target_elevation = 0
-        self.checker = ConsistencyCheck(count=5, total=7)
+        self.checker = ConsistencyCheck(count=3, total=7)
 
     def update(self):
         self.shmval = shm.hydrophones_results_track.tracked_ping_heading.get()
@@ -114,3 +114,6 @@ class TrackPinger(Task):
             return
         Heading(self.get_target_heading())()
         VelocityX(self.calc_speed())()
+
+
+TrackPinger = lambda: Sequential(Depth(1.0, error=0.2), _TrackPinger())
