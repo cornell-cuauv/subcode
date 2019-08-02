@@ -8,6 +8,7 @@ from mission.framework.combinators import Sequential, MasterConcurrent, Conditio
 from mission.framework.primitive import FunctionTask, Zero, NoOp, InvertSuccess, Fail, Log
 from mission.framework.timing import Timer
 from mission.framework.movement import RelativeToCurrentHeading, RelativeToInitialHeading, Depth, VelocityX
+from mission.framework.search import SearchFor
 
 from mission.missions.master_common import RunAll, MissionTask  # , TrackerGetter, TrackerCleanup, DriveToSecondPath
 
@@ -76,6 +77,17 @@ track_pinger = lambda: MissionTask(
         surfaces=False,
         timeout=timeouts['track_pinger']
 )
+
+SearchTorpedoes = lambda: SearchFor(
+        TrackPinger(),
+        shm.torpedoes_stake.board_visible.get,
+        consistent_frames=(3,5))
+
+search_torpedoes = lambda: MissionTask(
+        name='SearchTorpedoes',
+        cls=SearchTorpedoes,
+        surfaces=False,
+        timeout=45)
 
 # TODO: Recovery + Pinger
 Recovery = None
@@ -212,7 +224,7 @@ path = lambda: MissionTask(
 tasks_nonrandom = [
     lambda: gate,
     path,
-    track_pinger,
+    search_torpedoes,
     lambda: stake,
     track_pinger,
     lambda: surface,
