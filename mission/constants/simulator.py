@@ -1,4 +1,4 @@
-from mission.constants.missions import Gate
+from mission.constants.missions import Path
 
 from conf.vehicle import is_mainsub
 
@@ -9,23 +9,17 @@ NONSURFACE_MIN_DEPTH = 0.3
 # Note: These values are copied straight from the Teagle configuration.
 # They need to be updated for Transdec!!
 
-gate = Gate(
-    depth=2.0,
-    gate_width_threshold=0.4,
-    charge_dist=16 if is_mainsub() else 12
+path = Path(
+    depth=1.0,
+    search_forward=6 if is_mainsub else 2,
+    search_stride = 10 if is_mainsub else 8,
+    search_right_first=True,
+    search_speed=0.1,
+    post_dist=2.5,
+    failure_back_up_dist=0.5 if is_mainsub else 0.1,
+    failure_back_up_speed=0.2 if is_mainsub else 0.1,
 )
 
-#path = Path(
-#    depth=1.0,
-#    search_forward=6 if is_mainsub() else 2,
-#    search_stride = 10 if is_mainsub() else 8,
-#    search_right_first=True,
-#    search_speed=0.1,
-#    post_dist=2.5,
-#    failure_back_up_dist=0.5 if is_mainsub() else 0.1,
-#    failure_back_up_speed=0.2 if is_mainsub() else 0.1,
-#)
-#
 #dice = Dice(
 #    depth=2.0,
 #    max_depth=2.7,
