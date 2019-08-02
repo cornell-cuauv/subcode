@@ -203,7 +203,7 @@ path = lambda: MissionTask(
     name="path",
     cls=lambda: RelativeToInitialHeading(45),
     modules=[],
-    surface=False,
+    surfaces=False,
     timeout=30
 )
 
