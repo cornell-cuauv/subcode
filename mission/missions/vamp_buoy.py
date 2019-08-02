@@ -17,7 +17,7 @@ from mission.framework.combinators import (
 )
 from mission.framework.targeting import ForwardTarget, PIDLoop, HeadingTarget
 from mission.framework.task import Task
-from mission.framework.movement import VelocityY, VelocityX, RelativeToInitialHeading
+from mission.framework.movement import VelocityY, VelocityX, RelativeToInitialHeading, Heading
 from mission.framework.position import MoveX
 from mission.framework.search import SearchFor, SwaySearch, VelocitySwaySearch, MoveX
 
@@ -40,6 +40,8 @@ CALL = "draugr"
 SIZE_THRESH = 8000
 
 DIRECTION = 1  # -1 if left
+
+BUOY_DEPTH = 2
 
 last_visible = None
 
@@ -184,7 +186,7 @@ SearchTriangle = lambda stride=2: Sequential( #stride=1.25
         SearchFor(
             #SwaySearch(2.0, 0.7),
             VelocitySwaySearch(stride=stride, width=2.5, rightFirst=get_sway_direction()),
-            lambda: triangle_visible() and any_buoy_size() > SEARCH_SIZE_THRESH,
+            lambda: triangle_visible(), # and any_buoy_size() > SEARCH_SIZE_THRESH,
             consistent_frames=(1.7*60, 2.0*60) #TODO: Check consistent frames
             ),
         FunctionTask(set_last_seen),
@@ -196,11 +198,11 @@ SearchTriangle = lambda stride=2: Sequential( #stride=1.25
 # @withRamAnythingOnFail
 def SearchCalled():
     return Sequential(
-        Log('Searching for called buoy'),
+        Log('Searching for any buoy'),
         Zero(),
         SearchFor(
             While(lambda: VelocityY(DIRECTION * -0.2), True),
-            call_buoy_visible,
+            triangle_visible,
             consistent_frames=(1.7*60, 2.0*60) #TODO: Check consistent frames
             ),
         FunctionTask(set_last_seen),
@@ -310,9 +312,9 @@ SearchAndApproach = lambda: Sequential(SearchCalled(), AlignCalledNormal(), Appr
 
 
 # The full mission for the triangular buoy
-TriangleOnly = lambda: Sequential(
+        Log('finding buoy'),TriangleOnly = lambda: Sequential(
         Log('Searching for buoy'),
-        Timeout(SearchAny(), 30),
+        Timeout(SearchCalled(), 30),
         Log('Found buoy'),
         ApproachAny(),
         Log('Ramming'),
@@ -341,6 +343,9 @@ DeadReckonStupid = lambda: \
         # Timed(VelocityX(0.3, error=40), 15),
         # VelocityX(0, error=40),
         # SlowHeading(),
+        Log('Backing up'),
+        Timed(VelocityX(-0.2), 6),
+        Log('finding buoy'),
         RelativeToInitialHeading(DIRECTION * 90)
     )
 
@@ -348,21 +353,25 @@ heading = None
 
 def store_heading(h):
     global heading
-    heaing = h
+    print('storing heading %s' % h())
+    heading = h()
 
 def get_heading():
     global heading
+    if heading == None: 
+        heading = shm.kalman.heading.get()
+    print('getting heading %f' % heading)
     return heading
 
 # The full mission for the single target buoy
 # TODO: Edge cases
 SingleOnly = lambda: Sequential(
                 Timeout(SearchSingle(), 100),
-                FunctionTask(lambda: store_heading(shm.kalman.heading)),
+                FunctionTask(lambda: store_heading(shm.kalman.heading.get)),
                 ApproachSingle(),
                 RamVSingle(),
                 # SearchSingleOnFail(),
                 # Succeed(Timeout(AlignSingleNormal(), 20))
             )
 
-Full = lambda: Sequential(SingleOnly(), DeadReckonStupid(), TriangleOnly())
+Full = lambda: Sequential(Depth(BUOY_DEPTH), SingleOnly(), DeadReckonStupid(), TriangleOnly())
