@@ -199,10 +199,19 @@ goto_gate = lambda: MissionTask(
     timeout=60
 )
 
+path = lambda: MissionTask(
+    name="path",
+    cls=lambda: RelativeToInitialHeading(45),
+    modules=[],
+    surface=False,
+    timeout=30
+)
+
 
 
 tasks_nonrandom = [
     lambda: gate,
+    path,
     track_pinger,
     lambda: stake,
     track_pinger,
@@ -211,6 +220,7 @@ tasks_nonrandom = [
 
 tasks = [
     lambda: gate,
+    path,
     set_gate,
     track,
     get_pinger_task,
