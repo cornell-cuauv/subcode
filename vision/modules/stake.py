@@ -295,7 +295,7 @@ class Stake(ModuleBase):
         #             self.options['lever_%s' % colorspace[i]] - d, self.options['lever_%s' % colorspace[i]] + d)
         #             for i in range(1, len(colorspace))]
 
-        threshed = thresh_color_distance(split, color, d, weights=[0.5, 2, 2,])
+        threshed = thresh_color_distance(split, [self.options['lever_%s' % colorspace[i]] for i in range(len(colorspace))], d, weights=[0.5, 2, 2,])
 
         combined = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
         combined = cv2.bitwise_and(combined, gutter_mask)
