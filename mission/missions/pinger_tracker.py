@@ -83,8 +83,8 @@ class _TrackPinger(Task):
             self.last_shmval = self.shmval
             self.last_target_heading = self.shmval
             self.last_target_elevation = shm.hydrophones_results_track.tracked_ping_elevation.get()
-            self.log('heading: ' + str(self.last_target_heading))
-            self.log('elevation: ' + str(self.last_target_elevation))
+            self.log('heading: ' + str(self.last_target_heading), level='info')
+            self.log('elevation: ' + str(self.last_target_elevation), level='info')
             return self.checker.check(self.angle_diff(self.get_target_heading(), lltarget_heading) > 90)
         return False
 

@@ -287,7 +287,7 @@ def DeadReckonHeart():
     pass
 def _DeadReckonLever():
     return Sequential(
-        Succeed(Timeout(MoveX(.58, deadband=0.05), 20)),
+        Succeed(Timeout(MoveX(.65, deadband=0.05), 20)),
         Succeed(Timeout(MoveY(MOVE_DIRECTION * 0.7, deadband=0.05), 20)),
         Succeed(Timeout(MoveY(MOVE_DIRECTION * -0.30, deadband=0.1), 20)),
         )
@@ -360,8 +360,10 @@ Full = \
 Test = \
     lambda: Sequential(
             ApproachAlign(),
-            ApproachLeftHole(),
+            DeadReckonLever(),
+            ApproachAlign(),
+            ApproachRightHole(),
             Log('plox'),
-            ApproachCloseLeft(),
+            ApproachCloseRight(),
             Log('what'),
-            FireActuator('bottom_torpedo', 0.5))
+            FireActuator('top_torpedo', 0.5))

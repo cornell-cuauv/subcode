@@ -194,11 +194,11 @@ class Begin(Task):
       #AllLeds('red'),
 
       Log('Zeroing'),
-      ZeroHeading(),
+      # ZeroHeading(),
       Zero(),
       FunctionTask(lambda: shm.switches.soft_kill.set(0)),
-      EnableController(),
-      Heading(0), # This will revert to the aligned heading
+      # EnableController(),
+      # Heading(0), # This will revert to the aligned heading
       Log('Enabling Record vision module'),
       FunctionTask(lambda: shm.vision_modules.Record.set(1)),
     ))

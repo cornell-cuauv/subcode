@@ -210,7 +210,7 @@ tasks_nonrandom = [
 ]
 
 tasks = [
-    # lambda: gate,
+    lambda: gate,
     set_gate,
     track,
     get_pinger_task,
