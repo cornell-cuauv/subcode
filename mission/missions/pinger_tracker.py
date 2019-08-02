@@ -118,6 +118,6 @@ class _TrackPinger(Task):
 
 
 
-TrackPinger = lambda: Sequential(Depth(2.7, error=0.2), _TrackPinger())
+TrackPinger = lambda: Sequential(Depth(2.3, error=0.2), _TrackPinger())
 
 what = Heading(None)

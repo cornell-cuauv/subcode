@@ -87,7 +87,7 @@ search_torpedoes = lambda: MissionTask(
         name='SearchTorpedoes',
         cls=SearchTorpedoes,
         surfaces=False,
-        timeout=45)
+        timeout=timeouts['search_torpedoes'])
 
 # TODO: Recovery + Pinger
 Recovery = None
@@ -233,13 +233,13 @@ tasks_nonrandom = [
 tasks = [
     lambda: gate,
     path,
-    set_gate,
-    track,
-    get_pinger_task,
-    goto_gate,
+    # set_gate,
+    # track,
+    # get_pinger_task,
+    # goto_gate,
     track,
     get_pinger_task
 ]
 
-Master_Backup = RunAll(tasks_nonrandom)
-Master = RunAll(tasks)
+Master = RunAll(tasks_nonrandom)
+Master_FUCK = RunAll(tasks)

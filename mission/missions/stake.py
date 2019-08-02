@@ -111,7 +111,7 @@ SearchBoard = lambda: Sequential(
         SearchFor(
             StillHeadingSearch(speed=10),
             visible,
-            consistent_frames=(1.7*60, 2.0*60)
+            consistent_frames=(3, 5)
             ),
         Log('Found!'),
         Zero()
