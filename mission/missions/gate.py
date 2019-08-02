@@ -342,7 +342,7 @@ charge_align_right_task = PIDLoop(
     deadband=0,
     output_function=VelocityY(),
     negate=True
-),
+)
 
 search_task = \
     SearchFor(
@@ -442,7 +442,7 @@ gate_full_side = lambda approach_side_task: Sequential(
     ),
 )
 
-gate_side = lambda approach_side_task, charge_align_side_task, offset: Sequential(
+gate_side = lambda approach_side_task, charge_align_side_task, offset, spin=True: Sequential(
     Log('Depthing...'),
     Depth(DEPTH_TARGET, error=0.15),
     Sequential(
@@ -485,7 +485,7 @@ gate_side = lambda approach_side_task, charge_align_side_task, offset: Sequentia
         Zero(),
         Log('Pre Spin Charging...'),
         FunctionTask(save_heading),
-        Depth(SPIN_DEPTH_TARGET, error=0.15),
+        (Depth(SPIN_DEPTH_TARGET, error=0.15) if spin else NoOp()),
         Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
         Timed(
             Concurrent(
@@ -514,7 +514,7 @@ gate_side = lambda approach_side_task, charge_align_side_task, offset: Sequentia
         ),
 
         Log('Spin Charging...'),
-        rolly_roll,
+        (rolly_roll if spin else NoOp()),
 
         Log('Spin Complete, pausing...'),
         Zero(),
@@ -534,7 +534,7 @@ gate_side = lambda approach_side_task, charge_align_side_task, offset: Sequentia
 
         Log('Restoring heading and depth'),
         Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
-        Depth(DEPTH_TARGET, error=0.15),
+        (Depth(DEPTH_TARGET, error=0.15) if spin else NoOp()),
 
         Log('Through gate!')
 
@@ -555,8 +555,11 @@ dead_simple = Sequential(
 )
 
 gate_left = gate_side(approach_left_passageway_task, charge_align_left_task, offset=left_offset)
+gate_left_no_spin = gate_side(approach_left_passageway_task, charge_align_left_task, offset=left_offset, spin=False)
 gate_right = gate_side(approach_right_passageway_task, charge_align_right_task, offset=right_offset)
+gate_right_no_spin = gate_side(approach_right_passageway_task, charge_align_right_task, offset=right_offset, spin=False)
 
 gate_full_left = gate_full_side(approach_left_passageway_task)
 gate_full_right = gate_full_side(approach_right_passageway_task)
 gate = gate_left
+gate_no_spin = gate_right_no_spin
