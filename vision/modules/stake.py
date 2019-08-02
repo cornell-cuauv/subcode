@@ -18,6 +18,7 @@ from vision.framework.color import bgr_to_lab, range_threshold
 from vision.modules.gate import thresh_color_distance
 
 
+from mission.missions.stake import MOVE_DIRECTION
 
 from vision import options
 
@@ -30,7 +31,7 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.BoolOption('show_keypoints', False),
            options.IntOption('board_separation', 450, 0, 4000),
            options.IntOption('board_horizontal_offset', 70, -1000, 1000),
-           options.IntOption('lever_position_x', -500, -3000, 3000),
+           options.IntOption('lever_position_x', -500 if MOVE_DIRECTION==1 else 2700, -3000, 3000),
            options.IntOption('lever_position_y', 2500, 0, 6000),
            options.IntOption('heart_offset_x', -307, -3000, 3000),
            options.IntOption('heart_offset_y', 0, -3000, 3000),
@@ -45,7 +46,7 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.IntOption('lever_b', 183, 0, 255),
            options.IntOption('lever_color_distance', 50, 0, 255),
            options.IntOption('contour_size_min', 5, 0, 1000),
-           options.IntOption('lever_endzone_left', 1793, 0, 6000),
+           options.IntOption('lever_endzone_left', 1793 if MOVE_DIRECTION==1 else 750, 0, 6000),
            options.IntOption('lever_gutter_top', 2238, 0, 6000),
            options.IntOption('lever_gutter_bot', 2887, 0, 6000),
            options.IntOption('color_l', 170, 0, 255),
@@ -73,7 +74,7 @@ BELT = (1174, 3700)
 LEFT_CIRCLE = (390, 562)
 RIGHT_CIRCLE = (1900, 570)
 
-MOVE_DIRECTION=1  # 1 if lever on left else -1 if on right
+# MOVE_DIRECTION=1  # 1 if lever on left else -1 if on right
 
 heart_original = load(open('/home/software/cuauv/software/vision/modules/heart', 'rb'))
 # from vision.modules.heart import heart as heart_original
