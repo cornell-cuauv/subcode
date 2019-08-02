@@ -312,12 +312,13 @@ SearchAndApproach = lambda: Sequential(SearchCalled(), AlignCalledNormal(), Appr
 # The full mission for the triangular buoy
 TriangleOnly = lambda: Sequential(
         Log('Searching for buoy'),
-        Timeout(SearchCalled(), 40),
+        Timeout(SearchAny(), 30),
         Log('Found buoy'),
-        ApproachCalled(),
+        ApproachAny(),
         Log('Ramming'),
         RamV(),
-        Log('Vamp_Buoy Complete')
+        Log('Vamp_Buoy Complete'),
+        Heading(get_heading)
      )
 
 # Search task for the single target buoy
@@ -335,17 +336,29 @@ SearchSingle = lambda: Sequential(
 
 DeadReckonStupid = lambda: \
     Sequential(
-        Timed(VelocityY(DIRECTION * 0.3, error=40), 3),
-        VelocityY(0, error=40),
-        Timed(VelocityX(0.3, error=40), 15),
-        VelocityX(0, error=40),
-        SlowHeading(),
+        # Timed(VelocityY(DIRECTION * 0.3, error=40), 3),
+        # VelocityY(0, error=40),
+        # Timed(VelocityX(0.3, error=40), 15),
+        # VelocityX(0, error=40),
+        # SlowHeading(),
+        RelativeToInitialHeading(DIRECTION * 90)
     )
+
+heading = None
+
+def store_heading(h):
+    global heading
+    heaing = h
+
+def get_heading():
+    global heading
+    return heading
 
 # The full mission for the single target buoy
 # TODO: Edge cases
 SingleOnly = lambda: Sequential(
                 Timeout(SearchSingle(), 100),
+                FunctionTask(lambda: store_heading(shm.kalman.heading)),
                 ApproachSingle(),
                 RamVSingle(),
                 # SearchSingleOnFail(),
