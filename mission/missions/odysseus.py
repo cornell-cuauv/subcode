@@ -7,7 +7,7 @@ from mission.framework.task import Task
 from mission.framework.combinators import Sequential, MasterConcurrent, Conditional, Either, Retry
 from mission.framework.primitive import FunctionTask, Zero, NoOp, InvertSuccess, Fail, Log
 from mission.framework.timing import Timer
-from mission.framework.movement import RelativeToCurrentHeading, Depth, VelocityX
+from mission.framework.movement import RelativeToCurrentHeading, RelativeToInitialHeading, Depth, VelocityX
 
 from mission.missions.master_common import RunAll, MissionTask  # , TrackerGetter, TrackerCleanup, DriveToSecondPath
 
