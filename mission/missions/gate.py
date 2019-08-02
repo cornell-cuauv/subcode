@@ -522,13 +522,30 @@ gate_side = lambda approach_side_task, charge_align_side_task, offset, spin=True
         Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
 
         Log('Post Spin Charging...'),
-        Conditional(
-            main_task=FunctionTask(lambda: gate_elems() == 2),
-            on_success=While(
-                condition=lambda: gate_elems() != 0,
-                task_func=lambda: VelocityX(0.2),
+        Timed(
+            Concurrent(
+                VelocityX(post_spin_charge_vel),
+                Conditional(
+                    main_task=FunctionTask(lambda: gate_elems() == 2),
+                    on_success=PIDLoop(
+                        input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
+                        target=lambda: shm.gate.img_width.get() / 2,
+                        p=0.2,
+                        deadband=0,
+                        output_function=RelativeToCurrentHeading(),
+                        negate=True
+                    ),
+                    on_fail=Conditional(
+                        main_task=FunctionTask(lambda: gate_elems() == 3),
+                        on_success=charge_align_side_task,
+                        on_fail=VelocityY(0),
+                        finite=False
+                    ),
+                    finite=False
+                ),
+                finite=False
             ),
-            on_fail=Timed(VelocityX(post_spin_charge_vel), post_spin_charge_dist),
+            post_spin_charge_dist
         ),
         Zero(),
 
