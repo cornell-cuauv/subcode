@@ -14,7 +14,7 @@ from mission.missions.master_common import RunAll, MissionTask  # , TrackerGette
 from mission.missions.will_common import BigDepth, Consistent, FakeMoveX
 from mission.missions.attilus_garbage import PositionMarkers
 
-from mission.missions.gate import gate as Gate
+from mission.missions.gate import gate_no_spin as Gate
 # from mission.missions.path import get_path as PathGetter
 from mission.missions.vamp_buoy import Full as VampBuoy
 from mission.missions.paul_bins import DecideAndPush as Bins
@@ -205,7 +205,7 @@ path = lambda: MissionTask(
 )
 
 tasks = [
-    # lambda: gate,
+    lambda: gate,
     lambda: vamp_buoy,
     path,
     lambda: bins

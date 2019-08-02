@@ -1,8 +1,8 @@
 timeouts = {
     'gate': None,
-    'track_pinger': 160,
-    'stake': 230,
+    'track_pinger': 100,
+    'stake': 200,
     'surface': None,
-    'vamp_buoy': 150,
+    'vamp_buoy': 100,
     'bins': None,
 }

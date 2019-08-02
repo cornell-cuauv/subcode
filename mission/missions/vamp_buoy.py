@@ -163,7 +163,7 @@ SearchSingleOnFail = lambda backspeed=0.2, backtime=10: Sequential(
         Zero(),
         Timed(VelocityX(-backspeed), backtime),
         Zero(),
-        Timeout(SearchSingle(), 120))
+        Timeout(SearchSingle(), 45))
 
 # Decorator that wraps a task to search for the triangular buoy on fail
 withSearchTriangleOnFail = lambda task: lambda: Retry(lambda: Conditional(main_task=task(), on_fail=Fail(SearchTriangleOnFail())), attempts=2)
@@ -203,7 +203,7 @@ def SearchCalled():
         SearchFor(
             While(lambda: VelocityY(DIRECTION * -0.2), True),
             triangle_visible,
-            consistent_frames=(1.7*60, 2.0*60) #TODO: Check consistent frames
+            consistent_frames=(3, 5) #TODO: Check consistent frames
             ),
         FunctionTask(set_last_seen),
         Zero()
@@ -312,7 +312,7 @@ SearchAndApproach = lambda: Sequential(SearchCalled(), AlignCalledNormal(), Appr
 
 
 # The full mission for the triangular buoy
-        Log('finding buoy'),TriangleOnly = lambda: Sequential(
+TriangleOnly = lambda: Sequential(
         Log('Searching for buoy'),
         Timeout(SearchCalled(), 30),
         Log('Found buoy'),
@@ -330,7 +330,7 @@ SearchSingle = lambda: Sequential(
             VelocitySwaySearch(width=3, stride=4),
             shm.vamp_buoy_results.jiangshi_visible.get,
             # lambda: shm.vamp_buoy_results.jiangshi_visible.get() and single_buoy_size() > SEARCH_SIZE_THRESH,
-            consistent_frames=(1.7*60, 2.0*60)
+            consistent_frames=(3, 5)
             ),
         Log('Singular Found'),
         Zero()
@@ -374,4 +374,4 @@ SingleOnly = lambda: Sequential(
                 # Succeed(Timeout(AlignSingleNormal(), 20))
             )
 
-Full = lambda: Sequential(Depth(BUOY_DEPTH), SingleOnly(), DeadReckonStupid(), TriangleOnly())
+Full = lambda: Sequential(SingleOnly(), DeadReckonStupid(), TriangleOnly())
