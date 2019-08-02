@@ -79,12 +79,13 @@ class _TrackPinger(Task):
         self.shmval = shm.hydrophones_results_track.tracked_ping_heading.get()
         # print('last: ' + str(self.last_shmval) + ', new: ' + str(self.shmval))
         if self.last_shmval is None or self.shmval != self.last_shmval:
+            lltarget_heading = self.last_target_heading if self.last_target_heading is not None else self.shmval
             self.last_shmval = self.shmval
             self.last_target_heading = self.shmval
             self.last_target_elevation = shm.hydrophones_results_track.tracked_ping_elevation.get()
             print('heading: ' + str(self.last_target_heading))
             print('elevation: ' + str(self.last_target_elevation))
-            return self.checker.check(self.angle_diff(self.get_target_heading(), shm.kalman.heading.get()) > 90)
+            return self.checker.check(self.angle_diff(self.get_target_heading(), lltarget_heading) > 90)
         return False
 
     def get_target_heading(self):
@@ -116,4 +117,5 @@ class _TrackPinger(Task):
         VelocityX(self.calc_speed())()
 
 
-TrackPinger = lambda: Sequential(Depth(1.0, error=0.2), _TrackPinger())
+
+TrackPinger = lambda: Sequential(Depth(2.7, error=0.2), _TrackPinger())

@@ -170,7 +170,7 @@ def withApproachAlignOnFail(task):
     return lambda *args, **kwargs: Retry(lambda: Conditional(Timeout(task(*args, **kwargs), 60), on_fail=Fail(Sequential(Zero(), ApproachAlign(), Zero()))), attempts=2)
 
 def withShootRightOnFail(task):
-    return lambda: Conditional(task(), on_fail=Fail(Sequential(Zero(), ApproachAlign(), ApproachRightHole(), ApproachCloseRight(), FireActuator('bottom_torpedo', 0.3), Backup())))
+    return lambda: Conditional(task(), on_fail=Fail(Sequential(Zero(), ApproachAlign(), ApproachRightHole() if MOVE_DIRECTION == 1 else ApproachLeftHole(), ApproachCloseRight() if MOVE_DIRECTION == 1 else ApproachCloseRight(), FireActuator('bottom_torpedo', 0.3), Backup())))
 
 def withApproachBeltOnFail(task):
     return lambda *args, **kwargs: Retry(lambda: Conditional(Timeout(task(*args, **kwargs), 120), on_fail=Fail(Sequential(Zero(), Conditional(ReSearchHeartOnFail(), on_fail=ApproachBelt())))), attempts=2)
@@ -271,13 +271,13 @@ def ApproachRightHole():
 
 @withApproachBeltOnFail
 def ApproachCloseHeart():
-    return ApproachCenterSize(close_heart_size, close_heart, None, close_heart_visible, HOLE_SIZE, p=0.0000025, px=0.001, py=0.003, dy=0.005, dx=0.00005, db=4000, closedb=7, consistent_total=2.0)
+    return ApproachCenterSize(close_heart_size, close_heart, None, close_heart_visible, HOLE_SIZE, p=0.000005, px=0.001, py=0.003, dy=0.005, dx=0.00005, db=4000, closedb=7, consistent_total=2.0)
 @withApproachLeftHoleOnFail
 def ApproachCloseLeft():
-    return ApproachCenterSize(close_left_size, close_left, None, close_left_visible, HOLE_SIZE, p=0.0000025, px=0.001, py=0.003, dy=0.005, dx=0.0001, db=4000, closedb=13, consistent_total=2.0)
+    return ApproachCenterSize(close_left_size, close_left, None, close_left_visible, HOLE_SIZE, p=0.000005, px=0.001, py=0.003, dy=0.005, dx=0.0001, db=4000, closedb=13, consistent_total=2.0)
 @withApproachRightHoleOnFail
 def ApproachCloseRight():
-    return ApproachCenterSize(close_right_size, close_right, None, close_right_visible, HOLE_SIZE, p=0.0000025, px=0.001, py=0.003, dy=0.005, dx=0.0001, db=4000, closedb=13, consistent_total=2.0)
+    return ApproachCenterSize(close_right_size, close_right, None, close_right_visible, HOLE_SIZE, p=0.000005, px=0.001, py=0.003, dy=0.005, dx=0.0001, db=4000, closedb=13, consistent_total=2.0)
 
 @withReSearchBoardOnFail
 def ApproachAlign():
@@ -315,23 +315,43 @@ def Backup(speed=0.2):
             )
 
 
+# Full = \
+#     lambda: Sequential(
+#         Log('Starting Stake'),
+#         Depth(BOARD_DEPTH, error=0.2),
+#         Timeout(SearchBoard(), 60),
+#         ApproachAlign(),
+#         Zero(),
+#         ApproachBelt(),
+#         ApproachCloseHeart(),
+#         FireActuator('top_torpedo', 0.5),
+#         Backup(),
+#         ApproachAlign(),
+#         DeadReckonLever(),
+#         ApproachAlign(),
+#         ApproachLeftHole() if MOVE_DIRECTION == 1 else ApproachRightHole(),
+#         ApproachCloseLeft(),
+#         FireActuator('bottom_torpedo', 0.5),
+#         Backup(),
+#         Log('Stake complete')
+#     )
+
+
+
 Full = \
     lambda: Sequential(
         Log('Starting Stake'),
         Depth(BOARD_DEPTH, error=0.2),
         Timeout(SearchBoard(), 60),
         ApproachAlign(),
-        Zero(),
-        ApproachBelt(),
-        ApproachCloseHeart(),
-        FireActuator('top_torpedo', 0.5),
-        Backup(),
+        ApproachLeftHole() if MOVE_DIRECTION == -1 else ApproachRightHole(),
+        ApproachCloseLeft() if MOVE_DIRECTION == -1 else ApproachCloseRight(),
+        FireActuator('top_torpedo', 0.3),
         ApproachAlign(),
         DeadReckonLever(),
-        ApproachAlign(),
         ApproachLeftHole() if MOVE_DIRECTION == 1 else ApproachRightHole(),
-        ApproachCloseLeft(),
-        FireActuator('bottom_torpedo', 0.5),
+        ApproachCloseLeft() if MOVE_DIRECTION == 1 else ApproachCloseRight(),
+        FireActuator('bottom_torpedo', 0.3),
         Backup(),
         Log('Stake complete')
     )

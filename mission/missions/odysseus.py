@@ -5,16 +5,16 @@ import shm
 
 from mission.framework.task import Task
 from mission.framework.combinators import Sequential, MasterConcurrent, Conditional, Either, Retry
-from mission.framework.primitive import FunctionTask, Zero, NoOp, InvertSuccess, Fail
+from mission.framework.primitive import FunctionTask, Zero, NoOp, InvertSuccess, Fail, Log
 from mission.framework.timing import Timer
-from mission.framework.movement import RelativeToCurrentHeading, Depth
+from mission.framework.movement import RelativeToCurrentHeading, Depth, VelocityX
 
 from mission.missions.master_common import RunAll, MissionTask  # , TrackerGetter, TrackerCleanup, DriveToSecondPath
 
 from mission.missions.will_common import BigDepth, Consistent, FakeMoveX
-from mission.missions.attilus_garbage import PositionMarkers
+from mission.missions.attilus_garbage import PositionMarkers, SetMarker, GoToMarker
 
-from mission.missions.gate import gate_full as Gate
+from mission.missions.gate import gate as Gate
 # from mission.missions.path import get_path as PathGetter
 from mission.missions.stake import Full as Stake, SearchBoard, BOARD_DEPTH
 from mission.missions.vampire import SearchAnyVampire as SearchVampire
@@ -123,43 +123,49 @@ Recovery = None
 # pinger task should be a function that returns a task
 # TODO: MAKE SURE THIS WORKS
 pinger_task = None
-pinger_tasks = [Recovery, Stake]
+pinger_tasks = [surface, stake]
 
 def set_pinger_task(task):
     global pinger_task
     pinger_task = task
+    return True
 
 def set_second_task_if_possible():
     global pinger_task
-    if pinger_task in pinger_tasks:
+    print(pinger_task)
+    if pinger_task is not None:
         for p in pinger_tasks:
             if pinger_task != p:
                 pinger_task = p
+                print(p)
                 return True
-        return False
+    return False
 
-def get_pinger_track():
+def get_pinger_task():
     global pinger_task
     if pinger_task is None:
         return Fail()
-    return pinger_task()
+    return pinger_task
 
 # This is semi psuedocode
 def TrackerSearch():
-    return \
-    Retry(
+    global get_pinger_task
+    global stake
+    return Retry(lambda: \
         Sequential(
-            Conditional(FunctionTask(set_second_task_if_possible), on_fail= \
-                    Sequential(
-                        Depth(BOARD_DEPTH, error=0.2),
-                        Either(
-                            TrackPinger(), 
-                            Consistent(shm.torpedoes_stake.board_visible.get, count=2, total=4, invert=False, result=True)),
-                        Conditional(SearchBoard(), on_success=FunctionTask(lambda: set_pinger_task(Stake)), on_fail= \
+                Sequential(
+                    Depth(BOARD_DEPTH, error=0.2),
+                    Either(
+                        TrackPinger(),
+                        # Consistent(lambda: get_pinger_task() == stake and shm.torpedoes_stake.board_visible.get(), count=2, total=3, invert=False, result=True)),
+                        Consistent(shm.torpedoes_stake.board_visible.get, count=2, total=3, invert=False, result=True)),
+                    VelocityX(0, error=40),
+                    Log('dafuq'),
+                    Conditional(FunctionTask(set_second_task_if_possible), on_fail= \
+                        Conditional(SearchBoard(), on_success=FunctionTask(lambda: set_pinger_task(stake)), on_fail= \
                                 Sequential(
                                     Log('we cant see jack'),
-                                    markers.set('center'),
-                                    FunctionTask(lambda: set_pinger_task(Surface))
+                                    FunctionTask(lambda: set_pinger_task(surface))
                                 )
                         )
                     )
@@ -169,10 +175,28 @@ def TrackerSearch():
 
 track = lambda: MissionTask(
     name="Track",
-    cls=TrackerSearch,
+    cls=lambda: TrackerSearch(),
     modules=[shm.vision_modules.Vampire, shm.vision_modules.Stake],
     surfaces=False,
-    timeout=timeouts['track'],
+    timeout=timeouts['track_pinger'],
+)
+
+
+set_gate = lambda: MissionTask(
+    name="SetGate",
+    cls=lambda: SetMarker('gate'),
+    modules=[],
+    surfaces=False,
+    timeout=20
+)
+
+
+goto_gate = lambda: MissionTask(
+    name="GoToGate",
+    cls=lambda: GoToMarker('gate'),
+    modules=[],
+    surfaces=False,
+    timeout=60
 )
 
 
@@ -186,10 +210,12 @@ tasks_nonrandom = [
 ]
 
 tasks = [
-    lambda: gate,
-    track_pinger,
+    # lambda: gate,
+    set_gate,
+    track,
     get_pinger_task,
-    track_pinger,
+    goto_gate,
+    track,
     get_pinger_task
 ]
 

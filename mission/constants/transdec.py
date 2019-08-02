@@ -3,9 +3,9 @@ from mission.constants import teagle
 
 from conf.vehicle import is_mainsub
 
-HYDROPHONES_PINGER_DEPTH = 4.7
+# HYDROPHONES_PINGER_DEPTH = 4.7
 
-NONSURFACE_MIN_DEPTH = 1.0 if is_mainsub else 1.5
+NONSURFACE_MIN_DEPTH = 0.5 # if is_mainsub else 1.5
 
 # Note: These values are copied straight from the Teagle configuration.
 # They need to be updated for Transdec!!
