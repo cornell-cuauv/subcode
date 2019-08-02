@@ -57,6 +57,9 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.DoubleOption('min_eccentricity', 0.6, 0, 1),
            options.DoubleOption('max_eccentricity', 0.8, 0, 1),
            options.DoubleOption('min_elllipsish_thing', 0.9, 0, 1),
+           options.IntOption('water_a', 10, 0, 100),
+           options.IntOption('water_b', 10, 0, 100),
+           options.DoubleOption('sigma_canny', 0.33, 0, 1),
            ]
 
 
@@ -73,6 +76,7 @@ RIGHT_CIRCLE = (1900, 570)
 MOVE_DIRECTION=1  # 1 if lever on left else -1 if on right
 
 heart_original = load(open('/home/software/cuauv/software/vision/modules/heart', 'rb'))
+# from vision.modules.heart import heart as heart_original
 
 class Stake(ModuleBase):
 
@@ -320,18 +324,26 @@ class Stake(ModuleBase):
         #             color[i] - distance, color[i] + distance)
         #             for i in range(1, len(color))]
         # mask = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
-        mask, _ = thresh_color_distance(split, color, distance, weights=[0.5, 2, 2])
 
-        self.post('something', mask)
+        # mask, _ = thresh_color_distance(split, color, distance, weights=[0.5, 2, 2])
+        # median_a = np.median(split[1])
+        # median_b = np.median(split[2])
+        # thresh_a = cv2.bitwise_not(range_threshold(split[1], median_a-self.options['water_a'], median_a+self.options['water_a']))
+        # thresh_b = cv2.bitwise_not(range_threshold(split[2], median_b-self.options['water_a'], median_b+self.options['water_b']))
+        # self.post('a', thresh_a)
+        # self.post('b', thresh_b)
+        # mask = reduce(lambda x, y: cv2.bitwise_and(x, y), [mask, thresh_a, thresh_b])
+        #
+        # self.post('something', mask)
+        #
+        # contours = outer_contours(mask)
 
-        contours = outer_contours(mask)
-
-        # canny_post = np.zeros(mat.shape)
-        # canny = simple_canny(mat)
-        # contours = outer_contours(canny)
-        # for i in range(len((contours))):
-        #     cv2.drawContours(canny_post, contours, i, (i*20, i*20, i*20))
-        # self.post('canny', canny)
+        canny_post = np.zeros(mat.shape)
+        canny = simple_canny(mat, sigma=self.options['sigma_canny'], use_mean=True)
+        contours = outer_contours(canny)
+        for i in range(len((contours))):
+            cv2.drawContours(canny_post, contours, i, (i*20, i*20, i*20))
+        self.post('canny', canny)
         if contours is not None and len(contours) > 0:
             # shm.torpedoes_stake.close_visible.set(True)
 
