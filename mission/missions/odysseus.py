@@ -29,7 +29,7 @@ markers = PositionMarkers()
 
 gate = MissionTask(
     name='Gate',
-    cls=Gate,
+    cls=lambda: Gate(),
     modules=[shm.vision_modules.Gate],
     surfaces=False,
     timeout=timeouts['gate'],
@@ -87,7 +87,7 @@ SearchTorpedoes = lambda: Defer(SearchFor(
 SearchTorpedoes = lambda: SearchFor(
         TrackPinger(),
         shm.torpedoes_stake.board_visible.get,
-        consistent_frames=(3,5))
+        consistent_frames=(3,7))
         
 TestSearch = lambda: Sequential(
         Succeed(SearchTorpedoes()),

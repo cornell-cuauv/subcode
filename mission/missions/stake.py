@@ -26,7 +26,7 @@ from mission.framework.actuators import FireActuator
 from mission.missions.will_common import Consistent
 from mission.missions.attilus_garbage import PIDStride, PIDSway, StillHeadingSearch, SwayOnlySearch
 
-MOVE_DIRECTION = -1
+MOVE_DIRECTION = 1
 
 BOARD_DEPTH = 2.7
 
@@ -247,7 +247,7 @@ def ApproachCenterSize(sizef, centerf, alignf, visiblef, size_thresh, p=0.000003
 def ApproachAlignSize(sizef, centerf, alignf, visiblef, size_thresh, db=30000):
     return MasterConcurrent(
             Consistent(lambda: abs(sizef()-size_thresh) < db and aligned(alignf(), db=5), count=1.3, total=2.0, invert=False, result=True),
-            Consistent(visiblef, count=1.3, total=2.0, invert=True, result=False),
+            # Consistent(visiblef, count=1.3, total=2.0, invert=True, result=False),
             While(lambda: Align(centerf, alignf, visiblef), True),
             PIDStride(lambda: sizef()-size_thresh),
             AlwaysLog(lambda: "center: {}, target: {}, align: {}, size{}".format(CAM_CENTER, centerf(), alignf(), sizef())))
@@ -342,7 +342,7 @@ Full = \
     lambda: Sequential(
         Log('Starting Stake'),
         Depth(BOARD_DEPTH, error=0.2),
-        Timeout(SearchBoard(), 60),
+        # Timeout(SearchBoard(), 60),
         ApproachAlign(),
         ApproachLeftHole() if MOVE_DIRECTION == -1 else ApproachRightHole(),
         ApproachCloseLeft() if MOVE_DIRECTION == -1 else ApproachCloseRight(),

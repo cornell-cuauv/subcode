@@ -587,5 +587,5 @@ gate_right_no_spin = lambda: gate_side(approach_right_passageway_task, charge_al
 
 gate_full_left = lambda: gate_full_side(approach_left_passageway_task())
 gate_full_right = lambda: gate_full_side(approach_right_passageway_task())
-gate = gate_left
+gate = gate_right
 gate_no_spin = gate_right_no_spin
