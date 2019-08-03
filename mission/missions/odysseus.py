@@ -97,6 +97,7 @@ TestSearch = lambda: Sequential(
 search_torpedoes = lambda: MissionTask(
         name='SearchTorpedoes',
         cls=SearchTorpedoes,
+        modules=[shm.vision_modules.Stake],
         surfaces=False,
         timeout=timeouts['search_torpedoes'])
 
