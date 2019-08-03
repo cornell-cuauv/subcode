@@ -225,7 +225,7 @@ goto_gate = lambda: MissionTask(
 
 path = lambda: MissionTask(
     name="path",
-    cls=lambda: Sequential(Timer(5), RelativeToInitialHeading(45), Timer(5)),
+    cls=lambda: Sequential(Timer(5), RelativeToInitialHeading(-45), Timer(5)),
     modules=[],
     surfaces=False,
     timeout=30
