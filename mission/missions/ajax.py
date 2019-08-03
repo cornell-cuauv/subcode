@@ -187,9 +187,9 @@ track = lambda: MissionTask(
 # )
 
 WeirdPath = lambda: Sequential(
-        FakeMoveX(1),
+        FakeMoveX(1, .3),
         RelativeToInitialHeading(-45),
-        FakeMoveX(1),
+        FakeMoveX(1, .3),
         SearchFor(
             VelocitySwaySearch(stride=2, width=2),
             lambda: shm.bins_status.wolf_visible.get() or shm.bins_status.cover_visible.get() or shm.bins_status.bat_visible.get()
