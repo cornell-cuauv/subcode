@@ -201,7 +201,7 @@ path = lambda: MissionTask(
     cls=WeirdPath,
     modules=[shm.vision_modules.BinsImage, shm.vision_modules.BinsLever, shm.vision_modules.BinsCover],
     surfaces=False,
-    timeout=timeouts['track'],
+    timeout=20,
 )
 
 tasks = [
