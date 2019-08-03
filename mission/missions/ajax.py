@@ -14,7 +14,8 @@ from mission.missions.master_common import RunAll, MissionTask  # , TrackerGette
 from mission.missions.will_common import BigDepth, Consistent, FakeMoveX
 from mission.missions.attilus_garbage import PositionMarkers
 
-from mission.missions.gate import gate_no_spin as Gate
+#from mission.missions.gate import gate_no_spin as Gate
+from mission.missions.gate import dead_simple as Gate
 # from mission.missions.path import get_path as PathGetter
 from mission.missions.vamp_buoy import Full as VampBuoy
 from mission.missions.paul_bins import DecideAndPush as Bins
@@ -190,11 +191,15 @@ WeirdPath = lambda: Sequential(
         FakeMoveX(1, .3),
         RelativeToInitialHeading(-45),
         FakeMoveX(1, .3),
+    
+)
+
+SearchBins = lambda: \
         SearchFor(
             VelocitySwaySearch(stride=2, width=2),
             lambda: shm.bins_status.wolf_visible.get() or shm.bins_status.cover_visible.get() or shm.bins_status.bat_visible.get()
-    )
-)
+            consistent_frames = (3, 5)
+        )
 
 path = lambda: MissionTask(
     name="Path",
@@ -204,10 +209,20 @@ path = lambda: MissionTask(
     timeout=20,
 )
 
+search_bins = lambda: MissionTask(
+    name="SearchBins",
+    cls=SearchBins,
+    modules=[shm.vision_modules.BinsImage, shm.vision_modules.BinsLever, shm.vision_modules.BinsCover],
+    surfaces=False,
+    timeout= 100
+)
+
 tasks = [
     lambda: gate,
+    path,
     lambda: vamp_buoy,
     path,
+    search_bins,
     lambda: bins
 ]
 
