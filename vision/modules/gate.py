@@ -58,36 +58,36 @@ OPTS_AJAX = [
     options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
     options.DoubleOption('min_length', 15, 0, 500),
     options.IntOption('auto_distance_percentile', 25, 0, 100),
-    options.IntOption('nonblack_thresh', 1000, 0, 10000),
-    options.IntOption('water_a_thresh', 20, 0, 255),
-    options.IntOption('water_b_thresh', 15, 0, 255),
+    options.IntOption('nonblack_thresh', 600, 0, 10000),
+    options.IntOption('water_a_thresh', 10, 0, 255),
+    options.IntOption('water_b_thresh', 10, 0, 255),
     options.BoolOption('debug', True),
 ]
 
-OPTS_SIM = [
-    options.IntOption('lab_l_ref', 0, 0, 255),
-    options.IntOption('lab_a_ref', 170, 0, 255),
-    options.IntOption('lab_b_ref', 180, 0, 255),
-    options.IntOption('color_dist_thresh', 35, 0, 255),
-    options.IntOption('blur_kernel', 3, 0, 255),
-    options.IntOption('blur_std', 10, 0, 500),
-    options.DoubleOption('resize_width_scale', 0.5, 0, 1),
-    options.DoubleOption('resize_height_scale', 0.5, 0, 1),
-    options.IntOption('dilate_kernel', 1, 0, 255),
-    options.IntOption('erode_kernel', 1, 0, 255),
-    options.IntOption('min_contour_area', 30, 0, 500),
-    options.DoubleOption('min_contour_rect', 0.4, 0, 1),
-    options.DoubleOption('min_contour_ratio', 5, 0, 10),
-    options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
-    options.DoubleOption('min_length', 15, 0, 500),
-    options.IntOption('auto_distance_percentile', 15, 0, 100),
-    options.IntOption('nonblack_thresh', 1000, 0, 10000),
-    options.IntOption('water_a_thresh', 20, 0, 255),
-    options.IntOption('water_b_thresh', 25, 0, 255),
-    options.BoolOption('debug', True),
-]
+#OPTS_SIM = [
+#    options.IntOption('lab_l_ref', 0, 0, 255),
+#    options.IntOption('lab_a_ref', 170, 0, 255),
+#    options.IntOption('lab_b_ref', 180, 0, 255),
+#    options.IntOption('color_dist_thresh', 35, 0, 255),
+#    options.IntOption('blur_kernel', 3, 0, 255),
+#    options.IntOption('blur_std', 10, 0, 500),
+#    options.DoubleOption('resize_width_scale', 0.5, 0, 1),
+#    options.DoubleOption('resize_height_scale', 0.5, 0, 1),
+#    options.IntOption('dilate_kernel', 1, 0, 255),
+#    options.IntOption('erode_kernel', 1, 0, 255),
+#    options.IntOption('min_contour_area', 30, 0, 500),
+#    options.DoubleOption('min_contour_rect', 0.4, 0, 1),
+#    options.DoubleOption('min_contour_ratio', 5, 0, 10),
+#    options.DoubleOption('max_angle_from_vertical', 15, 0, 90),
+#    options.DoubleOption('min_length', 15, 0, 500),
+#    options.IntOption('auto_distance_percentile', 15, 0, 100),
+#    options.IntOption('nonblack_thresh', 1000, 0, 10000),
+#    options.IntOption('water_a_thresh', 20, 0, 255),
+#    options.IntOption('water_b_thresh', 25, 0, 255),
+#    options.BoolOption('debug', True),
+#]
 
-#OPTS_SIM = OPTS_ODYSSEUS if VEHICLE == 'odysseus' else OPTS_AJAX
+OPTS_SIM = OPTS_ODYSSEUS if VEHICLE == 'odysseus' else OPTS_AJAX
 
 REFERENCE_BRIGHTNESS = 190 if is_mainsub else 190
 CUTOFF_SCALAR = 10 if is_mainsub else 7
@@ -165,8 +165,9 @@ class Gate(ModuleBase):
         median_b = np.median(lab_split[2])
         median_filter_a = range_threshold(lab_split[1], median_a - self.options['water_a_thresh'], median_a + self.options['water_a_thresh'])
         median_filter_b = range_threshold(lab_split[2], median_b - self.options['water_b_thresh'], median_b + self.options['water_b_thresh'])
-        #self.post('median filter a', median_filter_a)
-        #self.post('median filter b', median_filter_b)
+        if self.options['debug']:
+            self.post('median filter a', median_filter_a)
+            self.post('median filter b', median_filter_b)
         nonwater_mask, _ = gray_to_bgr(255 - (median_filter_a & median_filter_b))
         self.post('nonwater', nonwater_mask)
         # Tuned for a 320x256 image
