@@ -32,8 +32,8 @@ post_spin_charge_vel                      = 0.4 if is_mainsub else 0.4
 
 simple_approach_vel = 0.4 if is_mainsub else 0.3
 simple_approach_target_percent_of_screen = 0.3
-left_offset = -20
-right_offset = 20
+left_offset = -40
+right_offset = 40
 
 dead_simple_reckon_forward_vel = 0.4 if is_mainsub else 0.4
 dead_simple_reckon_forward_dist = 24 if is_mainsub else 24
@@ -483,37 +483,44 @@ gate_side = lambda approach_side_task, charge_align_side_task, offset, spin=True
             finite=False
         ),
         Log('Approaching until we are aligned with two elements'),
-        Timeout(approach_side_task, 60),
+        Timeout(approach_side_task(), 60),
         Zero(),
         Log('Pre Spin Charging...'),
         FunctionTask(save_heading),
         (Depth(SPIN_DEPTH_TARGET, error=0.15) if spin else NoOp()),
         Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
         Timed(
-            Concurrent(
-                VelocityX(pre_spin_charge_vel),
-                Conditional(
-                    main_task=FunctionTask(lambda: gate_elems() == 2),
-                    on_success=PIDLoop(
-                        input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
-                        target=lambda: shm.gate.img_width.get() / 2,
-                        p=0.2,
-                        deadband=0,
-                        output_function=RelativeToCurrentHeading(),
-                        negate=True
-                    ),
-                    on_fail=Conditional(
-                        main_task=FunctionTask(lambda: gate_elems() == 3),
-                        on_success=charge_align_side_task,
-                        on_fail=VelocityY(0),
+            FinishIf(
+                condition=lambda: gate_elems() == 0,
+                task=Concurrent(
+                    VelocityX(pre_spin_charge_vel),
+                    Conditional(
+                        main_task=FunctionTask(lambda: gate_elems() == 2),
+                        on_success=PIDLoop(
+                            input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
+                            target=lambda: shm.gate.img_width.get() / 2,
+                            p=0.2,
+                            deadband=0,
+                            output_function=RelativeToCurrentHeading(),
+                            negate=True
+                        ),
+                        on_fail=Conditional(
+                            main_task=FunctionTask(lambda: gate_elems() == 3),
+                            on_success=charge_align_side_task(),
+                            on_fail=Sequential(
+                                VelocityY(0),
+                                approach_side_task(),
+                            ),
+                            finite=False
+                        ),
                         finite=False
                     ),
                     finite=False
                 ),
-                finite=False
             ),
             pre_spin_charge_dist
         ),
+        Zero(),
 
         Log('Spin Charging...'),
         (rolly_roll() if spin else NoOp()),
@@ -539,7 +546,7 @@ gate_side = lambda approach_side_task, charge_align_side_task, offset, spin=True
                     ),
                     on_fail=Conditional(
                         main_task=FunctionTask(lambda: gate_elems() == 3),
-                        on_success=charge_align_side_task,
+                        on_success=charge_align_side_task(),
                         on_fail=VelocityY(0),
                         finite=False
                     ),
@@ -573,10 +580,10 @@ dead_simple = lambda: Sequential(
     Timed(VelocityX(dead_simple_post_reckon_forward_vel), dead_simple_post_reckon_forward_dist),
 )
 
-gate_left = lambda: gate_side(approach_left_passageway_task(), charge_align_left_task(), offset=left_offset)
-gate_left_no_spin = lambda: gate_side(approach_left_passageway_task(), charge_align_left_task(), offset=left_offset, spin=False)
-gate_right = lambda: gate_side(approach_right_passageway_task(), charge_align_right_task(), offset=right_offset)
-gate_right_no_spin = lambda: gate_side(approach_right_passageway_task(), charge_align_right_task(), offset=right_offset, spin=False)
+gate_left = lambda: gate_side(approach_left_passageway_task, charge_align_left_task, offset=left_offset)
+gate_left_no_spin = lambda: gate_side(approach_left_passageway_task, charge_align_left_task, offset=left_offset, spin=False)
+gate_right = lambda: gate_side(approach_right_passageway_task, charge_align_right_task, offset=right_offset)
+gate_right_no_spin = lambda: gate_side(approach_right_passageway_task, charge_align_right_task, offset=right_offset, spin=False)
 
 gate_full_left = lambda: gate_full_side(approach_left_passageway_task())
 gate_full_right = lambda: gate_full_side(approach_right_passageway_task())
