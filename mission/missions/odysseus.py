@@ -4,8 +4,8 @@
 import shm
 
 from mission.framework.task import Task
-from mission.framework.combinators import Sequential, MasterConcurrent, Conditional, Either, Retry
-from mission.framework.primitive import FunctionTask, Zero, NoOp, InvertSuccess, Fail, Log
+from mission.framework.combinators import Sequential, MasterConcurrent, Conditional, Either, Retry, Defer
+from mission.framework.primitive import FunctionTask, Zero, NoOp, InvertSuccess, Fail, Log, Succeed
 from mission.framework.timing import Timer
 from mission.framework.movement import RelativeToCurrentHeading, RelativeToInitialHeading, Depth, VelocityX
 from mission.framework.search import SearchFor
@@ -78,10 +78,20 @@ track_pinger = lambda: MissionTask(
         timeout=timeouts['track_pinger']
 )
 
+SearchTorpedoes = lambda: Defer(SearchFor(
+        TrackPinger(),
+        shm.torpedoes_stake.board_visible.get,
+        consistent_frames=(3,5)),
+        Zero())
+
 SearchTorpedoes = lambda: SearchFor(
         TrackPinger(),
         shm.torpedoes_stake.board_visible.get,
         consistent_frames=(3,5))
+        
+TestSearch = lambda: Sequential(
+        Succeed(SearchTorpedoes()),
+        Timer(30))
 
 search_torpedoes = lambda: MissionTask(
         name='SearchTorpedoes',
@@ -213,7 +223,7 @@ goto_gate = lambda: MissionTask(
 
 path = lambda: MissionTask(
     name="path",
-    cls=lambda: RelativeToInitialHeading(45),
+    cls=lambda: Sequential(Timer(5), RelativeToInitialHeading(45), Timer(5)),
     modules=[],
     surfaces=False,
     timeout=30
