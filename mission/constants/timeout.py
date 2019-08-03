@@ -1,6 +1,6 @@
 timeouts = {
     'gate': None,
-    'search_torpedoes': 90,
+    'search_torpedoes': None,
     'track_pinger': 120,
     'stake': None,
     'surface': 30,

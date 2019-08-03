@@ -78,20 +78,21 @@ track_pinger = lambda: MissionTask(
         timeout=timeouts['track_pinger']
 )
 
-SearchTorpedoes = lambda: Defer(SearchFor(
-        TrackPinger(),
-        shm.torpedoes_stake.board_visible.get,
-        consistent_frames=(3,5)),
-        Zero())
-
-SearchTorpedoes = lambda: SearchFor(
-        TrackPinger(),
-        shm.torpedoes_stake.board_visible.get,
-        consistent_frames=(3,7))
+SearchTorpedoes = lambda: Retry(
+        lambda: Conditional(
+            SearchFor(
+                TrackPinger(),
+                shm.torpedoes_stake.board_visible.get,
+                consistent_frames=(3,7)
+            ),
+            on_fail=Conditional(
+                SearchBoard(),
+                on_fail=Fail(GoToMarker('gate')))), attempts=float('inf'))
         
 TestSearch = lambda: Sequential(
-        Succeed(SearchTorpedoes()),
-        Timer(30))
+        SetMarker('gate'),
+        SearchTorpedoes(),
+        )
 
 search_torpedoes = lambda: MissionTask(
         name='SearchTorpedoes',
