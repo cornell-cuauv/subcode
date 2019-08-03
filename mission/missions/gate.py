@@ -19,7 +19,7 @@ shm.gate = shm.gate_vision
 
 # settings ####################################################################
 
-DEPTH_TARGET                              = 0.75
+DEPTH_TARGET                              = 0.85
 SPIN_DEPTH_TARGET                         = 1.00
 initial_approach_target_percent_of_screen = 0.35
 alignment_tolerance_fraction              = 0.15
@@ -36,9 +36,9 @@ left_offset = -20
 right_offset = 20
 
 dead_simple_reckon_forward_vel = 0.4 if is_mainsub else 0.4
-dead_simple_reckon_forward_dist = 12 if is_mainsub else 12
+dead_simple_reckon_forward_dist = 24 if is_mainsub else 24
 dead_simple_post_reckon_forward_vel = 0.4 if is_mainsub else 0.4
-dead_simple_post_reckon_forward_dist = 12 if is_mainsub else 12
+dead_simple_post_reckon_forward_dist = 24 if is_mainsub else 24
 
 
 # flags /indicators ###########################################################
@@ -97,7 +97,7 @@ class FinishIf(Task):
 
 
 pv = shm.settings_roll.kP.get()
-rolly_roll = \
+rolly_roll = lambda:\
     Sequential(
         FunctionTask(lambda: shm.settings_roll.kP.set(.6)),
         MasterConcurrent(
@@ -143,7 +143,7 @@ def get_shortest_elem_visible_x():
         return shm.gate.leftmost_x
 
 
-align_on_two_elem = \
+align_on_two_elem = lambda:\
     Sequential(
         Log('Can see at least two elements (hopefully)'),
         Log('Targeting smallest'),
@@ -166,7 +166,7 @@ align_on_two_elem = \
         finite=False
     )
 
-align_on_three_elem = \
+align_on_three_elem = lambda:\
     Sequential(
         Log('aligning on three elems'),
         ConsistentTask(
@@ -206,7 +206,7 @@ align_on_three_elem = \
         # finite=False
     )
 
-align_on_passageway = \
+align_on_passageway = lambda:\
     ConsistentTask(
         PIDLoop(
             input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
@@ -217,17 +217,17 @@ align_on_passageway = \
         ),
     )
 
-align_task = \
+align_task = lambda:\
     Sequential(
         While(
             condition=lambda: not is_aligned(),
             task_func=lambda: Sequential(
                 Conditional(
                     main_task=FunctionTask(lambda: gate_elems() == 2),
-                    on_success=align_on_two_elem,
+                    on_success=align_on_two_elem(),
                     on_fail=Conditional(
                         main_task=FunctionTask(lambda: gate_elems() == 3),
-                        on_success=align_on_three_elem,
+                        on_success=align_on_three_elem(),
                         on_fail=Sequential(
                             Log('we see less than two elems, failed'),
                             Timed(VelocityX(-0.3), 2),
@@ -244,7 +244,7 @@ align_task = \
         finite=False,
     )
 
-align_left_width = PIDLoop(
+align_left_width = lambda: PIDLoop(
     input_value=lambda: shm.gate.middle_x.get() - shm.gate.leftmost_x.get(),
     target=lambda: shm.gate.img_width.get() * 0.4,
     deadband=lambda: shm.gate.img_width.get() * 0.05,
@@ -253,7 +253,7 @@ align_left_width = PIDLoop(
     # negate=True
 )
 
-align_right_width = PIDLoop(
+align_right_width = lambda: PIDLoop(
     input_value=lambda: shm.gate.rightmost_x.get() - shm.gate.middle_x.get() if shm.gate.rightmost_visible.get() else shm.gate.middle_x.get() - shm.gate.leftmost_x.get(),
     target=lambda: shm.gate.img_width.get() * 0.4,
     deadband=lambda: shm.gate.img_width.get() * 0.05,
@@ -262,9 +262,10 @@ align_right_width = PIDLoop(
     # negate=True
 )
 
-approach_left_passageway_task = \
-    FinishIf(
-        condition=lambda: gate_elems() == 0 or (align_left_width.finished and align_left_width.success),
+def approach_left_passageway_task():
+    align_task = align_left_width()
+    return FinishIf(
+        condition=lambda: gate_elems() == 0 or (align_task.finished and align_task.success),
         task=Conditional(
             main_task=FunctionTask(lambda: gate_elems() == 1),
             on_success=Concurrent(
@@ -275,7 +276,7 @@ approach_left_passageway_task = \
                 main_task=FunctionTask(lambda: gate_elems() >= 2),
                 on_success=Concurrent(
                     # Align distance in between the left and middle poles
-                    align_left_width,
+                    align_task,
                     # Align to middle of left and middle poles
                     PIDLoop(
                         input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
@@ -294,9 +295,10 @@ approach_left_passageway_task = \
         )
     )
 
-approach_right_passageway_task = \
-    FinishIf(
-        condition=lambda: gate_elems() == 0 or (align_right_width.finished and align_right_width.success),
+def approach_right_passageway_task():
+    align_task = align_right_width()
+    return FinishIf(
+        condition=lambda: gate_elems() == 0 or (align_task.finished and align_task.success),
         task=Conditional(
             main_task=FunctionTask(lambda: gate_elems() == 1),
             on_success=Concurrent(
@@ -307,7 +309,7 @@ approach_right_passageway_task = \
                 main_task=FunctionTask(lambda: gate_elems() >= 2),
                 on_success=Concurrent(
                     # Align distance in between the right and middle poles
-                    align_right_width,
+                    align_task,
                     # Align to middle of right and middle poles
                     PIDLoop(
                         input_value=lambda: (shm.gate.rightmost_x.get() + shm.gate.middle_x.get()) / 2 if shm.gate.rightmost_visible.get() else (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
@@ -326,7 +328,7 @@ approach_right_passageway_task = \
         )
     )
 
-charge_align_left_task = PIDLoop(
+charge_align_left_task = lambda: PIDLoop(
     input_value=lambda: (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
     target=lambda: shm.gate.img_width.get() / 2,
     p=0.0015,
@@ -335,7 +337,7 @@ charge_align_left_task = PIDLoop(
     negate=True
 )
 
-charge_align_right_task = PIDLoop(
+charge_align_right_task = lambda: PIDLoop(
     input_value=lambda: (shm.gate.rightmost_x.get() + shm.gate.middle_x.get()) / 2 if shm.gate.rightmost_visible.get() else (shm.gate.leftmost_x.get() + shm.gate.middle_x.get()) / 2,
     target=lambda: shm.gate.img_width.get() / 2,
     p=0.0015,
@@ -344,7 +346,7 @@ charge_align_right_task = PIDLoop(
     negate=True
 )
 
-search_task = \
+search_task = lambda:\
     SearchFor(
         Sequential(
             # manual list of "check here first, then just StillHeadingSearch"
@@ -403,7 +405,7 @@ gate_full_side = lambda approach_side_task: Sequential(
         )),
 
         Log('Approach to gate complete. Beginning alignment'),
-        align_task,
+        align_task(),
         FunctionTask(save_heading),
 
         Log('Approaching passageway'),
@@ -416,7 +418,7 @@ gate_full_side = lambda approach_side_task: Sequential(
         Timed(VelocityX(pre_spin_charge_vel), pre_spin_charge_dist),
 
         Log('Spin Charging...'),
-        rolly_roll,
+        rolly_roll(),
 
         Log('Spin Complete, pausing...'),
         Zero(),
@@ -514,7 +516,7 @@ gate_side = lambda approach_side_task, charge_align_side_task, offset, spin=True
         ),
 
         Log('Spin Charging...'),
-        (rolly_roll if spin else NoOp()),
+        (rolly_roll() if spin else NoOp()),
 
         Log('Spin Complete, pausing...'),
         Zero(),
@@ -558,25 +560,25 @@ gate_side = lambda approach_side_task, charge_align_side_task, offset, spin=True
     ),
 )
 
-dead_simple = Sequential(
+dead_simple = lambda: Sequential(
     FunctionTask(save_heading),
     Log('Dead reckoning forward'),
     Timed(VelocityX(dead_simple_reckon_forward_vel), dead_simple_reckon_forward_dist),
 
     Log('Rolling'),
-    rolly_roll,
+    rolly_roll(),
     Succeed(Timeout(Heading(lambda: saved_heading, error=5), 5)),
 
     Log('Dead reckoning forward (post)'),
     Timed(VelocityX(dead_simple_post_reckon_forward_vel), dead_simple_post_reckon_forward_dist),
 )
 
-gate_left = gate_side(approach_left_passageway_task, charge_align_left_task, offset=left_offset)
-gate_left_no_spin = gate_side(approach_left_passageway_task, charge_align_left_task, offset=left_offset, spin=False)
-gate_right = gate_side(approach_right_passageway_task, charge_align_right_task, offset=right_offset)
-gate_right_no_spin = gate_side(approach_right_passageway_task, charge_align_right_task, offset=right_offset, spin=False)
+gate_left = lambda: gate_side(approach_left_passageway_task(), charge_align_left_task(), offset=left_offset)
+gate_left_no_spin = lambda: gate_side(approach_left_passageway_task(), charge_align_left_task(), offset=left_offset, spin=False)
+gate_right = lambda: gate_side(approach_right_passageway_task(), charge_align_right_task(), offset=right_offset)
+gate_right_no_spin = lambda: gate_side(approach_right_passageway_task(), charge_align_right_task(), offset=right_offset, spin=False)
 
-gate_full_left = gate_full_side(approach_left_passageway_task)
-gate_full_right = gate_full_side(approach_right_passageway_task)
+gate_full_left = lambda: gate_full_side(approach_left_passageway_task())
+gate_full_right = lambda: gate_full_side(approach_right_passageway_task())
 gate = gate_left
 gate_no_spin = gate_right_no_spin
