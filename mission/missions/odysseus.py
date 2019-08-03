@@ -223,11 +223,13 @@ path = lambda: MissionTask(
 
 tasks_nonrandom = [
     lambda: gate,
+    set_gate,
     path,
-    search_torpedoes,
-    lambda: stake,
     track_pinger,
     lambda: surface,
+    goto_gate,
+    search_torpedoes,
+    lambda: stake,
 ]
 
 tasks = [

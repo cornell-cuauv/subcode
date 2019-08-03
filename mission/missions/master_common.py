@@ -74,7 +74,7 @@ class RunTask(Task):
 
   def block_surface(self):
     #Block non-surfacing tasks from surfacing
-    if not self.task.surfaces and (shm.desires.depth.get() < MIN_DEPTH or shm.kalman.depth.get() < MIN_DEPTH):
+    if not self.task.surfaces and (shm.desires.depth.get() < MIN_DEPTH):   #  or shm.kalman.depth.get() < MIN_DEPTH):
       Depth(max(MIN_DEPTH, shm.desires.depth.get()))()
       self.logw('Task attempted to rise above min depth, {}!'.format(MIN_DEPTH))
 
