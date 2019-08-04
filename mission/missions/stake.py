@@ -343,7 +343,7 @@ Full = \
         Log('Starting Stake'),
         Depth(BOARD_DEPTH, error=0.2),
         # Timeout(SearchBoard(), 60),
-        Succeed(Timeout(ApproachAlign(), 40)),
+        Timeout(ApproachAlign(), 40),
         ApproachLeftHole() if MOVE_DIRECTION == -1 else ApproachRightHole(),
         ApproachCloseLeft() if MOVE_DIRECTION == -1 else ApproachCloseRight(),
         FireActuator('top_torpedo', 0.3),
