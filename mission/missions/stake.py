@@ -298,7 +298,7 @@ def DeadReckonLever():
             CenterLever(),  # Approach?
             _DeadReckonLever(),
             Backup(),
-            ApproachAlign(),
+            Succeed(Timeout(ApproachAlign(), 40)),
             Timeout(Consistent(lambda: shm.torpedoes_stake.lever_finished.get(), count=1.5, total=2.0, invert=False, result=True), 10)), attempts=2)
 
 
@@ -344,11 +344,11 @@ Full = \
         # Depth(BOARD_DEPTH, error=0.2),
         # Timeout(SearchBoard(), 60),
         FireActuator('top_torpedo', 0.3),
-        Succeed(Timeout(ApproachAlign(), 40)),
+        Succeed(Timeout(ApproachAlign(), 20)),
+        Log('what'),
         # ApproachLeftHole() if MOVE_DIRECTION == -1 else ApproachRightHole(),
         # ApproachCloseLeft() if MOVE_DIRECTION == -1 else ApproachCloseRight(),
         # Backup(),
-        ApproachAlign(),
         DeadReckonLever(),
         ApproachLeftHole() if MOVE_DIRECTION == 1 else ApproachRightHole(),
         ApproachCloseLeft() if MOVE_DIRECTION == 1 else ApproachCloseRight(),
