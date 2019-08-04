@@ -9,6 +9,7 @@ from mission.framework.primitive import FunctionTask, Zero, NoOp, InvertSuccess,
 from mission.framework.timing import Timer
 from mission.framework.movement import RelativeToCurrentHeading, RelativeToInitialHeading, Depth, VelocityX
 from mission.framework.search import SearchFor
+from mission.framework.position import MoveX
 
 from mission.missions.master_common import RunAll, MissionTask  # , TrackerGetter, TrackerCleanup, DriveToSecondPath
 
@@ -72,7 +73,7 @@ surface = MissionTask(
 
 track_pinger = lambda: MissionTask(
         name='Track',
-        cls=lambda: TrackPinger(),
+        cls=lambda: TrackPinger(depth=1.5),
         modules=[],
         surfaces=False,
         timeout=timeouts['track_pinger']
@@ -81,14 +82,14 @@ track_pinger = lambda: MissionTask(
 SearchTorpedoes = lambda: Retry(
         lambda: Conditional(
             SearchFor(
-                TrackPinger(),
+                TrackPinger(speed=0.25),
                 shm.torpedoes_stake.board_visible.get,
                 consistent_frames=(3,7)
             ),
             on_fail=Conditional(
                 SearchBoard(),
                 on_fail=Fail(GoToMarker('gate')))), attempts=float('inf'))
-        
+
 TestSearch = lambda: Sequential(
         SetMarker('gate'),
         SearchTorpedoes(),
@@ -225,7 +226,7 @@ goto_gate = lambda: MissionTask(
 
 path = lambda: MissionTask(
     name="path",
-    cls=lambda: Sequential(Timer(5), RelativeToInitialHeading(-45), Timer(5)),
+    cls=lambda: Sequential(Timer(5), RelativeToInitialHeading(45), Timer(5), MoveX(4, deadband=0.2)),
     modules=[],
     surfaces=False,
     timeout=30
@@ -235,8 +236,8 @@ path = lambda: MissionTask(
 
 tasks_nonrandom = [
     lambda: gate,
-    set_gate,
     path,
+    set_gate,
     track_pinger,
     lambda: surface,
     goto_gate,
