@@ -209,7 +209,7 @@ track = lambda: MissionTask(
 
 
 set_gate = lambda: MissionTask(
-    ame="SetGate",
+    name="SetGate",
     cls=lambda: SetMarker('gate'),
     modules=[],
     surfaces=False,
