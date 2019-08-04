@@ -111,7 +111,7 @@ SearchBoard = lambda: Sequential(
         SearchFor(
             StillHeadingSearch(speed=10),
             visible,
-            consistent_frames=(3, 5)
+            consistent_frames=(24, 42)
             ),
         Log('Found!'),
         Zero()
@@ -343,7 +343,7 @@ Full = \
         Log('Starting Stake'),
         Depth(BOARD_DEPTH, error=0.2),
         # Timeout(SearchBoard(), 60),
-        Timeout(ApproachAlign(), 40),
+        Succeed(Timeout(ApproachAlign(), 40)),
         ApproachLeftHole() if MOVE_DIRECTION == -1 else ApproachRightHole(),
         ApproachCloseLeft() if MOVE_DIRECTION == -1 else ApproachCloseRight(),
         FireActuator('top_torpedo', 0.3),
