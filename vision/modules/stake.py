@@ -57,9 +57,10 @@ opts =    [options.DoubleOption('rectangular_thresh', 0.8, 0, 1),
            options.IntOption('close_offset_y', -10, -255, 255),
            options.DoubleOption('min_eccentricity', 0.6, 0, 1),
            options.DoubleOption('max_eccentricity', 0.8, 0, 1),
-           options.DoubleOption('min_elllipsish_thing', 0.9, 0, 1),
+           options.DoubleOption('min_elllipsish_thing', 0.95, 0, 1),
            options.IntOption('water_a', 10, 0, 100),
            options.IntOption('water_b', 10, 0, 100),
+           options.IntOption('water_distance', 10, 0, 255),
            options.DoubleOption('sigma_canny', 0.33, 0, 1),
            ]
 
@@ -164,6 +165,7 @@ class Stake(ModuleBase):
         img1 = im1["img"]
         img2 = im2["img"]
 
+        self.dst = None
         try:
             matches = self.flann.knnMatch(des1, des2, k=2)
         except cv2.error as e:
@@ -216,6 +218,7 @@ class Stake(ModuleBase):
                 getattr(shm.torpedoes_stake, "%s_center_x" % im1["name"]).set(Moments["m10"]/Moments['m00'])
                 getattr(shm.torpedoes_stake, "%s_center_y" % im1["name"]).set(Moments["m01"]/Moments['m00'])
 
+                self.dst = dst
                 output = cv2.polylines(output, [np.int32(dst)], True, color, 3, cv2.LINE_AA)
 
                 return output, M
@@ -322,44 +325,54 @@ class Stake(ModuleBase):
 
     def close_point(self, mat, split, colorspace):
         color = [self.options['color_%s' % s] for s in colorspace]
-        distance = self.options['color_distance']
+        distance = self.options['water_distance']
         # threshed = [range_threshold(split[i],
         #             color[i] - distance, color[i] + distance)
         #             for i in range(1, len(color))]
         # mask = reduce(lambda x, y: cv2.bitwise_and(x, y), threshed)
 
         # mask, _ = thresh_color_distance(split, color, distance, weights=[0.5, 2, 2])
-        # median_a = np.median(split[1])
-        # median_b = np.median(split[2])
+
+        mask = np.full((mat.shape[0], mat.shape[1]), 0, dtype=np.int32)
+        if self.dst is not None:
+            print(len(self.dst))
+            cv2.fillPoly(mask, [np.int32(self.dst)], 1)
+            if np.sum(mask) < mat.shape[0] * mat.shape[1] // 4 * 3:
+                mask = None
+        median_a = np.median(np.ma.array(split[1], mask=mask))
+        median_b = np.median(np.ma.array(split[2], mask=mask))
+        mask, _ = thresh_color_distance(split, [0, median_a, median_b], distance, weights=[0, 1, 1])
         # thresh_a = cv2.bitwise_not(range_threshold(split[1], median_a-self.options['water_a'], median_a+self.options['water_a']))
         # thresh_b = cv2.bitwise_not(range_threshold(split[2], median_b-self.options['water_a'], median_b+self.options['water_b']))
         # self.post('a', thresh_a)
         # self.post('b', thresh_b)
         # mask = reduce(lambda x, y: cv2.bitwise_and(x, y), [mask, thresh_a, thresh_b])
         #
-        # self.post('something', mask)
-        #
         # contours = outer_contours(mask)
+        _, contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        self.post('something', mask)
+        #
 
-        canny_post = np.zeros(mat.shape)
-        canny = simple_canny(mat, sigma=self.options['sigma_canny'], use_mean=True)
-        contours = outer_contours(canny)
-        for i in range(len((contours))):
-            cv2.drawContours(canny_post, contours, i, (i*20, i*20, i*20))
-        self.post('canny', canny)
+
+        # canny_post = np.zeros(mat.shape)
+        # canny = simple_canny(mat, sigma=self.options['sigma_canny'], use_mean=True)
+        # contours = outer_contours(canny)
+        # for i in range(len((contours))):
+        #     cv2.drawContours(canny_post, contours, i, (i*20, i*20, i*20))
+        # self.post('canny', canny)
         if contours is not None and len(contours) > 0:
             # shm.torpedoes_stake.close_visible.set(True)
 
             def filter_ellipses(contour):
                 if len(contour) < 5: return False
-                if contour_area(contour) < 20: return False
+                if contour_area(contour) < 200: return False
                 _, (MA, ma), _ = cv2.fitEllipse(contour)
                 try:
                     return (self.options['max_eccentricity'] > 1-(MA**2)/(ma**2))**(1/2) > self.options['min_eccentricity'] and contour_area(contour)/(MA * ma / 4 * pi) > self.options['min_elllipsish_thing']
                 except ZeroDivisionError:
                     return False
 
-            close = list(filter(filter_ellipses , contours))
+            close = list(filter(filter_ellipses, contours))
             close.sort(key=contour_area)
 
             close1 = None

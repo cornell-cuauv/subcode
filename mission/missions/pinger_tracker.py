@@ -69,7 +69,7 @@ track = Sequential(
 
 class _TrackPinger(Task):
 
-    def on_first_run(self):
+    def on_first_run(self, speed=0.4):
         self.last_shmval = None
         self.last_target_heading = None
         self.last_target_elevation = 0
@@ -98,26 +98,29 @@ class _TrackPinger(Task):
         return math.degrees(abs(math.atan2(math.sin(math.radians(a) - math.radians(b)),
                                            math.cos(math.radians(a) - math.radians(b)))))
 
-    def calc_speed(self):
+    def calc_speed(self, speed):
         diff = self.angle_diff(self.get_target_heading(), shm.kalman.heading.get())
         print("diff: " + str(diff))
         if diff < 45:
-            print(min((45 - diff) / 20, 0.4))
-            return min((45 - diff) / 20, 0.4)
+            print(min((45 - diff) / 20, speed))
+            return min((45 - diff) / 20, speed)
         else:
             print("0")
             return 0
 
-    def on_run(self):
+    def on_run(self, speed):
         if self.update():
             VelocityX(0)()
             self.finish()
             return
         Heading(self.get_target_heading())()
-        VelocityX(self.calc_speed())()
+        VelocityX(self.calc_speed(speed))()
 
 
 
-TrackPinger = lambda: Sequential(Depth(2.3, error=0.2), _TrackPinger())
+TrackPinger = lambda speed=0.4, depth=2.3: Sequential(Depth(depth, error=0.2), _TrackPinger(speed))
+
+
+test = TrackPinger(0.2)
 
 what = Heading(None)
