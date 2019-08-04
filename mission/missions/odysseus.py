@@ -79,16 +79,17 @@ track_pinger = lambda: MissionTask(
         timeout=timeouts['track_pinger']
 )
 
-SearchTorpedoes = lambda: Retry(
+SearchTorpedoes = lambda: Retry(lambda: Sequential(Retry(
         lambda: Conditional(
             SearchFor(
                 TrackPinger(speed=0.25),
                 shm.torpedoes_stake.board_visible.get,
-                consistent_frames=(3,7)
+                consistent_frames=(24 ,42)
             ),
             on_fail=Conditional(
                 SearchBoard(),
-                on_fail=Fail(GoToMarker('gate')))), attempts=float('inf'))
+                on_fail=Fail(GoToMarker('gate')))), attempts=float('inf')),
+            Stake()), attempts=float('inf'))
 
 TestSearch = lambda: Sequential(
         SetMarker('gate'),
@@ -208,7 +209,7 @@ track = lambda: MissionTask(
 
 
 set_gate = lambda: MissionTask(
-    name="SetGate",
+    ame="SetGate",
     cls=lambda: SetMarker('gate'),
     modules=[],
     surfaces=False,
@@ -226,7 +227,7 @@ goto_gate = lambda: MissionTask(
 
 path = lambda: MissionTask(
     name="path",
-    cls=lambda: Sequential(Timer(5), RelativeToInitialHeading(45), Timer(5), MoveX(4, deadband=0.2)),
+    cls=lambda: Sequential(Timer(5), RelativeToInitialHeading(-45), Timer(5), MoveX(8, deadband=0.2)),
     modules=[],
     surfaces=False,
     timeout=30
@@ -242,7 +243,11 @@ tasks_nonrandom = [
     lambda: surface,
     goto_gate,
     search_torpedoes,
-    lambda: stake,
+]
+
+
+tasks_yike = [
+    path,
 ]
 
 tasks = [
@@ -257,4 +262,4 @@ tasks = [
 ]
 
 Master = RunAll(tasks_nonrandom)
-Master_FUCK = RunAll(tasks)
+Master_Yike = RunAll(tasks_yike)
