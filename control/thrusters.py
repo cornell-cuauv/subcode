@@ -20,11 +20,19 @@ from conf import vehicle
 
 MODEL_DIR = os.path.join(os.environ['CUAUV_SOFTWARE'], 'control', 'bollard',
                          '2015-06-03')
+<<<<<<< HEAD
 # NEAR_SURFACE_THRESHOLD = 0.0 # Meters depth
 # DEPTH_THRUSTER_NAMES = ['fore_port', 'fore_starboard', 'aft_port', 'aft_starboard']
 # SURGE_THRUSTER_NAMES = ['port', 'starboard']
 # SWAY_THRUSTER_NAMES = ['sway_aft', 'sway_fore']
 # THRUSTER_NAMES = DEPTH_THRUSTER_NAMES + SURGE_THRUSTER_NAMES + SWAY_THRUSTER_NAMES
+=======
+NEAR_SURFACE_THRESHOLD = 0.1 # Meters depth
+DEPTH_THRUSTER_NAMES = ['fore_port', 'fore_starboard', 'aft_port', 'aft_starboard']
+SURGE_THRUSTER_NAMES = ['port', 'starboard']
+SWAY_THRUSTER_NAMES = ['sway_aft', 'sway_fore']
+THRUSTER_NAMES = DEPTH_THRUSTER_NAMES + SURGE_THRUSTER_NAMES + SWAY_THRUSTER_NAMES
+>>>>>>> parent of 3f62981... Update thruster PWM surface threshold
 
 # Keys of this dictionary should match names given to thrusters below
 # Values should be a tuple of filenames for the forward and reverse models
