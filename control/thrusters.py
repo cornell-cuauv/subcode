@@ -201,6 +201,7 @@ class GenericThruster(object):
         self.min_neg_pwm = min_neg_pwm
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         if self.name in DEPTH_THRUSTER_NAMES:
             self.max_thrust = self.pwm_to_thrust(self.max_pwm * 3 / 4)
             self.max_neg_thrust = self.pwm_to_thrust(-self.max_pwm * 3 / 4)
@@ -209,6 +210,10 @@ class GenericThruster(object):
             self.max_neg_thrust = self.pwm_to_thrust(-self.max_pwm)
         self.max_thrust_near_surface = self.pwm_to_thrust(self.max_pwm / 2)
         self.max_neg_thrust_near_surface = self.pwm_to_thrust(-self.max_pwm / 2)
+=======
+        self.max_thrust = self.pwm_to_thrust(self.max_pwm)
+        self.max_neg_thrust = self.pwm_to_thrust(-self.max_pwm)
+>>>>>>> parent of 742ac58... Limit thruster PWM near surface
 =======
         self.max_thrust = self.pwm_to_thrust(self.max_pwm)
         self.max_neg_thrust = self.pwm_to_thrust(-self.max_pwm)
@@ -372,6 +377,7 @@ class GenericThruster(object):
     #        log("No model for %s thruster, defaulting to VideoRay!" % self.name)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     def current_max_thrusts(self):
         """
             Returns the maximum positive and negative thrusts given the current sub position
@@ -381,6 +387,8 @@ class GenericThruster(object):
         else:
             return self.max_thrust_near_surface, self.max_neg_thrust_near_surface
 
+=======
+>>>>>>> parent of 742ac58... Limit thruster PWM near surface
 =======
 >>>>>>> parent of 742ac58... Limit thruster PWM near surface
 class VideoRay(GenericThruster):
