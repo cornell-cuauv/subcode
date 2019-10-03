@@ -20,19 +20,16 @@ from conf import vehicle
 
 MODEL_DIR = os.path.join(os.environ['CUAUV_SOFTWARE'], 'control', 'bollard',
                          '2015-06-03')
-<<<<<<< HEAD
 # NEAR_SURFACE_THRESHOLD = 0.0 # Meters depth
 # DEPTH_THRUSTER_NAMES = ['fore_port', 'fore_starboard', 'aft_port', 'aft_starboard']
 # SURGE_THRUSTER_NAMES = ['port', 'starboard']
 # SWAY_THRUSTER_NAMES = ['sway_aft', 'sway_fore']
 # THRUSTER_NAMES = DEPTH_THRUSTER_NAMES + SURGE_THRUSTER_NAMES + SWAY_THRUSTER_NAMES
-=======
 NEAR_SURFACE_THRESHOLD = 0.1 # Meters depth
 DEPTH_THRUSTER_NAMES = ['fore_port', 'fore_starboard', 'aft_port', 'aft_starboard']
 SURGE_THRUSTER_NAMES = ['port', 'starboard']
 SWAY_THRUSTER_NAMES = ['sway_aft', 'sway_fore']
 THRUSTER_NAMES = DEPTH_THRUSTER_NAMES + SURGE_THRUSTER_NAMES + SWAY_THRUSTER_NAMES
->>>>>>> parent of 3f62981... Update thruster PWM surface threshold
 
 # Keys of this dictionary should match names given to thrusters below
 # Values should be a tuple of filenames for the forward and reverse models
@@ -208,24 +205,8 @@ class GenericThruster(object):
         self.min_pos_pwm = min_pos_pwm
         self.min_neg_pwm = min_neg_pwm
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-        if self.name in DEPTH_THRUSTER_NAMES:
-            self.max_thrust = self.pwm_to_thrust(self.max_pwm * 3 / 4)
-            self.max_neg_thrust = self.pwm_to_thrust(-self.max_pwm * 3 / 4)
-        else:
-            self.max_thrust = self.pwm_to_thrust(self.max_pwm)
-            self.max_neg_thrust = self.pwm_to_thrust(-self.max_pwm)
-        self.max_thrust_near_surface = self.pwm_to_thrust(self.max_pwm / 2)
-        self.max_neg_thrust_near_surface = self.pwm_to_thrust(-self.max_pwm / 2)
-=======
         self.max_thrust = self.pwm_to_thrust(self.max_pwm)
         self.max_neg_thrust = self.pwm_to_thrust(-self.max_pwm)
->>>>>>> parent of 742ac58... Limit thruster PWM near surface
-=======
-        self.max_thrust = self.pwm_to_thrust(self.max_pwm)
-        self.max_neg_thrust = self.pwm_to_thrust(-self.max_pwm)
->>>>>>> parent of 742ac58... Limit thruster PWM near surface
 
         self.min_thrust = self.pwm_to_thrust(self.min_pos_pwm)
         self.min_neg_thrust = self.pwm_to_thrust(self.min_neg_pwm)
@@ -384,21 +365,6 @@ class GenericThruster(object):
     #    else:
     #        log("No model for %s thruster, defaulting to VideoRay!" % self.name)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    def current_max_thrusts(self):
-        """
-            Returns the maximum positive and negative thrusts given the current sub position
-        """
-        if shm.kalman.depth.get() > NEAR_SURFACE_THRESHOLD:
-            return self.max_thrust, self.max_neg_thrust
-        else:
-            return self.max_thrust_near_surface, self.max_neg_thrust_near_surface
-
-=======
->>>>>>> parent of 742ac58... Limit thruster PWM near surface
-=======
->>>>>>> parent of 742ac58... Limit thruster PWM near surface
 class VideoRay(GenericThruster):
     max_pwm = 255
     min_pwm = 26
