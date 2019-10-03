@@ -132,9 +132,9 @@ bool UeyeCamera::setup_capture_source() {
 
   if (ret == IS_SUCCESS) {
       if (this->m_direction.compare("forward") == 0) {
-          shm_set(camera, forward_exposure, exposure);
+          shm_set(camera_calibration, forward_exposure, exposure);
       } else if (this->m_direction.compare("downward") == 0) {
-          shm_set(camera, downward_exposure, exposure);
+          shm_set(camera_calibration, downward_exposure, exposure);
       }
   }
 
@@ -142,13 +142,13 @@ bool UeyeCamera::setup_capture_source() {
   green_gain = is_SetHardwareGain(pimpl->m_camera, IS_GET_GREEN_GAIN, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER);
   blue_gain = is_SetHardwareGain(pimpl->m_camera, IS_GET_BLUE_GAIN, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER);
   if (this->m_direction.compare("forward") == 0) {
-      shm_set(camera, forward_red_gain, red_gain);
-      shm_set(camera, forward_green_gain, green_gain);
-      shm_set(camera, forward_blue_gain, blue_gain);
+      shm_set(camera_calibration, forward_red_gain, red_gain);
+      shm_set(camera_calibration, forward_green_gain, green_gain);
+      shm_set(camera_calibration, forward_blue_gain, blue_gain);
   } else if (this->m_direction.compare("downward") == 0) {
-      shm_set(camera, downward_red_gain, red_gain);
-      shm_set(camera, downward_green_gain, green_gain);
-      shm_set(camera, downward_blue_gain, blue_gain);
+      shm_set(camera_calibration, downward_red_gain, red_gain);
+      shm_set(camera_calibration, downward_green_gain, green_gain);
+      shm_set(camera_calibration, downward_blue_gain, blue_gain);
   }
 
   if (is_SetColorMode(pimpl->m_camera, IS_CM_BGR8_PACKED) != IS_SUCCESS) {
@@ -308,17 +308,17 @@ std::experimental::optional<std::pair<cv::Mat, long>> UeyeCamera::acquire_next_i
 
   if (this->m_direction.compare("forward") == 0) {
       shm_lock(camera);
-      exposure = shm->camera.g.forward_exposure;
-      red_gain = shm->camera.g.forward_red_gain;
-      green_gain = shm->camera.g.forward_green_gain;
-      blue_gain = shm->camera.g.forward_blue_gain;
+      exposure = shm->camera_calibration.g.forward_exposure;
+      red_gain = shm->camera_calibration.g.forward_red_gain;
+      green_gain = shm->camera_calibration.g.forward_green_gain;
+      blue_gain = shm->camera_calibration.g.forward_blue_gain;
       shm_unlock(camera);
   } else if (this->m_direction.compare("downward") == 0) {
       shm_lock(camera);
-      exposure = shm->camera.g.downward_exposure;
-      red_gain = shm->camera.g.downward_red_gain;
-      green_gain = shm->camera.g.downward_green_gain;
-      blue_gain = shm->camera.g.forward_blue_gain;
+      exposure = shm->camera_calibration.g.downward_exposure;
+      red_gain = shm->camera_calibration.g.downward_red_gain;
+      green_gain = shm->camera_calibration.g.downward_green_gain;
+      blue_gain = shm->camera_calibration.g.forward_blue_gain;
       shm_unlock(camera);
   }
   if (exposure != 0) {

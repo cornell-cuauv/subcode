@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import time
 import shm
+import ctypes
 
 from conf.vehicle import cameras
 
@@ -9,23 +10,26 @@ from vision import options
 
 directions = cameras.keys()
 
-o = [
-        ("double", "{}_blue_gain", 0.0, 50.0),
-        ("double", "{}_exposure", 0.0, 50.0),
-        ("double", "{}_green_gain", 0.0, 50.0),
-        ("double", "{}_red_gain", 0.0, 50.0),
-        ]
+# o = [
+#         ("double", "{}_blue_gain", 0.0, 50.0),
+#         ("double", "{}_exposure", 0.0, 50.0),
+#         ("double", "{}_green_gain", 0.0, 50.0),
+#         ("double", "{}_red_gain", 0.0, 50.0),
+#         ]
 
 opts = []
 
-for t in o:
-    for d in directions:
-        if t[0] == "double":
-            var = t[1].format(d)
-            opts.append(options.DoubleOption(var, getattr(shm.camera, var).get(), t[2], t[3]))
-        elif t[0] == "int":
-            var = t[1].format(d)
-            opts.append(options.IntOption(var, getattr(shm.camera, var).get(), t[2], t[3]))
+DEFAULT_DOUBLE_MAX = 100.0
+DEFAULT_DOUBLE_MIN = 0.0
+DEFAULT_INT_MAX = 50
+DEFAULT_INT_MIN = 0
+
+for o, t in shm.camera_calibration._fields:
+    print(o)
+    if t == ctypes.c_double:
+        opts.append(options.DoubleOption(o, getattr(shm.camera_calibration, o).get(), DEFAULT_DOUBLE_MIN, DEFAULT_DOUBLE_MAX))
+    elif t == ctypes.c_int:
+        opts.append(options.IntOption(o, getattr(shm.camera_calibration, o).get(), DEFAULT_INT_MIN, DEFAULT_INT_MAX))
 
 
 class Calibrate(ModuleBase):
@@ -33,12 +37,12 @@ class Calibrate(ModuleBase):
         super().__init__(*args, **kwargs)
 
     def process(self, *mats):
-        for t in o:
-            for d in directions:
-                var = t[1].format(d)
-                getattr(shm.camera, var).set(self.options[var])
-        for i, m in enumerate(mats):
-            self.post(directions[i], m)
+        for o, t in shm.camera_calibration._fields:
+            getattr(shm.camera_calibration, o).set(self.options[o])
+            
+        directions_iter = iter(directions)
+        for _, m in enumerate(mats):
+            self.post(next(directions_iter), m)
 
 
 if __name__ == '__main__':
