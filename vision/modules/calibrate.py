@@ -37,7 +37,8 @@ class Calibrate(ModuleBase):
             for d in directions:
                 var = t[1].format(d)
                 getattr(shm.camera, var).set(self.options[var])
-        self.post(mats[0])
+        for i, m in enumerate(mats):
+            self.post(directions[i], m)
 
 
 if __name__ == '__main__':
