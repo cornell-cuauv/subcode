@@ -39,10 +39,9 @@ class Calibrate(ModuleBase):
     def process(self, *mats):
         for o, t in shm.camera_calibration._fields:
             getattr(shm.camera_calibration, o).set(self.options[o])
-            
-        directions_iter = iter(directions)
-        for _, m in enumerate(mats):
-            self.post(next(directions_iter), m)
+
+        for d, m in zip(directions, mats):
+            self.post(d, m)
 
 
 if __name__ == '__main__':
