@@ -51,7 +51,7 @@ class ModuleBase:
         self.options_dict = OrderedDict()
         self.preprocessor = Preprocessor(self)
 
-        if len(sys.argv) > 1:
+        if len(sys.argv) > 1 and not (len(sys.argv) == 2 and sys.argv[1] == 'default'):
             self.directions = sys.argv[1:]
         elif default_directions is None:
             print('No camera directions specified')
