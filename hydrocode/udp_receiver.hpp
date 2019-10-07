@@ -1,17 +1,25 @@
-#ifndef UDP_RECEIVER_H
+//
+//  udp_receiver.hpp
+//  hydromathd
+//
+//  Created by Vlad on 9/10/18.
+//  Copyright © 2018 Vlad. All rights reserved.
+//
 
-#define UDP_RECEIVER_H
+#ifndef udp_receiver_hpp
+#define udp_receiver_hpp
+
 #include <cstdint>
-#include <string>
-#define UDP_PAYLOAD_SIZE 818
-#define UDP_PORT 8899
-#define CHANNEL_DEPTH 128
+#include <netinet/in.h>
 
-typedef struct superdongle_packet{
- uint16_t data[CHANNEL_DEPTH*3];
- uint8_t junk[UDP_PAYLOAD_SIZE - CHANNEL_DEPTH*sizeof(uint16_t)*3];
-} superdongle_packet_t;
+class UDPSampleReceiver
+{
+public:
+    UDPSampleReceiver(unsigned int port);
+    void recv(uint16_t *pkt, unsigned int pkt_len);
 
-void udp_init(std::string fname);
-int loop(superdongle_packet_t * buffer);
-#endif
+private:
+    int sock;
+};
+
+#endif /* udp_receiver_hpp */
