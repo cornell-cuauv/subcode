@@ -17,29 +17,36 @@ DEFAULT_DOUBLE_MIN = 0.0
 DEFAULT_INT_MAX = 50
 DEFAULT_INT_MIN = 0
 
-for o, t in shm.camera_calibration._fields:
-    print(o)
-    if t == ctypes.c_double:
-        opts.append(options.DoubleOption(o,
-                                         getattr(shm.camera_calibration, o).get(),
-                                         DEFAULT_DOUBLE_MIN, DEFAULT_DOUBLE_MAX))
-    elif t == ctypes.c_int:
-        opts.append(options.IntOption(o,
-                                      getattr(shm.camera_calibration, o).get(),
-                                      DEFAULT_INT_MIN, DEFAULT_INT_MAX))
+def build_opts():
+    for o, t in shm.camera_calibration._fields:
+        print(o)
+        if t == ctypes.c_double:
+            opts.append(options.DoubleOption(o,
+                                             getattr(shm.camera_calibration, o).get(),
+                                             DEFAULT_DOUBLE_MIN, DEFAULT_DOUBLE_MAX))
+        elif t == ctypes.c_int:
+            opts.append(options.IntOption(o,
+                                          getattr(shm.camera_calibration, o).get(),
+                                          DEFAULT_INT_MIN, DEFAULT_INT_MAX))
+    return opts
 
 
 class Calibrate(ModuleBase):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, directions):
+        super().__init__(directions, build_opts())
+
+        self.prev = {}
 
     def process(self, *mats):
         for o, t in shm.camera_calibration._fields:
-            getattr(shm.camera_calibration, o).set(self.options[o])
+            opt_val = self.options[o]
+            if not o in self.prev or not opt_val == self.prev[o]:
+                getattr(shm.camera_calibration, o).set(opt_val)
+                self.prev[o] = opt_val
 
         for d, m in zip(directions, mats):
             self.post(d, m)
 
 
 if __name__ == '__main__':
-    Calibrate(directions, opts)()
+    Calibrate(directions)()
