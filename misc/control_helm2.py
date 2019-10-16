@@ -567,21 +567,21 @@ def build_control_helm(expert=False):
     drive_panels = Vbox(
         Hbox(
             LineLambdaPanel([
-                lambda: 'PORT:  {:3}  '.format(
+                lambda: ' PORT: {:4}  '.format(
                     shm.motor_desires.port.get()),
-                lambda: 'STAR:  {:3}  '.format(
+                lambda: ' STAR: {:4}  '.format(
                     shm.motor_desires.starboard.get()),
-                lambda: 'FORE:{:3}:{:3} '.format(
+                lambda: ' FORE:{:3}:{:3} '.format(
                     shm.motor_desires.fore_port.get(),
                     shm.motor_desires.fore_starboard.get()),
-                lambda: ' AFT:{:3}:{:3} '.format(
+                lambda: '  AFT:{:3}:{:3} '.format(
                     shm.motor_desires.aft_port.get(),
                     shm.motor_desires.aft_starboard.get()),
-                lambda: 'SFOR:  {:3}  '.format(
+                lambda: ' SFOR: {:4}  '.format(
                     shm.motor_desires.sway_fore.get()),
-                lambda: 'SAFT:  {:3}  '.format(
+                lambda: ' SAFT: {:4}  '.format(
                     shm.motor_desires.sway_aft.get()),
-            ], width=16),
+            ], width=16, padding=False),
 
             ShmPanel(shm.navigation_desires, width=20, title=None,
                      padding=False,
