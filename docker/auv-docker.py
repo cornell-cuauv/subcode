@@ -34,6 +34,8 @@ CONTAINER_WORKSPACE_DIRECTORY=get_config("CONTAINER_WORKSPACE_DIRECTORY")
 REPO_URL=get_config("GIT_REPO_URL")
 BRANCH=get_config("BRANCH")
 DOCKER_REPO=get_config("DOCKER_REPO")
+GROUP_ID=get_config("GROUP_ID")
+GROUP_NAME=get_config("GROUP_NAME")
 
 GUARD_DIRECTORY = WORKSPACE_DIRECTORY / ".guards"
 REPO_PATH = WORKSPACE_DIRECTORY / "repo"
@@ -94,7 +96,7 @@ def get_containers(docker_name: str):
     return running
 
 
-def init(*, on_vehicle=False):
+def init(*, on_vehicle=False, set_permisions=False):
     """
     Initialize the CUAUV workspaces filesystem structure. This should be run
     before any other workspace command.
@@ -111,6 +113,38 @@ def init(*, on_vehicle=False):
         VIDEOS_DIRECTORY.mkdir(exist_ok=True)
         CONFIGS_DIRECTORY.mkdir(exist_ok=True)
         STORAGE_DIRECTORY.mkdir(exist_ok=True)
+
+        # Adds a user group to be shared both inside and outside the docker
+        # file and changes the workspace directory group ownership
+        if set_permissions:
+            group_exists = subprocess.run(
+                ["getent", "group", GROUP_ID],
+                stdout=subprocess.PIPE,
+                encoding="utf-8"
+            )
+
+            if group_exists.returncode != 0:
+                subprocess.run(
+                    ["sudo", "groupadd", "-g", GROUP_ID, GROUP_NAME],
+                    check=True
+                )
+            elif GROUP_NAME not in group_exists.stdout:
+                print("GID {} already exists with name {}.\n" \
+                      "It may already be in use by some other program.\n" \
+                      "Please change the docker configs in docker/config.py" \
+                      "so that the group name matches the gid." )
+                return
+
+            subprocess.run(
+                ["sudo", "chgrp", "-R", GROUP_ID, str(WORKSPACE_DIRECTORY)] ,
+                check=True
+            )
+
+            subprocess.run(
+                ["sudo", "chmod", "-R", "g+s", str(WORKSPACE_DIRECTORY)],
+                check=True
+            )
+
 
     guarded_call(
         "create_workspace_directory",
