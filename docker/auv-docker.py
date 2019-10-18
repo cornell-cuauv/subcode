@@ -122,7 +122,7 @@ def init(*, on_vehicle=False, set_permissions=False):
                 encoding="utf-8"
             )
 
-            if group_exists.returncode != 0:
+            if group_exists.returncode == 0:
                 print(("GID {} already exists on the system. Are you sure you"
                        "want the workspace owned by this GID? [y/n]").format(str(GROUP_ID)))
                 if input() != y:
@@ -138,7 +138,7 @@ def init(*, on_vehicle=False, set_permissions=False):
                 check=True
             )
 
-            print(("The workspace is now owned by GID {}. To use permissions,"
+            print(("The workspace is now owned by GID {}. To use permissions, "
                    "create a group with that GID and add yourself to it.").format(str(GROUP_ID)))
 
 
