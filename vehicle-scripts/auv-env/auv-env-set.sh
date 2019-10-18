@@ -1,4 +1,7 @@
 #!/bin/zsh
+if [[ $TERM = "dumb" ]]; then
+    bash && exit
+fi
 
 # This script must be sourced, so these variables do leak into the env...
 red=`tput setaf 1`
