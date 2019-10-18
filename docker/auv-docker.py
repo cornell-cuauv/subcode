@@ -128,13 +128,18 @@ def init(*, on_vehicle=False, set_permissions=False):
                 if input() != y:
                     raise Exception
 
-            subprocess.run(
-                ["sudo", "chgrp", "-R", str(GROUP_ID), str(WORKSPACE_DIRECTORY)] ,
-                check=True
-            )
+            # subprocess.run(
+            #     ["sudo", "chgrp", "-R", str(GROUP_ID), str(WORKSPACE_DIRECTORY)] ,
+            #     check=True
+            # )
+            #
+            # subprocess.run(
+            #     ["sudo", "chmod", "-R", "g+rwxs", str(WORKSPACE_DIRECTORY)],
+            #     check=True
+            # )
 
             subprocess.run(
-                ["sudo", "chmod", "-R", "g+s", str(WORKSPACE_DIRECTORY)],
+                ["setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
                 check=True
             )
 
@@ -204,11 +209,11 @@ def init(*, on_vehicle=False, set_permissions=False):
                 check=True
             )
 
-        if set_permissions:
-            subprocess.run(
-                ["chgrp", "-R", str(GROUP_ID), str(REPO_PATH)],
-                check=True
-            )
+        # if set_permissions:
+        #     subprocess.run(
+        #         ["chgrp", "-R", str(GROUP_ID), str(REPO_PATH)],
+        #         check=True
+        #     )
 
     guarded_call(
         "clone_repo",
@@ -393,8 +398,8 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False):
         envs = "bash -c 'printf \"{}\\n\" > /home/software/.env'".format("\\n".join(env_parts))
 
         container.exec_run(envs, user="software")
-        container.exec_run("sudo groupadd -g {} cuauv software".format(str(GROUP_ID)))
-        container.exec_run("sudo chmod -aG {} software".format(str(GROUP_ID)))
+        container.exec_run("sudo groupadd -g {} cuauv".format(str(GROUP_ID)))
+        container.exec_run("sudo usermod -aG {} software".format(str(GROUP_ID)))
         container.exec_run("chmod +x /home/software/.env", user="software")
         container.exec_run("rm /home/software/.zshrc_user", user="software")
         container.exec_run("ln -s {} /home/software/.zshrc_user".format(software_path / "install/zshrc"), user="software")
