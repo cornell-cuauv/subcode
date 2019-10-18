@@ -139,7 +139,7 @@ def init(*, on_vehicle=False, set_permissions=False):
             # )
 
             subprocess.run(
-                ["sudo", "setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
+                ["setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
                 check=True
             )
 
@@ -209,11 +209,11 @@ def init(*, on_vehicle=False, set_permissions=False):
                 check=True
             )
 
-        # if set_permissions:
-        #     subprocess.run(
-        #         ["chgrp", "-R", str(GROUP_ID), str(REPO_PATH)],
-        #         check=True
-        #     )
+        if set_permissions:
+            subprocess.run(
+                ["setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
+                check=True
+            )
 
     guarded_call(
         "clone_repo",
