@@ -35,7 +35,6 @@ REPO_URL=get_config("GIT_REPO_URL")
 BRANCH=get_config("BRANCH")
 DOCKER_REPO=get_config("DOCKER_REPO")
 GROUP_ID=get_config("GROUP_ID")
-GROUP_NAME=get_config("GROUP_NAME")
 
 GUARD_DIRECTORY = WORKSPACE_DIRECTORY / ".guards"
 REPO_PATH = WORKSPACE_DIRECTORY / "repo"
@@ -124,16 +123,10 @@ def init(*, on_vehicle=False, set_permissions=False):
             )
 
             if group_exists.returncode != 0:
-                subprocess.run(
-                    ["sudo", "groupadd", "-g", GROUP_ID, GROUP_NAME],
-                    check=True
-                )
-            elif GROUP_NAME not in group_exists.stdout:
-                print("GID {} already exists with name {}.\n" \
-                      "It may already be in use by some other program.\n" \
-                      "Please change the docker configs in docker/config.py" \
-                      "so that the group name matches the gid." )
-                return
+                print(("GID {} already exists on the system. Are you sure you"
+                       "want the workspace owned by this GID? [y/n]").format(str(GROUP_ID)))
+                if input() != y:
+                    raise Exception
 
             subprocess.run(
                 ["sudo", "chgrp", "-R", GROUP_ID, str(WORKSPACE_DIRECTORY)] ,
@@ -144,6 +137,9 @@ def init(*, on_vehicle=False, set_permissions=False):
                 ["sudo", "chmod", "-R", "g+s", str(WORKSPACE_DIRECTORY)],
                 check=True
             )
+
+            print(("The workspace is now owned by GID {}. To use permissions,"
+                   "create a group with that GID and add yourself to it.").format(str(GROUP_ID)))
 
 
     guarded_call(
@@ -205,6 +201,12 @@ def init(*, on_vehicle=False, set_permissions=False):
             subprocess.run(
                 ["git", "config", "user.email", "\"{}\"".format(EMAIL_CONFIG_PATH.read_text())],
                 cwd=str(REPO_PATH),
+                check=True
+            )
+
+        if set_permissions:
+            subprocess.run(
+                ["chgrp", "-R", str(GROUP_ID), str(REPO_PATH)],
                 check=True
             )
 
@@ -391,6 +393,8 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False):
         envs = "bash -c 'printf \"{}\\n\" > /home/software/.env'".format("\\n".join(env_parts))
 
         container.exec_run(envs, user="software")
+        container.exec_run("groupadd -g {} cuauv software".format(str(GROUP_ID)))
+        container.exec_run("chmod -aG {} software".format(str(GROUP_ID)))
         container.exec_run("chmod +x /home/software/.env", user="software")
         container.exec_run("rm /home/software/.zshrc_user", user="software")
         container.exec_run("ln -s {} /home/software/.zshrc_user".format(software_path / "install/zshrc"), user="software")

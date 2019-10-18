@@ -26,7 +26,6 @@ defaults = {
     "BRANCH": "master",
 
     "GROUP_ID": 9999,
-    "GROUP_NAME": "cuauv"
 }
 
 try:
