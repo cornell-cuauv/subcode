@@ -96,7 +96,7 @@ def get_containers(docker_name: str):
     return running
 
 
-def init(*, on_vehicle=False, set_permisions=False):
+def init(*, on_vehicle=False, set_permissions=False):
     """
     Initialize the CUAUV workspaces filesystem structure. This should be run
     before any other workspace command.
