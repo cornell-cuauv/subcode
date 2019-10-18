@@ -393,8 +393,8 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False):
         envs = "bash -c 'printf \"{}\\n\" > /home/software/.env'".format("\\n".join(env_parts))
 
         container.exec_run(envs, user="software")
-        container.exec_run("groupadd -g {} cuauv software".format(str(GROUP_ID)))
-        container.exec_run("chmod -aG {} software".format(str(GROUP_ID)))
+        container.exec_run("sudo groupadd -g {} cuauv software".format(str(GROUP_ID)))
+        container.exec_run("sudo chmod -aG {} software".format(str(GROUP_ID)))
         container.exec_run("chmod +x /home/software/.env", user="software")
         container.exec_run("rm /home/software/.zshrc_user", user="software")
         container.exec_run("ln -s {} /home/software/.zshrc_user".format(software_path / "install/zshrc"), user="software")
