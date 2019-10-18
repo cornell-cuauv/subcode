@@ -117,7 +117,7 @@ def init(*, on_vehicle=False, set_permissions=False):
         # file and changes the workspace directory group ownership
         if set_permissions:
             group_exists = subprocess.run(
-                ["getent", "group", GROUP_ID],
+                ["getent", "group", str(GROUP_ID)],
                 stdout=subprocess.PIPE,
                 encoding="utf-8"
             )
