@@ -123,9 +123,9 @@ def init(*, on_vehicle=False, set_permissions=False):
             )
 
             if group_exists.returncode == 0:
-                print(("GID {} already exists on the system. Are you sure you"
+                print(("GID {} already exists on the system. Are you sure you "
                        "want the workspace owned by this GID? [y/n]").format(str(GROUP_ID)))
-                if input() != y:
+                if input() != "y":
                     raise Exception
 
             # subprocess.run(
@@ -139,7 +139,7 @@ def init(*, on_vehicle=False, set_permissions=False):
             # )
 
             subprocess.run(
-                ["setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
+                ["sudo", "setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
                 check=True
             )
 
