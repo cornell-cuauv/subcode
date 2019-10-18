@@ -129,7 +129,7 @@ def init(*, on_vehicle=False, set_permissions=False):
                     raise Exception
 
             subprocess.run(
-                ["sudo", "chgrp", "-R", GROUP_ID, str(WORKSPACE_DIRECTORY)] ,
+                ["sudo", "chgrp", "-R", str(GROUP_ID), str(WORKSPACE_DIRECTORY)] ,
                 check=True
             )
 
