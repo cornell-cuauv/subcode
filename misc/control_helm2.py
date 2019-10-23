@@ -11,7 +11,7 @@ import shm
 # TODO:
 #  - efficiency improvements
 #  - make code prettier
-#  - make a better control helm, using the fancy new features?
+#  - make a better control helm layout, using the fancy new features?
 
 class StyledString(str):
     """
