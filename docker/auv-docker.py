@@ -139,7 +139,12 @@ def init(*, on_vehicle=False, set_permissions=False):
             # )
 
             subprocess.run(
-                ["sudo", "setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
+                ["setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
+                check=True
+            )
+
+            subprocess.run(
+                ["setfacl", "-R", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
                 check=True
             )
 
@@ -211,7 +216,11 @@ def init(*, on_vehicle=False, set_permissions=False):
 
         if set_permissions:
             subprocess.run(
-                ["sudo", "setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(REPO_PATH)],
+                ["setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(REPO_PATH)],
+                check=True
+            )
+            subprocess.run(
+                ["setfacl", "R", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(REPO_PATH)],
                 check=True
             )
 
