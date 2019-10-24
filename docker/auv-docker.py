@@ -220,7 +220,7 @@ def init(*, on_vehicle=False, set_permissions=False):
                 check=True
             )
             subprocess.run(
-                ["setfacl", "R", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(REPO_PATH)],
+                ["setfacl", "-R", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(REPO_PATH)],
                 check=True
             )
 
