@@ -516,6 +516,22 @@ def vehicle(*, branch:"b"="master", vehicle:"v"=None):
 
     start(vehicle=True, branch=branch, gpu=False, env=env)
 
+def set_permissions():
+    """
+    Sets group permissions for the workspace using ACL.
+
+    The GID of the cuauv group can be changed in config.py.
+    """
+    subprocess.run(
+        ["sudo", "setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
+        check=True
+    )
+
+    subprocess.run(
+        ["sudo", "setfacl", "-R", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
+        check=True
+    )
+
 
 def build():
     """
@@ -524,4 +540,4 @@ def build():
     print("Building container for branch {}".format(branch))
 
 
-clize.run(init, start, create_worktree, cdw, stop, destroy, vehicle)
+clize.run(init, start, create_worktree, cdw, stop, destroy, vehicle, set_permissions)
