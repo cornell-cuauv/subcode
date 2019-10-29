@@ -17,12 +17,3 @@ make
 make install
 
 rm -rf /python-latest-install
-
-# add-apt-repository ppa:deadsnakes/ppa
-# apt-get update
-
-# apt-get install -y python3.8 python3.8-dev python3.8-distutils
-
-pip3 install --upgrade pip
-
-pip3 install numpy scipy
