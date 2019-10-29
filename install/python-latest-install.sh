@@ -22,7 +22,6 @@ add-apt-repository ppa:deadsnakes/ppa
 apt-get update
 
 apt-get install -y python3.8 python3.8-dev python3.8-distutils python3-pip
-python3 -m ensurepip
 python3 -m pip install pip
 
 pip3 install --upgrade pip
