@@ -57,12 +57,14 @@ packages3=(
 
     pgi
     pycairo
-)
 
-packages_latest=(
     mypy
 )
 
+# packages_latest=(
+#     mypy
+# )
+
 pip2 install "${packages[@]}" "${packages2[@]}"
 pip3 install "${packages[@]}" "${packages3[@]}"
-pip3.8 install "${packages[@]}" "${packages3[@]}" "${packages_latest[@]}"
+#pip3.8 install "${packages[@]}" "${packages3[@]}" "${packages_latest[@]}"
