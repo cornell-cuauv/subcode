@@ -128,16 +128,6 @@ def init(*, on_vehicle=False, set_permissions=False):
                 if input() != "y":
                     raise Exception
 
-            # subprocess.run(
-            #     ["sudo", "chgrp", "-R", str(GROUP_ID), str(WORKSPACE_DIRECTORY)] ,
-            #     check=True
-            # )
-            #
-            # subprocess.run(
-            #     ["sudo", "chmod", "-R", "g+rwxs", str(WORKSPACE_DIRECTORY)],
-            #     check=True
-            # )
-
             subprocess.run(
                 ["setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
                 check=True
