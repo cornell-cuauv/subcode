@@ -20,8 +20,8 @@ RUN bash /dependencies/aptstrap.sh /dependencies/jetson-install.sh
 COPY install/opencv-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/opencv-install.sh
 
-COPY install/caffe-install.sh /dependencies/
-RUN bash /dependencies/aptstrap.sh /dependencies/caffe-install.sh
+#COPY install/caffe-install.sh /dependencies/
+#RUN bash /dependencies/aptstrap.sh /dependencies/caffe-install.sh
 
 COPY install/setup-user.sh /dependencies/
 COPY install/ssh /dependencies/ssh
