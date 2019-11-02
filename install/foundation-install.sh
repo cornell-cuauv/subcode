@@ -11,7 +11,7 @@ packages=(
     build-essential
     cmake
     curl
-    cython
+    #cython
     gcc
     git
     ninja-build
