@@ -66,7 +66,7 @@ packages_latest=(
 )
 
 # it would be better to not have this
-FLAGS=--force-reinstall greenlet
+FLAGS="--force-reinstall greenlet"
 
 pip2 install "${packages[@]}" "${packages2[@]}" $FLAGS
 pip3 install "${packages[@]}" "${packages3[@]}" $FLAGS
