@@ -5,7 +5,6 @@ packages=(
     autossh
     bc
     dialog
-    gksu
     gnuplot
     htop
     iotop
@@ -76,7 +75,7 @@ packages=(
     liblzma-dev
 
     #slam
-    libzmq-dev
+    libzmq3-dev
     python3-zmq
 )
 
