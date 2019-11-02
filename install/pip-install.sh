@@ -13,7 +13,7 @@ packages=(
     pyserial
     watchdog
 
-    cython
+    #cython
     flask
     gevent
     matplotlib
