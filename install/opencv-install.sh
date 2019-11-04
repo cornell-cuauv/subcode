@@ -49,7 +49,7 @@ CMAKE_FLAGS+=(-DOPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-${OPENCV_VERSION}
 CMAKE_FLAGS+=(-DBUILD_opencv_dnn_modern=OFF)
 
 # Python!
-CMAKE_FLAGS+=(-DBUILD_opencv_python2=ON -DBUILD_opencv_python3=ON)
+CMAKE_FLAGS+=(-DBUILD_opencv_python3=ON)
 
 # build perf flags
 CMAKE_FLAGS+=(-DBUILD_EXAMPLES=OFF -DBUILD_opencv_apps=OFF -DBUILD_DOCS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF)
@@ -57,7 +57,7 @@ CMAKE_FLAGS+=(-DBUILD_EXAMPLES=OFF -DBUILD_opencv_apps=OFF -DBUILD_DOCS=OFF -DBU
 if [[ "$(uname -m)" == "aarch64" ]]; then
     # CUDA
     # Pascal is the version we need for the Jetson TX2
-    CMAKE_FLAGS+=(-DWITH_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-9.0 -DCUDA_GENERATION=Pascal)
+    CMAKE_FLAGS+=(-DWITH_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-10.0 -DCUDA_GENERATION=Pascal)
 fi
 
 # Ensure FFMPEG
