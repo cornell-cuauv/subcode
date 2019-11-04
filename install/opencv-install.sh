@@ -1,6 +1,5 @@
 packages=(
     cmake
-    ffmpeg
     libavcodec-dev
     libavformat-dev
     libavresample-dev
