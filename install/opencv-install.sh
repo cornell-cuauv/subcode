@@ -23,9 +23,13 @@ packages=(
     protobuf-compiler
 )
 
-apt-get install -y ${packages[@]}
-apt-get install -y --no-install-recommends libboost-all-dev
+packages_no_recommends=(
+    ffmpeg
+    libboost-all-dev
+)
 
+apt-get install -y ${packages[@]}
+apt-get install -y --no-install-recommends ${packages_no_recommends[@]}
 
 mkdir -p /build_tmp_opencv
 pushd /build_tmp_opencv
