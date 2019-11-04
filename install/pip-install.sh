@@ -33,8 +33,8 @@ packages=(
 
     nanomsg
 
-    numpy
-    scipy
+    #numpy
+    #scipy
 
     protobuf
 
