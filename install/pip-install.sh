@@ -59,9 +59,7 @@ packages3=(
 
     pgi
     pycairo
-)
 
-packages_latest=(
     mypy
 )
 
@@ -70,4 +68,3 @@ FLAGS="--ignore-installed"
 
 pip2 install $FLAGS "${packages[@]}" "${packages2[@]}"
 pip3 install $FLAGS "${packages[@]}" "${packages3[@]}"
-pip3.8 install $FLAGS "${packages[@]}" "${packages3[@]}" "${packages_latest[@]}"

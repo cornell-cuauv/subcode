@@ -14,12 +14,16 @@ RUN bash /dependencies/aptstrap.sh /dependencies/foundation-install.sh
 COPY install/python-latest-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/python-latest-install.sh
 
+COPY install/python-latest-pip-install.sh /dependencies/
+RUN bash /dependencies/aptstrap.sh /dependencies/python-latest-pip-install.sh
+
 COPY install/jetson-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/jetson-install.sh
 
 COPY install/opencv-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/opencv-install.sh
 
+# We don't currently use caffe and build is failing with Python 3.8.
 #COPY install/caffe-install.sh /dependencies/
 #RUN bash /dependencies/aptstrap.sh /dependencies/caffe-install.sh
 
