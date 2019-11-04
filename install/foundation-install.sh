@@ -11,7 +11,7 @@ packages=(
     build-essential
     cmake
     curl
-    cython
+    # cython
     gcc
     git
     ninja-build
@@ -54,3 +54,4 @@ pushd "liquid-dsp-${LIQUID_VERSION}"
 ./configure
 make -j "$(nproc)"
 make install
+rm -r "/v${LIQUID_VERSION}.zip"
