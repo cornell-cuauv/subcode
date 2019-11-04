@@ -30,7 +30,7 @@ apt-get install -y --no-install-recommends libboost-all-dev
 mkdir -p /build_tmp_opencv
 pushd /build_tmp_opencv
 
-OPENCV_VERSION="3.4.6"
+OPENCV_VERSION="4.1.1"
 
 curl -L https://github.com/opencv/opencv/archive/$OPENCV_VERSION.tar.gz -o opencv.tar.gz
 curl -L https://github.com/opencv/opencv_contrib/archive/$OPENCV_VERSION.tar.gz -o opencv_contrib.tar.gz
@@ -56,7 +56,8 @@ CMAKE_FLAGS+=(-DBUILD_EXAMPLES=OFF -DBUILD_opencv_apps=OFF -DBUILD_DOCS=OFF -DBU
 
 if [[ "$(uname -m)" == "aarch64" ]]; then
     # CUDA
-    CMAKE_FLAGS+=(-DWITH_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-9.0)
+    # Pascal is the version we need for the Jetson TX2
+    CMAKE_FLAGS+=(-DWITH_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-9.0 -DCUDA_GENERATION=Pascal)
 fi
 
 # Ensure FFMPEG
