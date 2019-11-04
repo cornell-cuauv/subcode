@@ -15,9 +15,9 @@ packages=(
     gcc
     git
     ninja-build
-    python
-    python-matplotlib
-    python-pip
+    # python
+    # python-matplotlib
+    # python-pip
     # python3
     # python3-dev
     # python3-numpy
@@ -38,7 +38,7 @@ for f in "${packages[@]}";  do
 done
 
 # Upgrade pip
-pip2 install --upgrade pip
+#pip2 install --upgrade pip
 #pip3 install --upgrade pip
 
 # Allow wireshark to be run by non-root users
@@ -54,4 +54,3 @@ pushd "liquid-dsp-${LIQUID_VERSION}"
 ./configure
 make -j "$(nproc)"
 make install
-

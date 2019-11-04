@@ -5,7 +5,7 @@ apt-get install -y libffi-dev openssl libssl-dev libgirepository1.0-dev
 
 if [[ "$(uname -m)" = "aarch64" ]]; then
     export LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu/tegra/
-    pip2 install cupy
+    #pip2 install cupy
     pip3 install cupy
 fi
 
@@ -43,11 +43,11 @@ packages=(
     tomlkit
 )
 
-packages2=(
-    posix_ipc
-    # pygame
-    cryptography
-)
+# packages2=(
+#     posix_ipc
+#     # pygame
+#     cryptography
+# )
 
 packages3=(
     flask
@@ -66,5 +66,5 @@ packages3=(
 # it would be better to not have this
 FLAGS="--ignore-installed"
 
-pip2 install $FLAGS "${packages[@]}" "${packages2[@]}"
+#pip2 install $FLAGS "${packages[@]}" "${packages2[@]}"
 pip3 install $FLAGS "${packages[@]}" "${packages3[@]}"
