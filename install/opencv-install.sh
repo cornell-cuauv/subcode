@@ -49,7 +49,7 @@ CMAKE_FLAGS+=(-DOPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-${OPENCV_VERSION}
 CMAKE_FLAGS+=(-DBUILD_opencv_dnn_modern=OFF)
 
 # Python!
-CMAKE_FLAGS+=(-DBUILD_opencv_python3=ON)
+CMAKE_FLAGS+=(-DBUILD_opencv_python2=OFF -DBUILD_opencv_python3=ON)
 
 # build perf flags
 CMAKE_FLAGS+=(-DBUILD_EXAMPLES=OFF -DBUILD_opencv_apps=OFF -DBUILD_DOCS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF)
@@ -68,6 +68,9 @@ CMAKE_FLAGS+=(-DOPENCV_ENABLE_NONFREE=ON)
 
 # build with ninja
 CMAKE_FLAGS+=(-GNinja)
+
+# generate pkg-config
+CMAKE_FLAGS+=(-DOPENCV_GENERATE_PKGCONFIG=ON)
 
 cmake ${CMAKE_FLAGS[@]} ..
 ninja
