@@ -1,5 +1,6 @@
 packages=(
     opam
+    ocaml
     m4
     libffi-dev
 )
