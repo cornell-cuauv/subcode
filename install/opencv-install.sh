@@ -7,7 +7,7 @@ packages=(
     libgflags-dev
     libgoogle-glog-dev
     libgphoto2-dev
-    libgtk2.0-dev
+    #libgtk2.0-dev # problem child
     libhdf5-serial-dev
     libjpeg-dev
     liblapacke-dev
