@@ -7,7 +7,8 @@ packages=(
     libgflags-dev
     libgoogle-glog-dev
     libgphoto2-dev
-    #libgtk2.0-dev # problem child
+    # libgtk2.0-dev # depends on python2
+    libgtk-3-dev
     libhdf5-serial-dev
     libjpeg-dev
     liblapacke-dev
@@ -24,7 +25,7 @@ packages=(
 
 packages_no_recommends=(
     ffmpeg
-    libboost-all-dev
+    # libboost-all-dev # also depends on python2
 )
 
 apt-get install -y ${packages[@]}
