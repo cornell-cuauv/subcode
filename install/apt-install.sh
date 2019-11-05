@@ -10,15 +10,14 @@ packages=(
     iotop
     iputils-ping
     iputils-tracepath
-    ipython
     ipython3
     jq
-    libboost-python-dev
+    #libboost-python-dev
     libeigen3-dev
     libgtest-dev
     libncurses-dev
     libpopt-dev
-    libpython-dev
+    libpython3-dev
     nano
     neovim
     nload
@@ -47,7 +46,7 @@ packages=(
 
     # trogdor
     expect-dev
-    python-dbus
+    python3-dbus
 
     # visualizer
     libconfig++
@@ -59,15 +58,14 @@ packages=(
 
     # auvlog
     libnanomsg-dev
-    python-redis
+    python3-redis
     redis-server
 
     # syscheck
     sysstat
 
     # other
-    python-redis # (to run the logging server)
-    python-wxgtk3.0 # (for auv-shm-editor)
+    #python-wxgtk3.0 # (for auv-shm-editor)
     python3-paramiko # (for uptime)
     python3-tabulate
 
