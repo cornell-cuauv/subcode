@@ -4,4 +4,4 @@ packages=(
     libffi-dev
 )
 
-apt-get install -y --no-recommends "${packages[@]}"
+apt-get install -y --no-recommend "${packages[@]}"
