@@ -34,6 +34,7 @@ CONTAINER_WORKSPACE_DIRECTORY=get_config("CONTAINER_WORKSPACE_DIRECTORY")
 REPO_URL=get_config("GIT_REPO_URL")
 BRANCH=get_config("BRANCH")
 DOCKER_REPO=get_config("DOCKER_REPO")
+DOCKER_REPO_JETSON=get_config("DOCKER_REPO_JETSON")
 GROUP_ID=get_config("GROUP_ID")
 
 GUARD_DIRECTORY = WORKSPACE_DIRECTORY / ".guards"
@@ -388,7 +389,7 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False):
             docker_args["devices"] += ["/dev/dri:/dev/dri:rw"]
 
         if vehicle:
-            docker_args["image"] = "asb322/cuauv-jetson:{}".format(branch)
+            docker_args["image"] = "{}:{}".format(DOCKER_REPO_JETSON, branch)
             docker_args["volumes"]["/dev"] = {
                 "bind": "/dev",
                 "mode": "rw",
