@@ -16,10 +16,6 @@ decomment("simple")
 # Simulator configs (unused)
 decomment("simulator")
 
-# Locales (for ASLAM)
-decomment("teagle")
-decomment("buoyland")
-
 build.build_shared("conf",
         ["vehicle.cpp", "simulator.cpp", "map.cpp"],
         auv_deps=["json"],
