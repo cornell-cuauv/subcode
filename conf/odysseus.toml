@@ -130,7 +130,7 @@ velz = "dvl.velocity_z"
 
 [measurement_error]
 velSigma = 0.005
-depthSeigma = 1.0
+depthSigma = 1.0
 accSigma = 1000.0
 
 [components]
