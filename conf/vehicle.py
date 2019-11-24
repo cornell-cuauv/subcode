@@ -67,3 +67,8 @@ try:
   cameras = d['cameras']
 except KeyError:
   print("WARNING: Vehicle %s is missing camera configuration." % VEHICLE)
+
+try:
+  vision_modules = d['vision_modules']
+except KeyError:
+  print("WARNING: Vehicle is missing vision module configuration." % VEHICLE)

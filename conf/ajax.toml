@@ -180,7 +180,7 @@ camera_name = "ueye_forward_ajax" # for configuration
 width = 1280
 height = 1024
 position = [0.48, 0.15, -0.08]
-orientation_hpr = [0, 0, 0]
+orientation_hpr = [0.0, 0.0, 0.0]
 
 # The optical sensor size of the CAMERA, width and height in mm
 # This should typically be in the same ratio as the resolution, above.
@@ -204,40 +204,25 @@ sensor_size_wh_mm = [4.76, 3.57]
 focal_length_mm = 3.5
 
 
-[[vision_modules]]
-name = "gate"
+[vision_modules.gate]
 capture_sources = ["forward"]
 
-[[vision_modules]]
-name = "vamp_buoy"
+[vision_modules.vamp_buoy]
 capture_sources = ["forward"]
 
-[[vision_modules]]
-name = "path"
+[vision_modules.bins_cover]
 capture_sources = ["downward"]
 
-[[vision_modules]]
-name = "bins_cover"
+[vision_modules.bins_lever]
 capture_sources = ["downward"]
 
-[[vision_modules]]
-name = "bins_image"
-capture_sources = ["downward"]
-
-[[vision_modules]]
-name = "bins_lever"
-capture_sources = ["downward"]
-
-[[vision_modules]]
-name = "record"
+[vision_modules.record]
 capture_sources = ["forward", "downward"]
 
-[[vision_modules]]
-name = "poster"
+[vision_modules.poster]
 capture_sources = ["forward", "downward"]
 
-[[vision_modules]]
-name = "calibrate"
+[vision_modules.calibrate]
 capture_sources = ["default"]
 
 
