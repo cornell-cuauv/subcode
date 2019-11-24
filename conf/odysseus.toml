@@ -172,32 +172,22 @@ sensor_size_wh_mm = [4.76, 3.57]
 focal_length_mm = 3.5
 
 
-[[vision_modules]]
-name = "gate"
+[vision_modules.gate]
 capture_sources = ["forward"]
 
-[[vision_modules]]
-name = "stake"
-capture_sources = ["forward"]
-
-[[vision_modules]]
-name = "vampire"
+[vision_modules.vampire]
 capture_sources = ["downward"]
 
-[[vision_modules]]
-name = "crucifix"
+[vision_modules.crucifix]
 capture_sources = ["downward"]
 
-[[vision_modules]]
-name = "record"
+[vision_modules.record]
 capture_sources = ["forward", "downward"]
 
-[[vision_modules]]
-name = "poster"
+[vision_modules.poster]
 capture_sources = ["forward", "downward"]
 
-[[vision_modules]]
-name = "calibrate"
+[vision_modules.calibrate]
 capture_sources = ["default"]
 
 
