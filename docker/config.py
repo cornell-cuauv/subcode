@@ -27,6 +27,8 @@ defaults = {
     "BRANCH": "master",
 
     "GROUP_ID": 9999,
+
+    "AUV_ENV_ALIAS": "",
 }
 
 try:

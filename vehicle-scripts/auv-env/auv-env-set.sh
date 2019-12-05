@@ -41,7 +41,13 @@ log $blue INFO "Using env-dir: $AUV_ENV_DIRECTORY"
 
 # Do some mapping here (quickzand -> zander, zandstone -> zander)
 
-env_dir="$AUV_ENV_DIRECTORY/$host"
+if [ -n "$AUV_ENV_ALIAS" ] && [ -d "$AUV_ENV_DIRECTORY/$AUV_ENV_ALIAS" ]; then
+    # This is set by auv-docker.py for loading environment locally
+    log $blue INFO "AUV_ENV_ALIAS set, using alias $AUV_ENV_ALIAS"
+    env_dir="$AUV_ENV_DIRECTORY/$AUV_ENV_ALIAS"
+else
+    env_dir="$AUV_ENV_DIRECTORY/$host"
+fi
 
 if [ ! -d "$env_dir" ]; then
     env_aliases=($AUV_ENV_DIRECTORY/*/env_aliases)
