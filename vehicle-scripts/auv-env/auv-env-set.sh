@@ -75,6 +75,8 @@ if [ -d "$env_dir" ]; then
             source "$SCRIPT"
         fi
     done
+
+    alias git-user="env_dir=$env_dir $AUV_ENV_DIRECTORY/git-user.sh"
 else
     log $red FAIL "Could not find host $host"
     return
