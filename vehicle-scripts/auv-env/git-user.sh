@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# TODO zsh completion
+
 SCRIPT_NAME="git-user"
 
 if [ ! -d "$env_dir" ]; then
@@ -16,16 +18,28 @@ FLAGS="--git-dir=$GIT_DIR --work-tree=$WORK_TREE"
 if [ $# -gt 1 ] && [ "$1" = "add" ] && [ ! "$2" = "-f" ]; then
     # add
 
-    for file in "${@:2}"; do
-        if [ -f "$file" ] && [ `git ls-files --error-unmatch "$file" 2> /dev/null` ]; then
-            echo ""
-            echo "You are trying to add a file that is tracked by the main git repo."
-            echo "It is recommended to not do this. Re-run with -f to force add."
-            echo ""
+    tracked=()
 
-            exit 1
+    for file in "${@:2}"; do
+        # check to see if file is tracked in main repo
+        if [ -f "$file" ] && [ `git ls-files --error-unmatch "$file" 2> /dev/null` ]; then
+            tracked+=($file)
         fi
     done
+
+    if [ ${#tracked[@]} -ne 0 ]; then
+        echo ""
+        echo "You are trying to add a file that is tracked by the main git repo."
+        echo "It is recommended to not do this. Re-run with -f to force add."
+        echo ""
+        echo "Offending files:"
+        for file in ${tracked[@]}; do
+            echo "  $file"
+        done
+        echo ""
+
+        exit 1
+    fi
 
     # do the add, but force it because the files are ignored
     git $FLAGS add -f "${@:2}"
