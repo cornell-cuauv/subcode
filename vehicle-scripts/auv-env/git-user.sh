@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# TODO zsh completion
-
 SCRIPT_NAME="git-user"
 
 if [ ! -d "$env_dir" ]; then
