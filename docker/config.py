@@ -20,7 +20,7 @@ defaults = {
     "WORKSPACE_DIRECTORY": Path("~/cuauv/workspaces").expanduser(),
     "CONTAINER_WORKSPACE_DIRECTORY": PurePosixPath("/home/software/cuauv/workspaces"),
 
-    "DOCKER_REPO": "wds68/cuauv",
+    "DOCKER_REPO": "docker.cuauv.org/cuauv",
     "DOCKER_REPO_JETSON": "docker.cuauv.org/cuauv-jetson",
 
     "GIT_REPO_URL": "ssh://git@bitbucket.cuauv.org:7999/sof/subcode.git",
