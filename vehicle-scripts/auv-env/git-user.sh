@@ -18,11 +18,19 @@ FLAGS="--git-dir=$GIT_DIR --work-tree=$WORK_TREE"
 if [ $# -gt 1 ] && [ "$1" = "add" ] && [ ! "$2" = "-f" ]; then
     # add
 
+    # find all files that would be added
+    mapfile -t dry_run < <(git $FLAGS add -nf ${@:2})
+
     tracked=()
 
-    for file in "${@:2}"; do
+    for dry_run_line in "${dry_run[@]}"; do
+        # dry run outputs lines like "add 'filename'"
+        file=${dry_run_line:5:$((${#dry_run_line}-6))}
         # check to see if file is tracked in main repo
-        if [ -f "$file" ] && [ `git ls-files --error-unmatch "$file" 2> /dev/null` ]; then
+        # but ignore if already tracked in the user repo
+        if [ -f "$file" ] \
+               && [ `git ls-files --error-unmatch "$file" 2> /dev/null` ] \
+               && [ ! `git $FLAGS ls-files --error-unmatch "$file" 2> /dev/null` ]; then
             tracked+=($file)
         fi
     done
