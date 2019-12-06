@@ -13,6 +13,8 @@ fi
 WORK_TREE="$CUAUV_SOFTWARE"
 GIT_DIR="$env_dir/.git"
 EXCLUDE_FILE="$GIT_DIR/info/exclude"
+# this is kind of gross, but it prevents the file from being tracked
+COMPLETION_FILE="$GIT_DIR/git-user_complete.zsh"
 
 FLAGS="--git-dir=$GIT_DIR --work-tree=$WORK_TREE"
 
@@ -94,10 +96,21 @@ elif [ $# -gt 0 ] && [ "$1" = "init" ]; then
     # ignore everything by default
     echo "*" > "$EXCLUDE_FILE"
 
+    # set up completion
+    cat <<EOF > "$COMPLETION_FILE"
+#compdef git-user.sh
+function _git-user {
+    local service=git
+    GIT_DIR=$GIT_DIR _git "\$@"
+}
+compdef _git-user git-user.sh
+EOF
+
 elif [ $# -gt 0 ] && [ "$1" = "destroy" ]; then
     # destroy (not a real git command)
 
-    rm -rf $GIT_DIR
+    rm -rf "$GIT_DIR"
+    rm -f "$COMPLETION_FILE"
 
 else
     # all other commands

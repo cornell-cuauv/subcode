@@ -77,6 +77,10 @@ if [ -d "$env_dir" ]; then
     done
 
     alias git-user="env_dir=$env_dir $AUV_ENV_DIRECTORY/git-user.sh"
+    # the completions file only gets created after the repo is initialized
+    if [ -f "$env_dir/.git/git-user_complete.zsh" ]; then
+        source "$env_dir/.git/git-user_complete.zsh"
+    fi
 else
     log $red FAIL "Could not find host $host"
     return
