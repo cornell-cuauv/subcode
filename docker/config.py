@@ -21,7 +21,7 @@ defaults = {
     "CONTAINER_WORKSPACE_DIRECTORY": PurePosixPath("/home/software/cuauv/workspaces"),
 
     "DOCKER_REPO": "wds68/cuauv",
-    "DOCKER_REPO_JETSON": "asb322/cuauv-jetson",
+    "DOCKER_REPO_JETSON": "docker.cuauv.org/cuauv-jetson",
 
     "GIT_REPO_URL": "ssh://git@bitbucket.cuauv.org:7999/sof/subcode.git",
     "BRANCH": "master",
