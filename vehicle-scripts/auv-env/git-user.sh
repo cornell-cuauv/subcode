@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# TODO can't add filenames with spaces
+
 SCRIPT_NAME="git-user"
 
 if [ ! -d "$env_dir" ]; then
@@ -56,7 +58,7 @@ if [ $# -gt 0 ] && [ "$1" = "add" ]; then
 
             # check to see if file is tracked in main repo
             # but ignore if already tracked in the user repo
-            if $exists && [ $tracked_main ] && [ ! $tracked_user ]; then
+            if $exists && [ "$tracked_main" ] && [ ! "$tracked_user" ]; then
                 tracked+=($file)
             fi
         done
