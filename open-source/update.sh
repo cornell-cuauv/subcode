@@ -1,10 +1,26 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+# Usage: ./update.sh [dest_dir]
+
+# dest_dir is a directory in which to create the open-source repo.
+# Please don't do this inside the main repo, do it somewhere else.
+
+# By default, assumes that this script is located in the master branch
+# of the repo. If invoking from somewhere else, specify the path to
+# the root of the repo as the second argument.
+
+# Note: the excluded files still appear in the filesystem, but they
+# are not tracked by the open-source repo.
+
+cd "$1"
 
 set -euo pipefail
 LOC="$(dirname $0)"
 F_EXCLUSIONS="$LOC/exclusions"
 readarray -t EXCLUSIONS < "$F_EXCLUSIONS"
-REPO_DIR="$1"
+# this script lives in path/to/repo/open-source/
+REPO_DIR="${2:-$(realpath $LOC/..)}"
+REMOTE_URL="git@github.com:cuauv/software.git"
 
 if [ $(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD) != "master" ]; then
     echo "Repo should probably be on master branch!" >&2
@@ -17,10 +33,14 @@ if [ ! -d .git ]; then
     git init
     echo >> .git/info/exclude
     cat "$LOC/exclusions" >> .git/info/exclude
+    # don't track the PREV_COMMIT file
+    printf "\nPREV_COMMIT\n" >> .git/info/exclude
+
+    git remote add origin "$REMOTE_URL"
 fi
 
-if [ -f PRIV_COMMIT ]; then
-    PREV_COMMIT="$(cat PRIV_COMMIT)"
+if [ -f PREV_COMMIT ]; then
+    PREV_COMMIT="$(cat PREV_COMMIT)"
 else
     PREV_COMMIT="4b825dc642cb6eb9a060e54bf8d69288fbee4904" # "first commit"
 fi
@@ -33,12 +53,24 @@ GIT_COMMITTER_NAME="CUAUV"
 GIT_COMMITTER_EMAIL="leader@cuauv.org"
 export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
 
+prev_progress_len=0
+
 git -C "$REPO_DIR" log $PREV_COMMIT..HEAD --format="%H %at %ai %ct %ci %s" | tac | (
-#declare -a nomatch
 nomatch=()
 while read hash aunix_timestamp adate atime atimezone cunix_timestamp cdate ctime ctimezone message; do
     if case $message in "Merge pull request #"*) MSG="$message"; true;; *) [ $hash == $FIRST_COMMIT ] && MSG="First open-source commit";; esac; then
-        git -C "$REPO_DIR" diff --binary --full-index "$PREV_COMMIT" "$hash" | git apply --whitespace=nowarn --index > /dev/null
+        printf "\rWriting commit \"$MSG\""
+        printf ' %0.s' $(seq 1 $(($prev_progress_len-${#MSG})))
+        prev_progress_len=${#MSG}
+
+        git -C "$REPO_DIR" diff --binary --full-index "$PREV_COMMIT" "$hash" | git apply --whitespace=nowarn > /dev/null
+        # sometimes we fail, probably because we're running git too fast?
+        # anyway, retrying seems to fix it most of the time
+        for i in {1..5}; do
+            # add like this to ignore files correctly
+            git add . \
+                && break || sleep 1
+        done
 
         for ((i=0;i<${#EXCLUSIONS[@]};i++)); do
             l="${EXCLUSIONS[$i]}"
@@ -46,19 +78,23 @@ while read hash aunix_timestamp adate atime atimezone cunix_timestamp cdate ctim
                 "#"*) continue;;
                 *)
                     ll=(`echo "$REPO_DIR/$l"`) 
-                    [ ${#ll[@]} == 0 ] || [ ${#ll[@]} == 1 -a ! -e "${ll[0]}" ] && nomatch[$i]="$hash" # && echo "Warning: Line \"$l\" of exclusions file matches nothing @ ${hash} (${message})"
+                    [ ${#ll[@]} == 0 ] || [ ${#ll[@]} == 1 -a ! -e "${ll[0]}" ] && nomatch[$i]="$hash"
                 ;;
             esac
         done
 
-        echo -n "$hash" > PRIV_COMMIT
-        git add PRIV_COMMIT
+        echo -n "$hash" > PREV_COMMIT
 
-        GIT_AUTHOR_DATE="$aunix_timestamp $atimezone" GIT_COMMIT_DATE="$cunix_timestamp $ctimezone" git commit -m "$MSG" > /dev/null
+        # same as above
+        for i in {1..5}; do
+            GIT_AUTHOR_DATE="$aunix_timestamp $atimezone" GIT_COMMIT_DATE="$cunix_timestamp $ctimezone" git commit -m "$MSG" > /dev/null \
+                && break || sleep 1
+        done
 
         PREV_COMMIT="$hash"
     fi
 done
+printf '\nFinished\n'
 if [ -n ${nomatch+x} ] && [ ${#nomatch[@]} -gt 0 ]; then
     ml=0
     for ((i=0;i<${#EXCLUSIONS[@]};i++)); do
@@ -70,7 +106,6 @@ if [ -n ${nomatch+x} ] && [ ${#nomatch[@]} -gt 0 ]; then
     done
     printf "%${ml}s  Last didn't match\n" "Exclusion"
     for ((i=0;i<${#EXCLUSIONS[@]};i++)); do
-        #echo ${exclusions[i]}: ${nomatch[i]}
         if [ -z "${EXCLUSIONS[$i]}" ] || [ -z ${nomatch[$i]+x} ]; then continue; fi
         printf "%${ml}s  " "${EXCLUSIONS[$i]}"
         h=
@@ -79,4 +114,3 @@ if [ -n ${nomatch+x} ] && [ ${#nomatch[@]} -gt 0 ]; then
     done
 fi
 )
-
