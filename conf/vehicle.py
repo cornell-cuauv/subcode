@@ -1,4 +1,4 @@
-import json
+import tomlkit
 import numpy as np
 import os
 import sys
@@ -11,22 +11,32 @@ if DIR is None:
 
 d = None
 VEHICLE = os.getenv("CUAUV_VEHICLE")
+VEHICLE_TYPE = os.getenv("CUAUV_VEHICLE_TYPE")
 
-if VEHICLE is None or not VEHICLE in ["castor", "pollux"]:
+if VEHICLE is None or not VEHICLE in ["odysseus", "ajax"]:
     sys.stderr.write("vehicle.py: CUAUV_VEHICLE must be set "
-                     "to one of { castor, pollux }.\n")
+                     "to one of { odysseus, ajax }.\n")
+    sys.exit(1)
+if VEHICLE_TYPE is None or not VEHICLE_TYPE in ["mainsub", "minisub"]:
+    sys.stderr.write("vehicle.py: CUAUV_VEHICLE_TYPE must be set "
+                     "to one of { mainsub, minisub }.\n")
     sys.exit(1)
 
-with open(os.path.join(DIR, "conf", "%s.json" % VEHICLE)) as f:
-    d = json.load(f)
+is_mainsub = VEHICLE_TYPE == "mainsub"
+is_minisub = VEHICLE_TYPE == "minisub"
+
+with open(os.path.join(DIR, "conf", "{}.toml".format(VEHICLE))) as f:
+    d = tomlkit.parse(f.read())
 
 center_of_buoyancy = np.array(d['center_of_buoyancy'])
 buoyancy_force = d['buoyancy_force']
 gravity_force = d['gravity_force']
 sub_height = d['sub_height']
+dvl_offset = d['dvl_offset']  # TODO
 I = np.array(d['I'])
 thrusters = d['thrusters']
 sensors = d['sensors']
+gx_hpr = d['gx_hpr']
 measurement_error = d['measurement_error']
 control_settings = d['control_settings']
 quaternion_filtering = d['quaternion_filtering']
@@ -57,3 +67,8 @@ try:
   cameras = d['cameras']
 except KeyError:
   print("WARNING: Vehicle %s is missing camera configuration." % VEHICLE)
+
+try:
+  vision_modules = d['vision_modules']
+except KeyError:
+  print("WARNING: Vehicle is missing vision module configuration." % VEHICLE)

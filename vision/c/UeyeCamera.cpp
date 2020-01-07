@@ -123,6 +123,34 @@ bool UeyeCamera::setup_capture_source() {
     return false;
   }
 
+  double exposure = 0;
+  double red_gain = 0;
+  double green_gain = 0;
+  double blue_gain = 0;
+  ret = is_Exposure(pimpl->m_camera, IS_EXPOSURE_CMD_GET_EXPOSURE, (void *) &exposure, sizeof(exposure));
+  shm_init();
+
+  if (ret == IS_SUCCESS) {
+      if (this->m_direction.compare("forward") == 0) {
+          shm_set(camera_calibration, forward_exposure, exposure);
+      } else if (this->m_direction.compare("downward") == 0) {
+          shm_set(camera_calibration, downward_exposure, exposure);
+      }
+  }
+
+  red_gain = is_SetHardwareGain(pimpl->m_camera, IS_GET_RED_GAIN, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER);
+  green_gain = is_SetHardwareGain(pimpl->m_camera, IS_GET_GREEN_GAIN, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER);
+  blue_gain = is_SetHardwareGain(pimpl->m_camera, IS_GET_BLUE_GAIN, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER, IS_IGNORE_PARAMETER);
+  if (this->m_direction.compare("forward") == 0) {
+      shm_set(camera_calibration, forward_red_gain, red_gain);
+      shm_set(camera_calibration, forward_green_gain, green_gain);
+      shm_set(camera_calibration, forward_blue_gain, blue_gain);
+  } else if (this->m_direction.compare("downward") == 0) {
+      shm_set(camera_calibration, downward_red_gain, red_gain);
+      shm_set(camera_calibration, downward_green_gain, green_gain);
+      shm_set(camera_calibration, downward_blue_gain, blue_gain);
+  }
+
   if (is_SetColorMode(pimpl->m_camera, IS_CM_BGR8_PACKED) != IS_SUCCESS) {
     std::cout << "Failed to set color mode" << std::endl;
     return false;
@@ -133,60 +161,63 @@ bool UeyeCamera::setup_capture_source() {
     return false;
   }
 
-  UINT num_entries;
-  if (is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_GET_NUM_ENTRIES, &num_entries, 4) != IS_SUCCESS) {
-    std::cout << "Failed to get number of image formats" << std::endl;
-  }
+  //UINT num_entries;
+  //if (is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_GET_NUM_ENTRIES, &num_entries, 4) != IS_SUCCESS) {
+  //  std::cout << "Failed to get number of image formats" << std::endl;
+  //}
 
-  UINT format_list_size = sizeof(IMAGE_FORMAT_LIST) + ((num_entries - 1) * sizeof(IMAGE_FORMAT_INFO));
-  IMAGE_FORMAT_LIST* format_list = (IMAGE_FORMAT_LIST*) malloc(format_list_size);
-  format_list->nSizeOfListEntry = sizeof(IMAGE_FORMAT_INFO);
-  format_list->nNumListElements = num_entries;
+  //UINT format_list_size = sizeof(IMAGE_FORMAT_LIST) + ((num_entries - 1) * sizeof(IMAGE_FORMAT_INFO));
+  //IMAGE_FORMAT_LIST* format_list = (IMAGE_FORMAT_LIST*) malloc(format_list_size);
+  //format_list->nSizeOfListEntry = sizeof(IMAGE_FORMAT_INFO);
+  //format_list->nNumListElements = num_entries;
 
-  UINT retval = is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_GET_LIST, format_list, format_list_size);
+  //UINT retval = is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_GET_LIST, format_list, format_list_size);
 
-  if (retval != IS_SUCCESS) {
-    std::cout << "Failed to get image formats, error code:  " << retval << std::endl;
-    return false;
-  }
+  //if (retval != IS_SUCCESS) {
+  //  std::cout << "Failed to get image formats, error code:  " << retval << std::endl;
+  //  return false;
+  //}
 
-  IMAGE_FORMAT_INFO native_format = format_list->FormatInfo[0];
-  UINT native_format_id = format_list->FormatInfo[0].nFormatID;
+  //IMAGE_FORMAT_INFO native_format = format_list->FormatInfo[0];
+  //UINT native_format_id = format_list->FormatInfo[0].nFormatID;
 
-  // Loop throught the supported image resolutions (called formats by camera
-  // API), printing them out and if one matches the requested resolution,
-  // remember that format ID
-  std::cout << "Supported image resolutions: ";
-  IMAGE_FORMAT_INFO format_info;
-  bool found = false;
-  for (UINT i = 0; i < num_entries; i++) {
-    format_info = format_list->FormatInfo[i];
-    std::cout << format_info.nWidth <<  "x" << format_info.nHeight << ", ";
+  //// Loop throught the supported image resolutions (called formats by camera
+  //// API), printing them out and if one matches the requested resolution,
+  //// remember that format ID
+  //std::cout << "Supported image resolutions: ";
+  //IMAGE_FORMAT_INFO format_info;
+  //bool found = false;
+  //int max_camera_width = format_list->FormatInfo[0].nWidth;
+  //int max_camera_height = format_list->FormatInfo[0].nHeight;
+  ////int max_camera_resolution_fmt_id = format_list->FormatInfo[0].nFormatID;
+  //for (UINT i = 0; i < num_entries; i++) {
+  //  format_info = format_list->FormatInfo[i];
+  //  std::cout << format_info.nWidth <<  "x" << format_info.nHeight << ", ";
 
-    // Remember this format ID if it is the same as the requested resolution
-    if (format_info.nWidth == pimpl->params->width &&
-        format_info.nHeight == pimpl->params->height) {
-      found = true;
-      native_format_id = format_info.nFormatID;
-      native_format = format_list->FormatInfo[i];
-    }
-  }
-  std::cout << std::endl;
+  //  // Remember this format ID if it is the same as the requested resolution
+  //  if (format_info.nWidth == pimpl->params->width &&
+  //      format_info.nHeight == pimpl->params->height) {
+  //    found = true;
+  //    native_format_id = format_info.nFormatID;
+  //    native_format = format_list->FormatInfo[i];
+  //  }
+  //}
+  //std::cout << std::endl;
 
-  if (!found) {
-    std::cerr << "Unable to set Ueye camera with ID " << pimpl->params->camera_id <<
-      " to a resolution of " << pimpl->params->width << "x"
-              << pimpl->params->height << std::endl;
-    return false;
-  }
+  //if (!found) {
+  //  std::cerr << "Unable to set Ueye camera with ID " << pimpl->params->camera_id <<
+  //    " to a resolution of " << pimpl->params->width << "x"
+  //            << pimpl->params->height << std::endl;
+  //  return false;
+  //}
 
-  std::cout << "Setting to requested resolution " << native_format.nWidth << "x" << native_format.nHeight << std::endl;
+  //std::cout << "Setting to requested resolution " << native_format.nWidth << "x" << native_format.nHeight << std::endl;
 
-  retval =  is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_SET_FORMAT, &native_format_id, 4);
-  if (retval != IS_SUCCESS) {
-    std::cout << "Failed to set camera to native resolution, error code: " << retval << std::endl;
-    return false;
-  }
+  //retval =  is_ImageFormat(pimpl->m_camera, IMGFRMT_CMD_SET_FORMAT, &native_format_id, 4);
+  //if (retval != IS_SUCCESS) {
+  //  std::cout << "Failed to set camera to native resolution, error code: " << retval << std::endl;
+  //  return false;
+  //}
 
   // Set camera dimensions in shm so other software knows what they are (e.g. missions
   // that try to center a target in the camera)
@@ -203,30 +234,32 @@ bool UeyeCamera::setup_capture_source() {
     return false;
   }
 
-  // Set area of interest to full image
-  IS_RECT rect_aoi;
-  rect_aoi.s32X = (INT) 0;
-  rect_aoi.s32Y = (INT) 0;
-  rect_aoi.s32Width = (INT) pimpl->params->width;
-  rect_aoi.s32Height = (INT) pimpl->params->height;
+  //// Set area of interest to full image
+  //IS_RECT rect_aoi;
+  //rect_aoi.s32X = (INT) (max_camera_width - pimpl->params->width) / 2;
+  //rect_aoi.s32Y = (INT) (max_camera_height - pimpl->params->height) / 2;
+  ////rect_aoi.s32X = (INT) 0;
+  ////rect_aoi.s32Y = (INT) 0;
+  //rect_aoi.s32Width = (INT) pimpl->params->width;
+  //rect_aoi.s32Height = (INT) pimpl->params->height;
 
-  retval = is_AOI(pimpl->m_camera, IS_AOI_IMAGE_SET_AOI, (void *) &rect_aoi, (UINT) sizeof(rect_aoi));
-  if (retval != 0) {
-    std::cout << "Failed to set image area of interest, error code: " << retval << std::endl;
-    return false;
-  }
+  //retval = is_AOI(pimpl->m_camera, IS_AOI_IMAGE_SET_AOI, (void *) &rect_aoi, (UINT) sizeof(rect_aoi));
+  //if (retval != 0) {
+  //  std::cout << "Failed to set image area of interest, error code: " << retval << std::endl;
+  //  return false;
+  //}
 
-  retval = is_AOI(pimpl->m_camera, IS_AOI_AUTO_BRIGHTNESS_SET_AOI, (void *) &rect_aoi, (UINT) sizeof(rect_aoi));
-  if (retval != 0) {
-    std::cout << "Failed to set image area of interest for auto brightness, error code: " << retval << std::endl;
-    return false;
-  }
+  //retval = is_AOI(pimpl->m_camera, IS_AOI_AUTO_BRIGHTNESS_SET_AOI, (void *) &rect_aoi, (UINT) sizeof(rect_aoi));
+  //if (retval != 0) {
+  //  std::cout << "Failed to set image area of interest for auto brightness, error code: " << retval << std::endl;
+  //  return false;
+  //}
 
-  retval = is_AOI(pimpl->m_camera, IS_AOI_AUTO_WHITEBALANCE_SET_AOI, (void *) &rect_aoi, (UINT) sizeof(rect_aoi));
-  if (retval != 0) {
-    std::cout << "Failed to set image area of interest for auto whitebalance, error code: " << retval << std::endl;
-    return false;
-  }
+  //retval = is_AOI(pimpl->m_camera, IS_AOI_AUTO_WHITEBALANCE_SET_AOI, (void *) &rect_aoi, (UINT) sizeof(rect_aoi));
+  //if (retval != 0) {
+  //  std::cout << "Failed to set image area of interest for auto whitebalance, error code: " << retval << std::endl;
+  //  return false;
+  //}
 
   for (unsigned int i = 0; i < CAMERA_IMAGE_BUFFER_LEN; i++) {
     if (is_AllocImageMem (pimpl->m_camera, pimpl->params->width, pimpl->params->height,
@@ -242,13 +275,17 @@ bool UeyeCamera::setup_capture_source() {
     }
   }
 
-  if (is_EnableEvent (pimpl->m_camera, IS_SET_EVENT_FRAME) != IS_SUCCESS) {
+  int res;
+
+  if ((res = is_EnableEvent (pimpl->m_camera, IS_SET_EVENT_FRAME)) != IS_SUCCESS) {
     std::cout << "Failed to enable frame event" << std::endl;
+    std::cout << "response code (from ueye.h): " << res << std::endl;
     return false;
   }
 
-  if (is_CaptureVideo(pimpl->m_camera, IS_DONT_WAIT) != IS_SUCCESS) {
+  if ((res = is_CaptureVideo(pimpl->m_camera, IS_DONT_WAIT)) != IS_SUCCESS) {
     std::cout << "Failed to start video capture" << std::endl;
+    std::cout << "response code (from ueye.h): " << res << std::endl;
     return false;
   }
 
@@ -264,6 +301,39 @@ std::experimental::optional<std::pair<cv::Mat, long>> UeyeCamera::acquire_next_i
     }
     pimpl->last_buffer_loc = NULL;
   }
+  double exposure = 0;
+  double red_gain = -1;
+  double green_gain = -1;
+  double blue_gain = -1;
+
+  if (this->m_direction.compare("forward") == 0) {
+      shm_lock(camera);
+      exposure = shm->camera_calibration.g.forward_exposure;
+      red_gain = shm->camera_calibration.g.forward_red_gain;
+      green_gain = shm->camera_calibration.g.forward_green_gain;
+      blue_gain = shm->camera_calibration.g.forward_blue_gain;
+      shm_unlock(camera);
+  } else if (this->m_direction.compare("downward") == 0) {
+      shm_lock(camera);
+      exposure = shm->camera_calibration.g.downward_exposure;
+      red_gain = shm->camera_calibration.g.downward_red_gain;
+      green_gain = shm->camera_calibration.g.downward_green_gain;
+      blue_gain = shm->camera_calibration.g.forward_blue_gain;
+      shm_unlock(camera);
+  }
+  if (exposure != 0) {
+      int ret = is_Exposure(pimpl->m_camera, IS_EXPOSURE_CMD_SET_EXPOSURE, (void *) &exposure, sizeof(exposure));
+      if (ret != IS_SUCCESS) {
+          std::cout << "Failed to set camera exposure: " << ret << std::endl;
+      }
+  }
+  if (red_gain >= 0 || green_gain >= 0 || blue_gain >= 0) {
+    //(void)red_gain;
+    //(void)green_gain;
+    //(void)blue_gain;
+    is_SetHardwareGain(pimpl->m_camera, IS_IGNORE_PARAMETER, red_gain >= 0 ? red_gain : IS_IGNORE_PARAMETER, green_gain >= 0 ? green_gain : IS_IGNORE_PARAMETER, blue_gain >= 0 ? blue_gain : IS_IGNORE_PARAMETER);
+  }
+
 
   if ((is_WaitEvent(pimpl->m_camera, IS_SET_EVENT_FRAME, 1000)) != IS_SUCCESS) {
     std::cout << "Camera frame timeout!" << std::endl;
@@ -282,10 +352,10 @@ std::experimental::optional<std::pair<cv::Mat, long>> UeyeCamera::acquire_next_i
   pimpl->last_buffer_loc = buffer;
   pimpl->result.data = (unsigned char*) buffer;
 
-  if (pimpl->params->camera_id == 2) {
-    cv::remap(pimpl->result, *this->out, pimpl->undistort_matrix->map1, pimpl->undistort_matrix->map2, cv::INTER_LINEAR);
-    pimpl->result = this->out->getMat(cv::ACCESS_RW);
-  }
+  //if (pimpl->params->camera_id == 2) {
+  //  cv::remap(pimpl->result, *this->out, pimpl->undistort_matrix->map1, pimpl->undistort_matrix->map2, cv::INTER_LINEAR);
+  //  pimpl->result = this->out->getMat(cv::ACCESS_RW);
+  //}
 
 
   if (pimpl->params->rotate180) {

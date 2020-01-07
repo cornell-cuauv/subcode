@@ -1,39 +1,43 @@
-/* Note: Sockets, silly. */
+//
+//  udp_receiver.cpp
+//  hydromathd
+//
+//  Code for receiving FPGA packets.
+//
+//  Created by Vlad on 9/10/18.
+//  Copyright © 2018 Vlad. All rights reserved.
+//
 
 #include <cstdio>
-#include <sys/types.h>
+#include <cstdint>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "udp_receiver.hpp"
 
-int sockfd;
-
-struct sockaddr_in serv_addr;
-
-int bound = 0;
-
-void udp_bind () {
-  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(UDP_PORT);
-  serv_addr.sin_addr.s_addr = INADDR_ANY;
-  int r = bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
-  if (r == 1) printf("Bind failed!\n");
-  else printf("Bound successfully.\n");
-}
-
-void udp_init(std::string s)
+UDPSampleReceiver::UDPSampleReceiver(unsigned int port):
+sock(socket(AF_INET, SOCK_DGRAM, 0))
 {
-  udp_bind();
-  bound = 1;
-}
-int loop (superdongle_packet_t * buffer ) {
-  if (!bound)
+    int status;
+    struct sockaddr_in serv_addr;
+    
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(port);
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    
+    status = bind(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+    if(status < 0)
     {
-      printf("ERR: UDP not bound (call udp_init before loop)");
-      return 1;
+        printf("%s \n", "binding receive socket failed!");
     }
-  recvfrom(sockfd, buffer, sizeof(*buffer), 0, NULL, NULL);
-  return 0;
+    else
+    {
+        printf("%s \n", "bound receive socket successfully");
+    }
+}
+
+void UDPSampleReceiver::recv(uint16_t *pkt, unsigned int pkt_len)
+{
+    recvfrom(sock, pkt, pkt_len * 4 * sizeof(uint16_t), 0, NULL, NULL);
 }

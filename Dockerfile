@@ -1,4 +1,4 @@
-FROM cuauv/phusion-baseimage:0.10.1
+FROM cuauv/phusion-baseimage:0.11
 CMD ["/sbin/my_init"]
 RUN rm -f /etc/service/sshd/down && \
     sed -i'' 's/http:\/\/archive.ubuntu.com/http:\/\/us.archive.ubuntu.com/' /etc/apt/sources.list && \
@@ -11,14 +11,21 @@ COPY install/aptstrap.sh /dependencies/
 COPY install/foundation-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/foundation-install.sh
 
+COPY install/python-latest-install.sh /dependencies/
+RUN bash /dependencies/aptstrap.sh /dependencies/python-latest-install.sh
+
+COPY install/python-latest-pip-install.sh /dependencies/
+RUN bash /dependencies/aptstrap.sh /dependencies/python-latest-pip-install.sh
+
 COPY install/jetson-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/jetson-install.sh
 
 COPY install/opencv-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/opencv-install.sh
 
-COPY install/caffe-install.sh /dependencies/
-RUN bash /dependencies/aptstrap.sh /dependencies/caffe-install.sh
+# We don't currently use caffe and build is failing with Python 3.8.
+#COPY install/caffe-install.sh /dependencies/
+#RUN bash /dependencies/aptstrap.sh /dependencies/caffe-install.sh
 
 COPY install/setup-user.sh /dependencies/
 COPY install/ssh /dependencies/ssh
@@ -32,11 +39,12 @@ RUN setuser software /dependencies/ocaml-user-install.sh
 COPY install/node-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/node-install.sh
 
-COPY install/spacemacs-install.sh /dependencies/
-RUN bash /dependencies/aptstrap.sh /dependencies/spacemacs-install.sh
-COPY install/dot-spacemacs /dependencies/
-RUN setuser software cp /dependencies/dot-spacemacs /home/software/.spacemacs && \
-    setuser software emacs --batch -u software --kill
+# Spacemacs install is breaking for some reason, but we don't need it anyway
+#COPY install/spacemacs-install.sh /dependencies/
+#RUN bash /dependencies/aptstrap.sh /dependencies/spacemacs-install.sh
+#COPY install/dot-spacemacs /dependencies/
+#RUN setuser software cp /dependencies/dot-spacemacs /home/software/.spacemacs && \
+#    setuser software emacs --batch -u software --kill
 
 COPY install/ripgrep-install.sh /dependencies
 RUN /dependencies/ripgrep-install.sh
@@ -49,9 +57,6 @@ RUN bash /dependencies/aptstrap.sh /dependencies/pip-install.sh
 
 COPY install/misc-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/misc-install.sh
-
-COPY install/temp-install.sh /dependencies/
-RUN bash /dependencies/aptstrap.sh /dependencies/temp-install.sh
 
 COPY install/runit /dependencies/runit
 RUN cp -r /dependencies/runit/* /etc/service/

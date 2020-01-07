@@ -34,6 +34,8 @@ CONTAINER_WORKSPACE_DIRECTORY=get_config("CONTAINER_WORKSPACE_DIRECTORY")
 REPO_URL=get_config("GIT_REPO_URL")
 BRANCH=get_config("BRANCH")
 DOCKER_REPO=get_config("DOCKER_REPO")
+DOCKER_REPO_JETSON=get_config("DOCKER_REPO_JETSON")
+GROUP_ID=get_config("GROUP_ID")
 
 GUARD_DIRECTORY = WORKSPACE_DIRECTORY / ".guards"
 REPO_PATH = WORKSPACE_DIRECTORY / "repo"
@@ -94,7 +96,7 @@ def get_containers(docker_name: str):
     return running
 
 
-def init(*, on_vehicle=False):
+def init(*, on_vehicle=False, set_permissions=False):
     """
     Initialize the CUAUV workspaces filesystem structure. This should be run
     before any other workspace command.
@@ -111,6 +113,35 @@ def init(*, on_vehicle=False):
         VIDEOS_DIRECTORY.mkdir(exist_ok=True)
         CONFIGS_DIRECTORY.mkdir(exist_ok=True)
         STORAGE_DIRECTORY.mkdir(exist_ok=True)
+
+        # Adds a user group to be shared both inside and outside the docker
+        # file and changes the workspace directory group ownership
+        if set_permissions:
+            group_exists = subprocess.run(
+                ["getent", "group", str(GROUP_ID)],
+                stdout=subprocess.PIPE,
+                encoding="utf-8"
+            )
+
+            if group_exists.returncode == 0:
+                print(("GID {} already exists on the system. Are you sure you "
+                       "want the workspace owned by this GID? [y/n]").format(str(GROUP_ID)))
+                if input() != "y":
+                    raise Exception
+
+            subprocess.run(
+                ["setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
+                check=True
+            )
+
+            subprocess.run(
+                ["setfacl", "-R", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
+                check=True
+            )
+
+            print(("The workspace is now owned by GID {}. To use permissions, "
+                   "create a group with that GID and add yourself to it.").format(str(GROUP_ID)))
+
 
     guarded_call(
         "create_workspace_directory",
@@ -174,6 +205,16 @@ def init(*, on_vehicle=False):
                 check=True
             )
 
+        if set_permissions:
+            subprocess.run(
+                ["setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(REPO_PATH)],
+                check=True
+            )
+            subprocess.run(
+                ["setfacl", "-R", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(REPO_PATH)],
+                check=True
+            )
+
     guarded_call(
         "clone_repo",
         clone_repo,
@@ -206,13 +247,15 @@ def init(*, on_vehicle=False):
     )
 
 
-def create_worktree(branch=BRANCH, print_help=True):
+def create_worktree(branch=BRANCH, print_help=True, *, b=False):
     """
     Sets up a worktree directory for a branch.
 
     branch: Branch workspace to use.
 
     print_help: defaults to True. If false, will not print help afterwards.
+
+    b: True to create and push a new branch.
     """
     # If using master branch, then simply symlink to the existing clone
 
@@ -226,23 +269,36 @@ def create_worktree(branch=BRANCH, print_help=True):
             guarded_call("symlink_master", symlink_master, "Symlinking workspace for master")
 
         else:
-            subprocess.run(
-                ["git", "fetch", "origin", "{}:{}".format(branch, branch)],
-                cwd=str(REPO_PATH),
-                check=True,
-            )
+            if b:
+                subprocess.run(
+                    ["git", "worktree", "add", str(branch_directory), "-b", branch],
+                    cwd=str(REPO_PATH),
+                    check=True,
+                )
 
-            subprocess.run(
-                ["git", "worktree", "add", str(branch_directory), branch],
-                cwd=str(REPO_PATH),
-                check=True,
-            )
+                subprocess.run(
+                    ["git", "push", "-u", "origin", branch],
+                    cwd=str(REPO_PATH),
+                    check=True,
+                )
+            else:
+                subprocess.run(
+                    ["git", "fetch", "origin", "{}:{}".format(branch, branch), "--"],
+                    cwd=str(REPO_PATH),
+                    check=True,
+                )
 
-            subprocess.run(
-                ["git", "branch", "-u", "origin/{}".format(branch), branch],
-                cwd=str(REPO_PATH),
-                check=True,
-            )
+                subprocess.run(
+                    ["git", "worktree", "add", str(branch_directory), branch],
+                    cwd=str(REPO_PATH),
+                    check=True,
+                )
+
+                subprocess.run(
+                    ["git", "branch", "-u", "origin/{}".format(branch), branch],
+                    cwd=str(REPO_PATH),
+                    check=True,
+                )
 
             # Change git paths to relative paths so they work inside the docker container
             (branch_directory / ".git").write_text("gitdir: ../../repo/.git/worktrees/{}".format(branch))
@@ -302,7 +358,7 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False):
                 "software_path": str(software_path),
                 "CUAUV_SOFTWARE": "{}/".format(software_path),
                 "CUAUV_LOCALE": "simulator",
-                "CUAUV_VEHICLE": "castor",
+                "CUAUV_VEHICLE": "odysseus",
                 "CUAUV_VEHICLE_TYPE": "mainsub",
                 "CUAUV_CONTEXT": "development",
                 "VISION_TEST_PATH": str(CONTAINER_WORKSPACE_DIRECTORY / "videos"),
@@ -333,7 +389,7 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False):
             docker_args["devices"] += ["/dev/dri:/dev/dri:rw"]
 
         if vehicle:
-            docker_args["image"] = "asb322/cuauv-jetson:{}".format(branch)
+            docker_args["image"] = "{}:{}".format(DOCKER_REPO_JETSON, branch)
             docker_args["volumes"]["/dev"] = {
                 "bind": "/dev",
                 "mode": "rw",
@@ -357,6 +413,8 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False):
         envs = "bash -c 'printf \"{}\\n\" > /home/software/.env'".format("\\n".join(env_parts))
 
         container.exec_run(envs, user="software")
+        container.exec_run("sudo groupadd -g {} cuauv".format(str(GROUP_ID)))
+        container.exec_run("sudo usermod -aG {} software".format(str(GROUP_ID)))
         container.exec_run("chmod +x /home/software/.env", user="software")
         container.exec_run("rm /home/software/.zshrc_user", user="software")
         container.exec_run("ln -s {} /home/software/.zshrc_user".format(software_path / "install/zshrc"), user="software")
@@ -417,8 +475,12 @@ def destroy(branch=BRANCH, vehicle=False):
         print("No container for branch={}, vehicle={}".format(branch, vehicle))
 
     # Delete image for branch
-    client.images.remove("{}:{}".format(DOCKER_REPO, branch))
-    print("Deleted image {}:{}".format(DOCKER_REPO, branch))
+    image_name = "{}:{}".format(DOCKER_REPO, branch)
+    try:
+        client.images.remove(image_name)
+        print("Deleted image {}".format(image_name))
+    except docker.errors.ImageNotFound:
+        print("No image {}".format(image_name))
 
     # Delete worktree
     subprocess.run(
@@ -449,8 +511,8 @@ def vehicle(*, branch:"b"="master", vehicle:"v"=None):
         vehicle = socket.gethostname()
 
     vehicle_types = {
-        "castor": "mainsub",
-        "pollux": "minisub",
+        "odysseus": "mainsub",
+        "ajax": "minisub",
     }
 
     vehicle_type = vehicle_types[vehicle]
@@ -464,6 +526,22 @@ def vehicle(*, branch:"b"="master", vehicle:"v"=None):
 
     start(vehicle=True, branch=branch, gpu=False, env=env)
 
+def set_permissions():
+    """
+    Sets group permissions for the workspace using ACL.
+
+    The GID of the cuauv group can be changed in config.py.
+    """
+    subprocess.run(
+        ["sudo", "setfacl", "-dR", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
+        check=True
+    )
+
+    subprocess.run(
+        ["sudo", "setfacl", "-R", "-m", "g:{}:rwX".format(str(GROUP_ID)), str(WORKSPACE_DIRECTORY)],
+        check=True
+    )
+
 
 def build():
     """
@@ -472,4 +550,4 @@ def build():
     print("Building container for branch {}".format(branch))
 
 
-clize.run(init, start, create_worktree, cdw, stop, destroy, vehicle)
+clize.run(init, start, create_worktree, cdw, stop, destroy, vehicle, set_permissions)

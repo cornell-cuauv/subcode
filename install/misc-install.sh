@@ -6,6 +6,11 @@ apt-get -y install zsh
 rm /home/software/.bashrc
 
 sudo -u software tee /home/software/.zshrc <<'EOF'
+
+if [[ $TERM = "dumb" ]]; then
+    bash && exit
+fi
+
 if [[ -f /home/software/.env ]]; then
    . /home/software/.env
 fi
@@ -91,8 +96,3 @@ cat > /usr/local/share/ueye/ueyeethd/ueyeethd.conf << 'EOF'
 [camp]
  Port_Base = 50000
 EOF
-
-# **************** scipy ***************
-apt-get -y remove python-scipy python3-scipy
-pip2 install scipy
-pip3 install scipy

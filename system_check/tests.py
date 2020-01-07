@@ -1,12 +1,12 @@
 from runtime import *
-from test import vehicle, level, environment, Test, CASTOR, POLLUX, ERR, WARN, WATER, LAND
+from test import vehicle, level, environment, Test, MAINSUB, MINISUB, ERR, WARN, WATER, LAND
 from gevent import sleep
 from mission.constants.region import  PINGER_FREQUENCY
 import shutil, os
 import conf
 
 # Sensors
-@vehicle(POLLUX)
+@vehicle(MINISUB)
 class GX4(Test):
     def online():
         return is_changing(shm.gx4.packets_received.get)
@@ -14,7 +14,7 @@ class GX4(Test):
     def updating():
         return is_changing(shm.gx4.roll.get)
 
-@vehicle(CASTOR)
+@vehicle(MAINSUB)
 class GX5(Test):
     def online():
         return is_changing(shm.gx4.packets_received.get)
@@ -22,7 +22,7 @@ class GX5(Test):
     def updating():
         return is_changing(shm.gx4.roll.get)
 
-@vehicle(CASTOR)
+@vehicle(MAINSUB)
 class DVL(Test):
     def ticking():
         return is_changing(shm.dvl.tick.get)
@@ -62,17 +62,22 @@ class Pressure(Test):
 # Serial
 class Serial(Test):
     def gpio_connected():
-        return shm.connected_devices.Sensor.get()
+        return shm.connected_devices.sensor.get()
 
     def merge_connected():
         return shm.connected_devices.merge.get()
 
+    @vehicle(MAINSUB)
     def thrusters_connected():
         return shm.connected_devices.thrusters.get()
 
-    @vehicle(CASTOR)
+    @vehicle(MAINSUB)
     def thrusters2_connected():
         return shm.connected_devices.thrusters2.get()
+
+    @vehicle(MINISUB)
+    def thrusters_mini_connected():
+        return shm.connected_devices.thrusters_mini.get()
 
     def power_distribution_connected():
         return shm.connected_devices.PD.get()
@@ -95,10 +100,10 @@ class Hydrophones(Test):
 
     @environment(WATER)
     def getting_pings():
-        freq = shm.hydrophones_settings.track_frequency_target.get()
-        shm.hydrophones_settings.track_frequency_target.set(PINGER_FREQUENCY)
-        ret = is_changing(shm.hydrophones_results_track.tracked_ping_count.get, 500)
-        shm.hydrophones_settings.track_frequency_target.set(freq)
+        #freq = shm.hydrophones_settings.track_frequency.get()
+        #shm.hydrophones_settings.track_frequency.set(PINGER_FREQUENCY)
+        ret = is_changing(shm.hydrophones_status.packet_count.get, 500)
+        #shm.hydrophones_settings.track_frequency.set(freq)
         return ret
 
 @environment(WATER)

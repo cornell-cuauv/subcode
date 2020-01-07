@@ -20,6 +20,16 @@ from conf import vehicle
 
 MODEL_DIR = os.path.join(os.environ['CUAUV_SOFTWARE'], 'control', 'bollard',
                          '2015-06-03')
+# NEAR_SURFACE_THRESHOLD = 0.0 # Meters depth
+# DEPTH_THRUSTER_NAMES = ['fore_port', 'fore_starboard', 'aft_port', 'aft_starboard']
+# SURGE_THRUSTER_NAMES = ['port', 'starboard']
+# SWAY_THRUSTER_NAMES = ['sway_aft', 'sway_fore']
+# THRUSTER_NAMES = DEPTH_THRUSTER_NAMES + SURGE_THRUSTER_NAMES + SWAY_THRUSTER_NAMES
+NEAR_SURFACE_THRESHOLD = 0.1 # Meters depth
+DEPTH_THRUSTER_NAMES = ['fore_port', 'fore_starboard', 'aft_port', 'aft_starboard']
+SURGE_THRUSTER_NAMES = ['port', 'starboard']
+SWAY_THRUSTER_NAMES = ['sway_aft', 'sway_fore']
+THRUSTER_NAMES = DEPTH_THRUSTER_NAMES + SURGE_THRUSTER_NAMES + SWAY_THRUSTER_NAMES
 
 # Keys of this dictionary should match names given to thrusters below
 # Values should be a tuple of filenames for the forward and reverse models
@@ -126,7 +136,7 @@ desires = shm.motor_desires
 class GenericThruster(object):
     max_pwm = 255
     min_pwm = 0 # turn on value
-    def __init__(self, yaw, pitch, position, min_neg_pwm, min_pos_pwm, drag=1.0, link=None, name="", reversed_polarity=False, broken=False, vector=False):
+    def __init__(self, yaw, pitch, position, min_neg_pwm, min_pos_pwm, drag=1.0, link=None, name="", reversed_polarity=lambda: False, broken=False, vector=False):
         """
             Yaw, and pitch are counter-clockwise angles (deg) in a right hand
             coordinate system where +z is down (yaw axis) and
@@ -161,6 +171,7 @@ class GenericThruster(object):
         assert type(self) != GenericThruster
         assert -90.0 <= pitch <= 90
         assert 0 <= drag <= 1.0
+        assert name in THRUSTER_NAMES
 
         self.reversed_polarity = reversed_polarity
         self.broken = broken
@@ -297,11 +308,10 @@ class GenericThruster(object):
             else:
                 z = -0.5*(qvars.b - sqrt(D))
                 pwm = z/qvars.a
-
+            return int(round(pwm))
         except ValueError: #sqrt negative number, possible for small values of x
-            return 0       #small enough to return 0 anyway
+            return 0       #small enough to return 0 anyway, avoid errors on NaN
 
-        return int(round(pwm))
 
     def get_thrust_vectoring_offset(self):
         angle = self.thrust_vectoring_data.angle_from_value(self.vector_angle.get())
@@ -344,16 +354,16 @@ class GenericThruster(object):
 
         return [float(line.split()[1]) for line in lines[2:]]
 
-    def set_models(self):
-        if self.name in thruster_models:
-            tags = thruster_models[self.name]
-            self.curve_forward, self.curve_reverse = \
-       [self.parse_model("%s/%s.polynomial" % (MODEL_DIR, tag)) for tag in tags]
+    #def set_models(self):
+    #    if self.name in thruster_models:
+    #        tags = thruster_models[self.name]
+    #        self.curve_forward, self.curve_reverse = \
+    #   [self.parse_model("%s/%s.polynomial" % (MODEL_DIR, tag)) for tag in tags]
 
-            self.curve_reverse = [-x for x in self.curve_reverse]
+    #        self.curve_reverse = [-x for x in self.curve_reverse]
 
-        else:
-            log("No model for %s thruster, defaulting to VideoRay!" % self.name)
+    #    else:
+    #        log("No model for %s thruster, defaulting to VideoRay!" % self.name)
 
 class VideoRay(GenericThruster):
     max_pwm = 255
@@ -414,12 +424,14 @@ for thruster in vehicle.thrusters:
     min_neg_pwm = get_default('min_neg_pwm', -t_class.min_pwm)
 
     thruster_name = thruster.get('real_name', thruster['name'])
+    reversed_func = vars(shm.reversed_thrusters)[thruster_name].get
     thruster = t_class(yaw=h, pitch=p, position=thruster['pos'],
                        link=thruster['name'], name=thruster_name, vector=vector,
-                       reversed_polarity=reversed_polarity, broken=broken,
+                       reversed_polarity=reversed_func, broken=broken,
                        min_pos_pwm=min_pos_pwm, min_neg_pwm=min_neg_pwm)
 
     vars(shm.broken_thrusters)[thruster.name].set(broken)
+    vars(shm.reversed_thrusters)[thruster.name].set(reversed_polarity)
 
     all_thrusters.append(thruster)
 

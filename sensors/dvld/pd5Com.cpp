@@ -43,6 +43,8 @@ void Pd5Com::setupDVLSerialPort() {
   usleep(SETUP_PAUSE);
   ser.writeSer((const unsigned char*)"ES00\n",5); // Salinity is zero
   usleep(SETUP_PAUSE);
+  ser.writeSer((const unsigned char*)"BX100\n",6); // Bottom depth not expected to be greater than 10 meters
+  usleep(SETUP_PAUSE);
   ser.writeSer((const unsigned char*)"CS\n",3); // Start pinging
   ser.flushInput();
   printf("Done initalizing dvl!\n");
@@ -156,7 +158,7 @@ dvl_pd5 Pd5Com::getData() {
     ret.BIT_RESULTS = readUnsignedShort();
 
     ret.SPEED_OF_SOUND = readUnsignedShort();
-    ret.TEMPERATURE = readUnsignedShort();
+    ret.TEMPERATURE = readShort();
     ret.SALINITY = readByte();
 
     ret.DEPTH = readUnsignedShort();
