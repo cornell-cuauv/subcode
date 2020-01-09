@@ -1,20 +1,14 @@
-/.arcconfig
-/.zsh
-/nixos/configs/secrets/
-*/secrets/
+# this file uses gitignore syntax
 
-/shm_tools/shm-online/
-/sensors/3dmg/
-*/3dmg/
-/sonar/
-/notes/
-/misc/3dcontrol/
-/misc/autopics/
-/misc/map/
+sensors/3dmg
+sensors/dvld
+sonard
 
-/misc/#LED
-/misc/\#LED
+misc/\#LED
 
-/pooltest/slack.py
-*/slack.py
-/vehicle-scripts/auv-env/*/*
+pooltest/slack.py
+pooltest/src
+vehicle-scripts/auv-env/
+
+# don't show them what we don't want them to see
+open-source/exclusions
