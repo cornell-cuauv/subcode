@@ -41,7 +41,13 @@ log $blue INFO "Using env-dir: $AUV_ENV_DIRECTORY"
 
 # Do some mapping here (quickzand -> zander, zandstone -> zander)
 
-env_dir="$AUV_ENV_DIRECTORY/$host"
+if [ -n "$AUV_ENV_ALIAS" ] && [ -d "$AUV_ENV_DIRECTORY/$AUV_ENV_ALIAS" ]; then
+    # This is set by auv-docker.py for loading environment locally
+    log $blue INFO "AUV_ENV_ALIAS set, using alias $AUV_ENV_ALIAS"
+    env_dir="$AUV_ENV_DIRECTORY/$AUV_ENV_ALIAS"
+else
+    env_dir="$AUV_ENV_DIRECTORY/$host"
+fi
 
 if [ ! -d "$env_dir" ]; then
     env_aliases=($AUV_ENV_DIRECTORY/*/env_aliases)
@@ -69,6 +75,12 @@ if [ -d "$env_dir" ]; then
             source "$SCRIPT"
         fi
     done
+
+    alias git-user="env_dir=$env_dir $AUV_ENV_DIRECTORY/git-user.sh"
+    # the completions file only gets created after the repo is initialized
+    if [ -f "$env_dir/.git/git-user_complete.zsh" ]; then
+        source "$env_dir/.git/git-user_complete.zsh"
+    fi
 else
     log $red FAIL "Could not find host $host"
     return
