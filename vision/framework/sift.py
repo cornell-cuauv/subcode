@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 class SIFT:
     """
@@ -37,9 +38,13 @@ class SIFT:
         Adds an image as a source.
         name: Name of the source
         source: The source image
+
+        Returns: the keypoints and feature descriptors of the
+        source
         """
-        kp, des = self.detector.detectAndCompute(source, None)
+        kp, des = self.sift.detectAndCompute(source, None)
         self.sources[name] = {"name": name, "source": source, "kp":kp, "des":des}
+        return kp, des
 
 
     def add_many(self, **kwargs):
@@ -98,28 +103,28 @@ class SIFT:
         matched = []
         drawim = np.copy(img) if draw else None
         draw_params = dict(matchColor=(0,255,0), singlePointColor=None,
-            matchesMask=matchesMask, flags=2)
+            matchesMask=None, flags=2)
         for name, val in self.sources.items():
-            matches = self.matcher.knnMatch(val[des], des, k=2)
+            matches = self.matcher.knnMatch(val["des"], des, k=2)
 
-            good = _ratio_test(matches, ratio=ratio)
+            good = SIFT._ratio_test(matches, ratio=ratio)
             if len(good) < min_match:
                 continue
 
             # TODO: What if we don't do homogenous transform?
-            src_pts = np.float32([kp1[m.queryIdx].pt for m in good])\
+            src_pts = np.float32([val["kp"][m.queryIdx].pt for m in good])\
                 .reshape(-1,1,2)
-            dst_pts = np.float32([kp2[m.trainIdx].pt for m in good])\
+            dst_pts = np.float32([kp[m.trainIdx].pt for m in good])\
                 .reshape(-1,1,2)
 
             matrix, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
             matchesMask = mask.ravel().tolist()
 
-            h,w = img1.shape
-            pts = np.float32([[PADDING,PADDING],
-                [PADDING,h-1-PADDING],
-                [w-1-PADDING,h-PADDING-1],
-                [w-PADDING-1,PADDING]]).reshape(-1,1,2)
+            h, w = val["source"].shape
+            pts = np.float32([[0, 0],
+                [0, h-1],
+                [w-1, h-1],
+                [w-1, 0]]).reshape(-1,1,2)
 
             try:
                 # OpenCV sometimes throws assertion errors here. It should have
@@ -133,7 +138,7 @@ class SIFT:
                 draw_params[matchesMask] = matchesMask
                 drawim = cv2.drawMatches(val[source], val[kp], img, kp, good, None, **draw_params)
 
-            matched.append((val[name], good, dst, matchesMask)
+            matched.append((val["name"], good, dst, matchesMask))
 
         return matched, kp, des, drawim
 
@@ -159,4 +164,4 @@ def draw_keypoints(im, kp, color=(0, 0, 255)):
     kp: The keypoints to be drawn
     """
     out = np.copy(im)
-    return cv2.drawKeypoints(im, kp, out)
+    return cv2.drawKeypoints(im, kp, out, color)
