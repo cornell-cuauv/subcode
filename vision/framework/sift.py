@@ -101,9 +101,9 @@ class SIFT:
         """
         kp, des = self.sift.detectAndCompute(img, None)
         matched = []
-        drawim = np.copy(img) if draw else None
+        drawim = None
         draw_params = dict(matchColor=(0,255,0), singlePointColor=None,
-            matchesMask=None, flags=2)
+                matchesMask=None, flags=2)
         for name, val in self.sources.items():
             matches = self.matcher.knnMatch(val["des"], des, k=2)
 
@@ -135,8 +135,8 @@ class SIFT:
                 continue
 
             if draw:
-                draw_params[matchesMask] = matchesMask
-                drawim = cv2.drawMatches(val[source], val[kp], img, kp, good, None, **draw_params)
+                draw_params["matchesMask"] = matchesMask
+                drawim = cv2.drawMatches(val["source"], val["kp"], img, kp, good, None, **draw_params)
 
             matched.append((val["name"], good, dst, matchesMask))
 
