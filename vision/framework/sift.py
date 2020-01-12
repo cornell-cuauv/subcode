@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from vision.framework.transform import resize
 
 class SIFT:
     """
@@ -39,8 +40,7 @@ class SIFT:
         name: Name of the source
         source: The source image
 
-        Returns: the keypoints and feature descriptors of the
-        source
+        Returns: the keypoints and feature descriptors of the source image
         """
         kp, des = self.sift.detectAndCompute(source, None)
         self.sources[name] = {"name": name, "source": source, "kp":kp, "des":des}
@@ -51,8 +51,8 @@ class SIFT:
         """
         Adds multiple images as a source.
 
-        Sources are specified using keyword arguements, where the key is name
-        of the source and the value is the image of the source.
+        Sources are specified using keyword arguments, where the key is name
+        of the source image and the value is the image of the source image.
         """
         for name, source in kwargs.items():
             add_source(name, source)
@@ -94,14 +94,13 @@ class SIFT:
             - the good matches found
             - a single contour specifying the area of the match as a
               transformed rectangle,
-            - a mask of the matched area;
+            - a mask of the matched area,
+            - An image showing all matches to the source image;
         - The keypoints of the imaged passed
         - The feature descriptors of the image passed
-        - An image showing all the matches found, or None if draw is False
         """
         kp, des = self.sift.detectAndCompute(img, None)
         matched = []
-        drawim = None
         draw_params = dict(matchColor=(0,255,0), singlePointColor=None,
                 matchesMask=None, flags=2)
         for name, val in self.sources.items():
@@ -134,13 +133,15 @@ class SIFT:
                 print(e)
                 continue
 
+            drawim = None
             if draw:
                 draw_params["matchesMask"] = matchesMask
                 drawim = cv2.drawMatches(val["source"], val["kp"], img, kp, good, None, **draw_params)
+                drawim = resize(drawim, int(drawim.shape[1] * 0.5), int(drawim.shape[0] * 0.5))
 
-            matched.append((val["name"], good, dst, matchesMask))
+            matched.append((val["name"], good, dst, matchesMask, drawim))
 
-        return matched, kp, des, drawim
+        return matched, kp, des
 
 
 def draw_transformed_box(im, dst, color=(0, 0, 255), thickness=3):

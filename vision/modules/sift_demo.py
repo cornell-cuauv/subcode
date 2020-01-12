@@ -31,15 +31,14 @@ class SIFTDemo(ModuleBase):
         gmat, _ = bgr_to_gray(mat)
         self.post("gray", gmat)
 
-        matched, kp, des, drawim = self.sift.match(gmat, draw=True)
+        matched, kp, des = self.sift.match(gmat, draw=True)
         kpmat = np.copy(mat)
         # TODO: Draw keypoints may not work atm
         kpmat = draw_keypoints(kpmat, kp)
-        if drawim is not None:
-            self.post("matches", resize(drawim, int(drawim.shape[1]*0.5), int(drawim.shape[0]*0.5)))
         self.post("keypoints", kpmat)
 
-        for name, good, dst, _ in matched:
+        for name, good, dst, _, drawim in matched:
+            self.post(f"match: {name}", drawim)
             mat = draw_transformed_box(mat, dst)
 
         self.post("boxes", mat)
