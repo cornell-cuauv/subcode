@@ -33,7 +33,6 @@ class SIFTDemo(ModuleBase):
 
         matched, kp, des = self.sift.match(gmat, draw=True)
         kpmat = np.copy(mat)
-        # TODO: Draw keypoints may not work atm
         kpmat = draw_keypoints(kpmat, kp)
         self.post("keypoints", kpmat)
 
