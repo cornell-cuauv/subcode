@@ -31,7 +31,6 @@ class SIFT:
 
         self.matcher = cv2.FlannBasedMatcher(index_params, search_params)
         self.sources = {}
-        # self.debug = debug # TODO
 
 
     def add_source(self, name, source):
@@ -71,7 +70,6 @@ class SIFT:
 
 
     def match(self, img, min_match=10, ratio=0.7, draw=False):
-        # TODO: Draw shouldn't work rn
         """
         Find all instances of source images in an image.
 
@@ -157,7 +155,6 @@ def draw_transformed_box(im, dst, color=(0, 0, 255), thickness=3):
 
 
 def draw_keypoints(im, kp, color=(0, 0, 255)):
-    # TODO: This shouldn't work
     """
     Draws all the keypoints to an image
 
