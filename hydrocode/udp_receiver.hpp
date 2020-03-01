@@ -10,16 +10,32 @@
 #define udp_receiver_hpp
 
 #include <cstdint>
-#include <netinet/in.h>
 
-class UDPSampleReceiver
-{
+class UDPSampleReceiver {
 public:
-    UDPSampleReceiver(unsigned int port);
-    void recv(uint16_t *pkt, unsigned int pkt_len);
+	UDPSampleReceiver(unsigned int port, unsigned int pkt_len);
+	~UDPSampleReceiver(void);
+	void recv();
+	unsigned int getPktNum(void);
+	unsigned int getPingerGainLvl(void);
+	unsigned int getCommsGainLvl(void);
+	float getPingerMaxSample(void);
+	float getCommsMaxSample(void);
+	float getSample(unsigned int ch_num, unsigned int sample_num);
 
 private:
-    int sock;
+	static const unsigned int PKT_HEADER_SIZE;
+	static const unsigned int NUM_CHS;
+	static const unsigned int PKT_NUM_OFFSET;
+	static const unsigned int PINGER_GAIN_LVL_OFFSET;
+	static const unsigned int COMMS_GAIN_LVL_OFFSET;
+	static const unsigned int PINGER_MAX_SAMPLE_OFFSET;
+	static const unsigned int COMMS_MAX_SAMPLE_OFFSET;
+
+	unsigned int pkt_len;
+	int sock;
+	std::uint8_t *buff;
 };
 
 #endif /* udp_receiver_hpp */
+

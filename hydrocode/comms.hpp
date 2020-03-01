@@ -9,144 +9,106 @@
 #ifndef COMMS_HPP
 #define COMMS_HPP
 
-#include <complex>
+#include <cstdint>
 
+#include <complex>
 #include "liquid.h"
 
-enum downconverter_status{DOWNCONV_DEFAULT, NEW_CONV_SAMPLE};
-enum synchronizer_status{SYNCH_DEFAULT, NEW_SYNCH_POINT, SYNCH_LOCKED_ON};
-enum decider_status{DECID_DEFAULT, NEW_SYMBOL};
-enum packer_status{PACKER_DEFAULT, PKT_FULL};
+void printPkt(unsigned char *pkt, unsigned int size);
 
-class DCRemover
-{
+class StdDev {
 public:
-    DCRemover(unsigned int len);
-    ~DCRemover(void);
-    float push(float in_sample);
+	StdDev(unsigned int len);
+	~StdDev(void);
+	float push(float in_sample);
+
 private:
-    unsigned int len;
-    float avg;
-    windowf buff;
+	unsigned int len;
+	float std_dev;
+	windowf buff;
 };
 
-class StdDev
-{
+class Tuner {
 public:
-    StdDev(unsigned int len);
-    ~StdDev(void);
-    float push(float in_sample);
+	Tuner(unsigned int in_sample_rate, unsigned int decim_factor, unsigned int freq, unsigned int bandwidth);
+	~Tuner(void);
+	bool push(float in_sample);
+	void setFreq(unsigned int freq);
+	std::complex<float> getSample(void);
+
 private:
-    unsigned int len;
-    float std_dev;
-    windowf buff;
+	static const unsigned int TRANS_WIDTH;
+	static const unsigned int STOPBAND_ATTEN;
+
+	std::uint64_t n;
+	unsigned int in_sample_rate;
+	unsigned int decim_factor;
+	std::complex<float> conv_sample;
+
+	nco_crcf mix_osc;
+	firfilt_crcf filt;
 };
 
-class Downconverter
-{
+class FSKSynchronizer {
 public:
-    Downconverter(unsigned int in_sample_rate, unsigned int decim_factor, unsigned int carrier_freq, unsigned int bandwidth);
-    ~Downconverter(void);
-    void push(float in_sample);
-    downconverter_status getStatus(void);
-    std::complex<float> getSample(void);
+	FSKSynchronizer(unsigned int samples_per_symbol, const int code[], const int orth_code[], unsigned int code_len);
+	~FSKSynchronizer(void);
+	bool push(std::complex<float> symbol0_sample, std::complex<float> symbol1_sample);
+	bool getLockedOn(void);
+	windowf dumpInBuff(void);
+	windowf dumpSigOutBuff(void);
+	windowf dumpOrthOutBuff(void);
+	windowf dumpDynThreshBuff(void);
+	void reset(void);
+
 private:
-    static const unsigned int TRANS_WIDTH;
-    static const unsigned int STOPBAND_ATTEN;
-    
-    downconverter_status status;
-    unsigned int n;
-    unsigned int decim_factor;
-    std::complex<float> conv_sample;
-    
-    nco_crcf mix_osc;
-    firfilt_crcf filt;
+	static const unsigned int BUFF_LEN;
+	static const float THRESH_CALC_LEN;
+	static const float THRESH_FACTOR;
+
+	unsigned int samples_per_symbol;
+	std::uint64_t samples_since_triggered;
+	unsigned int code_len;
+	bool triggered;
+	float sig_peak;
+	bool locked_on;
+
+	windowf in_buff, sig_out_buff, orth_out_buff, dyn_thresh_buff;
+	firfilt_rrrf corr_sig, corr_orth;
+	StdDev thresh_calc;
 };
 
-class FSKSynchronizer
-{
+class FSKDecider {
 public:
-    FSKSynchronizer(unsigned int sample_rate, const int symbols[2], unsigned int sym_rate, const float *sym_corrections, const float code[], const float orth_code[], unsigned int code_len);
-    ~FSKSynchronizer(void);
-    void push(std::complex<float> in_sample);
-    synchronizer_status getStatus(void);
-    windowf dumpCorrInBuff(void);
-    windowf dumpCorrSigOutputBuff(void);
-    windowf dumpCorrOrthOutputBuff(void);
-    windowf dumpDynThreshBuff(void);
-    void rst(void);
+	FSKDecider(unsigned int samples_per_symbol, unsigned int num_symbols);
+	~FSKDecider(void);
+	bool push(std::complex<float> *ch0_samples, std::complex<float> *ch1_samples, std::complex<float> *ch2_samples, std::complex<float> *ch3_samples);
+	unsigned int getSymbol(void);
+	void reset(void);
+
 private:
-    static const std::complex<float> j;
-    static const unsigned int BUFF_LEN;
-    static const unsigned int SYM_WIDTH;
-    static const unsigned int TRANS_WIDTH;
-    static const unsigned int STOPBAND_ATTEN;
-    static const unsigned int SAMPLES_PER_SYMBOL;
-    static const float THRESH_CALC_LEN;
-    static const float THRESH_FACTOR;
-    
-    synchronizer_status status;
-    bool triggered;
-    unsigned int n, trigger_n;
-    unsigned int sample_rate;
-    unsigned int sym_rate;
-    const float *sym_corrections;
-    unsigned int code_len;
-    float corr_sig_peak;
-    
-    windowf corr_in_buff, corr_sig_output_buff, corr_orth_output_buff, dyn_thresh_buff;
-    firfilt_cccf space_filt, mark_filt;
-    firfilt_rrrf corr_sig, corr_orth;
-    StdDev thresh_calc;
+	unsigned int samples_per_symbol;
+	unsigned int num_symbols;
+	unsigned int num_accum_samples;
+	float *energies;
+	unsigned int highest_energy_symbol;
 };
 
-class FSKDecider
-{
+class SymbolPacker {
 public:
-    FSKDecider(unsigned int sample_rate, unsigned int bits_per_sym, const int symbols[], const float *sym_corrections, unsigned int sym_rate);
-    ~FSKDecider(void);
-    void push(std::complex<float> in_sample);
-    decider_status getStatus(void);
-    unsigned int getSym(void);
-    void rst(void);
+	SymbolPacker(unsigned int pkt_size, unsigned int bits_per_symbol);
+	~SymbolPacker(void);
+	bool push(unsigned int symbol);
+	unsigned char* getPkt(void);
+	void reset(void);
 
 private:
-    static const std::complex<float> j;
-    static const unsigned int SYM_WIDTH;
-    static const unsigned int TRANS_WIDTH;
-    static const unsigned int STOPBAND_ATTEN;
-    static const unsigned int SAMPLES_PER_SYMBOL;
-    
-    decider_status status;
-    unsigned int n;
-    unsigned int num_accum_samples;
-    unsigned int sample_rate;
-    unsigned int sym_rate;
-    unsigned int num_sym;
-    const float *sym_corrections;
-    float *energies;
-    unsigned int highest_energy_sym;
-    
-    firfilt_cccf *filters;
-};
-
-class SymPacker
-{
-public:
-    SymPacker(unsigned int pkt_size, unsigned int bits_per_sym);
-    ~SymPacker(void);
-    void push(unsigned int sym);
-    packer_status getStatus(void);
-    unsigned char *getPkt(void);
-    void rst(void);
-
-private:
-    packer_status status;
-    unsigned int sym_num;
-    unsigned int bits_per_sym;
-    unsigned int pkt_size;
-    unsigned char *sym_buff;
-    unsigned char *pkt;
+	unsigned int pkt_size;
+	unsigned int bits_per_symbol;
+	unsigned int num_collected_symbols;
+	unsigned char *symbol_buff;
+	unsigned char *pkt;
 };
 
 #endif /* comms_hpp */
+

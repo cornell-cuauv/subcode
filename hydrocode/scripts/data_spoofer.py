@@ -1,58 +1,63 @@
 #!/usr/bin/env python3
 
-#Script for generating a dump containing a single simulated ping of specified frequency and location. Read Hydrophones Code wiki entry.
+# Script for simulating one ping worth of data. Read Hydrophones Code wiki entry for more details.
 
-import math
-import scipy.io
+import numpy
 
-BIT_DEPTH = 16383 #maximum possible level of a signal
-IDLE_TIME = 1.996 #padding before and after ping (in seconds)
-NIPPLE_DIST = 0.0178 #distance between the teats (in meters)
-NO_CH = 4 #number of channels
-PING_TIME = 0.004 #ping duration (in seconds)
-FREQ = 30000 #ping frequency
-COMMS_FREQ = 52000 #comms frequency
-SAMPL_RATE = 200000
-SOUND_SPEED = 1481 #speed of sound in fresh water at 20 degrees Celsius
+HDG = 45 # ping heading (degrees)
+ELEV = 10 # ping elevation (degrees)
+SIGNAL_AMPL = numpy.array([0.99, 0.99, 0.99, 0.99]).transpose()
+NOISE_AMPL = 0.01 # amplitude of sine noise at ping frequency (max 1)
+FREQ = 25000 # ping frequency (Hz)
+IDLE_TIME = 3.996 # padding before ping (seconds)
+PING_TIME = 0.004 # ping duration (seconds)
+POST_TIME = 1 # padding after ping (seconds)
 
-HDG = 45 #ping heading (in degrees)
-ELEV = 86 #ping elevation (in degrees)
-A_AMPL = 0.76 #amplitude on channel A (max 1)
-B_AMPL = 0.87 #amplitude on channel B (max 1)
-C_AMPL = 0.76 #amplitude on channel C (max 1)
-D_AMPL = 0.75 #amplitude on channel D (max 1)
+PKT_LEN = 31 # number of samples from each channel in a hydrophones packet
+BIT_DEPTH = 16384 # number of quantization levels
+SAMPLE_RATE = 153061 # self explanatory huh?
+NIPPLE_DIST = 0.0178 # distance between the teats (meters)
+SOUND_SPEED = 1481 # speed of sound in fresh water at 20 degrees Celsius (m/s)
 
-#calculating the total duration of the dump
-total_time = 2 * IDLE_TIME + PING_TIME
+n_idle = int(IDLE_TIME * SAMPLE_RATE)
+n_ping = int(PING_TIME * SAMPLE_RATE)
+n_post = int(POST_TIME * SAMPLE_RATE)
+n_total = n_idle + n_ping + n_post
+n_start = \
+numpy.array([
+	n_idle, \
+	n_idle - NIPPLE_DIST * SAMPLE_RATE / SOUND_SPEED * numpy.sin(numpy.radians(HDG)) * numpy.cos(numpy.radians(ELEV)), \
+	n_idle + NIPPLE_DIST * SAMPLE_RATE / SOUND_SPEED * numpy.cos(numpy.radians(HDG)) * numpy.cos(numpy.radians(ELEV)), \
+	n_idle - NIPPLE_DIST * SAMPLE_RATE / SOUND_SPEED * numpy.sin(numpy.radians(ELEV)) \
+], dtype = numpy.uint)
 
-#calculating when the signal reaches each channel. reference channel is reached exactly when the initial padding ends
-a_start_time = IDLE_TIME
-b_start_time = IDLE_TIME - NIPPLE_DIST * math.sin(HDG * math.pi / 180) * math.cos(ELEV * math.pi / 180) / SOUND_SPEED
-c_start_time = IDLE_TIME + NIPPLE_DIST * math.cos(HDG * math.pi / 180) * math.cos(ELEV * math.pi / 180) / SOUND_SPEED
-d_start_time = IDLE_TIME
+num_ch = len(SIGNAL_AMPL)
+omega_hat = 2 * numpy.pi * FREQ / SAMPLE_RATE
 
-#initializing the dict that will be saved to the mat file
-write_dict = {"raw_samples_interleaved": []}
+dump = open("spoofed_dump.dat", "wb")
 
-#generating samples
-for sampl_no in range(int(total_time * SAMPL_RATE)):
+print("Generating data...")
 
-	#adding DC bias, which is half the maximum possible signal level
-	write_dict["raw_samples_interleaved"] += [BIT_DEPTH / 2, BIT_DEPTH / 2, BIT_DEPTH / 2, BIT_DEPTH / 2]
+for pkt_num in range(int(n_total / PKT_LEN)):
+	n_offset = pkt_num * PKT_LEN
+	n = numpy.arange(n_offset, n_offset + PKT_LEN)
 
-	#adding the sinusoidal signal to channels if the time is right. it can have at most an amplitude of half the maximum possible signal level
-	if sampl_no >= a_start_time * SAMPL_RATE and sampl_no < (a_start_time + PING_TIME) * SAMPL_RATE:
-		write_dict["raw_samples_interleaved"][NO_CH * sampl_no + 0] += int(float(BIT_DEPTH) / 2 * A_AMPL * math.sin(FREQ * 2 * math.pi * (float(sampl_no) / SAMPL_RATE - a_start_time)))
+	noise = (BIT_DEPTH - 1) / 2 * NOISE_AMPL * numpy.sin(omega_hat * n)
 
-	if sampl_no >= b_start_time * SAMPL_RATE and sampl_no < (b_start_time + PING_TIME) * SAMPL_RATE:
-		write_dict["raw_samples_interleaved"][NO_CH * sampl_no + 1] += int(float(BIT_DEPTH) / 2 * B_AMPL * math.sin(FREQ * 2 * math.pi * (float(sampl_no) / SAMPL_RATE - b_start_time)))
+	print(n_start.shape)
 
-	if sampl_no >= c_start_time * SAMPL_RATE and sampl_no < (c_start_time + PING_TIME) * SAMPL_RATE:
-		write_dict["raw_samples_interleaved"][NO_CH * sampl_no + 2] += int(float(BIT_DEPTH) / 2 * C_AMPL * math.sin(FREQ * 2 * math.pi * (float(sampl_no) / SAMPL_RATE - c_start_time)))
+	signal = (n_start >= n > n_start + n_ping) * ((BIT_DEPTH - 1) / 2 * SIGNAL_AMPL * numpy.sin(omega_hat * (n - n_start))) + noise
 
-	if sampl_no >= d_start_time * SAMPL_RATE and sampl_no < (d_start_time + PING_TIME) * SAMPL_RATE:
-		write_dict["raw_samples_interleaved"][NO_CH * sampl_no + 3] += int(float(BIT_DEPTH) / 2 * D_AMPL * math.sin(FREQ * 2 * math.pi * (float(sampl_no) / SAMPL_RATE - d_start_time)))
+	pkt_data = numpy.zeros[num_ch * PKT_LEN]
+	for ch_num in range(num_ch):
+		pkt_data[ch_num::num_ch] = signal[ch_num]
 
-#saving to the mat file
-scipy.io.savemat("spoofed_dump.mat", write_dict, do_compression = True, oned_as = "column")
+	high_sample = numpy.max(pkt_data)
 
+	# write packet header
+	dump.write(numpy.array([pkt_num], dtype = "<u4").tobytes())
+	dump.write(numpy.array([0], dtype = "<u1").tobytes())
+	dump.write(numpy.array([high_sample], dtype = "<u2").tobytes())
+
+	# write packet data
+	dump.write(pkt_data.tobytes())

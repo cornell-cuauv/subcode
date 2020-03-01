@@ -1,35 +1,36 @@
 #!/usr/bin/env python3
 
-#Script for replaying raw FPGA data dumps. Read Hydrophones Code wiki entry.
+# Script for replaying raw hydrophones data dumps. Read Hydrophones Code wiki entry for more details.
 
 import socket, time, sys
-import scipy.io
-import numpy
 
-PKT_LEN = 512 #total number of samples in an FPGA packet
-NO_CH = 4 #number of channels
-SAMPL_RATE = 200000
-ADDR = "127.0.0.1" #local host because we are sending the data to the same machine
-PORT = 8899 #hydromathd listens on this port
+PKT_LEN = 31 # number of samples from each channel in a hydrophones packet
+PKT_HEADER_SIZE = 10 # size of packet header (Bytes)
+NUM_CHS = 8 # number of channels
+SAMPLE_RATE = 153061 # self explanatory huh?
+ADDR = "127.0.0.1" # local host because we are sending the data to the same machine
+PORT = 49152 # hydromathd listens on this port
 
- #loading mat file specified from terminal
-data = scipy.io.loadmat(sys.argv[1])
+# get binary file size
+def getSize(file):
+	file.seek(0, 2)
+	size = file.tell()
+	return size
 
-#initializing UDP networking
+ # load binary file specified from terminal
+dump = open(sys.argv[1], "rb")
+
+# initialize UDP networking
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-#sending packets
-for pkt_no in range(len(data["raw_samples_interleaved"]) // PKT_LEN):
+pkt_size = NUM_CHS * PKT_LEN * 2 + PKT_HEADER_SIZE
 
-	 	#forming a packet from the data. 'H' is unsigned 16 bit integer
-		send_buff = data["raw_samples_interleaved"][pkt_no * PKT_LEN : (pkt_no + 1) * PKT_LEN].astype('H')
+print("Replaying " + sys.argv[1] + "...")
 
-		#converting packet into a bytes array
-		payload = numpy.asarray(send_buff)
-		payload.tobytes()
+# send packets
+for pkt_num in range(int(getSize(dump) / pkt_size)):
+	dump.seek(pkt_num * pkt_size)
+	sock.sendto(dump.read(pkt_size), (ADDR, PORT))
 
-		#sending packet
-		sock.sendto(payload, (ADDR, PORT))
-
-		#waiting for the amount of time the FPGA would take to send another packet
-		time.sleep(float(PKT_LEN) / float(NO_CH) / float(SAMPL_RATE))
+	# wait for the amount of time the hydrophones board would take to send another packet
+	time.sleep(PKT_LEN / SAMPLE_RATE)
