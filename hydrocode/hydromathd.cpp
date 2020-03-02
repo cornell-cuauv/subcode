@@ -99,13 +99,16 @@ int main(void) {
 
 	std::printf("Listening for packets...\n\n");
 
+    // a tad unfortunate
+    shm_getg(hydrophones_pinger_settings, shm_pinger_settings);
+
 	while (1) {
 		bool new_sample = false;
 
 		sample_recvr.recv();
 
 		std::uint32_t curr_pkt_num = sample_recvr.getPktNum();
-		if (curr_pkt_num != shm_status.packet_number + 1) {
+		if (curr_pkt_num != (std::uint32_t)shm_status.packet_number + 1) {
 			std::printf("\nSample packet discontinuity detected\n\n");
 		} else if (curr_pkt_num == 0) {
 			std::printf("\nHydrophones board has resetted\n\n");
@@ -124,7 +127,7 @@ int main(void) {
 
 			shm_freq_num = -1;
 			for (unsigned int freq_num = 0; freq_num < Pinger::NUM_FREQS; freq_num++) {
-				if (Pinger::FREQS[freq_num] == shm_pinger_settings.frequency) {
+				if (Pinger::FREQS[freq_num] == (unsigned int)shm_pinger_settings.frequency) {
 					shm_freq_num = freq_num;
 					break;
 				}
@@ -207,7 +210,7 @@ int main(void) {
 					}
 
 					if (sense_ok) {
-						std::printf("%4.6f %4.6f %llu\n", ampl, sense_ratio, n - pinger_interv_start_n);
+						std::printf("%4.6f %4.6f %lu\n", ampl, sense_ratio, n - pinger_interv_start_n);
 
 						float path_diff1 = remainder(std::arg(pinger1_baseb_sample) - std::arg(pinger0_baseb_sample), 2 * M_PI) * (float)SOUND_SPEED / (2.0f * M_PI * shm_pinger_settings.frequency);
 						float path_diff2 = remainder(std::arg(pinger2_baseb_sample) - std::arg(pinger0_baseb_sample), 2 * M_PI) * (float)SOUND_SPEED / (2.0f * M_PI * shm_pinger_settings.frequency);
