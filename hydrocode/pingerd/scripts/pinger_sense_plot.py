@@ -21,7 +21,7 @@ smooth_y = smooth_x
 
 plt.subplot(2, 1, 1)
 plt.title("Combined Amplitude")
-plt.xticks(numpy.arange(0, LEN, LEN // 10))
+plt.xticks(numpy.arange(0, LEN, int(LEN / 10)))
 ax1 = plt.gca()
 ax1.set_xlim(0, LEN - 1)
 (ampl_line, ) = ax1.plot(smooth_x, smooth_y, 'k-', linewidth = 0.5)
@@ -29,7 +29,7 @@ trigger_cursor_ampl = ax1.axvline(x = 0, ymax = 0.09, color = "blue", linewidth 
 
 plt.subplot(2, 1, 2)
 plt.title("Sense Ratio")
-plt.xticks(numpy.arange(0, LEN, LEN // 10))
+plt.xticks(numpy.arange(0, LEN, int(LEN / 10)))
 ax2 = plt.gca()
 ax2.set_xlim(0, LEN - 1)
 (ratio_line, ) = ax2.plot(x, y, 'k-', linewidth = 0.5)
@@ -39,7 +39,7 @@ decode_str = str(LEN) + 'f'
 
 print("Listening for plots...")
 
-while 1:
+while True:
 	values = list()
 
 	for signal_index in range(2):
@@ -68,4 +68,4 @@ while 1:
 	ax2.set_ylim(-0.1 * values[1].max(), 1.1 * values[1].max())
 
 	plt.draw()
-	plt.pause(0.1)
+	plt.pause(1.5)
