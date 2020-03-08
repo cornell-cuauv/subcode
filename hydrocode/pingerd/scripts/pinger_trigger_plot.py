@@ -20,14 +20,14 @@ smooth_y = smooth_x
 
 plt.subplot(2, 1, 1)
 plt.title("Amplitude")
-plt.xticks(numpy.arange(-LEN + 1, 1, LEN // 10))
+plt.xticks(numpy.arange(-LEN + 1, 1, int(LEN / 10)))
 ax1 = plt.gca()
 ax1.set_xlim(-LEN + 1, 0)
 (ampl0_line, ampl1_line, ampl2_line, ampl3_line) = ax1.plot(smooth_x, smooth_y, 'r-', smooth_x, smooth_y, 'g-', smooth_x, smooth_y, 'b-', smooth_x, smooth_y, 'm-', linewidth = 0.5)
 
 plt.subplot(2, 1, 2)
 plt.title("Phase")
-plt.xticks(numpy.arange(-LEN + 1, 1, LEN // 10))
+plt.xticks(numpy.arange(-LEN + 1, 1, int(LEN / 10)))
 ax2 = plt.gca()
 ax2.set_xlim(-LEN + 1, 0)
 ax2.set_ylim(-2 * math.pi, 2 * math.pi)
@@ -37,7 +37,7 @@ decode_str = str(2 * LEN) + 'f'
 
 print("Listening for plots...")
 
-while 1:
+while True:
 	real_values = list()
 	imag_values = list()
 	smooth_amplitudes = list()
@@ -51,8 +51,8 @@ while 1:
 			data += data_pkt
 
 		interleaved_values = numpy.asarray(struct.unpack(decode_str, data))
-		real_values.append(interleaved_values[0::2])
-		imag_values.append(interleaved_values[1::2])
+		real_values.append(interleaved_values[0 : : 2])
+		imag_values.append(interleaved_values[1 : : 2])
 
 	print("Received pinger trigger plot")
 
@@ -80,4 +80,4 @@ while 1:
 	ax1.set_ylim(-0.1 * max_ampl, 1.1 * max_ampl)
 
 	plt.draw()
-	plt.pause(0.1)
+	plt.pause(1.5)

@@ -23,16 +23,16 @@ smooth_y = smooth_x
 
 plt.subplot(2, 1, 1)
 plt.title("Signal")
-plt.xticks(numpy.arange(0, LEN, LEN // 10))
+plt.xticks(numpy.arange(0, LEN, int(LEN / 10)))
 ax1 = plt.gca()
 ax1.set_xlim(0, LEN - 1)
-ax1.set_ylim(-BIT_DEPTH // 2, BIT_DEPTH // 2 - 1)
+ax1.set_ylim(int(-BIT_DEPTH / 2), int(BIT_DEPTH / 2) - 1)
 (sig0_line, sig1_line, sig2_line, sig3_line) = ax1.plot(smooth_x, smooth_y, 'r-', smooth_x, smooth_y, 'g-', smooth_x, smooth_y, 'b-', smooth_x, smooth_y, 'm-', linewidth = 0.5)
 
 plt.subplot(2, 1, 2)
 plt.title("Gain")
 plt.yscale("log")
-plt.xticks(numpy.arange(0, LEN, LEN // 10))
+plt.xticks(numpy.arange(0, LEN, int(LEN / 10)))
 ax2 = plt.gca()
 ax2.set_xlim(0, LEN - 1)
 ax2.set_ylim(0.9, 200)
@@ -42,7 +42,7 @@ decode_str = str(LEN) + 'f'
 
 print("Listening for plots...")
 
-while 1:
+while True:
 	values = list()
 	smooth_values = list()
 
@@ -69,4 +69,4 @@ while 1:
 	gain_line.set_ydata(values[4])
 
 	plt.draw()
-	plt.pause(0.1)
+	plt.pause(1.5)

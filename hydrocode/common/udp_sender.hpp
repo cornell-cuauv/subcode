@@ -10,6 +10,7 @@
 #define udp_sender_hpp
 
 #include <cstdint>
+#include <memory>
 #include <netinet/in.h>
 
 #include <complex>
@@ -20,34 +21,28 @@ struct sockaddr_in;
 class UDPBoardConfigSender {
 public:
 	UDPBoardConfigSender(const char addr[], unsigned int port);
-	~UDPBoardConfigSender(void);
 	void send(void);
 	void setReset(std::uint8_t setting);
-	void setPingerAutogain(std::uint8_t setting);
-	void setCommsAutogain(std::uint8_t setting);
-	void setPingerGainLvl(std::uint8_t gain_lvl);
-	void setCommsGainLvl(std::uint8_t gain_lvl);
+	void setAutogain(std::uint8_t setting);
+	void setGainLvl(std::uint8_t gain_lvl);
 
 private:
 	static const unsigned int PKT_SIZE;
 	static const unsigned int RESET_OFFSET;
-	static const unsigned int PINGER_AUTOGAIN_OFFSET;
-	static const unsigned int PINGER_MAN_GAIN_LVL_OFFSET;
-	static const unsigned int COMMS_AUTOGAIN_OFFSET;
-	static const unsigned int COMMS_MAN_GAIN_LVL_OFFSET;
+	static const unsigned int AUTOGAIN_OFFSET;
+	static const unsigned int MAN_GAIN_LVL_OFFSET;
 
 	int sock;
-	struct sockaddr_in serv_addr;
-	std::uint8_t *buff;
+	sockaddr_in serv_addr;
+	std::unique_ptr<uint8_t[]> buff;
 };
 
 class UDPPlotSender {
 public:
 	UDPPlotSender(const char addr[], unsigned int port, unsigned int num_signals, unsigned int signal_len);
-	~UDPPlotSender(void);
 	void send(void);
-	void takeReal(unsigned int signal_num, windowf source, unsigned int source_len);
-	void takeComplex(unsigned int signal_num, windowcf source, unsigned int source_len);
+	void takeReal(unsigned int signal_num, windowf &source, unsigned int source_end_index);
+	void takeComplex(unsigned int signal_num, windowcf &source, unsigned int source_end_index);
 
 private:
 	static const unsigned int PKT_SIZE;
@@ -55,8 +50,8 @@ private:
 	unsigned int num_signals;
 	unsigned int signal_len;
 	int sock;
-	struct sockaddr_in serv_addr;
-	float *buff;
+	sockaddr_in serv_addr;
+	std::unique_ptr<float> buff;
 };
 
 #endif /* udp_sender_hpp */

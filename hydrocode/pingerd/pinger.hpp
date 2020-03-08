@@ -9,6 +9,7 @@
 #ifndef pinger_hpp
 #define pinger_hpp
 
+#include <vector>
 #include <cstdint>
 
 #include <complex>
@@ -43,22 +44,23 @@ private:
 
 class GainControl {
 public:
-	static const unsigned int GAINZ[14];
+	static const std::vector<unsigned int> GAINZ;
 
 	static unsigned int calcGain(float max_sample, unsigned int curr_gain_lvl);
 
 private:
-	static const float CLIPPING_THRESHOLD;
-	static const float CLIPPING_THRESHOLD_HYSTERESIS;
+	static const unsigned int CLIPPING_THRESHOLD;
+	static const unsigned int CLIPPING_THRESHOLD_HYSTERESIS;
 };
 
 class GaussTuner {
 public:
-	GaussTuner(unsigned int in_sample_rate, unsigned int decim_factor, unsigned int freq, unsigned int stopband);
+	GaussTuner(unsigned int in_sample_rate, unsigned int freq, unsigned int stopband);
 	~GaussTuner(void);
-	bool push(float in_sample);
+	void push(float in_sample);
 	void setFreq(unsigned int freq);
 	unsigned int getFiltRiseTime(void);
+	unsigned int getFiltLen(void);
 	std::complex<float> getSample(void);
 
 private:
@@ -66,10 +68,10 @@ private:
 	static const unsigned int FILT_RISE_RATIO;
 	static const unsigned int NUM_FILT_STAGES;
 
-	std::uint64_t n;
 	unsigned int in_sample_rate;
-	unsigned int decim_factor;
 	unsigned int stopband;
+	unsigned int filt_rise_time;
+	unsigned int filt_len;
 	std::complex<float> conv_sample;
 
 	nco_crcf mix_osc;
@@ -78,6 +80,7 @@ private:
 	ComplexAverager filt_stage3;
 	ComplexAverager filt_stage4;
 
+	unsigned int calcFiltRiseTime(void);
 	static unsigned int calcFiltLen(unsigned int sample_rate, unsigned int stopband);
 };
 

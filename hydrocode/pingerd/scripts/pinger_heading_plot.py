@@ -24,7 +24,7 @@ theta = [0, 0]
 r = [0, 1]
 (line, ) = ax.plot(theta, r)
 
-while 1:
+while True:
 	# retrieve the most recent data from shm
 	theta = math.radians(shm.hydrophones_results_track.tracked_ping_heading.get())
 	r = math.cos(math.radians(shm.hydrophones_results_track.tracked_ping_elevation.get()))
