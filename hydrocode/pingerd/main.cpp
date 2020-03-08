@@ -10,17 +10,19 @@
 //#include "shm_mac.hpp"
 #include "constants.hpp"
 #include "pinger.hpp"
-#include "udp_receiver.hpp"
-#include "udp_sender.hpp"
+#include "../common/udp_receiver.hpp"
+#include "../common/udp_sender.hpp"
 
 #include <cstdio>
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <iterator>
 #include <algorithm>
+#include <cstring>
 
 #include <complex>
-#include "liquid.h"
+#include "../common/liquid.h"
 
 int main(void) {
 	std::printf("Pingerd starting...\n\n");
@@ -70,6 +72,7 @@ int main(void) {
 
 	shm_init();
 	shm_getg(hydrophones_pinger_settings, shm_settings);
+	shm_getg(gx4, shm_imu);
 
 	sample_recvr.recv();
 	shm_status.packet_number = sample_recvr.getPktNum();
@@ -131,7 +134,7 @@ int main(void) {
 					}
 					board_config_sender.send();
 
-					std::vector<const unsigned int>::iterator shm_freq = find(FREQS.begin(), FREQS.end(), shm_settings.frequency);
+					std::vector<unsigned int>::const_iterator shm_freq = find(FREQS.begin(), FREQS.end(), shm_settings.frequency);
 					if (shm_freq == FREQS.end()) {
 						shm_freq = FREQS.begin();
 						std::printf("SHM frequency invalid. ");

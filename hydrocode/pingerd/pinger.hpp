@@ -13,7 +13,7 @@
 #include <cstdint>
 
 #include <complex>
-#include "liquid.h"
+#include "../common/liquid.h"
 
 float calcHdg(float path_diff1, float path_diff2, float sub_hdg);
 float calcElev(float path_diff1, float path_diff2, float sample_distance);
