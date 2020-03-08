@@ -10,6 +10,7 @@
 
 #include <cstdlib>
 #include <cmath>
+#include <cstring>
 
 const std::vector<unsigned int> GainControl::GAINZ = {1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128};
 const unsigned int GainControl::CLIPPING_THRESHOLD = 8000;
