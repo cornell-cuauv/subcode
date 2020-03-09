@@ -28,7 +28,7 @@ extern const unsigned int TRIGGER_PLOT_PORT = 49155;
 extern const unsigned int RAW_PLOT_LEN = 70;
 extern const unsigned int TRIGGER_PLOT_LEN = 20;
 
-extern const char BOARD_ADDR[] = "192.168.0.102";
+extern const char BOARD_ADDR[] = "192.168.93.102";
 extern const unsigned int LOCAL_SAMPLE_PORT = 49152;
 extern const unsigned int BOARD_CONFIG_PORT = 49152;
 extern const unsigned int SAMPLE_PKT_LEN = 31;

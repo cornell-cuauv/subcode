@@ -80,4 +80,4 @@ while True:
 	ax1.set_ylim(-0.1 * max_ampl, 1.1 * max_ampl)
 
 	plt.draw()
-	plt.pause(1.5)
+	plt.pause(1)
