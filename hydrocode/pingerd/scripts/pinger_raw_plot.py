@@ -69,4 +69,4 @@ while True:
 	gain_line.set_ydata(values[4])
 
 	plt.draw()
-	plt.pause(1.5)
+	plt.pause(1)

@@ -68,4 +68,4 @@ while True:
 	ax2.set_ylim(-0.1 * values[1].max(), 1.1 * values[1].max())
 
 	plt.draw()
-	plt.pause(1.5)
+	plt.pause(1)

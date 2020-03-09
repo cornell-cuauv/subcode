@@ -13,7 +13,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-const unsigned int UDPBoardConfigSender::PKT_SIZE = 3;
+const unsigned int UDPBoardConfigSender::PKT_SIZE = 5;
 const unsigned int UDPBoardConfigSender::RESET_OFFSET = 0;
 const unsigned int UDPBoardConfigSender::AUTOGAIN_OFFSET = 1;
 const unsigned int UDPBoardConfigSender::MAN_GAIN_LVL_OFFSET = 2;
@@ -23,10 +23,12 @@ const unsigned int UDPPlotSender::PKT_SIZE = 512;
 UDPBoardConfigSender::UDPBoardConfigSender(const char addr[], unsigned int port):
 sock(socket(AF_INET, SOCK_DGRAM, 0)),
 buff(new std::uint8_t[PKT_SIZE]) {
+	memset(buff.get(), 0, PKT_SIZE);
+	
 	if (sock == -1) {
 		std::printf("\nCan't create board config socket\n\n");
 	}
-
+    
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(port);
 	serv_addr.sin_addr.s_addr = inet_addr(addr);

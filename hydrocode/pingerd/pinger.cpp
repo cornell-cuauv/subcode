@@ -13,8 +13,7 @@
 #include <cstring>
 
 const std::vector<unsigned int> GainControl::GAINZ = {1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128};
-const unsigned int GainControl::CLIPPING_THRESHOLD = 8000;
-const unsigned int GainControl::CLIPPING_THRESHOLD_HYSTERESIS = 200;
+const unsigned int GainControl::CLIPPING_THRESHOLD = 5000;
 
 const unsigned int GaussTuner::STOPBAND_ATTEN = 60;
 const unsigned int GaussTuner::FILT_RISE_RATIO = 100;
@@ -80,22 +79,13 @@ std::complex<float> ComplexAverager::push(std::complex<float> in_sample) {
 }
 
 unsigned int GainControl::calcGain(float max_sample, unsigned int curr_gain_lvl) {
-	unsigned int new_gain_lvl = curr_gain_lvl;
-	
-	if (max_sample > CLIPPING_THRESHOLD) {
-		if (curr_gain_lvl > 0) {
-			new_gain_lvl = curr_gain_lvl - 1;
-		}
-	} else {
-		for (unsigned int try_gain_lvl = static_cast<unsigned int>(GAINZ.size()); try_gain_lvl > curr_gain_lvl; try_gain_lvl--) {
-			if (static_cast<float>(max_sample) / GAINZ[curr_gain_lvl] * GAINZ[try_gain_lvl] < CLIPPING_THRESHOLD - CLIPPING_THRESHOLD_HYSTERESIS) {
-				new_gain_lvl = try_gain_lvl;
-				break;
-			}
+	for (int try_gain_lvl = static_cast<unsigned int>(GAINZ.size() - 1); try_gain_lvl >= 0; try_gain_lvl--) {
+		if (static_cast<float>(max_sample) / GAINZ[curr_gain_lvl] * GAINZ[try_gain_lvl] < CLIPPING_THRESHOLD) {
+			return try_gain_lvl;
 		}
 	}
 	
-	return new_gain_lvl;
+	return 0;
 }
 
 GaussTuner::GaussTuner(unsigned int in_sample_rate, unsigned int freq, unsigned int stopband):

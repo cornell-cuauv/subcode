@@ -131,6 +131,9 @@ int main(void) {
 						board_config_sender.setGainLvl(shm_settings.user_gain_lvl);
 					} else {
 						board_config_sender.setGainLvl(GainControl::calcGain(interv_max_raw, sample_recvr.getGainLvl()));
+                        std::printf("%d\n", interv_max_raw);
+                        std::printf("%d\n", GainControl::calcGain(interv_max_raw, sample_recvr.getGainLvl()));
+                        std::printf("%d\n", sample_recvr.getGainLvl());
 					}
 					board_config_sender.send();
 
@@ -196,8 +199,6 @@ int main(void) {
 						}
 					}
 
-					std::printf("%4.2f\n", max_sense_ratio);
-
 					windowf_push(trigger_n1_buff, max_sense_ratio_n1 - interv_start_n1);
 
 					std::complex<float> ch0_baseb;
@@ -252,7 +253,7 @@ int main(void) {
 			n0++;
 		}
 
-		float pkt_max_raw = sample_recvr.getMaxSample();
+        std::uint16_t pkt_max_raw = sample_recvr.getMaxSample();
 		if (pkt_max_raw > interv_max_raw) {
 			raw_plot_sender.takeReal(0, ch0_raw_buff, BUFF_LEN);
 			raw_plot_sender.takeReal(1, ch1_raw_buff, BUFF_LEN);
