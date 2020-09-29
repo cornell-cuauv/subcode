@@ -1,8 +1,12 @@
 import abc
 from multiprocessing import Process, Queue
 
+import numpy as np
+
 class Plot:
-    def __init__(self):
+    def __init__(self, xp=np):
+        self._xp = xp
+
         self._q = Queue()
         self._plotting_process = Process(target=self._worker, args=(self._q,))
         self._plotting_process.start()

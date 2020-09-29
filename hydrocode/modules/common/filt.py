@@ -25,8 +25,8 @@ class FIR:
         self._overlap_samples = init
         self._num_chs = init.shape[0]
 
-        self._ifft_len = (L + len(h) - 1) // D
-        self._transient_len = (len(h) - 1) // D
+        self._L_ifft = (L + len(h) - 1) // D
+        self._L_transient = (len(h) - 1) // D
         self._H = xp.fft.fft(h, n=(L + len(h) - 1))
 
         self._L = L
@@ -40,10 +40,10 @@ class FIR:
         X = self._xp.fft.fft(x)
 
         Y = X * self._H
-        Y = Y.reshape((self._num_chs, -1, self._ifft_len)
+        Y = Y.reshape((self._num_chs, -1, self._L_ifft)
             ).sum(axis=1) / self._D
         y = self._xp.fft.ifft(Y)
-        y = y[:, self._transient_len :]
+        y = y[:, self._L_transient :]
 
         self._overlap_samples = x[:, self._L :]
 
@@ -56,7 +56,7 @@ def firgauss(stopband, atten=60, truncate=10, xp=np):
 
     std = 2 * math.sqrt(atten / 10 * math.log(10)) / stopband
     h = windows.gaussian(math.ceil(truncate * std), std)
-    h = xp.array(h)
+    h = xp.asarray(h)
     h /= h.sum()
 
     return h

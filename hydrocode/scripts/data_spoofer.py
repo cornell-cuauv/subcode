@@ -117,13 +117,12 @@ samples = np.concatenate(samples, axis=1)
 print('Writing data...')
 
 with open('spoofed_dump.dat', 'wb') as dump_file:
-    for pkt_num in range(samples.shape[1] // const.PKT_LEN):
-        pkt_samples = samples[:, pkt_num * const.PKT_LEN :
-            (pkt_num + 1) * const.PKT_LEN].flatten()
-        max_sample = np.abs(pkt_samples).max().astype('<i2')
+    for pkt_num in range(samples.shape[1] // const.L_PKT):
+        pkt_samples = samples[:, pkt_num * const.L_PKT :
+            (pkt_num + 1) * const.L_PKT]
+        max_sample = np.abs(pkt_samples).max()
 
-        dump_file.write(np.array([pkt_type], dtype='<i1').tobytes())
-        dump_file.write(np.array([pkt_num], dtype='<i4').tobytes())
-        dump_file.write(np.array([0], dtype='<i1').tobytes())
-        dump_file.write(max_sample.tobytes())
-        dump_file.write(pkt_samples.tobytes())
+        buff = np.array((pkt_type, pkt_num, 0, max_sample, pkt_samples),
+            dtype=const.RECV_PKT_DTYPE).tobytes()
+
+        dump_file.write(buff)

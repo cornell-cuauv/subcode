@@ -38,7 +38,7 @@ else:
 
 # initialize UDP networking
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-pkt_size = (common.const.NUM_CHS * common.const.PKT_LEN * 2 +
+pkt_size = (common.const.NUM_CHS * common.const.L_PKT * 2 +
     common.const.PKT_HEADER_SIZE)
 
 print('Replaying ' + dump_filename + '...')
@@ -50,4 +50,4 @@ for pkt_num in range(getSize(dump_file) // pkt_size):
 
     # wait for the amount of time the hydrophones board would take
     # to send another packet
-    time.sleep(common.const.PKT_LEN / common.const.SAMPLE_RATE)
+    time.sleep(common.const.L_PKT / common.const.SAMPLE_RATE)
