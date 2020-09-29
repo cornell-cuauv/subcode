@@ -1,56 +1,73 @@
 import socket
-import struct
+
+import numpy as np
 
 import common.const
 import pinger.const
 
 class Board:
-    def __init__(self, section):
+    def __init__(self, section, pkts_per_recv, xp=np):
         assert section == 'pinger', (
             'Board has two sections, "pinger" and "comms"')
 
-        self._recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        assert pkts_per_recv >= 1, (
+            'Must get at least one packet per reception')
 
-        self._recv_buff = bytearray(common.const.NUM_CHS *
-            common.const.PKT_LEN * 2 + common.const.PKT_HEADER_SIZE)
-        self._config_buff = bytearray(common.const.CONFIG_PKT_SIZE)
+        self._xp = xp
 
-        self._unpack_string = ('<bibh' +
-            str(common.const.NUM_CHS * common.const.PKT_LEN) + 'h')
-        self._pack_string = '<??b'
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._sock.settimeout(1)
+
+        self._pkts_per_recv = pkts_per_recv
+        self._recv_buff = bytearray(
+            pkts_per_recv * common.const.RECV_PKT_DTYPE.itemsize)
+
+        self._gain_values_array = xp.array(common.const.GAIN_VALUES)
 
         if section == 'pinger':
-            self._recv_sock.bind(('', pinger.const.RECV_PORT))
+            self._sock.bind(('', pinger.const.RECV_PORT))
             self._send_port = pinger.const.SEND_PORT
 
         self.config()
 
     def receive(self):
-        self._recv_sock.recv_into(self._recv_buff)
-        data = struct.unpack(self._unpack_string, self._recv_buff)
+        recv_buff_view = memoryview(self._recv_buff)
+        recv_pkts = 0
+        while recv_pkts < self._pkts_per_recv:
+            try:
+                self._sock.recv_into(recv_buff_view,
+                    nbytes=common.const.RECV_PKT_DTYPE.itemsize)
 
-        pkt_type = data[0]
-        pkt_num = data[1]
-        gain_lvl = data[2]
-        max_sample = data[3]
-        samples = data[4:]
+                recv_buff_view = (
+                    recv_buff_view[common.const.RECV_PKT_DTYPE.itemsize :])
 
-        return (samples, gain_lvl, pkt_num)
+                recv_pkts += 1
+            except socket.timeout:
+                pass
+
+        pkts = self._xp.frombuffer(self._recv_buff,
+            dtype=common.const.RECV_PKT_DTYPE)
+
+        pkt_num = pkts['pkt_num'][-1]
+        gains = self._gain_values_array[pkts['gain_lvl']].reshape(
+            (1, -1)).repeat(common.const.L_PKT, axis=1)
+        samples = self._xp.concatenate(pkts['samples'], axis=1)
+
+        return (samples, gains, pkt_num)
 
     def config(self, reset=False, autogain=False, man_gain_lvl=0):
         assert 0 <= man_gain_lvl < 14, 'Gain level must be within [0, 13]'
 
-        struct.pack_into(self._pack_string, self._config_buff, 0,
-            bool(reset), bool(autogain), man_gain_lvl)
+        config_buff = self._xp.array((reset, autogain, man_gain_lvl),
+            dtype=common.const.CONFIG_PKT_DTYPE).tobytes()
 
-        self._send_sock.sendto(self._config_buff,
+        self._sock.sendto(config_buff,
             (common.const.BOARD_ADDR, self._send_port))
 
-def validate_pkt_num(actual, expected):
-    if actual == 0:
-        print('\nHydrophones board has resetted\n')
-    elif actual != expected:
-        print('\nSample packet discontinuity detected. Got ' +
-              str(actual) + ' when expecting ' +
-              str(expected) + '\n')
+    def check_pkt_num(self, curr, last):
+        if curr < self._pkts_per_recv:
+            print('\nHydrophones board has resetted\n')
+
+        lost = curr - last - self._pkts_per_recv
+        if lost > 0:
+            print('\nLost ' + str(lost) + ' packets\n')

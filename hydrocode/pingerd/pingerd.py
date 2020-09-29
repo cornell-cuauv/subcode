@@ -4,6 +4,7 @@ import sys
 
 import numpy as np
 try:
+    #raise ImportError
     import cupy as xp
     print('Using CuPy\n')
 except ImportError:
@@ -27,31 +28,36 @@ print('Pingerd starting...')
 shm.hydrophones_pinger_results.heading.set(0)
 shm.hydrophones_pinger_results.elevation.set(0)
 
-L_init = common.const.INIT_ARRAY_SIZE * common.const.PKT_LEN
+L_recv = common.const.PKTS_PER_RECV * common.const.L_PKT
 L_interval = int(pinger.const.INTERVAL_DUR * common.const.SAMPLE_RATE)
 
-brd = board.Board('pinger')
-arr = pack.ArrayBuilder(common.const.INIT_ARRAY_SIZE, xp=xp)
-raw_plt = plot.RawPlot(common.const.NUM_CHS, L_init, L_interval, xp=xp)
+downconv_pkr = pack.Packer(
+    common.const.NUM_CHS, L_recv, pinger.const.L_DOWNCONV, xp=xp)
 
-print('Listening for packets...\n');
+if '-raw_plot' in sys.argv:
+    raw_plt = plot.RawPlot(
+        common.const.NUM_CHS, L_recv, L_interval, xp=xp)
+
+brd = board.Board('pinger', common.const.PKTS_PER_RECV, xp=np)
 (_, _, pkt_num) = brd.receive()
 shm.hydrophones_pinger_status.packet_number.set(pkt_num)
 
 while True:
-    expected_pkt_num = (
-        shm.hydrophones_pinger_status.packet_number.get() + 1)
-    (samples, gain_lvl, pkt_num) = brd.receive()
-    board.validate_pkt_num(pkt_num, expected_pkt_num)
+    (x, gains, pkt_num) = brd.receive()
+    x = xp.asarray(x)
+    gains = xp.asarray(gains)
+    
+    brd.check_pkt_num(
+        pkt_num, shm.hydrophones_pinger_status.packet_number.get())
     shm.hydrophones_pinger_status.packet_number.set(pkt_num)
 
-    gain = common.const.GAIN_VALUES[gain_lvl]
-    gx4_heading = shm.gx4.heading.get()
+    gx4_headings = shm.gx4.heading.get() * xp.ones((1, L_recv))
 
-    (x, gain_array, gx4_heading_array) = arr.push(samples, gain, gx4_heading)
+    if 'raw_plt' in globals():
+        raw_plt.push(x, gains)
+
+    x = x / gains
+
+    x = downconv_pkr.push(x)
     if x is None:
         continue
-
-    raw_plt.push(x, gain_array)
-
-    x = x / gain_array
