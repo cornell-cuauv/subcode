@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 try:
-    #raise ImportError
+    raise ImportError
     import cupy as xp
     print('Using CuPy\n')
 except ImportError:
@@ -39,6 +39,7 @@ if '-raw_plot' in sys.argv:
         common.const.NUM_CHS, L_recv, L_interval, xp=xp)
 
 brd = board.Board('pinger', common.const.PKTS_PER_RECV, xp=np)
+#brd.config(reset=0, autogain=0, man_gain_lvl=13)
 (_, _, pkt_num) = brd.receive()
 shm.hydrophones_pinger_status.packet_number.set(pkt_num)
 

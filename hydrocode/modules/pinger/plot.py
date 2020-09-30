@@ -69,14 +69,20 @@ class RawPlot(plot.Plot):
                 data = q.get()
 
                 sig = data[0]
+                L_interval = sig.shape[1]
+
                 peak_pos = np.abs(sig).argmax() % sig.shape[1]
-                sig = sig[:, peak_pos - pinger.const.L_RAW_PLOT // 2 :
-                    peak_pos + (pinger.const.L_RAW_PLOT + 1) // 2]
+                print(sig[:, peak_pos])
+                plot_end = peak_pos + pinger.const.L_RAW_PLOT // 2
+                plot_end = np.clip(
+                    plot_end, pinger.const.L_RAW_PLOT, L_interval)
+                plot_start = plot_end - pinger.const.L_RAW_PLOT
+
+                sig = sig[:, plot_start : plot_end]
                 sig = interp1d(orig_indices, sig, kind='cubic')(interp_indices)
 
                 gain = data[1]
-                gain = gain[:, peak_pos - pinger.const.L_RAW_PLOT // 2 :
-                    peak_pos + (pinger.const.L_RAW_PLOT + 1) // 2]
+                gain = gain[:, plot_start : plot_end]
 
                 for ch_num in range(len(sig_lines)):
                     sig_lines[ch_num].set_ydata(sig[ch_num])
