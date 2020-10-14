@@ -20,7 +20,7 @@ except ImportError:
 
 from common import board, filt, mix, pack
 import common.const
-from pinger import plot
+from pinger import gain, plot
 import pinger.const
 
 print('Pingerd starting...')
@@ -31,15 +31,13 @@ shm.hydrophones_pinger_results.elevation.set(0)
 L_recv = common.const.PKTS_PER_RECV * common.const.L_PKT
 L_interval = int(pinger.const.INTERVAL_DUR * common.const.SAMPLE_RATE)
 
-downconv_pkr = pack.Packer(
-    common.const.NUM_CHS, L_recv, pinger.const.L_DOWNCONV, xp=xp)
+gain_ctrl = gain.Controller()
 
 if '-raw_plot' in sys.argv:
     raw_plt = plot.RawPlot(
         common.const.NUM_CHS, L_recv, L_interval, xp=xp)
 
 brd = board.Board('pinger', common.const.PKTS_PER_RECV, xp=np)
-#brd.config(reset=0, autogain=0, man_gain_lvl=13)
 (_, _, pkt_num) = brd.receive()
 shm.hydrophones_pinger_status.packet_number.set(pkt_num)
 
@@ -58,7 +56,3 @@ while True:
         raw_plt.push(x, gains)
 
     x = x / gains
-
-    x = downconv_pkr.push(x)
-    if x is None:
-        continue

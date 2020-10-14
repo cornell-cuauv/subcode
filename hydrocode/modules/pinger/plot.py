@@ -72,7 +72,6 @@ class RawPlot(plot.Plot):
                 L_interval = sig.shape[1]
 
                 peak_pos = np.abs(sig).argmax() % sig.shape[1]
-                print(sig[:, peak_pos])
                 plot_end = peak_pos + pinger.const.L_RAW_PLOT // 2
                 plot_end = np.clip(
                     plot_end, pinger.const.L_RAW_PLOT, L_interval)

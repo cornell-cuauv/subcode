@@ -48,7 +48,6 @@ class Board:
         pkts = self._xp.frombuffer(self._recv_buff,
             dtype=common.const.RECV_PKT_DTYPE)
         
-        print(pkts['max_sample'])
         pkt_num = pkts['pkt_num'][-1]
         gains = self._gain_values_array[pkts['gain_lvl']].reshape(
             (1, -1)).repeat(common.const.L_PKT, axis=1)
