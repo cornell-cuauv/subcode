@@ -45,15 +45,7 @@ class Board:
             except socket.timeout:
                 pass
 
-        pkts = self._xp.frombuffer(self._recv_buff,
-            dtype=common.const.RECV_PKT_DTYPE)
-        
-        pkt_num = pkts['pkt_num'][-1]
-        gains = self._gain_values_array[pkts['gain_lvl']].reshape(
-            (1, -1)).repeat(common.const.L_PKT, axis=1)
-        samples = self._xp.concatenate(pkts['samples'], axis=1)
-
-        return (samples, gains, pkt_num)
+        return self._unpack_recv_buff()
 
     def config(self, reset=False, autogain=False, man_gain_lvl=0):
         assert 0 <= man_gain_lvl < 14, 'Gain level must be within [0, 13]'
@@ -71,3 +63,14 @@ class Board:
         lost = curr - last - self._pkts_per_recv
         if lost > 0:
             print('\nLost ' + str(lost) + ' packets\n')
+
+    def _unpack_recv_buff(self):
+        pkts = self._xp.frombuffer(self._recv_buff,
+            dtype=common.const.RECV_PKT_DTYPE)
+
+        pkt_num = pkts['pkt_num'][-1]
+        gains = self._gain_values_array[pkts['gain_lvl']].reshape(
+            (1, -1)).repeat(common.const.L_PKT, axis=1)
+        samples = self._xp.concatenate(pkts['samples'], axis=1)
+
+        return (pkt_num, gains, samples)

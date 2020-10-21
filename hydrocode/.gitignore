@@ -1,4 +1,5 @@
-*.xcodeproj
 *.dat
+*.pdf
+*.ipynb
 
-libliquid.dylib
+.ipynb_checkpoints
