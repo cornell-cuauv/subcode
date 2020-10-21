@@ -34,3 +34,7 @@ class Packer:
             self._L_packed = 0
 
             return self._xp.concatenate(self._packed, axis=1)
+
+    def reset(self):
+        self._remainder = self._remainder[:, : 0]
+        self._L_packed = 0
