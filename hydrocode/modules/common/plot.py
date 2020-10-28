@@ -30,3 +30,7 @@ class PlotBase:
         fig = pyplot.figure(figsize=(7, 7))
 
         return (pyplot, fig)
+
+    @staticmethod
+    def _auto_ylim(ax, x):
+        ax.set_ylim(-0.1 * x.max(), 1.1 * x.max())

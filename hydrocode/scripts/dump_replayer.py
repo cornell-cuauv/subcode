@@ -28,6 +28,7 @@ except IndexError:
  # load binary file specified from terminal
 dump_file = open(dump_filename, 'rb')
 
+# get packet type (pinger/comms) by reading the very first byte of the file
 pkt_type = struct.unpack('<b', dump_file.read(1))[0]
 if pkt_type == 0:
     port = pinger.const.RECV_PORT
@@ -38,8 +39,7 @@ else:
 
 # initialize UDP networking
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-pkt_size = (common.const.NUM_CHS * common.const.L_PKT * 2 +
-    common.const.PKT_HEADER_SIZE)
+pkt_size = common.const.RECV_PKT_DTYPE.itemsize
 
 print('Replaying ' + dump_filename + '...')
 

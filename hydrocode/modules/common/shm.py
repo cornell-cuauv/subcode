@@ -4,6 +4,7 @@ class _Group:
 class _Var:
     def __init__(self, label, x):
         self._label = label
+
         self.set(x)
 
     def set(self, x):
@@ -12,6 +13,14 @@ class _Var:
 
     def get(self):
         return self._val
+
+hydrophones_pinger_settings = _Group()
+hydrophones_pinger_settings.frequency = _Var(
+    'hydrophones_pinger_settings.frequency', 25000)
+hydrophones_pinger_settings.user_gain_control = _Var(
+    'hydrophones_pinger_settings.user_gain_control', False)
+hydrophones_pinger_settings.user_gain_lvl = _Var(
+    'hydrophones_pinger_settings.user_gain_lvl', 13)
 
 hydrophones_pinger_status = _Group()
 hydrophones_pinger_status.packet_number = _Var(
