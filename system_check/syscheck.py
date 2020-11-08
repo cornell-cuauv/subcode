@@ -10,6 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-v', '--verbose', help='Display verbose output (default: false)', action='store_true')
 parser.add_argument('-c', '--continuous', help='Run in continuous mode (default: false)', action='store_true')
 parser.add_argument('-e', '--environment', help='Ignore environment and run all (default: false)', action='store_true')
+parser.add_argument('-a', '--autonomous', help='Run for an autonomous run (default: false)', action='store_true')
 args = parser.parse_args()
 
 def handler(signal, frame):
@@ -73,8 +74,7 @@ if(not args.environment):
 sys.stdout.write('Running tests for vehicle: {} in environment {}\n'.format(vehicle_id,environment_id))
 sys.stdout.flush()
 
-# Run all tests for vehicle
-for t in Test.active_tests(vehicle_id, environment_id):
+for t in Test.active_tests(vehicle_id, environment_id, args.autonomous):
     greenlets.append(gevent.spawn(run, t))
 
 

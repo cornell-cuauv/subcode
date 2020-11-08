@@ -28,7 +28,7 @@ class Test:
         return sel_tests
 
     # Returns the lists of tests to run for a vehicle and environment
-    def active_tests(vehicle_id, environment_id):
+    def active_tests(vehicle_id, environment_id, autonomous):
         tests = []
         for c in Test.__subclasses__():
             for v in c.__dict__.values():
@@ -36,13 +36,14 @@ class Test:
                     tests.append(v)
 
         tests = Test.test_selector(tests, '_vehicle', vehicle_id)
+        tests = Test.test_selector(tests, '_autonomous', autonomous)
         if(environment_id != -1):
             tests = Test.test_selector(tests, '_environment', environment_id)
+        
         test_set  = []
         for t in tests:
             test_set.append(Test.test_for_function(t))
         return test_set
-
 
 # Decorator which sets a value on an object
 def setter_decorator(attr, value):
@@ -74,3 +75,7 @@ def level(level_id):
 # Environment decorator
 def environment(environment_id):
     return setter_decorator('_environment', environment_id)
+
+# Autonomous decorator
+def autonomous(autonomous):
+    return setter_decorator('_autonomous', autonomous)

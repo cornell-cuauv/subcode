@@ -1,5 +1,5 @@
 from runtime import *
-from test import vehicle, level, environment, autonomous, Test, MAINSUB, MINISUB, ERR, WARN, WATER, LAND
+from test import vehicle, level, environment, Test, MAINSUB, MINISUB, ERR, WARN, WATER, LAND
 from gevent import sleep
 from mission.constants.region import  PINGER_FREQUENCY
 import shutil, os
@@ -89,19 +89,10 @@ class System(Test):
     def disk_space_available():
         return shutil.disk_usage(os.environ["CUAUV_LOG"]).free > 10 * 1000 ** 3 # 10GB
 
-    @autonomous(False)
     def services_up():
         # Please forgive me for this.
         service_down_color = '[1;31m'
         return service_down_color not in str(shell('trogdor').stdout)
-
-    @autonomous(True)
-    def services_up_no_deadman():
-        service_down_color = '[1;31m'
-        tOut = str(shell('trogdor').stdout).replace('[1;31mdeadman', '')
-        no_deadman = service_down_color not in tOut
-        deadman_off = '[1;32mdeamand' not in tOut
-        return no_deadman and deadman_off
 
 class Hydrophones(Test):
     def board_talking():
