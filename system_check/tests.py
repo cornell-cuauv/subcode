@@ -115,6 +115,18 @@ class Hydrophones(Test):
         #shm.hydrophones_settings.track_frequency.set(freq)
         return ret
 
+    @autonomous(True)
+    def correct_frequency():
+        print('Is ' + str(shm.hydrophones_pinger_settings.frequency.get()) + ' the correct frequency?(y/n)')
+        correct_pinger = input()
+        if(correct_pinger != 'y'):
+            print('Input correct frequency:')
+            try:
+                shm.hydrophones_pinger_settings.frequency.set(int(input()))
+            except Exception as err:
+                return False
+        return True
+
 @environment(WATER)
 class Trim(Test):
     @level(WARN)
