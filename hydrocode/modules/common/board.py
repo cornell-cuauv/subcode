@@ -1,11 +1,13 @@
-from enum import Enum, auto
+from enum import auto, Enum
+from multiprocessing import Process, Queue
+import queue
 import socket
 
 import numpy as np
 
 import common.const
+from common.retry import retry
 import pinger.const
-
 try:
     import shm
 except ImportError:
@@ -23,21 +25,14 @@ class Board:
         self._pkts_per_recv = pkts_per_recv
         self._xp = xp
 
-        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._sock.settimeout(1)
         if section is Section.PINGER:
-            self._sock.bind(('', pinger.const.RECV_PORT))
-            self._send_port = pinger.const.SEND_PORT
+            section_const = pinger.const
             self._shm_status = shm.hydrophones_pinger_status
         else:
             assert section is Section.COMMS, (
                 'Board has two sections, PINGER and COMMS')
-            self._sock.bind(('', comms.const.RECV_PORT))
-            self._send_port = comms.const.SEND_PORT
+            section_const = common.const
             self._shm_status = shm.hydrophones_comms_status
-
-        self._recv_buff = bytearray(
-            pkts_per_recv * common.const.RECV_PKT_DTYPE.itemsize)
 
         if dump:
             self._dump_file = open("dump.dat", "wb")
@@ -46,51 +41,52 @@ class Board:
 
         self._gain_values_array = xp.array(common.const.GAIN_VALUES)
 
+        recv_addr = ('', section_const.RECV_PORT)
+        self._recv_q = Queue()
+        self._recv_process = Process(target=self._receive_worker, args=(
+            self._recv_q, recv_addr, pkts_per_recv))
+        self._recv_process.daemon = True
+
+        send_addr = (common.const.BOARD_ADDR, section_const.SEND_PORT)
+        self._send_q = Queue()
+        self._send_process = Process(target=self._send_worker, args=(
+            self._send_q, send_addr))
+        self._send_process.daemon = True
+
+        self._recv_process.start()
+        self._send_process.start()
+
         self.config()
 
-        self._receive_bytes()
-        (pkt_num, _, _) = self._unpack_recv_buff()
+        (recv_buff, _) = retry(self._recv_q.get, queue.Empty)(timeout=0.1)
+        (pkt_num, _, _) = self._unpack_recv_buff(recv_buff)
         self._shm_status.packet_number.set(pkt_num)
 
     def receive(self):
-        self._receive_bytes()
-        (pkt_num, gains, sig) = self._unpack_recv_buff()
+        (buff, sub_headings) = retry(
+            self._recv_q.get, queue.Empty)(timeout=0.1)
+        if self._dump_file is not None:
+            self._dump_file.write(buff)
+
+        (pkt_num, gains, sig) = self._unpack_recv_buff(buff)
+        sub_headings = self._xp.asarray(sub_headings).reshape(
+            1, -1).repeat(common.const.L_PKT, axis=1)
 
         self._check_pkt_num(pkt_num, self._shm_status.packet_number.get())
         self._shm_status.packet_number.set(pkt_num)
 
-        return (gains, sig)
+        return (sig, gains, sub_headings)
 
     def config(self, reset=False, autogain=False, man_gain_lvl=0):
         assert 0 <= man_gain_lvl < 14, 'Gain level must be within [0, 13]'
 
-        config_buff = self._xp.array((reset, autogain, man_gain_lvl),
+        buff = self._xp.array((reset, autogain, man_gain_lvl),
             dtype=common.const.CONFIG_PKT_DTYPE).tobytes()
 
-        self._sock.sendto(config_buff,
-            (common.const.BOARD_ADDR, self._send_port))
+        retry(self._send_q.put, queue.Full)(buff)
 
-    def _receive_bytes(self):
-        recv_buff_view = memoryview(self._recv_buff)
-        recv_pkts = 0
-        while recv_pkts < self._pkts_per_recv:
-            try:
-                self._sock.recv_into(recv_buff_view,
-                    nbytes=common.const.RECV_PKT_DTYPE.itemsize)
-
-                recv_buff_view = (
-                    recv_buff_view[common.const.RECV_PKT_DTYPE.itemsize :])
-
-                recv_pkts += 1
-            except socket.timeout:
-                pass
-
-        if self._dump_file is not None:
-            self._dump_file.write(self._recv_buff)
-
-    def _unpack_recv_buff(self):
-        pkts = self._xp.frombuffer(self._recv_buff,
-            dtype=common.const.RECV_PKT_DTYPE)
+    def _unpack_recv_buff(self, buff):
+        pkts = self._xp.frombuffer(buff, dtype=common.const.RECV_PKT_DTYPE)
 
         pkt_num = pkts['pkt_num'][-1]
         gains = self._gain_values_array[pkts['gain_lvl']].reshape(
@@ -106,3 +102,32 @@ class Board:
         lost = curr - last - self._pkts_per_recv
         if lost > 0:
             print('\nLost ' + str(lost) + ' packets\n')
+
+    @staticmethod
+    def _receive_worker(q, addr, pkts_per_recv):
+        pkt_size = common.const.RECV_PKT_DTYPE.itemsize
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(0.1)
+        sock.bind(addr)
+
+        while True:
+            buff = bytearray(pkts_per_recv * pkt_size)
+            view = memoryview(buff)
+            sub_headings = list()
+            for pkt_num in range(pkts_per_recv):
+                retry(sock.recv_into, socket.timeout)(view, nbytes=pkt_size)
+                view = (view[pkt_size :])
+                sub_headings.append(shm.gx4.heading.get())
+
+            retry(q.put, queue.Full)((buff, sub_headings))
+
+    @staticmethod
+    def _send_worker(q, addr):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(0.1)
+
+        while True:
+            buff = retry(q.get, queue.Empty)()
+
+            retry(sock.sendto, socket.timeout)(buff, addr)

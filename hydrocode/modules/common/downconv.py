@@ -10,5 +10,5 @@ class Downconverter:
     def push(self, x):
         return self._filtr.push(self._mixr.push(x))
 
-    def set_freq(self, f):
-        self._mixr.set_freq(f)
+    def set_freq(self, w):
+        self._mixr.set_freq(w)

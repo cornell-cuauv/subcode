@@ -63,9 +63,19 @@ def firgauss(stopband, order, atten=60, xp=np):
     h = xp.asarray(h)
     h /= h.sum()
 
-    return (h, std)
+    return h
 
-def gauss_rise_time(std, rise_factor):
-    assert rise_factor > 0, 'Rise factor must be greater than 0'
+def gauss_rise_time(h, xp=np):
+    low = 0.01
+    high = 0.99
 
-    return int(std * math.sqrt(2 * math.log(rise_factor)))
+    assert len(h) - 1 >= 0, 'FIR Order must be at least 0'
+
+    step_resp = h.cumsum()
+    step_resp /= step_resp[-1]
+
+    rise_t = (xp.abs(step_resp - high).argmin() -
+        xp.abs(step_resp - low).argmin())
+    rise_t = int(rise_t)
+
+    return rise_t
