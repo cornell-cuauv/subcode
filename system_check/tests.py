@@ -2,7 +2,7 @@ from runtime import *
 from test import vehicle, level, environment, autonomous, Test, MAINSUB, MINISUB, ERR, WARN, WATER, LAND
 from gevent import sleep
 from mission.constants.region import  PINGER_FREQUENCY
-import shutil, os
+import shutil, os, time
 import conf
 
 # Sensors
@@ -44,6 +44,16 @@ class Vision(Test):
         changing_forward = is_changing(shm.poster_status.forward_counter.get)
         changing_downward = is_changing(shm.poster_status.downward_counter.get)
         return changing_forward and changing_downward
+
+    @autonomous(True)
+    def vision_recording():
+        shm_vision_recording = shm.vision_modules.Record.get()
+        shm_active_mission = shm.active_mission.active.get()
+        initSize = int(os.path.getsize("/home/software/cuauv/workspaces/logs"))
+        time.sleep(1)
+        scndSize = int(os.path.getsize("/home/software/cuauv/workspaces/logs"))
+        return (shm_vision_recording == 1 and shm_active_mission == 1 and initSize < scndSize)
+        
 
 class Depth(Test):
     def updating():
