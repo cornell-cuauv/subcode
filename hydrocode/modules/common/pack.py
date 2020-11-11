@@ -10,6 +10,10 @@ class Packer:
         self.reset()
 
     def push(self, x):
+        L_x = x.shape[1]
+        assert L_x <= self._L_y, (
+            'Input block length must be at most equal to output block length')
+
         if self._L_packed == 0:
             if self._remainder is not None:
                 self._packed = [self._remainder]
@@ -18,7 +22,6 @@ class Packer:
                 self._packed = []
 
         free_space = self._L_y - self._L_packed
-        L_x = x.shape[1]
         if free_space > L_x:
             self._packed.append(x)
             self._L_packed += L_x

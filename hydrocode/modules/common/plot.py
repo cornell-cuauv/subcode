@@ -9,6 +9,7 @@ class PlotBase:
 
         self._q = Queue()
         self._plotting_process = Process(target=self._worker, args=(self._q,))
+        self._plotting_process.daemon = True
         self._plotting_process.start()
 
     @abc.abstractmethod

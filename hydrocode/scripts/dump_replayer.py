@@ -25,7 +25,7 @@ except IndexError:
     print('Dump filename not specified')
     raise
 
- # load binary file specified from terminal
+# load binary file specified from terminal
 dump_file = open(dump_filename, 'rb')
 
 # get packet type (pinger/comms) by reading the very first byte of the file
