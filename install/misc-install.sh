@@ -53,6 +53,7 @@ sudo -u software ln -s /home/software/cuauv/software/install/nvim /home/software
 
 # **************** mypy ****************
 echo "Oliver you idioittttt"
+sudo -u software mkdir -p /home/software/.oliversfile
 sudo -u software ln -s /home/software/cuauv/software/install/mypy /home/software/.config/
 
 # **************** sloth ****************
