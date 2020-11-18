@@ -49,9 +49,11 @@ class Vision(Test):
     def vision_recording():
         shm_vision_recording = shm.vision_modules.Record.get()
         shm_active_mission = shm.active_mission.active.get()
-        initSize = int(os.path.getsize("/home/software/cuauv/workspaces/logs"))
+        initSize = sum(os.path.getsize(f) for f in os.listdir("/home/software/cuauv/workspaces/logs") if os.path.isfile(f))
+        print(initSize)
         time.sleep(1)
-        scndSize = int(os.path.getsize("/home/software/cuauv/workspaces/logs"))
+        scndSize = sum(os.path.getsize(f) for f in os.listdir("/home/software/cuauv/workspaces/logs") if os.path.isfile(f))
+        print(scndSize)
         return (shm_vision_recording == 1 and shm_active_mission == 1 and initSize < scndSize)
         
 
@@ -110,7 +112,7 @@ class System(Test):
         service_down_color = '[1;31m'
         tOut = str(shell('trogdor').stdout).replace('[1;31mdeadman', '')
         no_deadman = service_down_color not in tOut
-        deadman_off = '[1;32mdeamand' not in tOut
+        deadman_off = '[1;32mdeaman' not in tOut
         return no_deadman and deadman_off
 
 class Hydrophones(Test):
