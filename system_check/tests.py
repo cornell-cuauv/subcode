@@ -49,11 +49,10 @@ class Vision(Test):
     def vision_recording():
         shm_vision_recording = shm.vision_modules.Record.get()
         shm_active_mission = shm.active_mission.active.get()
-        initSize = sum(os.path.getsize(f) for f in os.listdir("/home/software/cuauv/workspaces/logs/current") if os.path.isfile(f))
-        print(initSize)
+        vid_path = "/home/software/cuauv/workspaces/logs/current"
+        initSize = sum(os.path.getsize(vid_path + "/" + f) for f in os.listdir(vid_path) if os.path.isfile(f))
         time.sleep(1)
-        scndSize = sum(os.path.getsize(f) for f in os.listdir("/home/software/cuauv/workspaces/logs/current") if os.path.isfile(f))
-        print(scndSize)
+        scndSize = sum(os.path.getsize(vid_path + "/" + f) for f in os.listdir(vid_path) if os.path.isfile(f))
         return (shm_vision_recording == 1 and shm_active_mission == 1 and initSize < scndSize)
         
 
