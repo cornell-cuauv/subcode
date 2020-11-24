@@ -8,7 +8,7 @@ from common import const, crop, plot
 from common.retry import retry
 
 class GainPlot(plot.PlotBase):
-    def push(self, sig, gains):
+    def plot(self, sig, gains):
         L_interval = sig.shape[1]
 
         peak_pos = self._xp.abs(sig).argmax() % L_interval
@@ -24,7 +24,7 @@ class GainPlot(plot.PlotBase):
             sig = self._xp.asnumpy(sig)
             gains = self._xp.asnumpy(gains)
 
-        retry(self._q.put, queue.Full)((sig, gains, cursor_pos))
+        retry(self._q.put, queue.Full)((sig, gains, cursor_pos), timeout=0.1)
 
     @staticmethod
     def _worker(q):
@@ -35,16 +35,16 @@ class GainPlot(plot.PlotBase):
 
         pyplot.suptitle('Gain Plot')
         (_, sig_lines, sig_cursor) = (
-            GainPlot._define_sig_plot(pyplot, interp_indices))
+            GainPlot._define_sig_plot(fig, interp_indices))
         (_, gains_lines, gains_cursor) = (
-            GainPlot._define_gains_plot(pyplot, orig_indices))
+            GainPlot._define_gains_plot(fig, orig_indices))
 
         while True:
             try:
                 (sig, gains, cursor_pos) = q.get(block=False)
 
                 sig = interp1d(orig_indices, sig, kind='cubic')(interp_indices)
-                for ch_num in range(len(sig_lines)):
+                for ch_num in range(sig.shape[0]):
                     sig_lines[ch_num].set_ydata(sig[ch_num])
                 sig_cursor.set_xdata(cursor_pos)
 
@@ -60,33 +60,30 @@ class GainPlot(plot.PlotBase):
             time.sleep(const.GUI_UPDATE_TIME)
 
     @staticmethod
-    def _define_sig_plot(pyplot, indices):
-        pyplot.subplot(2, 1, 1)
-        pyplot.xlabel('Sample Number')
-        pyplot.ylabel('Raw Signal')
-        pyplot.xticks(np.arange(0, const.L_GAIN_PLOT, const.L_GAIN_PLOT // 10))
-        ax = pyplot.gca()
+    def _define_sig_plot(fig, indices):
+        ax = fig.add_subplot(211)
+        ax.set_ylabel('Raw Signal')
+        ax.set_xticks(np.arange(0, const.L_GAIN_PLOT, const.L_GAIN_PLOT // 10))
         ax.set_xlim(0, const.L_GAIN_PLOT - 1)
         ax.set_ylim(-const.BIT_DEPTH // 2, const.BIT_DEPTH // 2 - 1)
-        lines = ax.plot(indices, indices, 'r-',
-                        indices, indices, 'g-',
-                        indices, indices, 'b-',
-                        indices, indices, 'm-',
-                        linewidth = 0.5)
+        lines = ax.plot(indices, np.zeros(indices.shape), 'r-',
+                        indices, np.zeros(indices.shape), 'g-',
+                        indices, np.zeros(indices.shape), 'b-',
+                        indices, np.zeros(indices.shape), 'm-',
+                        linewidth=0.5)
         cursor = ax.axvline(x=0, color='red', linestyle=':')
         return (ax, lines, cursor)
 
     @staticmethod
-    def _define_gains_plot(pyplot, indices):
-        pyplot.subplot(2, 1, 2)
-        pyplot.xlabel('Sample Number')
-        pyplot.ylabel('Gain')
-        pyplot.yscale('log')
-        pyplot.xticks(np.arange(0, const.L_GAIN_PLOT, const.L_GAIN_PLOT // 10))
-        ax = pyplot.gca()
+    def _define_gains_plot(fig, indices):
+        ax = fig.add_subplot(212)
+        ax.set_xlabel('Sample Number')
+        ax.set_ylabel('Gain')
+        ax.set_yscale('log')
+        ax.set_xticks(np.arange(0, const.L_GAIN_PLOT, const.L_GAIN_PLOT // 10))
         ax.set_xlim(0, const.L_GAIN_PLOT - 1)
         ax.set_ylim(0.9, 200)
-        lines = ax.plot(indices, indices, 'k-',
-                        linewidth = 0.5)
+        lines = ax.plot(indices, np.ones(indices.shape), 'k-',
+                        linewidth=0.5)
         cursor = ax.axvline(x=0, color='red', linestyle=':')
         return (ax, lines, cursor)

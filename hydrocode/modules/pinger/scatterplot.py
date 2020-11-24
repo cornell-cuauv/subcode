@@ -1,0 +1,62 @@
+import math
+import queue
+import time
+
+import numpy as np
+
+from common import const, plot
+from common.retry import retry
+
+class ScatterPlot(plot.PlotBase):
+    def plot(self, hdg, elev):
+        retry(self._q.put, queue.Full)((hdg, elev), timeout=0.1)
+
+    @staticmethod
+    def _worker(q):
+        from matplotlib.ticker import AutoMinorLocator
+
+        (pyplot, fig) = plot.PlotBase._worker_init()
+
+        pyplot.suptitle('Relative Heading/Elevation Scatter Plot')
+        (ax, points, text) = ScatterPlot._define_plot(fig, AutoMinorLocator)
+
+        hdg_list = list()
+        elev_list = list()
+        while True:
+            try:
+                (hdg, elev) = q.get(block=False)
+                hdg_list.append(hdg)
+                elev_list.append(elev)
+
+                points.set_data(hdg_list, elev_list)
+                text.set_text(
+                    'HDG std: ' + '{:.2f}'.format(np.std(hdg_list)) + '\n' +
+                    'HDG mean: ' + '{:.2f}'.format(np.mean(hdg_list)) + '\n' +
+                    'ELEV std: ' + '{:.2f}'.format(np.std(elev_list)) + '\n' +
+                    'ELEV mean: ' + '{:.2f}'.format(np.mean(elev_list)))
+
+                pyplot.draw()
+                pyplot.show(block=False)
+            except queue.Empty:
+                pass
+
+            fig.canvas.flush_events()
+            time.sleep(const.GUI_UPDATE_TIME)
+
+    @staticmethod
+    def _define_plot(fig, AutoMinorLocator):
+        ax = fig.add_subplot(111)
+        ax.set_xlabel('Heading')
+        ax.set_ylabel('Elevation')
+        ax.set_xticks([-3, -2, -1, 0, 1, 2, 3])
+        ax.set_yticks([-1, 0, 1])
+        ax.xaxis.set_minor_locator(AutoMinorLocator(10))
+        ax.yaxis.set_minor_locator(AutoMinorLocator(10))
+        ax.set_xlim(-math.pi, math.pi)
+        ax.set_ylim(-math.pi / 2, math.pi / 2)
+        ax.set_aspect('equal', adjustable='box')
+        ax.grid(True, which='major', linestyle='-')
+        ax.grid(True, which='minor', linestyle=':')
+        points = ax.plot([], [], color='r', marker='.', ls='', markersize=1)
+        text = ax.text(-3, 1.6, '')
+        return (ax, points[0], text)

@@ -13,22 +13,18 @@ class Trigger:
         self._fir_rise_time = fir_rise_time
         self._xp = xp
 
-        if trigger_plot:
-            self._trigger_plot = triggerplot.TriggerPlot(xp=xp)
-        else:
-            self._trigger_plot = None
+        self._trigger_plot = (
+            triggerplot.TriggerPlot(xp=xp) if trigger_plot else None)
+        self._ping_plot = pingplot.PingPlot(xp=xp) if ping_plot else None
 
-        if ping_plot:
-            self._ping_plot = pingplot.PingPlot(xp=xp)
-        else:
-            self._ping_plot = None
+        self._sig_pkr = pack.Packer(L_interval, xp=xp)
+        self._sub_hdgs_pkr = pack.Packer(L_interval, xp=xp)
 
-        self._pkr = pack.Packer(L_interval, xp=xp)
-
-    def push(self, x):
-        packed = self._pkr.push(x)
-        if packed is not None:
-            ampl = self._xp.abs(packed).sum(axis=0)
+    def push(self, sig, sub_hdgs):
+        packed_sig = self._sig_pkr.push(sig)
+        packed_sub_hdgs = self._sub_hdgs_pkr.push(sub_hdgs)
+        if packed_sig is not None:
+            ampl = self._xp.abs(packed_sig).sum(axis=0)
             ampl_delayed = self._xp.roll(ampl, self._fir_rise_time)
             mean_ampl = ampl.mean()
 
@@ -42,14 +38,15 @@ class Trigger:
 
             ping_pos = trigger_f.argmax()
             ping_pos = int(ping_pos)
-            ping = packed[:, ping_pos]
+            ping_phase = self._xp.angle(packed_sig[:, ping_pos])
+            sub_hdg = packed_sub_hdgs[0, ping_pos]
 
             if self._trigger_plot is not None:
-                self._trigger_plot.push(ampl, trigger_f, ping_pos)
+                self._trigger_plot.plot(ampl, trigger_f, ping_pos)
 
             if self._ping_plot is not None:
-                self._ping_plot.push(packed, ping_pos)
+                self._ping_plot.plot(packed_sig, ping_pos)
 
-            return ping
+            return (ping_phase, sub_hdg)
 
-        return None
+        return (None, None)

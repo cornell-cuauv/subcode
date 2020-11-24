@@ -9,12 +9,13 @@ import common.const
 import pinger.const
 
 class TriggerPlot(plot.PlotBase):
-    def push(self, ampl, trigger_f, ping_pos):
+    def plot(self, ampl, trigger_f, ping_pos):
         if hasattr(self._xp, 'asnumpy'):
             ampl = self._xp.asnumpy(ampl)
             trigger_f = self._xp.asnumpy(trigger_f)
 
-        retry(self._q.put, queue.Full)((ampl, trigger_f, ping_pos))
+        retry(self._q.put, queue.Full)(
+            (ampl, trigger_f, ping_pos), timeout=0.1)
 
     @staticmethod
     def _worker(q):
@@ -26,9 +27,9 @@ class TriggerPlot(plot.PlotBase):
 
         pyplot.suptitle('Trigger Plot')
         (ampl_ax, ampl_lines, ampl_cursor) = (
-            TriggerPlot._define_ampl_plot(pyplot, indices))
+            TriggerPlot._define_ampl_plot(fig, indices))
         (trigger_f_ax, trigger_f_lines, trigger_f_cursor) = (
-            TriggerPlot._define_trigger_f_plot(pyplot, indices))
+            TriggerPlot._define_trigger_f_plot(fig, indices))
 
         while True:
             try:
@@ -53,27 +54,24 @@ class TriggerPlot(plot.PlotBase):
             time.sleep(common.const.GUI_UPDATE_TIME)
 
     @staticmethod
-    def _define_ampl_plot(pyplot, indices):
-        pyplot.subplot(2, 1, 1)
-        pyplot.xlabel('Time (s)')
-        pyplot.ylabel('Combined Signal Amplitude')
-        pyplot.xticks(np.linspace(0, pinger.const.DUR_INTERVAL, num=10))
-        ax = pyplot.gca()
+    def _define_ampl_plot(fig, indices):
+        ax = fig.add_subplot(211)
+        ax.set_ylabel('Combined Signal Amplitude')
+        ax.set_xticks(np.linspace(0, pinger.const.DUR_INTERVAL, num=10))
         ax.set_xlim(0, pinger.const.DUR_INTERVAL)
-        lines = ax.plot(indices, indices, 'k-',
-                        linewidth = 0.5)
+        lines = ax.plot(indices, np.zeros(indices.shape), 'k-',
+                        linewidth=0.5)
         cursor = ax.axvline(x=0, color='red', linestyle=':')
         return (ax, lines, cursor)
 
     @staticmethod
-    def _define_trigger_f_plot(pyplot, indices):
-        pyplot.subplot(2, 1, 2)
-        pyplot.xlabel('Time (s)')
-        pyplot.ylabel('Trigger Function')
-        pyplot.xticks(np.linspace(0, pinger.const.DUR_INTERVAL, num=10))
-        ax = pyplot.gca()
+    def _define_trigger_f_plot(fig, indices):
+        ax = fig.add_subplot(212)
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Trigger Function')
+        ax.set_xticks(np.linspace(0, pinger.const.DUR_INTERVAL, num=10))
         ax.set_xlim(0, pinger.const.DUR_INTERVAL)
-        lines = ax.plot(indices, indices, 'k-',
-                        linewidth = 0.5)
+        lines = ax.plot(indices, np.zeros(indices.shape), 'k-',
+                        linewidth=0.5)
         cursor = ax.axvline(x=0, color='red', linestyle=':')
         return (ax, lines, cursor)

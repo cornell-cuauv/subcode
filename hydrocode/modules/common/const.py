@@ -12,6 +12,7 @@ NUM_CHS = 4
 PKTS_PER_RECV = 256
 SAMPLE_RATE = 153061
 SOUND_SPEED = 1481
+USE_4CHS = False
 
 RECV_PKT_DTYPE = np.dtype([
     ('pkt_type', '<i1'),
