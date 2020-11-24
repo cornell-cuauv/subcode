@@ -3,10 +3,8 @@ import math
 import numpy as np
 from scipy.signal import windows
 
-from common import pack
-
 class FIR:
-    def __init__(self, num_chs, L_b, h, D=1, xp=np):
+    def __init__(self, num_chs, L_x, h, D=1, xp=np):
         assert num_chs >= 1, 'Filter must have at least one input channel'
 
         assert h.ndim == 1, 'Impulse response must be a 1D array'
@@ -16,30 +14,21 @@ class FIR:
 
         assert (len(h) - 1) % D == 0, (
             'FIR order must be a multiple of the decimation factor')
-        assert L_b % D == 0, (
-            'FIR block length must be a multiple of the decimation factor')
+        assert L_x % D == 0, (
+            'Input block length must be a multiple of the decimation factor')
 
         self._num_chs = num_chs
-        self._L_b = L_b
+        self._L_x = L_x
         self._D = D
         self._xp = xp
 
         self._overlap_samples = xp.zeros((num_chs, len(h) - 1), dtype=complex)
 
-        self._L_ifft = (L_b + len(h) - 1) // D
+        self._L_ifft = (L_x + len(h) - 1) // D
         self._L_transient = (len(h) - 1) // D
-        self._H = xp.fft.fft(h, n=(L_b + len(h) - 1))
-
-        self._pkr = pack.Packer(L_b, xp=xp)
+        self._H = xp.fft.fft(h, n=(L_x + len(h) - 1))
 
     def push(self, x):
-        packed = self._pkr.push(x)
-        if packed is not None:
-            return self._push_filt(packed)
-
-        return None
-
-    def _push_filt(self, x):
         x = self._xp.concatenate((self._overlap_samples, x), axis=1)
         X = self._xp.fft.fft(x)
 
@@ -48,7 +37,7 @@ class FIR:
         y = self._xp.fft.ifft(Y)
         y = y[:, self._L_transient :]
 
-        self._overlap_samples = x[:, self._L_b :]
+        self._overlap_samples = x[:, self._L_x :]
 
         return y
 

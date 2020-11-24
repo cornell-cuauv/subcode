@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import math
 import sys
 
 import numpy as np
@@ -14,7 +13,7 @@ sys.path.insert(0, '../modules')
 
 from common import board, convert, downconv, filt
 import common.const
-from pinger import gain, trigger
+from pinger import angles, decimate, gain, trigger
 import pinger.const
 try:
     import shm
@@ -31,14 +30,16 @@ gainctrl = gain.Controller(L_interval, plot=('-gain_plot' in sys.argv), xp=xp)
 h = filt.firgauss(
     convert.omega_hat(pinger.const.STOPBAND), pinger.const.FIR_ORDER, xp=xp)
 dwncnv = downconv.Downconverter(
-    common.const.NUM_CHS,
-    L_recv,
-    pinger.const.L_BLOCK_FIR,
+    4 if common.const.USE_4CHS else 3,
+    pinger.const.L_FIR_BLOCK,
     h,
     D=pinger.const.DECIM_FACTOR,
     w=(convert.omega_hat(shm.hydrophones_pinger_settings.frequency.get())),
     xp=xp
 )
+
+subhdgsdecim = decimate.Decimator(
+    pinger.const.L_FIR_BLOCK, D=pinger.const.DECIM_FACTOR, xp=xp)
 
 fir_rise_time = filt.gauss_rise_time(h, xp=xp)
 trig = trigger.Trigger(
@@ -50,14 +51,17 @@ trig = trigger.Trigger(
     xp=xp
 )
 
+anglmle = angles.AnglesMLE(heading_plot=('-heading_plot' in sys.argv),
+    scatter_plot=('-scatter_plot' in sys.argv))
+
 brd = board.Board(board.Section.PINGER, common.const.PKTS_PER_RECV,
     dump=('-dump' in sys.argv), xp=np)
 
 while True:
-    (sig, gains, sub_headings) = brd.receive()
+    (sig, gains, sub_hdgs) = brd.receive()
     sig = xp.asarray(sig)
     gains = xp.asarray(gains)
-    sub_headings = xp.asarray(sub_headings)
+    sub_hdgs = xp.asarray(sub_hdgs)
 
     gain_lvl_desire = gainctrl.push(sig, gains)
     if gain_lvl_desire is not None:
@@ -66,8 +70,16 @@ while True:
     sig = sig / gains
 
     sig = dwncnv.push(sig)
+    sub_hdgs = subhdgsdecim.push(sub_hdgs)
     if sig is not None:
-        ping = trig.push(sig)
-        if ping is not None:
+        (ping_phase, sub_hdg) = trig.push(sig, sub_hdgs)
+        if ping_phase is not None:
+            (hdg, elev) = anglmle.hdg_elev(ping_phase, dwncnv.get_freq())
+            abs_hdg = angles.wrap_angle(sub_hdg + hdg)
+            shm.hydrophones_pinger_results.heading.set(abs_hdg)
+            shm.hydrophones_pinger_results.elevation.set(elev)
+            print('Relative HDG: ' + '{:.2f}'.format(hdg) +
+                ' Relative ELEV: ' + '{:.2f}'.format(elev))
+
             dwncnv.set_freq(convert.omega_hat(
                 shm.hydrophones_pinger_settings.frequency.get()))

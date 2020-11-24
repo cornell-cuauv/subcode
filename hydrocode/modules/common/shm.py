@@ -33,5 +33,5 @@ hydrophones_pinger_results.elevation = _Var(
     'hydrophones_pinger_results.elevation', 0)
 
 gx4 = _Group()
-gx4.heading = _Var('gx4.heading', 0)
+gx4.heading = _Var('gx4.heading', 1.0)
 gx4.pitch = _Var('gx4.pitch', 0)

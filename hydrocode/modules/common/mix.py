@@ -14,7 +14,7 @@ class Mixer:
 
     def push(self, x):
         nco = cmath.exp(1j * self._ph) * self._offsets
-        self._ph += self._step
+        self._ph += self._w * self._L_x
 
         y = x * nco
 
@@ -22,4 +22,7 @@ class Mixer:
 
     def set_freq(self, w):
         self._offsets = self._xp.exp(1j * w * self._xp.arange(self._L_x))
-        self._step = w * self._L_x
+        self._w = w
+
+    def get_freq(self):
+        return self._w

@@ -10,10 +10,7 @@ class Controller:
     def __init__(self, L_interval, plot=False, xp=np):
         self._xp = xp
 
-        if plot:
-            self._plot = gainplot.GainPlot(xp=xp)
-        else:
-            self._plot = None
+        self._plot = gainplot.GainPlot(xp=xp) if plot else None
 
         self._gain_values_array = xp.array(const.GAIN_VALUES)
 
@@ -26,7 +23,7 @@ class Controller:
 
         if packed_sig is not None:
             if self._plot is not None:
-                self._plot.push(packed_sig, packed_gains)
+                self._plot.plot(packed_sig, packed_gains)
 
             if shm.hydrophones_pinger_settings.user_gain_control.get():
                 return shm.hydrophones_pinger_settings.user_gain_lvl.get()

@@ -10,7 +10,7 @@ import common.const
 import pinger.const
 
 class PingPlot(plot.PlotBase):
-    def push(self, x, ping_pos):
+    def plot(self, x, ping_pos):
         L_interval = x.shape[1]
 
         (plot_start, plot_end) = crop.find_bounds(
@@ -22,7 +22,7 @@ class PingPlot(plot.PlotBase):
         if hasattr(self._xp, 'asnumpy'):
             x = self._xp.asnumpy(x)
 
-        retry(self._q.put, queue.Full)((x, cursor_pos))
+        retry(self._q.put, queue.Full)((x, cursor_pos), timeout=0.1)
 
     @staticmethod
     def _worker(q):
@@ -32,9 +32,9 @@ class PingPlot(plot.PlotBase):
 
         pyplot.suptitle('Ping Plot')
         (ampl_ax, ampl_lines, ampl_cursor) = (
-            PingPlot._define_ampl_plot(pyplot, interp_indices))
+            PingPlot._define_ampl_plot(fig, interp_indices))
         (phase_ax, phase_lines, phase_cursor) = (
-            PingPlot._define_phase_plot(pyplot, interp_indices))
+            PingPlot._define_phase_plot(fig, interp_indices))
 
         while True:
             try:
@@ -44,12 +44,12 @@ class PingPlot(plot.PlotBase):
 
                 ampl = np.abs(x)
                 plot.PlotBase._auto_ylim(ampl_ax, ampl)
-                for ch_num in range(len(ampl_lines)):
+                for ch_num in range(ampl.shape[0]):
                     ampl_lines[ch_num].set_ydata(ampl[ch_num])
                 ampl_cursor.set_xdata(cursor_pos)
 
                 phase = np.angle(x)
-                for ch_num in range(len(phase_lines)):
+                for ch_num in range(phase.shape[0]):
                     phase_lines[ch_num].set_ydata(phase[ch_num])
                 phase_cursor.set_xdata(cursor_pos)
 
@@ -62,37 +62,34 @@ class PingPlot(plot.PlotBase):
             time.sleep(common.const.GUI_UPDATE_TIME)
 
     @staticmethod
-    def _define_ampl_plot(pyplot, indices):
-        pyplot.subplot(2, 1, 1)
-        pyplot.xlabel('Decimated Sample Number')
-        pyplot.ylabel('Signal Amplitude')
-        pyplot.xticks(np.arange(
+    def _define_ampl_plot(fig, indices):
+        ax = fig.add_subplot(211)
+        ax.set_ylabel('Signal Amplitude')
+        ax.set_xticks(np.arange(
             0, pinger.const.L_PING_PLOT, pinger.const.L_PING_PLOT // 10))
-        ax = pyplot.gca()
         ax.set_xlim(0, pinger.const.L_PING_PLOT - 1)
-        lines = ax.plot(indices, indices, 'r-',
-                        indices, indices, 'g-',
-                        indices, indices, 'b-',
-                        indices, indices, 'm-',
-                        linewidth = 0.5)
+        lines = ax.plot(indices, np.zeros(indices.shape), 'r-',
+                        indices, np.zeros(indices.shape), 'g-',
+                        indices, np.zeros(indices.shape), 'b-',
+                        indices, np.zeros(indices.shape), 'm-',
+                        linewidth=0.5)
         cursor = ax.axvline(x=0, color='red', linestyle=':')
         return (ax, lines, cursor)
 
     @staticmethod
-    def _define_phase_plot(pyplot, indices):
-        pyplot.subplot(2, 1, 2)
-        pyplot.xlabel('Decimated Sample Number')
-        pyplot.ylabel('Signal Phase')
-        pyplot.xticks(np.arange(
+    def _define_phase_plot(fig, indices):
+        ax = fig.add_subplot(212)
+        ax.set_xlabel('Decimated Sample Number')
+        ax.set_ylabel('Signal Phase')
+        ax.set_xticks(np.arange(
             0, pinger.const.L_PING_PLOT, pinger.const.L_PING_PLOT // 10))
-        ax = pyplot.gca()
         ax.set_xlim(0, pinger.const.L_PING_PLOT - 1)
         ax.set_ylim(-4, 4)
-        lines = ax.plot(indices, indices, 'r-',
-                        indices, indices, 'g-',
-                        indices, indices, 'b-',
-                        indices, indices, 'm-',
-                        linewidth = 0.5)
+        lines = ax.plot(indices, np.zeros(indices.shape), 'r-',
+                        indices, np.zeros(indices.shape), 'g-',
+                        indices, np.zeros(indices.shape), 'b-',
+                        indices, np.zeros(indices.shape), 'm-',
+                        linewidth=0.5)
         cursor = ax.axvline(x=0, color='red', linestyle=':')
         return (ax, lines, cursor)
 

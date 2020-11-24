@@ -34,21 +34,18 @@ class Board:
             section_const = common.const
             self._shm_status = shm.hydrophones_comms_status
 
-        if dump:
-            self._dump_file = open("dump.dat", "wb")
-        else:
-            self._dump_file = None
+        self._dump_file = open("dump.dat", "wb") if dump else None
 
         self._gain_values_array = xp.array(common.const.GAIN_VALUES)
 
         recv_addr = ('', section_const.RECV_PORT)
-        self._recv_q = Queue()
+        self._recv_q = Queue(maxsize=10)
         self._recv_process = Process(target=self._receive_worker, args=(
             self._recv_q, recv_addr, pkts_per_recv))
         self._recv_process.daemon = True
 
         send_addr = (common.const.BOARD_ADDR, section_const.SEND_PORT)
-        self._send_q = Queue()
+        self._send_q = Queue(maxsize=10)
         self._send_process = Process(target=self._send_worker, args=(
             self._send_q, send_addr))
         self._send_process.daemon = True
@@ -63,19 +60,18 @@ class Board:
         self._shm_status.packet_number.set(pkt_num)
 
     def receive(self):
-        (buff, sub_headings) = retry(
-            self._recv_q.get, queue.Empty)(timeout=0.1)
+        (buff, sub_hdgs) = retry(self._recv_q.get, queue.Empty)(timeout=0.1)
         if self._dump_file is not None:
             self._dump_file.write(buff)
 
         (pkt_num, gains, sig) = self._unpack_recv_buff(buff)
-        sub_headings = self._xp.asarray(sub_headings).reshape(
+        sub_hdgs = self._xp.asarray(sub_hdgs).reshape(
             1, -1).repeat(common.const.L_PKT, axis=1)
 
         self._check_pkt_num(pkt_num, self._shm_status.packet_number.get())
         self._shm_status.packet_number.set(pkt_num)
 
-        return (sig, gains, sub_headings)
+        return (sig, gains, sub_hdgs)
 
     def config(self, reset=False, autogain=False, man_gain_lvl=0):
         assert 0 <= man_gain_lvl < 14, 'Gain level must be within [0, 13]'
@@ -83,7 +79,7 @@ class Board:
         buff = self._xp.array((reset, autogain, man_gain_lvl),
             dtype=common.const.CONFIG_PKT_DTYPE).tobytes()
 
-        retry(self._send_q.put, queue.Full)(buff)
+        retry(self._send_q.put, queue.Full)(buff, timeout=0.1)
 
     def _unpack_recv_buff(self, buff):
         pkts = self._xp.frombuffer(buff, dtype=common.const.RECV_PKT_DTYPE)
@@ -91,7 +87,8 @@ class Board:
         pkt_num = pkts['pkt_num'][-1]
         gains = self._gain_values_array[pkts['gain_lvl']].reshape(
             (1, -1)).repeat(common.const.L_PKT, axis=1)
-        samples = self._xp.concatenate(pkts['samples'], axis=1)
+        samples = self._xp.concatenate(
+            pkts['samples'], axis=1)[: 4 if common.const.USE_4CHS else 3]
 
         return (pkt_num, gains, samples)
 
@@ -114,13 +111,13 @@ class Board:
         while True:
             buff = bytearray(pkts_per_recv * pkt_size)
             view = memoryview(buff)
-            sub_headings = list()
+            sub_hdgs = list()
             for pkt_num in range(pkts_per_recv):
                 retry(sock.recv_into, socket.timeout)(view, nbytes=pkt_size)
                 view = (view[pkt_size :])
-                sub_headings.append(shm.gx4.heading.get())
+                sub_hdgs.append(shm.gx4.heading.get())
 
-            retry(q.put, queue.Full)((buff, sub_headings))
+            retry(q.put, queue.Full)((buff, sub_hdgs), timeout=0.1)
 
     @staticmethod
     def _send_worker(q, addr):
@@ -128,6 +125,6 @@ class Board:
         sock.settimeout(0.1)
 
         while True:
-            buff = retry(q.get, queue.Empty)()
+            buff = retry(q.get, queue.Empty)(timeout=0.1)
 
             retry(sock.sendto, socket.timeout)(buff, addr)
