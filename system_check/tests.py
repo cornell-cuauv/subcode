@@ -114,6 +114,15 @@ class System(Test):
         deadman_off = '[1;32mdeaman' not in tOut
         return no_deadman and deadman_off
 
+class Typing(Test):
+
+    @autonomous(True)
+    def check_typing_of_master_mission():
+        print('Enter the path to the master mission file:')
+        check_file = input()
+        os.system('mypy ' + check_file)
+        return True
+
 class Hydrophones(Test):
     def board_talking():
         return is_changing(shm.hydrophones_status.packet_count.get)

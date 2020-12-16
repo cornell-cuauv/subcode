@@ -1,10 +1,9 @@
 import time
-import shm
+import libshm.py as shm
 import functools
 
 from auvlog.client import Logger
 from mission.framework.helpers import dict_join
-
 
 class Task:
     """A Task performs an action.

@@ -24,6 +24,7 @@ from mission.missions.pinger_tracker import TrackPinger
 
 from mission.constants.timeout import timeouts
 
+
 markers = PositionMarkers()
 
 # TODO: TIMEOUTS
