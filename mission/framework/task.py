@@ -1,6 +1,9 @@
 import time
 import libshm.py as shm
+<<<<<<< HEAD
 from shm import active_mission
+=======
+>>>>>>> End of semester commit
 import functools
 
 from auvlog.client import Logger
