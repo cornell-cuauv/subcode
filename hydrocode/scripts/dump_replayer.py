@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 
-# Script for replaying raw hydrophones data dumps.
-# Read Hydrophones Code wiki entry for more details.
-
 import socket
-import struct
 import sys
 import time
 
+import numpy as np
+
 sys.path.insert(0, '../modules')
 import common.const
+import comms.const
 import pinger.const
 
-# get binary file size
 def getSize(file):
     file.seek(0, 2)
     size = file.tell()
@@ -22,31 +20,31 @@ def getSize(file):
 try:
     dump_filename = sys.argv[1]
 except IndexError:
-    print('Dump filename not specified')
-    raise
+    raise Exception('Dump filename not specified')
 
 # load binary file specified from terminal
 dump_file = open(dump_filename, 'rb')
 
-# get packet type (pinger/comms) by reading the very first byte of the file
-pkt_type = struct.unpack('<b', dump_file.read(1))[0]
-if pkt_type == 0:
-    port = pinger.const.RECV_PORT
-elif pkt_type == 1:
-    port = comms.const.RECV_PORT
-else:
-    raise ValueError('Valid packet types are 0 (pinger) and 1 (comms)')
-
 # initialize UDP networking
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-pkt_size = common.const.RECV_PKT_DTYPE.itemsize
+pkt_size = common.const.SAMPLE_PKT_DTYPE.itemsize
 
 print('Replaying ' + dump_filename + '...')
 
 # send packets
 for pkt_num in range(getSize(dump_file) // pkt_size):
+    # seek to the correct place in the binary file and load packet
     dump_file.seek(pkt_num * pkt_size)
-    sock.sendto(dump_file.read(pkt_size), ('127.0.0.1', port))
+    pkt_bytes = dump_file.read(pkt_size)
+    pkt = np.frombuffer(pkt_bytes, dtype=common.const.SAMPLE_PKT_DTYPE)[0]
+
+    # send packet to the correct port depending on its type
+    if pkt['pkt_type'] == 0:
+        sock.sendto(pkt_bytes, ('127.0.0.1', pinger.const.RECV_PORT))
+    elif pkt['pkt_type'] == 1:
+        sock.sendto(pkt_bytes, ('127.0.0.1', comms.const.RECV_PORT))
+    else:
+        raise ValueError('Valid packet types are 0 (pinger) and 1 (comms)')
 
     # wait for the amount of time the hydrophones board would take
     # to send another packet

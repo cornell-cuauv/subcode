@@ -4,8 +4,8 @@ from common import pack
 
 class Decimator:
     def __init__(self, L_b, D=1, xp=np):
-        assert L_b % D == 0, ('Decimation block length must be a multiple ' +
-            'of the decimation factor')
+        assert L_b % D == 0, (
+            'Decimation block length must be a multiple of the dec. factor')
 
         self._D = D
 

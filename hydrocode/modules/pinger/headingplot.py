@@ -3,11 +3,13 @@ import queue
 import time
 
 from common import const, plot
-from common.retry import retry
 
 class HeadingPlot(plot.PlotBase):
     def plot(self, hdg, elev):
-        retry(self._q.put, queue.Full)((hdg, elev), timeout=0.1)
+        try:
+            self._q.put_nowait((hdg, elev))
+        except queue.Full:
+            pass
 
     @staticmethod
     def _worker(q):
@@ -22,7 +24,7 @@ class HeadingPlot(plot.PlotBase):
 
         while True:
             try:
-                (hdg, elev) = q.get(block=False)
+                (hdg, elev) = q.get_nowait()
 
                 trans_data = transforms.Affine2D().rotate_around(
                     x_center, y_center, hdg)

@@ -5,11 +5,13 @@ import time
 import numpy as np
 
 from common import const, plot
-from common.retry import retry
 
 class ScatterPlot(plot.PlotBase):
     def plot(self, hdg, elev):
-        retry(self._q.put, queue.Full)((hdg, elev), timeout=0.1)
+        try:
+            self._q.put_nowait((hdg, elev))
+        except queue.Full:
+            pass
 
     @staticmethod
     def _worker(q):
@@ -20,11 +22,11 @@ class ScatterPlot(plot.PlotBase):
         pyplot.suptitle('Relative Heading/Elevation Scatter Plot')
         (ax, points, text) = ScatterPlot._define_plot(fig, AutoMinorLocator)
 
-        hdg_list = list()
-        elev_list = list()
+        hdg_list = []
+        elev_list = []
         while True:
             try:
-                (hdg, elev) = q.get(block=False)
+                (hdg, elev) = q.get_nowait()
                 hdg_list.append(hdg)
                 elev_list.append(elev)
 

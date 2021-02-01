@@ -34,4 +34,4 @@ class PlotBase:
 
     @staticmethod
     def _auto_ylim(ax, x):
-        ax.set_ylim(-0.1 * x.max(), 1.1 * x.max())
+        ax.set_ylim(x.min() - 0.1 * np.abs(x.min()), 1.1 * x.max())

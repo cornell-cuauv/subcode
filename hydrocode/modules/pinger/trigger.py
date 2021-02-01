@@ -1,7 +1,7 @@
 import numpy as np
 
 from common import crop, pack
-from pinger import pingplot, triggerplot
+from pinger import pingplot, trigplot
 
 class Trigger:
     def __init__(self, L_interval, L_search, fir_rise_time,
@@ -14,7 +14,7 @@ class Trigger:
         self._xp = xp
 
         self._trigger_plot = (
-            triggerplot.TriggerPlot(xp=xp) if trigger_plot else None)
+            trigplot.TriggerPlot(xp=xp) if trigger_plot else None)
         self._ping_plot = pingplot.PingPlot(xp=xp) if ping_plot else None
 
         self._sig_pkr = pack.Packer(L_interval, xp=xp)
@@ -49,4 +49,4 @@ class Trigger:
 
             return (ping_phase, sub_hdg)
 
-        return (None, None)
+        return None
