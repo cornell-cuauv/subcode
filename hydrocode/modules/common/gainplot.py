@@ -5,7 +5,6 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 from common import const, crop, plot
-from common.retry import retry
 
 class GainPlot(plot.PlotBase):
     def plot(self, sig, gains):
@@ -23,8 +22,10 @@ class GainPlot(plot.PlotBase):
         if hasattr(self._xp, 'asnumpy'):
             sig = self._xp.asnumpy(sig)
             gains = self._xp.asnumpy(gains)
-
-        retry(self._q.put, queue.Full)((sig, gains, cursor_pos), timeout=0.1)
+        try:
+            self._q.put_nowait((sig, gains, cursor_pos))
+        except queue.Full:
+            pass
 
     @staticmethod
     def _worker(q):
@@ -41,7 +42,7 @@ class GainPlot(plot.PlotBase):
 
         while True:
             try:
-                (sig, gains, cursor_pos) = q.get(block=False)
+                (sig, gains, cursor_pos) = q.get_nowait()
 
                 sig = interp1d(orig_indices, sig, kind='cubic')(interp_indices)
                 for ch_num in range(sig.shape[0]):

@@ -1,14 +1,22 @@
 import numpy as np
 
 from common import const, gainplot, pack
+from common.hardware import HydrophonesSection
 try:
     import shm
 except ImportError:
     from common import shm
 
 class Controller:
-    def __init__(self, L_interval, plot=False, xp=np):
+    def __init__(self, section, L_interval, plot=False, xp=np):
         self._xp = xp
+
+        if section is HydrophonesSection.PINGER:
+            self._shm_settings = shm.hydrophones_pinger_settings
+        else:
+            assert section is HydrophonesSection.COMMS, (
+                'Hydrophones board has two sections, PINGER and COMMS')
+            self._shm_settings = shm.hydrophones_comms_settings
 
         self._plot = gainplot.GainPlot(xp=xp) if plot else None
 
@@ -25,10 +33,13 @@ class Controller:
             if self._plot is not None:
                 self._plot.plot(packed_sig, packed_gains)
 
-            if shm.hydrophones_pinger_settings.user_gain_control.get():
-                return shm.hydrophones_pinger_settings.user_gain_lvl.get()
+            gain_ctrl_mode = self._shm_settings.gain_control_mode.get()
+            if gain_ctrl_mode == 0:
+                return (False, self._shm_settings.user_gain_lvl.get())
+            elif gain_ctrl_mode == 1:
+                return (False, self._best_gain_lvl(packed_sig, packed_gains))
             else:
-                return self._best_gain_lvl(packed_sig, packed_gains)
+                return (True, 0)
 
         return None
 

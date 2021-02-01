@@ -5,7 +5,6 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 from common import crop, plot
-from common.retry import retry
 import common.const
 import pinger.const
 
@@ -21,8 +20,10 @@ class PingPlot(plot.PlotBase):
 
         if hasattr(self._xp, 'asnumpy'):
             x = self._xp.asnumpy(x)
-
-        retry(self._q.put, queue.Full)((x, cursor_pos), timeout=0.1)
+        try:
+            self._q.put_nowait((x, cursor_pos))
+        except queue.Full:
+            pass
 
     @staticmethod
     def _worker(q):
@@ -38,7 +39,7 @@ class PingPlot(plot.PlotBase):
 
         while True:
             try:
-                (x, cursor_pos) = q.get(block=False)
+                (x, cursor_pos) = q.get_nowait()
 
                 x = PingPlot._interp_complex(x, interp_indices)
 

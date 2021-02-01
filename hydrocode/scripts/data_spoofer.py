@@ -16,84 +16,76 @@ range_bottom = -const.BIT_DEPTH / 2
 try:
     input_filename = sys.argv[1]
 except IndexError:
-    print('Input filename not specified')
-    raise
+    raise Exception('Input filename not specified')
 
 while True:
     try:
-        pkt_type = int(input('Enter packet type (0 - pinger, 1 - comms): '))
-        if pkt_type == 0 or pkt_type == 1:
-            break
-        else:
+        pkt_type = int(input('Enter packet type - 0 (pinger) or 1 (comms): '))
+        if not (pkt_type == 0 or pkt_type == 1):
             raise ValueError('Packet type must be 0 or 1')
-    except ValueError:
-        print('Invalid input')
+        break
+    except ValueError as e:
+        print(e)
 
 while True:
     try:
         hdg_deg = float(input('Enter heading in the interval [0, 360): '))
-        if 0 <= hdg_deg < 360:
-            hdg = np.radians(hdg_deg)
-            break
-        else:
+        if not (0 <= hdg_deg < 360):
             raise ValueError('Heading not in the correct interval')
-    except ValueError:
-        print('Invalid input')
+        hdg = np.radians(hdg_deg)
+        break
+    except ValueError as e:
+        print(e)
 
 while True:
     try:
         elev_deg = float(input('Enter elevation in the interval [0, 90]: '))
-        if 0 <= elev_deg <= 90:
-            elev = np.radians(elev_deg)
-            break
-        else:
+        if not (0 <= elev_deg <= 90):
             raise ValueError('Elevation not in the correct interval')
-    except ValueError:
-        print('Invalid input')
+        elev = np.radians(elev_deg)
+        break
+    except ValueError as e:
+        print(e)
 
 while True:
     try:
         signal_ampl_frac = float(input(
             'Enter signal amplitude in the interval [0, 1]: '))
-        if 0 <= signal_ampl_frac <= 1:
-            signal_ampl = signal_ampl_frac * range_top
-            break
-        else:
-            raise ValueError('Signal Amplitude not in the correct interval')
-    except ValueError:
-        print('Invalid input')
+        if not (0 <= signal_ampl_frac <= 1):
+            raise ValueError('Signal amplitude not in the correct interval')
+        signal_ampl = signal_ampl_frac * range_top
+        break
+    except ValueError as e:
+        print(e)
 
 while True:
     try:
         noise_rms_frac = float(input(
             'Enter noise RMS in the interval [0, 1]: '))
-        if 0 <= noise_rms_frac <= 1:
-            noise_rms = noise_rms_frac * range_top
-            break
-        else:
+        if not (0 <= noise_rms_frac <= 1):
             raise ValueError('Noise RMS not in the correct interval')
-    except ValueError:
-        print('Invalid input')
-
-samples = list()
+        noise_rms = noise_rms_frac * range_top
+        break
+    except ValueError as e:
+        print(e)
 
 print('Generating data...')
 
 with open(input_filename) as input_file:
+    samples = []
     for line in input_file:
         words = line.split(',')
 
         freq_hz = int(words[0])
-        if freq_hz >= 0:
-            freq = 2 * np.pi * freq_hz / const.SAMPLE_RATE
-        else:
+        if freq_hz < 0:
             raise ValueError('Specified frequencies must be positive')
+        freq = 2 * np.pi * freq_hz / const.SAMPLE_RATE
 
         dur_s = float(words[1])
-        if dur_s >= 0:
-            dur = int(dur_s * const.SAMPLE_RATE)
-        else:
+        if dur_s < 0:
             raise ValueError('Specified durations must be positive')
+        dur = int(dur_s * const.SAMPLE_RATE)
+
         if len(samples) // const.NUM_CHS + dur > MAX_DUR:
             raise ValueError('Specified signal too long')
 
@@ -111,8 +103,7 @@ with open(input_filename) as input_file:
         signal = signal.astype('<i2')
 
         samples.append(signal)
-
-samples = np.concatenate(samples, axis=1)
+    samples = np.concatenate(samples, axis=1)
 
 print('Writing data...')
 
@@ -122,7 +113,7 @@ with open('spoofed_dump.dat', 'wb') as dump_file:
             (pkt_num + 1) * const.L_PKT]
         max_sample = np.abs(pkt_samples).max()
 
-        buff = np.array((pkt_type, pkt_num, 0, max_sample, pkt_samples),
-            dtype=const.RECV_PKT_DTYPE).tobytes()
+        buff = np.array((pkt_num, pkt_samples, max_sample, pkt_type, 0),
+            dtype=const.SAMPLE_PKT_DTYPE).tobytes()
 
         dump_file.write(buff)

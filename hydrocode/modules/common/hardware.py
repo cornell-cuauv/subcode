@@ -2,22 +2,24 @@ from enum import auto, Enum
 from multiprocessing import Process, Queue
 import queue
 import socket
+import time
 
 import numpy as np
 
 import common.const
 from common.retry import retry
+import comms.const
 import pinger.const
 try:
     import shm
 except ImportError:
     from common import shm
 
-class Section(Enum):
+class HydrophonesSection(Enum):
     PINGER = auto()
     COMMS = auto()
 
-class Board:
+class HydrophonesBoard:
     def __init__(self, section, pkts_per_recv, dump=False, xp=np):
         assert pkts_per_recv >= 1, (
             'Must get at least one packet per reception')
@@ -25,16 +27,16 @@ class Board:
         self._pkts_per_recv = pkts_per_recv
         self._xp = xp
 
-        if section is Section.PINGER:
+        if section is HydrophonesSection.PINGER:
             section_const = pinger.const
             self._shm_status = shm.hydrophones_pinger_status
         else:
-            assert section is Section.COMMS, (
-                'Board has two sections, PINGER and COMMS')
-            section_const = common.const
+            assert section is HydrophonesSection.COMMS, (
+                'Hydrophones board has two sections, PINGER and COMMS')
+            section_const = comms.const
             self._shm_status = shm.hydrophones_comms_status
 
-        self._dump_file = open("dump.dat", "wb") if dump else None
+        self._dump_file = open('dump.dat', 'wb') if dump else None
 
         self._gain_values_array = xp.array(common.const.GAIN_VALUES)
 
@@ -77,12 +79,14 @@ class Board:
         assert 0 <= man_gain_lvl < 14, 'Gain level must be within [0, 13]'
 
         buff = self._xp.array((reset, autogain, man_gain_lvl),
-            dtype=common.const.CONFIG_PKT_DTYPE).tobytes()
-
-        retry(self._send_q.put, queue.Full)(buff, timeout=0.1)
+            dtype=common.const.CONF_PKT_DTYPE).tobytes()
+        try:
+            self._send_q.put_nowait(buff)
+        except queue.Full:
+            pass
 
     def _unpack_recv_buff(self, buff):
-        pkts = self._xp.frombuffer(buff, dtype=common.const.RECV_PKT_DTYPE)
+        pkts = self._xp.frombuffer(buff, dtype=common.const.SAMPLE_PKT_DTYPE)
 
         pkt_num = pkts['pkt_num'][-1]
         gains = self._gain_values_array[pkts['gain_lvl']].reshape(
@@ -94,7 +98,7 @@ class Board:
 
     def _check_pkt_num(self, curr, last):
         if curr < self._pkts_per_recv:
-            print('\nHydrophones board has resetted\n')
+            print('\nHydrophones board resetted\n')
 
         lost = curr - last - self._pkts_per_recv
         if lost > 0:
@@ -102,7 +106,7 @@ class Board:
 
     @staticmethod
     def _receive_worker(q, addr, pkts_per_recv):
-        pkt_size = common.const.RECV_PKT_DTYPE.itemsize
+        pkt_size = common.const.SAMPLE_PKT_DTYPE.itemsize
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(0.1)
@@ -111,13 +115,15 @@ class Board:
         while True:
             buff = bytearray(pkts_per_recv * pkt_size)
             view = memoryview(buff)
-            sub_hdgs = list()
+            sub_hdgs = []
             for pkt_num in range(pkts_per_recv):
                 retry(sock.recv_into, socket.timeout)(view, nbytes=pkt_size)
                 view = (view[pkt_size :])
                 sub_hdgs.append(shm.gx4.heading.get())
-
-            retry(q.put, queue.Full)((buff, sub_hdgs), timeout=0.1)
+            try:
+                q.put_nowait((buff, sub_hdgs))
+            except queue.Full:
+                pass
 
     @staticmethod
     def _send_worker(q, addr):
@@ -128,3 +134,23 @@ class Board:
             buff = retry(q.get, queue.Empty)(timeout=0.1)
 
             retry(sock.sendto, socket.timeout)(buff, addr)
+
+class TransmitBoard:
+    def __init__(self):
+        shm.transmit_settings.symbol_size.set(comms.const.SYMBOL_SIZE)
+        shm.transmit_settings.symbol_rate.set(common.const.SAMPLE_RATE /
+            comms.const.DECIM_FACTOR / comms.const.SAMPLES_PER_SYM)
+        shm.transmit_settings.freq.set(comms.const.FREQUENCY)
+        shm.transmit_settings.bandwidth.set(comms.const.BANDWIDTH)
+
+    def send(self, data):
+        for byte in data:
+            shm.transmit_streaming.word.set(byte)
+
+            shm.transmit_streaming.new_data.set(True)
+            while not shm.transmit_streaming.ack.get():
+                time.sleep(comms.const.SERIAL_UPDATE_TIME)
+
+            shm.transmit_streaming.new_data.set(False)
+            while shm.transmit_streaming.ack.get():
+                time.sleep(comms.const.SERIAL_UPDATE_TIME)

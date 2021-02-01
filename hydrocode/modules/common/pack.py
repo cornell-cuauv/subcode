@@ -14,13 +14,6 @@ class Packer:
         assert L_x <= self._L_y, (
             'Input block length must be at most equal to output block length')
 
-        if self._L_packed == 0:
-            if self._remainder is not None:
-                self._packed = [self._remainder]
-                self._L_packed = self._remainder.shape[1]
-            else:
-                self._packed = []
-
         free_space = self._L_y - self._L_packed
         if free_space > L_x:
             self._packed.append(x)
@@ -29,11 +22,17 @@ class Packer:
             return None
         else:
             self._packed.append(x[:, : free_space])
-            self._remainder = x[:, free_space :]
-            self._L_packed = 0
 
-            return self._xp.concatenate(self._packed, axis=1)
+            ret = self.get()
+
+            self._packed = [x[:, free_space :]]
+            self._L_packed = self._packed[0].shape[1]
+
+            return ret
+
+    def get(self):
+        return self._xp.concatenate(self._packed, axis=1)
 
     def reset(self):
-        self._remainder = None
+        self._packed = []
         self._L_packed = 0

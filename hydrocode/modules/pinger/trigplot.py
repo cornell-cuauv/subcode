@@ -4,26 +4,27 @@ import time
 import numpy as np
 
 from common import plot
-from common.retry import retry
 import common.const
 import pinger.const
+
+L_plot = (int(pinger.const.DUR_INTERVAL * common.const.SAMPLE_RATE) //
+    pinger.const.DECIM_FACTOR)
 
 class TriggerPlot(plot.PlotBase):
     def plot(self, ampl, trigger_f, ping_pos):
         if hasattr(self._xp, 'asnumpy'):
             ampl = self._xp.asnumpy(ampl)
             trigger_f = self._xp.asnumpy(trigger_f)
-
-        retry(self._q.put, queue.Full)(
-            (ampl, trigger_f, ping_pos), timeout=0.1)
+        try:
+            self._q.put_nowait((ampl, trigger_f, ping_pos))
+        except queue.Full:
+            pass
 
     @staticmethod
     def _worker(q):
         (pyplot, fig) = plot.PlotBase._worker_init()
 
-        L_interval = (int(pinger.const.DUR_INTERVAL * common.const.SAMPLE_RATE)
-            // pinger.const.DECIM_FACTOR)
-        indices = np.linspace(0, pinger.const.DUR_INTERVAL, num=L_interval)
+        indices = np.linspace(0, pinger.const.DUR_INTERVAL, num=L_plot)
 
         pyplot.suptitle('Trigger Plot')
         (ampl_ax, ampl_lines, ampl_cursor) = (
@@ -33,9 +34,9 @@ class TriggerPlot(plot.PlotBase):
 
         while True:
             try:
-                (ampl, trigger_f, ping_pos) = q.get(block=False)
+                (ampl, trigger_f, ping_pos) = q.get_nowait()
 
-                ping_time = ping_pos / L_interval * pinger.const.DUR_INTERVAL
+                ping_time = ping_pos / L_plot * pinger.const.DUR_INTERVAL
 
                 plot.PlotBase._auto_ylim(ampl_ax, ampl)
                 ampl_lines[0].set_ydata(ampl)

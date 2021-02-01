@@ -1,7 +1,7 @@
 import math
 
 import numpy as np
-from scipy.signal import windows
+from scipy.signal import firwin, kaiserord, windows
 
 class FIR:
     def __init__(self, num_chs, L_x, h, D=1, xp=np):
@@ -14,6 +14,7 @@ class FIR:
 
         assert (len(h) - 1) % D == 0, (
             'FIR order must be a multiple of the decimation factor')
+        assert L_x >= 1, 'Input block length must be at least 1'
         assert L_x % D == 0, (
             'Input block length must be a multiple of the decimation factor')
 
@@ -40,6 +41,13 @@ class FIR:
         self._overlap_samples = x[:, self._L_x :]
 
         return y
+
+def firkaiser(passband, stopband, atten=60, xp=np):
+    (L_filt, beta) = kaiserord(atten, (stopband - passband) / (2 * math.pi))
+    h = firwin(L_filt, passband / 2, window=('kaiser', beta), nyq=math.pi)
+    h = xp.asarray(h)
+
+    return h
 
 def firgauss(stopband, order, atten=60, xp=np):
     assert stopband > 0, 'Stopband must be greater than 0'
