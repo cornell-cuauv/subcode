@@ -31,6 +31,7 @@ stats-newest
 /libshm/doc/
 /serial/doc/
 /hydrocode/scripts/data
+.mypy_cache
 
 *.o
 *.hi
