@@ -1,6 +1,10 @@
 import queue
 import time
 
+try:
+    import cupy as xp
+except ImportError:
+    import numpy as xp
 import numpy as np
 from scipy.interpolate import interp1d
 
@@ -18,16 +22,16 @@ class PingPlot(plot.PlotBase):
 
         x = x[:, plot_start : plot_end]
 
-        if hasattr(self._xp, 'asnumpy'):
-            x = self._xp.asnumpy(x)
+        if hasattr(xp, 'asnumpy'):
+            x = xp.asnumpy(x)
         try:
             self._q.put_nowait((x, cursor_pos))
         except queue.Full:
             pass
 
     @staticmethod
-    def _worker(q):
-        (pyplot, fig) = plot.PlotBase._worker_init()
+    def _daemon(q):
+        (pyplot, fig) = plot.PlotBase._daemon_init()
 
         interp_indices = np.linspace(0, pinger.const.L_PING_PLOT - 1, num=1000)
 

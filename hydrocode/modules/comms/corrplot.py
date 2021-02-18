@@ -1,6 +1,10 @@
 import queue
 import time
 
+try:
+    import cupy as xp
+except ImportError:
+    import numpy as xp
 import numpy as np
 
 from common import plot
@@ -9,23 +13,23 @@ import comms.const
 
 L_pn = len(comms.const.PN_SEQ)
 L_msg = comms.const.MSG_BYTES * 8 // comms.const.SYMBOL_SIZE
-L_plot = (L_pn + L_msg) * comms.const.SAMPLES_PER_SYM
+L_plot = (L_pn + L_msg) * comms.const.L_SYM
 
 class CorrelationPlot(plot.PlotBase):
     def plot(self, corr_in, corr_pn, corr_orth, thresh):
-        if hasattr(self._xp, 'asnumpy'):
-            corr_in = self._xp.asnumpy(corr_in)
-            corr_pn = self._xp.asnumpy(corr_pn)
-            corr_orth = self._xp.asnumpy(corr_orth)
-            thresh = self._xp.asnumpy(thresh)
+        if hasattr(xp, 'asnumpy'):
+            corr_in = xp.asnumpy(corr_in)
+            corr_pn = xp.asnumpy(corr_pn)
+            corr_orth = xp.asnumpy(corr_orth)
+            thresh = xp.asnumpy(thresh)
         try:
             self._q.put_nowait((corr_in, corr_pn, corr_orth, thresh))
         except queue.Full:
             pass
 
     @staticmethod
-    def _worker(q):
-        (pyplot, fig) = plot.PlotBase._worker_init()
+    def _daemon(q):
+        (pyplot, fig) = plot.PlotBase._daemon_init()
 
         indices = np.arange(0, L_plot)
 
@@ -77,4 +81,6 @@ class CorrelationPlot(plot.PlotBase):
                         indices, np.zeros(indices.shape), 'r-',
                         indices, np.zeros(indices.shape), 'b-',
                         linewidth=0.5)
+        ax.legend(('PN Code Correlation', 'Orthogonal Code Correlation',
+            'Threshold'), fontsize='x-small')
         return (ax, lines)

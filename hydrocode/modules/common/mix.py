@@ -1,14 +1,16 @@
 import cmath
 
-import numpy as np
+try:
+    import cupy as xp
+except ImportError:
+    import numpy as xp
 
 class Mixer:
-    def __init__(self, L_x, ph=0, w=0, xp=np):
+    def __init__(self, L_x, ph=0, w=0):
         assert L_x >= 1, 'Input block length must be at least 1'
 
         self._L_x = L_x
         self._ph = ph
-        self._xp = xp
 
         self.set_freq(w)
 
@@ -21,7 +23,7 @@ class Mixer:
         return y
 
     def set_freq(self, w):
-        self._offsets = self._xp.exp(1j * w * self._xp.arange(self._L_x))
+        self._offsets = xp.exp(1j * w * xp.arange(self._L_x))
         self._w = w
 
     def get_freq(self):

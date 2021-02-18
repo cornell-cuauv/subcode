@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-from multiprocessing import Queue
+import queue
 import sys
 
 sys.path.insert(0, '../')
 import hydrocomms
 
 if __name__ == '__main__':
-    q = Queue(maxsize=1)
+    q = queue.Queue(maxsize=1)
     r = hydrocomms.Receive(
         q,
         gain_plot=('-gain_plot' in sys.argv),
@@ -16,4 +16,7 @@ if __name__ == '__main__':
     )
 
     while True:
-        print('Got message: ' + str(q.get()))
+        try:
+            print('Got message: ' + str(q.get(timeout=0.1)))
+        except queue.Empty:
+            pass

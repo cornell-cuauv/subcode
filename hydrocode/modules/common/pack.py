@@ -1,11 +1,13 @@
-import numpy as np
+try:
+    import cupy as xp
+except ImportError:
+    import numpy as xp
 
 class Packer:
-    def __init__(self, L_y, xp=np):
+    def __init__(self, L_y):
         assert L_y >= 1, 'Output block length must be at least 1'
 
         self._L_y = L_y
-        self._xp = xp
 
         self.reset()
 
@@ -31,7 +33,7 @@ class Packer:
             return ret
 
     def get(self):
-        return self._xp.concatenate(self._packed, axis=1)
+        return xp.concatenate(self._packed, axis=1)
 
     def reset(self):
         self._packed = []

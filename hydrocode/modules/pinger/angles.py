@@ -11,8 +11,7 @@ class AnglesMLE:
             scatterplot.ScatterPlot() if scatter_plot else None)
 
     def hdg_elev(self, ping_phase, w):
-        d = self._path_diff(wrap_angle(ping_phase - ping_phase[0]), w)
-        d = list(d)
+        d = list(self._path_diff(wrap_angle(ping_phase - ping_phase[0]), w))
 
         v = math.sqrt(d[1] ** 2 + d[2] ** 2)
         hdg = 0 if v == 0 else -math.atan2(d[2], d[1])

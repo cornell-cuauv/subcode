@@ -4,12 +4,10 @@ from multiprocessing import Process, Queue
 import numpy as np
 
 class PlotBase:
-    def __init__(self, xp=np):
-        self._xp = xp
-
+    def __init__(self):
         self._q = Queue(maxsize=10)
-        self._plotting_process = Process(target=self._worker, args=(self._q,))
-        self._plotting_process.daemon = True
+        self._plotting_process = Process(target=self._daemon,
+            args=(self._q,), daemon=True)
         self._plotting_process.start()
 
     @abc.abstractmethod
@@ -18,11 +16,11 @@ class PlotBase:
 
     @staticmethod
     @abc.abstractmethod
-    def _worker(q):
+    def _daemon(q):
         pass
 
     @staticmethod
-    def _worker_init():
+    def _daemon_init():
         import matplotlib
         from matplotlib import pyplot
         matplotlib.use('TkAgg')

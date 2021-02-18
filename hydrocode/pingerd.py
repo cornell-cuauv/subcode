@@ -2,12 +2,11 @@
 
 import sys
 
-import numpy as np
 try:
     import cupy as xp
     print('Using CuPy\n')
 except ImportError:
-    xp = np
+    import numpy as xp
 
 sys.path.insert(0, 'modules')
 from common import convert, downconv, filt, gain, hardware
@@ -28,13 +27,11 @@ if __name__ == '__main__':
         hardware.HydrophonesSection.PINGER,
         L_INTERVAL,
         plot=('-gain_plot' in sys.argv),
-        xp=xp
     )
 
     h = filt.firgauss(
         convert.omega_hat(pinger.const.STOPBAND),
         pinger.const.FIR_ORDER,
-        xp=xp
     )
     dwncnv = downconv.Downconverter(
         4 if common.const.USE_4CHS else 3,
@@ -42,23 +39,20 @@ if __name__ == '__main__':
         h,
         D=pinger.const.DECIM_FACTOR,
         w=(convert.omega_hat(shm.hydrophones_pinger_settings.frequency.get())),
-        xp=xp
     )
 
     subhdgsdecim = decimate.Decimator(
         pinger.const.L_FIR_BLOCK,
         D=pinger.const.DECIM_FACTOR,
-        xp=xp
     )
 
-    fir_rise_time = filt.gauss_rise_time(h, xp=xp)
+    fir_rise_time = filt.gauss_rise_time(h)
     trig = trigger.Trigger(
         L_INTERVAL // pinger.const.DECIM_FACTOR,
         pinger.const.L_SEARCH,
         fir_rise_time // pinger.const.DECIM_FACTOR,
         trigger_plot=('-trigger_plot' in sys.argv),
         ping_plot=('-ping_plot' in sys.argv),
-        xp=xp
     )
 
     anglmle = angles.AnglesMLE(
@@ -70,14 +64,10 @@ if __name__ == '__main__':
         hardware.HydrophonesSection.PINGER,
         common.const.PKTS_PER_RECV,
         dump=('-dump' in sys.argv),
-        xp=np
     )
 
     while True:
         (sig, gains, sub_hdgs) = hydrobrd.receive()
-        sig = xp.asarray(sig)
-        gains = xp.asarray(gains)
-        sub_hdgs = xp.asarray(sub_hdgs)
 
         gainctrl_result = gainctrl.push(sig, gains)
         if gainctrl_result is not None:
