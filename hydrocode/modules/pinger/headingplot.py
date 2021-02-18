@@ -12,10 +12,10 @@ class HeadingPlot(plot.PlotBase):
             pass
 
     @staticmethod
-    def _worker(q):
+    def _daemon(q):
         from matplotlib import transforms
 
-        (pyplot, fig) = plot.PlotBase._worker_init()
+        (pyplot, fig) = plot.PlotBase._daemon_init()
 
         pyplot.suptitle('Relative Heading Plot')
         pointy = pyplot.imread('img/pointy.png')

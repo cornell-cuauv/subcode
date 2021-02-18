@@ -1,6 +1,10 @@
 import queue
 import time
 
+try:
+    import cupy as xp
+except ImportError:
+    import numpy as xp
 import numpy as np
 from scipy.interpolate import interp1d
 
@@ -10,8 +14,7 @@ class GainPlot(plot.PlotBase):
     def plot(self, sig, gains):
         L_interval = sig.shape[1]
 
-        peak_pos = self._xp.abs(sig).argmax() % L_interval
-        peak_pos = int(peak_pos)
+        peak_pos = int(xp.abs(sig).argmax() % L_interval)
         (plot_start, plot_end) = crop.find_bounds(
             L_interval, const.L_GAIN_PLOT, peak_pos)
         cursor_pos = peak_pos - plot_start
@@ -19,17 +22,17 @@ class GainPlot(plot.PlotBase):
         sig = sig[:, plot_start : plot_end]
         gains = gains[:, plot_start : plot_end]
 
-        if hasattr(self._xp, 'asnumpy'):
-            sig = self._xp.asnumpy(sig)
-            gains = self._xp.asnumpy(gains)
+        if hasattr(xp, 'asnumpy'):
+            sig = xp.asnumpy(sig)
+            gains = xp.asnumpy(gains)
         try:
             self._q.put_nowait((sig, gains, cursor_pos))
         except queue.Full:
             pass
 
     @staticmethod
-    def _worker(q):
-        (pyplot, fig) = plot.PlotBase._worker_init()
+    def _daemon(q):
+        (pyplot, fig) = plot.PlotBase._daemon_init()
 
         orig_indices = np.arange(0, const.L_GAIN_PLOT)
         interp_indices = np.linspace(0, const.L_GAIN_PLOT - 1, num=1000)

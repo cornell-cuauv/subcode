@@ -1,19 +1,17 @@
-from multiprocessing import Process
 import os
 import queue
 import sys
+from threading import Thread
 
-import numpy as np
 try:
     import cupy as xp
     print('Using CuPy\n')
 except ImportError:
-    xp = np
+    import numpy as xp
 
 sys.path.insert(0, os.path.dirname(__file__) + '/modules')
 from common import convert, downconv, filt, gain, hardware
 import common.const
-from common.retry import retry
 from comms import demodulate, synchronize
 import comms.const
 try:
@@ -23,17 +21,16 @@ except ImportError:
 
 class Receive:
     def __init__(self, q, gain_plot=False, correlation_plot=False, dump=False):
-        self._worker_process = Process(target=self._worker,
-            args=(q, gain_plot, correlation_plot, dump))
-        self._worker_process.start()
+        self._daemon_thread = Thread(target=self._daemon,
+            args=(q, gain_plot, correlation_plot, dump), daemon=True)
+        self._daemon_thread.start()
 
     @staticmethod
-    def _worker(q, gain_plot, correlation_plot, dump):
+    def _daemon(q, gain_plot, correlation_plot, dump):
         gainctrl = gain.Controller(
             hardware.HydrophonesSection.COMMS,
             int(comms.const.DUR_GAIN_INTERVAL * common.const.SAMPLE_RATE),
             plot=gain_plot,
-            xp=xp
         )
 
         num_symbols = 2 ** comms.const.SYMBOL_SIZE
@@ -42,7 +39,6 @@ class Receive:
         h = filt.firgauss(
             convert.omega_hat(symbol_stopband),
             comms.const.FIR_ORDER,
-            xp=xp
         )
         symbols = (comms.const.FREQUENCY - comms.const.BANDWIDTH / 2 +
             xp.arange(num_symbols) * symbol_spacing)
@@ -55,31 +51,25 @@ class Receive:
                     h,
                     D=comms.const.DECIM_FACTOR,
                     w=(convert.omega_hat(symbol)),
-                    xp=xp
                 )
             )
 
         sync = synchronize.Synchronizer(
-            comms.const.L_FIR_BLOCK // comms.const.DECIM_FACTOR,
             comms.const.MSG_BYTES * 8 // comms.const.SYMBOL_SIZE,
-            comms.const.SAMPLES_PER_SYM,
+            comms.const.L_SYM,
             comms.const.PN_SEQ,
             comms.const.ORTH_SEQ,
             plot=correlation_plot,
-            xp=xp
         )
 
         hydrobrd = hardware.HydrophonesBoard(
             hardware.HydrophonesSection.COMMS,
             common.const.PKTS_PER_RECV,
             dump=dump,
-            xp=np
         )
 
         while True:
             (sig, gains, _) = hydrobrd.receive()
-            sig = xp.asarray(sig)
-            gains = xp.asarray(gains)
 
             gainctrl_result = gainctrl.push(sig, gains)
             if gainctrl_result is not None:
@@ -96,8 +86,8 @@ class Receive:
             if len(symbol_sigs) == num_symbols:
                 symbol_sigs = sync.push(xp.stack(symbol_sigs))
                 if symbol_sigs is not None:
-                    symbols = demodulate.decide(symbol_sigs, xp=xp)
-                    msg = demodulate.decode(symbols, xp=xp)
+                    symbols = demodulate.decide(symbol_sigs, comms.const.L_SYM)
+                    msg = demodulate.decode(symbols, comms.const.SYMBOL_SIZE)
                     try:
                         q.put_nowait(msg)
                     except queue.Full:
@@ -105,19 +95,20 @@ class Receive:
 
 class Transmit:
     def __init__(self, q):
-        self._worker_process = Process(target=self._worker, args=((q,)))
-        self._worker_process.start()
+        self._daemon_thread = Thread(target=self._daemon,
+            args=(q,), daemon=True)
+        self._daemon_thread.start()
 
     @staticmethod
-    def _worker(q):
+    def _daemon(q):
         num_symbols = 2 ** comms.const.SYMBOL_SIZE
         pn_symbols = (xp.asarray(comms.const.PN_SEQ) == 1) * (num_symbols - 1)
-        pn_bytes = demodulate.decode(pn_symbols, xp=xp)
+        pn_bytes = demodulate.decode(pn_symbols, comms.const.SYMBOL_SIZE)
 
         transbrd = hardware.TransmitBoard()
 
         while True:
-            msg = retry(q.get, queue.Empty)(timeout=0.1)
+            msg = q.get()
             if type(msg) is not bytes:
                 raise TypeError('Expected bytes object, got ' + str(type(msg)))
             if len(msg) != comms.const.MSG_BYTES:

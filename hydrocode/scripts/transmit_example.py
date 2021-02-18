@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-from multiprocessing import Queue
+import queue
 import sys
 
 sys.path.insert(0, '../')
 import hydrocomms
 
 if __name__ == '__main__':
-    q = Queue(maxsize=1)
+    q = queue.Queue(maxsize=1)
     t = hydrocomms.Transmit(q)
 
     while True:
@@ -18,4 +18,9 @@ if __name__ == '__main__':
             print(e)
             continue
 
-        q.put(msg)
+        while True:
+            try:
+                q.put(msg, timeout=0.1)
+                break
+            except queue.Full:
+                pass

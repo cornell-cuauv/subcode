@@ -1,6 +1,10 @@
 import queue
 import time
 
+try:
+    import cupy as xp
+except ImportError:
+    import numpy as xp
 import numpy as np
 
 from common import plot
@@ -12,17 +16,17 @@ L_plot = (int(pinger.const.DUR_INTERVAL * common.const.SAMPLE_RATE) //
 
 class TriggerPlot(plot.PlotBase):
     def plot(self, ampl, trigger_f, ping_pos):
-        if hasattr(self._xp, 'asnumpy'):
-            ampl = self._xp.asnumpy(ampl)
-            trigger_f = self._xp.asnumpy(trigger_f)
+        if hasattr(xp, 'asnumpy'):
+            ampl = xp.asnumpy(ampl)
+            trigger_f = xp.asnumpy(trigger_f)
         try:
             self._q.put_nowait((ampl, trigger_f, ping_pos))
         except queue.Full:
             pass
 
     @staticmethod
-    def _worker(q):
-        (pyplot, fig) = plot.PlotBase._worker_init()
+    def _daemon(q):
+        (pyplot, fig) = plot.PlotBase._daemon_init()
 
         indices = np.linspace(0, pinger.const.DUR_INTERVAL, num=L_plot)
 

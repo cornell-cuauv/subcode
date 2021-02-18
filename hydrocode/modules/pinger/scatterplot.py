@@ -14,10 +14,10 @@ class ScatterPlot(plot.PlotBase):
             pass
 
     @staticmethod
-    def _worker(q):
+    def _daemon(q):
         from matplotlib.ticker import AutoMinorLocator
 
-        (pyplot, fig) = plot.PlotBase._worker_init()
+        (pyplot, fig) = plot.PlotBase._daemon_init()
 
         pyplot.suptitle('Relative Heading/Elevation Scatter Plot')
         (ax, points, text) = ScatterPlot._define_plot(fig, AutoMinorLocator)
