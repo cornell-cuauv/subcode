@@ -78,7 +78,6 @@ class Serial(Test):
     def merge_connected():
         return shm.connected_devices.merge.get()
 
-    @vehicle(MAINSUB)
     def thrusters_connected():
         return shm.connected_devices.thrusters.get()
 
@@ -88,7 +87,7 @@ class Serial(Test):
 
     @vehicle(MINISUB)
     def thrusters_mini_connected():
-        return shm.connected_devices.thrusters_mini.get()
+        return shm.connected_devices.thruster_board_2.get()
 
     def power_distribution_connected():
         return shm.connected_devices.PD.get()
