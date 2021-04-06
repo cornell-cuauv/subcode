@@ -199,7 +199,7 @@ class ModuleBase:
             mat = self._next_images[0]
 
         def denorm(sz):
-            denormed = sz * mat.shape[1] / 2
+            denormed = sz * (mat.shape[1] ** mat.shape[0])
             if round:
                 denormed = int(denormed)
             return denormed
