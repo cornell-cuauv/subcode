@@ -4,6 +4,9 @@ from helm_basis import *
 
 import shm
 
+BOX_WIDTH = 24
+BOX_HEIGHT = 8
+
 
 def build_thruster_helm():
     thrusters = [name for name, typ in shm.motor_desires._fields]
@@ -31,7 +34,7 @@ def build_thruster_helm():
                 'PWM: ' +
                 str(getattr(shm.motor_desires, thruster).get())
             ),
-        ], title=get_index(thruster))
+        ], title=get_index(thruster), width=BOX_WIDTH)
 
     panels = Vbox(
         Hbox(
@@ -45,11 +48,27 @@ def build_thruster_helm():
                     + ' ' +
                     StyledString.highlight_if(
                         'EN', shm.settings_control.enabled.get())
+                    + ' -- mode: ' +
+                    StyledString.highlight_if(
+                        'broken', not is_reversed)
+                    + ' {b} / ' +
+                    StyledString.highlight_if(
+                        'reversed', is_reversed)
+                    + ' {r}'
                 ),
-            ], title=None, height=3),
+            ], title=None, width=BOX_WIDTH * 4, height=3),
         ),
-        Hbox(*map(make_thruster_panel, thrusters[:len(thrusters)//2])),
-        Hbox(*map(make_thruster_panel, thrusters[len(thrusters)//2:])),
+        Hbox(*map(make_thruster_panel,
+             thrusters[:len(thrusters)//2]),
+             height=BOX_HEIGHT),
+        Hbox(*map(make_thruster_panel,
+             thrusters[len(thrusters)//2:]),
+             height=BOX_HEIGHT),
+        Hbox(LineLambdaPanel([
+            lambda: StyledString(
+                'Press {{n}} key to toggle [{}] status for thruster {{n}}'
+                .format('reversed' if is_reversed else 'broken'))],
+            title=None, width=BOX_WIDTH * 4, height=3))
     )
 
     def soft_kill(killed):
@@ -75,16 +94,25 @@ def build_thruster_helm():
 
     modal_callbacks = {}
 
+    # janky way to keep track of state
+    # TODO: provide way to access current mode from helm_basis.py
+    is_reversed = True
+
+    def change_mode(rev):
+        nonlocal is_reversed
+        is_reversed = rev
+        return 'default' if rev else 'broken'
+
     # reversed
     modal_callbacks['default'] = {
-        'B': lambda: 'broken',
-        'b': lambda: 'broken',
+        'B': lambda: change_mode(False),
+        'b': lambda: change_mode(False),
     }
 
     # broken
     modal_callbacks['broken'] = {
-        'R': lambda: 'default',
-        'r': lambda: 'default',
+        'R': lambda: change_mode(True),
+        'r': lambda: change_mode(True),
     }
 
     def add_thruster_callbacks(thruster, index):
@@ -95,8 +123,6 @@ def build_thruster_helm():
 
     for thruster, index in thruster_index_map.items():
         add_thruster_callbacks(thruster, index)
-
-    print(modal_callbacks)
 
     return panels, callbacks, modal_callbacks
 
