@@ -169,7 +169,9 @@ def build_control_helm(expert=False):
                 ], width=26),
                 Panel(width=26),
                 height=4
-            )
+            ),
+
+            width=26 * 3,
         ),
         Vbox(
             activity.panels.ConnectionsPanel("Active", height=8, max_recency=30),
