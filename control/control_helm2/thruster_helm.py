@@ -104,6 +104,7 @@ def build_thruster_helm():
     callbacks = {
         ' ': (lambda: soft_kill(True)),
         curses.KEY_F5: (lambda: soft_kill(False)),
+        '\\': (lambda: soft_kill(False)),
         '|': toggle_controller,
         curses.KEY_F12: toggle_controller,
     }
