@@ -30,7 +30,7 @@ quaternion_filtering = 1
 dvl_present = true
 use_dvl_for_depth = false
 water_depth = 4.2672
-gx_hpr = [0.0, 0.0, 0.0] # Note: You probably want to re-tare the GX rather than use this offset
+gx_hpr = [0.0, 57.0, 13.0] # Note: You probably want to re-tare the GX rather than use this offset
 
 
 [[thrusters]]
