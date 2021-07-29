@@ -52,6 +52,7 @@ dirs = [
         'libshm',
         'locator',
         'misc',
+        'misc/waypoint',
         # 'misc/3dcontrol',
         'mission',
         'mission/opt',
