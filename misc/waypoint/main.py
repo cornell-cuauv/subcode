@@ -28,7 +28,6 @@ def generate_line(name, dimensions=all_dimensions):
 # Is the sub within a tolerance of its nav desires?
 def close_enough(tolerance, desired_vals, dimensions=all_dimensions):
     kalman = shm.kalman.get()
-    nav = shm.auv_nav.get()
     for i, dimension in enumerate(all_dimensions):
         if dimension in dimensions:
             if abs(getattr(kalman, dimension) - desired_vals[i]) > tolerance:
