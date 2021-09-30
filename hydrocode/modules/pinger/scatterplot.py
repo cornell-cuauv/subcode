@@ -48,8 +48,8 @@ class ScatterPlot(plot.PlotBase):
     @staticmethod
     def _define_plot(fig, AutoMinorLocator):
         ax = fig.add_subplot(111)
-        ax.set_xlabel('Heading')
-        ax.set_ylabel('Elevation')
+        ax.set_xlabel('Heading (rad)')
+        ax.set_ylabel('Elevation (rad)')
         ax.set_xticks([-3, -2, -1, 0, 1, 2, 3])
         ax.set_yticks([-1, 0, 1])
         ax.xaxis.set_minor_locator(AutoMinorLocator(10))

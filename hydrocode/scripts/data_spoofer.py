@@ -39,8 +39,8 @@ while True:
 
 while True:
     try:
-        elev_deg = float(input('Enter elevation in the interval [0, 90]: '))
-        if not (0 <= elev_deg <= 90):
+        elev_deg = float(input('Enter elevation in the interval [-90, 90]: '))
+        if not (-90 <= elev_deg <= 90):
             raise ValueError('Elevation not in the correct interval')
         elev = np.radians(elev_deg)
         break
@@ -93,7 +93,7 @@ with open(input_filename) as input_file:
             [0],
             [max_travel_time * np.sin(hdg) * np.cos(elev) * freq],
             [max_travel_time * np.cos(hdg) * np.cos(elev) * freq],
-            [max_travel_time * np.sin(elev) * freq]])
+            [max_travel_time * np.sin(-elev) * freq]])
 
         n = np.arange(dur)
         signal = signal_ampl * np.sin(freq * n + (freq_hz != 0) * ph)

@@ -17,7 +17,7 @@ class AnglesMLE:
         hdg = 0 if v == 0 else -math.atan2(d[2], d[1])
 
         if const.USE_4CHS:
-            elev = 0 if v == 0 and d[3] == 0 else -math.atan2(d[3], v)
+            elev = 0 if v == 0 and d[3] == 0 else math.atan2(d[3], v)
         else:
             elev = 0 if v > 1 else -math.acos(v)
 
