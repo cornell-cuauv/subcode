@@ -11,9 +11,9 @@ from common import plot
 import common.const
 import comms.const
 
-L_pn = len(comms.const.PN_SEQ)
+L_head = len(comms.const.PN_SEQ) + 1
 L_msg = comms.const.MSG_BYTES * 8 // comms.const.SYMBOL_SIZE
-L_plot = (L_pn + L_msg) * comms.const.L_SYM
+L_plot = (L_head + L_msg) * comms.const.L_SYM
 
 class CorrelationPlot(plot.PlotBase):
     def plot(self, corr_in, corr_pn, corr_orth, thresh):

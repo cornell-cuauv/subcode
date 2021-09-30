@@ -55,7 +55,7 @@ class Receive:
             )
 
         sync = synchronize.Synchronizer(
-            comms.const.MSG_BYTES * 8 // comms.const.SYMBOL_SIZE,
+            comms.const.MSG_BYTES * 8 // comms.const.SYMBOL_SIZE + 1,
             comms.const.L_SYM,
             comms.const.PN_SEQ,
             comms.const.ORTH_SEQ,
@@ -86,8 +86,8 @@ class Receive:
             if len(symbol_sigs) == num_symbols:
                 symbol_sigs = sync.push(xp.stack(symbol_sigs))
                 if symbol_sigs is not None:
-                    symbols = demodulate.decide(symbol_sigs, comms.const.L_SYM)
-                    msg = demodulate.decode(symbols, comms.const.SYMBOL_SIZE)
+                    syms = demodulate.decide(symbol_sigs, comms.const.L_SYM)
+                    msg = demodulate.decode(syms[1 :], comms.const.SYMBOL_SIZE)
                     try:
                         q.put_nowait(msg)
                     except queue.Full:
@@ -102,8 +102,9 @@ class Transmit:
     @staticmethod
     def _daemon(q):
         num_symbols = 2 ** comms.const.SYMBOL_SIZE
-        pn_symbols = (xp.asarray(comms.const.PN_SEQ) == 1) * (num_symbols - 1)
-        pn_bytes = demodulate.decode(pn_symbols, comms.const.SYMBOL_SIZE)
+        head = comms.const.PN_SEQ + [-1]
+        head_symbols = (xp.asarray(head) == 1) * (num_symbols - 1)
+        head_bytes = demodulate.decode(head_symbols, comms.const.SYMBOL_SIZE)
 
         transbrd = hardware.TransmitBoard()
 
@@ -115,4 +116,4 @@ class Transmit:
                 raise ValueError('Message size must be ' +
                     str(comms.const.MSG_BYTES) + ' bytes')
 
-            transbrd.send(pn_bytes + msg)
+            transbrd.send(head_bytes + msg)
