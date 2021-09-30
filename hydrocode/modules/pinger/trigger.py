@@ -36,6 +36,8 @@ class Trigger:
             ampl_peak_pos = int(ampl.argmax())
             (search_start, search_end) = crop.find_bounds(
                 self._L_interval, self._L_search, ampl_peak_pos)
+            trigger_f[: search_start] = 0
+            trigger_f[search_end :] = 0
 
             ping_pos = int(trigger_f.argmax())
             ping_phase = xp.angle(packed_sig[:, ping_pos])
