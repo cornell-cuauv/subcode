@@ -16,7 +16,7 @@ class Synchronizer:
             'The PN/orthogonal sequence lengths must be equal')
 
         assert L_msg >= len(pn_seq), (
-            'The transmission must be at least as long as the PN sequence')
+            'The message must be at least as long as the PN sequence')
 
         self._L_pn_samples = len(pn_seq) * L_sym
         self._L_msg_samples = L_msg * L_sym
