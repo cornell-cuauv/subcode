@@ -33,11 +33,13 @@ class HydrophonesBoard:
         if section is HydrophonesSection.PINGER:
             section_const = pinger.const
             self._shm_status = shm.hydrophones_pinger_status
+            self._switch_ch_order = True
         else:
             assert section is HydrophonesSection.COMMS, (
                 'Hydrophones board has two sections, PINGER and COMMS')
             section_const = comms.const
             self._shm_status = shm.hydrophones_comms_status
+            self._switch_ch_order = False
 
         self._dump_file = open('dump.dat', 'wb') if dump else None
 
@@ -92,8 +94,11 @@ class HydrophonesBoard:
         pkt_num = pkts['pkt_num'][-1]
         gains = self._gain_val_array[pkts['gain_lvl']].reshape(1, -1).repeat(
             common.const.L_PKT, axis=1)
-        samples = np.concatenate(
-            pkts['samples'], axis=1)[: 4 if common.const.USE_4CHS else 3]
+        samples = np.concatenate(pkts['samples'], axis=1)
+        if self._switch_ch_order:
+            samples[[0, 1]] = samples[[1, 0]]
+            samples[[2, 3]] = samples[[3, 2]]
+        samples = samples[: 4 if common.const.USE_4CHS else 3]
 
         return (pkt_num, gains, samples)
 
