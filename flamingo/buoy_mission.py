@@ -1,62 +1,73 @@
-import shm
+from framework import *
+from mission.framework.combinators import *
+from mission.framework.search import *
+from mission.framework.targeting import *
 
-from action import Action
-from flamingo import framework
+visible = Condition('red_buoy_results.heuristic_score', GE(0.7))
+centered_x = Condition('red_buoy_results.center_x', TH(0, 0.1))
+centered_y = Condition('red_buoy_results.center_y', TH(0, 0.1))
+near = Condition('red_buoy_results.area', GE(10000))
+rammed = Condition('buoy_rammed', EQ(True))
 
-# State
-buoy_visible = lambda: shm.red_buoy_results.heuristic_score.get() > 0.8
-buoy_centered = lambda: abs(shm.red_buoy_results.center_x.get()) < 0.2 and abs(shm.red_buoy_results.center_y.get()) < 0.2
-buoy_rammed = lambda: shm.red_buoy_results.probability.get()
+goal = [rammed]
 
-state = [buoy_visible, buoy_centered, buoy_rammed]
-
-# Goal
-goal = buoy_rammed
-
-# Actions
-def spin_search(goal):
-    rotation = 0
-    while not goal():
-        framework.move_forward(rotation / 5)
-        framework.rotate_right(5)
-        rotation += 5
-
-def forward_target(x, y):
-    while abs(x) > 0.1 or abs(y) > 0.1:
-        if x < -0.1:
-            framework.move_right(0.5)
-        elif x > 0.1:
-            framework.move_left(0.5)
-        elif y < -0.1:
-            framework.move_up(0.5)
-        elif y > 0.1:
-            framework.move_down(0.5)
-
-def ram():
-    while shm.red_buoy_results.area.get() < 0.5:
-        framework.move_forward(0.1)
-    shm.red_buoy_results.probability.set(True)
+search = Sequential(
+    SearchFor(
+        SwaySearch(1, 1),
+        lambda: shm.red_buoy_results.heuristic_score.get() > 0.7
+    ),
+    Zero()
+)
+center = ForwardTarget(
+    point=lambda: (
+        shm.red_buoy_results.center_x.get(),
+        shm.red_buoy_results.center_y.get()
+    ),
+    target=(0, 0)
+)
+approach = Sequential(
+    VelocityX(0.2),
+    While(
+        lambda: None,
+        lambda: shm.red_buoy_results.area.get() < 10000
+    ),
+    Zero()
+)
+ram = Sequential(
+    VelocityX(0.4),
+    Timer(2),
+    VelocityX(-0.4),
+    Timer(2),
+    Zero()
+)
 
 actions = [
     Action(
-        name="search",
-        preconditions=[],
+        name='search',
+        preconds=[],
         invariants=[],
-        postconditions=[buoy_visible],
-        function=lambda: spin_search(buoy_visible)
+        postconds=[visible],
+        func=search
     ),
     Action(
-        name="center",
-        preconditions=[buoy_visible],
-        invariants=[buoy_visible],
-        postconditions=[buoy_visible, buoy_centered],
-        function=lambda: forward_target(shm.red_buoy_results.center_x.get(), shm.red_buoy_results.center_y.get())
+        name='center',
+        preconds=[visible],
+        invariants=[visible],
+        postconds=[centered_x, centered_y],
+        func=center
     ),
     Action(
-        name="ram",
-        preconditions=[buoy_centered],
-        invariants=[buoy_visible, buoy_centered],
-        postconditions=[buoy_rammed],
-        function=ram
-    )
+        name='approach',
+        preconds=[centered_x, centered_y],
+        invariants=[centered_x, centered_y],
+        postconds=[centered_x, centered_y, near],
+        func=approach
+    ),
+    Action(
+        name='ram',
+        preconds=[centered_x, centered_y, near],
+        invariants=[],
+        postconds=[centered_x, centered_y, near, rammed],
+        func=ram
+    ) 
 ]
