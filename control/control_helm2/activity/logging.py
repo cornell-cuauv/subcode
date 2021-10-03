@@ -48,7 +48,6 @@ def add_logging(callbacks, key):
 # helm count by 1.
 def close_helm(signum, frame):
     lines, line_num = read_file()
-    open("temp.txt", "w").write("lines: " + str(lines) + "\nline_num: " + str(line_num))
     helms = int(lines[line_num].split(',')[2])
     if helms == 1:
         lines.remove(lines[line_num])
