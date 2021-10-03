@@ -1,7 +1,10 @@
 import math
 import time
+import os
 
 from helm_basis import Panel
+
+mission_filepath = '/home/software/cuauv/workspaces/worktrees/master/control/control_helm2/activity/mission.csv'
 
 # A panel which displays names from the list of connections
 class ConnectionsPanel(Panel):
@@ -21,7 +24,9 @@ class MissionPanel(Panel):
         super().__init__(title="Mission", width=7, height=4)
 
     def get_cols_lines(self, width, height):
-        with open('/home/software/cuauv/workspaces/worktrees/master/control/control_helm2/activity/mission.csv', 'r') as f:
+        if not os.path.exists(mission_filepath):
+            open(mission_filepath, 'w')
+        with open(mission_filepath, 'r') as f:
             lines = f.readlines()
         if len(lines) != 0:
             return [[lines[0]]]

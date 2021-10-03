@@ -5,8 +5,11 @@ import time
 activity_filepath = '/home/software/cuauv/workspaces/worktrees/master/control/control_helm2/activity/activity.csv'
 
 # Read the activity file, returning the raw list of lines as well
-# as the number of the line which holds the current user's name.
+# as the number of the line which holds the current user's name
+# (-1 if the current user's name does not appear).
 def read_file():
+    if not os.path.exists(activity_filepath):
+        open(activity_filepath, 'w')
     with open(activity_filepath, 'r') as f:
         lines = f.readlines()
     line_num = -1
@@ -45,6 +48,7 @@ def add_logging(callbacks, key):
 # helm count by 1.
 def close_helm(signum, frame):
     lines, line_num = read_file()
+    open("temp.txt", "w").write("lines: " + str(lines) + "\nline_num: " + str(line_num))
     helms = int(lines[line_num].split(',')[2])
     if helms == 1:
         lines.remove(lines[line_num])
