@@ -2,86 +2,75 @@
 
 import sys
 import importlib
-import threading
-import time
+import shm
 
 # Check that there is exactly one additional argument.
 if len(sys.argv) != 2:
-    print("Provide the name of the mission file as an argument.")
+    print("Error: Provide the name of the mission file as an argument.")
     sys.exit()
 
 # Import the mission file.
 try:
     mission = importlib.import_module(sys.argv[1])
 except:
-    print("Something went wrong when importing " + sys.argv[1] + ".")
+    print("Error: Something went wrong when importing " + sys.argv[1] + ".")
     sys.exit()
 
-# Is a certain set of conditions satisfied in a given state?
-def conditions_met(conditions, current_state):
+# Find all state variables and their initial values if known.
+def find_theoretical_starting_state():
+    starting_state = {}
+    if hasattr(mission, 'initial_state'):
+        for condition in mission.initial_state:
+            starting_state[condition.variable] = condition.test.assumed_value()
+    for condition in mission.goal:
+        if condition.variable not in starting_state:
+            starting_state[condition.variable] = None
+    for action in mission.actions:
+        for condition in action.preconds + action.invariants + action.postconds:
+            if condition.variable not in starting_state:
+                starting_state[condition.variable] = None
+    return starting_state
+
+def find_real_starting_state():
+    starting_state = find_theoretical_starting_state()
+    for variable in starting_state:
+        if "." in variable:
+            group, _, name = variable.partition(".")
+            starting_state[variable] = getattr(getattr(shm, group), name).get()
+    return starting_state
+
+def conditions_satisfied_in_state(conditions, state):
     for condition in conditions:
-        if not current_state[condition]:
+        if not condition.test.satisfied_in_state(condition.variable, state):
             return False
     return True
 
-# What state is guaranteed after a given action is completed successfuly?
-def state_after_action(action, state_variables):
-    state = {}
-    for variable in state_variables:
-        state[variable] = False
-    for condition in action.postconditions:
-        state[condition] = True
-    return state
+class SearchNode:
+    def __init__(self, state, plan):
+        self.state = state
+        self.plan = plan
 
-# Use a BFS to identify a plan (defined as a list of sequential actions) which will take the sub from the given starting state to the mission's goal.
-# TODO: If it is impossible to reach the goal, the BFS will never terminate. This could be solved through a cutoff procedure, or perhaps static mission testing could determine beforehand if a mission is impossible.
-def solve(starting_state, mission):
-    queue = [{"state": starting_state, "plan": []}]
+def solve(starting_state):
+    queue = [SearchNode(starting_state, [])]
     while len(queue) > 0:
         node = queue.pop(0)
-        if node["state"][mission.goal]:
-            return node["plan"]
+        if conditions_satisfied_in_state(mission.goal, node.state):
+            return node.plan
         for action in mission.actions:
-            if conditions_met(action.preconditions, node["state"]) and not conditions_met(action.postconditions, node["state"]):
-                queue.append({"state": state_after_action(action, mission.state), "plan": node["plan"] + [action]})
+            if conditions_satisfied_in_state(action.preconds, node.state) and not conditions_satisfied_in_state(action.postconds, node.state):
+                queue.append(SearchNode(action.state_after_action(starting_state.keys()), node.plan + [action]))
 
-# Run the code associated with an action, checking its invariants continuously and its postconditions upon completion.
-# Returns the success of the action: False if the invariants or postconditions are violated and True otherwise.
-def execute_action(action):
-    print("Executing " + action.name)
-    action_thread = threading.Thread(target=action.function)
-    action_thread.start()
-    while action_thread.is_alive():
-        for condition in action.invariants:
-            if not condition():
-                return False
-        time.sleep(0.1) # This is arbitrary and could be moved to config.
-    for condition in action.postconditions:
-        if not condition():
-            return False
-    return True
-
-# Identify the state of the mission, find a plan to the goal state, and then execute said plan.
-# Return the success of the selected plan: True if the goal state is achieved and False if an action fails along the way.
-def find_and_execute_plan(mission):
-    # Evaluate the true starting state.
-    starting_state = {}
-    for variable in mission.state:
-        starting_state[variable] = variable()
-    print("Starting state: " + ", ".join([str(value) for key, value in starting_state.items()]))
-
-    # Identify a mission plan.
-    plan = solve(starting_state, mission)
-    print("Executing plan: " + ", ".join([action.name for action in plan]))
-
-    # Run the mission until an action fails or the plan is completed successfully.
+def find_and_execute_plan():
+    starting_state = find_real_starting_state()
+    print("Current state: " + str(starting_state))
+    plan = solve(starting_state)
+    print("Plan identified: " + ", ".join([action.name for action in plan]))
     for action in plan:
-        result = execute_action(action)
+        result = action.execute()
         if not result:
             return False
     return True
 
-# Attempt to complete the mission until successful.
 completed = False
 while not completed:
-    completed = find_and_execute_plan(mission)
+    completed = find_and_execute_plan()
