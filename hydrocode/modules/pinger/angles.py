@@ -1,4 +1,5 @@
 import math
+import os
 
 from common import const
 from pinger import headingplot, scatterplot
@@ -21,7 +22,11 @@ class AnglesMLE:
         else:
             elev = 0 if v > 1 else -math.acos(v)
 
-        hdg = wrap_angle(hdg - math.pi / 2)
+        if (os.environ['CUAUV_VEHICLE_TYPE'] == "mainsub"):
+            hdg -= math.pi / 2
+        else:
+            pass
+        hdg = wrap_angle(hdg)
 
         if self._heading_plot is not None:
             self._heading_plot.plot(hdg, elev)
