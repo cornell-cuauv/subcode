@@ -147,6 +147,9 @@ class TransmitBoard:
         shm.transmit_settings.freq.set(comms.const.FREQUENCY)
         shm.transmit_settings.bandwidth.set(comms.const.BANDWIDTH)
 
+        shm.transmit_streaming.word.set(0)
+        shm.transmit_streaming.new_data.set(False)
+
     def send(self, data):
         for byte in data:
             shm.transmit_streaming.word.set(byte)
