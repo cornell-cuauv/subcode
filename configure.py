@@ -79,7 +79,6 @@ context_excludes = {
     'all': [],
 
     'development': [
-        'hydrocode',
         'lcd',
         'led',
         #'pooltest',
