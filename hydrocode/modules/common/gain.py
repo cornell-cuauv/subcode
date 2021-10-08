@@ -14,10 +14,13 @@ class Controller:
     def __init__(self, section, L_interval, plot=False):
         if section is HydrophonesSection.PINGER:
             self._shm_settings = shm.hydrophones_pinger_settings
+            self._shm_settings.gain_control_mode.set(1)
         else:
             assert section is HydrophonesSection.COMMS, (
                 'Hydrophones board has two sections, PINGER and COMMS')
             self._shm_settings = shm.hydrophones_comms_settings
+            self._shm_settings.gain_control_mode.set(2)
+        self._shm_settings.user_gain_lvl.set(13)
 
         self._plot = gainplot.GainPlot() if plot else None
 

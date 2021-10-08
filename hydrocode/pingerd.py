@@ -33,12 +33,15 @@ if __name__ == '__main__':
         convert.omega_hat(pinger.const.STOPBAND),
         pinger.const.FIR_ORDER,
     )
+    freq = shm.hydrophones_pinger_settings.frequency.get()
+    if freq not in pinger.const.USUAL_FREQS:
+        print("Warning: Tracking unusual frequency " + str(freq) + " Hz")
     dwncnv = downconv.Downconverter(
         4 if common.const.USE_4CHS else 3,
         pinger.const.L_FIR_BLOCK,
         h,
         D=pinger.const.DECIM_FACTOR,
-        w=(convert.omega_hat(shm.hydrophones_pinger_settings.frequency.get())),
+        w=(convert.omega_hat(freq)),
     )
 
     subhdgsdecim = decimate.Decimator(
