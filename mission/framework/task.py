@@ -1,6 +1,6 @@
 import time
 import libshm.py as shm
-from shm import active_mission as active_mission
+from shm import active_mission
 import functools
 
 from auvlog.client import Logger
