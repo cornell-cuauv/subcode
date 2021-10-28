@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from os import path
 import sys
 
 try:
@@ -8,7 +9,7 @@ try:
 except ImportError:
     import numpy as xp
 
-sys.path.insert(0, 'modules')
+sys.path.insert(0, path.join(path.dirname(path.realpath(__file__)), 'modules'))
 from common import convert, downconv, filt, gain, hardware
 import common.const
 from pinger import angles, decimate, trigger
