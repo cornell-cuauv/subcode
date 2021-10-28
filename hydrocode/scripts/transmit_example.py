@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+from os import path
 import queue
 import sys
 
-sys.path.insert(0, '../')
+sys.path.insert(0, path.dirname(path.dirname(path.realpath(__file__))))
 import hydrocomms
 
 if __name__ == '__main__':
