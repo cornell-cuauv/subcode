@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+from os import path
 import sys
 
 import numpy as np
 
-sys.path.insert(0, '../modules')
+sys.path.insert(0, path.join(
+    path.dirname(path.dirname(path.realpath(__file__))), 'modules'))
 from common import const
 
 MAX_DUR = 10 ** 7

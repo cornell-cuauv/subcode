@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
+from os import path
 import socket
 import sys
 import time
 
 import numpy as np
 
-sys.path.insert(0, '../modules')
+sys.path.insert(0, path.join(
+    path.dirname(path.dirname(path.realpath(__file__))), 'modules'))
 import common.const
 import comms.const
 import pinger.const
