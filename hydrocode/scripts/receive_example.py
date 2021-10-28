@@ -10,9 +10,9 @@ if __name__ == '__main__':
     q = queue.Queue(maxsize=1)
     r = hydrocomms.Receive(
         q,
-        gain_plot=('-gain_plot' in sys.argv),
-        correlation_plot=('-correlation_plot' in sys.argv),
-        dump=('-dump' in sys.argv)
+        gain_plot=('--gain_plot' in sys.argv),
+        correlation_plot=('--correlation_plot' in sys.argv),
+        dump=('--dump' in sys.argv)
     )
 
     while True:
