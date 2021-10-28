@@ -26,7 +26,7 @@ if __name__ == '__main__':
     gainctrl = gain.Controller(
         hardware.HydrophonesSection.PINGER,
         L_INTERVAL,
-        plot=('-gain_plot' in sys.argv),
+        plot=('--gain_plot' in sys.argv),
     )
 
     h = filt.firgauss(
@@ -54,19 +54,19 @@ if __name__ == '__main__':
         L_INTERVAL // pinger.const.DECIM_FACTOR,
         pinger.const.L_SEARCH,
         fir_rise_time // pinger.const.DECIM_FACTOR,
-        trigger_plot=('-trigger_plot' in sys.argv),
-        ping_plot=('-ping_plot' in sys.argv),
+        trigger_plot=('--trigger_plot' in sys.argv),
+        ping_plot=('--ping_plot' in sys.argv),
     )
 
     anglmle = angles.AnglesMLE(
-        heading_plot=('-heading_plot' in sys.argv),
-        scatter_plot=('-scatter_plot' in sys.argv)
+        heading_plot=('--heading_plot' in sys.argv),
+        scatter_plot=('--scatter_plot' in sys.argv)
     )
 
     hydrobrd = hardware.HydrophonesBoard(
         hardware.HydrophonesSection.PINGER,
         common.const.PKTS_PER_RECV,
-        dump=('-dump' in sys.argv),
+        dump=('--dump' in sys.argv),
     )
 
     while True:
