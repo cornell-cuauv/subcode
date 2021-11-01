@@ -42,9 +42,9 @@ hydrophones_comms_status = _Group()
 hydrophones_comms_status.packet_number = _Var(
     'hydrophones_comms_status.packet_number', 0)
 
-gx4 = _Group()
-gx4.heading = _Var('gx4.heading', 0)
-gx4.pitch = _Var('gx4.pitch', 0)
+kalman = _Group()
+kalman.heading = _Var('kalman.heading', 0)
+kalman.pitch = _Var('kalman.pitch', 0)
 
 transmit_settings = _Group()
 transmit_settings.symbol_size = _Var('transmit_settings.symbol_size', 0)

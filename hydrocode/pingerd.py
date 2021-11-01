@@ -73,6 +73,7 @@ if __name__ == '__main__':
 
     while True:
         (sig, gains, sub_hdgs) = hydrobrd.receive()
+        sub_hdgs = xp.radians(sub_hdgs)
 
         gainctrl_result = gainctrl.push(sig, gains)
         if gainctrl_result is not None:
