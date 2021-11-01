@@ -12,7 +12,8 @@ from mission.framework.movement import Heading, RelativeToInitialHeading, Veloci
 from mission.framework.primitive import Log, NoOp, Zero, Succeed, Fail, FunctionTask
 from mission.framework.targeting import ForwardTarget, HeadingTarget, CameraTarget, PIDLoop
 from mission.framework.timing import Timer, Timeout, Timed
-from mission.framework.helpers import ConsistencyCheck, call_if_function
+from mission.framework.helpers import call_if_function
+from mission.framework.consistency import ConsistencyCheck
 from mission.framework.search import SearchFor, VelocitySwaySearch
 
 # positive offset in [0,2pi)
@@ -25,12 +26,13 @@ last_target_elevation = 0
 def update():
     global last_shmval, last_target_heading
 
-    shmval = shm.hydrophones_results_track.tracked_ping_heading.get()
+    shmval = math.degrees(shm.hydrophones_pinger_results.heading.get())
+    shmval = shmval if 0 <= shmval else 360+shmval
     print('last: ' + str(last_shmval) + ', new: ' + str(shmval))
     if last_shmval is None or shmval != last_shmval:
         last_shmval = shmval
         last_target_heading = shmval
-        last_target_elevation = shm.hydrophones_results_track.tracked_ping_elevation.get()
+        last_target_elevation = shm.hydrophones_pinger_results.elevation.get()
         print('heading: ' + str(last_target_heading))
         print('elevation: ' + str(last_target_elevation))
 
@@ -48,8 +50,8 @@ def calc_speed():
     diff = angle_diff(get_target_heading(), shm.kalman.heading.get())
     print("diff: " + str(diff))
     if diff < 45:
-        print(min((45 - diff) / 20, 0.4))
-        return min((45 - diff) / 20, 0.4)
+        print(min((45 - diff) / 20, 1))
+        return min((45 - diff) / 20, 1)
     else:
         print("0")
         return 0
@@ -59,7 +61,7 @@ def enable_hydrophones():
 
 track = Sequential(
     # FunctionTask(enable_hydrophones),
-    Depth(1),
+    # Depth(1),
     Concurrent(
         While(lambda: FunctionTask(update), lambda: True),
         While(lambda: Heading(get_target_heading), lambda: True),
@@ -76,13 +78,13 @@ class _TrackPinger(Task):
         self.checker = ConsistencyCheck(count=3, total=7)
 
     def update(self):
-        self.shmval = shm.hydrophones_results_track.tracked_ping_heading.get()
+        self.shmval = shm.hydrophones_pinger_results.heading.get()
         # print('last: ' + str(self.last_shmval) + ', new: ' + str(self.shmval))
         if self.last_shmval is None or self.shmval != self.last_shmval:
             lltarget_heading = self.last_target_heading if self.last_target_heading is not None else self.shmval
             self.last_shmval = self.shmval
             self.last_target_heading = self.shmval
-            self.last_target_elevation = shm.hydrophones_results_track.tracked_ping_elevation.get()
+            self.last_target_elevation = shm.hydrophones_pinger_results.elevation.get()
             self.log('heading: ' + str(self.last_target_heading), level='info')
             self.log('elevation: ' + str(self.last_target_elevation), level='info')
             return self.checker.check(self.angle_diff(self.get_target_heading(), lltarget_heading) > 90)

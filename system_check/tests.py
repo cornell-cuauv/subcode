@@ -124,13 +124,13 @@ class Typing(Test):
 
 class Hydrophones(Test):
     def board_talking():
-        return is_changing(shm.hydrophones_status.packet_count.get)
+        return is_changing(shm.hydrophones_pinger_status.packet_number.get)
 
     @environment(WATER)
     def getting_pings():
         #freq = shm.hydrophones_settings.track_frequency.get()
         #shm.hydrophones_settings.track_frequency.set(PINGER_FREQUENCY)
-        ret = is_changing(shm.hydrophones_status.packet_count.get, 500)
+        ret = is_changing(shm.hydrophones_pinger_status.packet_number.get, 500)
         #shm.hydrophones_settings.track_frequency.set(freq)
         return ret
 

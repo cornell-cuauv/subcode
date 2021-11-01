@@ -124,7 +124,7 @@ class HydrophonesBoard:
             for pkt_num in range(pkts_per_recv):
                 sock.recv_into(view, nbytes=pkt_size)
                 view = (view[pkt_size :])
-                sub_hdgs.append(shm.gx4.heading.get())
+                sub_hdgs.append(shm.kalman.heading.get())
             try:
                 q.put_nowait((buff, sub_hdgs))
             except queue.Full:
