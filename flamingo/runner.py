@@ -3,7 +3,10 @@
 import sys
 import importlib
 import time
+import signal
+
 import shm
+from mission.framework.primitive import Zero
 
 # Check that there is exactly one additional argument.
 if len(sys.argv) != 2:
@@ -16,6 +19,21 @@ try:
 except:
     print("Error: Something went wrong when importing " + sys.argv[1] + ".")
     sys.exit()
+
+
+# Clean up on interrupt.
+vision_modules_state = shm.vision_modules.get()
+settings_control_state = shm.settings_control.get()
+navigation_settings_state = shm.navigation_settings.get()
+
+def handle_interrupt(sig, frame):
+    Zero()()
+    shm.vision_modules.set(vision_modules_state)
+    shm.settings_control.set(settings_control_state)
+    shm.navigation_settings.set(navigation_settings_state)
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, handle_interrupt)
 
 # Find all state variables and their initial values if known.
 def find_theoretical_starting_state():
@@ -32,6 +50,7 @@ def find_theoretical_starting_state():
                 starting_state[condition.variable] = None
     return starting_state
 
+# Evaluate shm state variables to find the real starting state.
 def find_real_starting_state():
     starting_state = find_theoretical_starting_state()
     for variable in starting_state:
@@ -40,6 +59,7 @@ def find_real_starting_state():
             starting_state[variable] = getattr(getattr(shm, group), name).get()
     return starting_state
 
+# Check if a state satisfies a list of conditions.
 def conditions_satisfied_in_state(conditions, state):
     for condition in conditions:
         if not condition.test.satisfied_in_state(condition.variable, state):
@@ -51,6 +71,7 @@ class SearchNode:
         self.state = state
         self.plan = plan
 
+# Find a list of actions to get from a starting state to the mission's goal.
 def solve(starting_state):
     queue = [SearchNode(starting_state, [])]
     while len(queue) > 0:
@@ -61,6 +82,7 @@ def solve(starting_state):
             if conditions_satisfied_in_state(action.preconds, node.state) and not conditions_satisfied_in_state(action.postconds, node.state):
                 queue.append(SearchNode(action.state_after_action(starting_state.keys()), node.plan + [action]))
 
+# Find a plan to get from the real starting state to the mission's goal and execute it, one action at a time.
 def find_and_execute_plan():
     starting_state = find_real_starting_state()
     print("Current state: " + str(starting_state))
@@ -70,6 +92,7 @@ def find_and_execute_plan():
         print("Executing action: " + action.name)
         result = action.execute()
         if not result:
+            Zero()()
             return False
     return True
 
