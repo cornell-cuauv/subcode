@@ -2,12 +2,13 @@ import threading
 import time
 
 import shm
-import mission.runner as runner
 
 class Condition:
-    def __init__(self, variable, test):
+    def __init__(self, variable, test, consistency=(1, 1)):
         self.variable = variable
         self.test = test
+        self.required_failures, self.window_length = consistency
+        self.results = [True] * self.window_length
 
     def satisfied_in_reality(self):
         if not "." in self.variable:
@@ -17,43 +18,28 @@ class Condition:
         return self.test.satisfied_in_state(self.variable, {self.variable: real_value})
 
 class Test:
-    def assumed_value(self):
-        return None
-    
-    def satisfied_in_state(self, state):
-        return False
-
-class EQ(Test):
     def __init__(self, val):
         self.val = val
 
     def assumed_value(self):
         return self.val
     
+    def satisfied_in_state(self, state):
+        return False
+
+class EQ(Test):
     def satisfied_in_state(self, variable, state):
         if state[variable] == None:
             return False
         return state[variable] == self.val
 
 class GE(Test):
-    def __init__(self, val):
-        self.val = val
-
-    def assumed_value(self):
-        return self.val
-
     def satisfied_in_state(self, variable, state):
         if state[variable] == None:
             return False
         return state[variable] >= self.val
 
 class LE(Test):
-    def __init__(self, val):
-        self.val = self.val
-
-    def assumed_value(self):
-        return self.val
-
     def satisfied_in_state(self, variable, state):
         if state[variable] == None:
             return False
@@ -63,9 +49,6 @@ class TH(Test):
     def __init__(self, val, tolerance):
         self.val = val
         self.tolerance = tolerance
-
-    def assumed_value(self):
-        return self.val
 
     def satisfied_in_state(self, variable, state):
         if state[variable] == None:
@@ -87,18 +70,23 @@ class Action:
         for condition in self.postconds:
             state[condition.variable] = condition.test.assumed_value()
         return state
-    
+
     def execute(self):
-        action_thread = threading.Thread(target=runner.manual_args(self.func, {}))
-        action_thread.start()
-        while action_thread.is_alive():
+        while True:
+            try:
+                self.func()
+            except Exception as e:
+                print("Exception thrown by " + self.name + ": " + e)
+                break
+            if self.func.finished:
+                break
             for condition in self.invariants:
-                if not condition.satisfied_in_reality():
-                    action_thread.stop()
-                    print("Failing variable: " + condition.variable)
+                condition.results = condition.results[1:] + [condition.satisfied_in_reality()]
+                if condition.results.count(False) > condition.required_failures:
+                    print("(Invariant) Failing variable: " + condition.variable)
                     return False
-            time.sleep(0.1)
+            time.sleep(1 / 60)
         for condition in self.postconds:
             if not condition.satisfied_in_reality():
-                return False
+                print("(Postcond) Failing variable: " + condition.variable)
         return True

@@ -2,6 +2,7 @@
 
 import sys
 import importlib
+import time
 import shm
 
 # Check that there is exactly one additional argument.
@@ -66,11 +67,11 @@ def find_and_execute_plan():
     plan = solve(starting_state)
     print("Plan identified: " + ", ".join([action.name for action in plan]))
     for action in plan:
+        print("Executing action: " + action.name)
         result = action.execute()
         if not result:
             return False
     return True
 
-completed = False
-while not completed:
-    completed = find_and_execute_plan()
+while not find_and_execute_plan():
+    time.sleep(0.1)
