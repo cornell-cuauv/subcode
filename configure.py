@@ -48,6 +48,7 @@ dirs = [
         'control/controlhelm',
         'control/control_helm2',
         'deadman',
+        'flamingo',
         'lib',
         'libshm',
         'locator',

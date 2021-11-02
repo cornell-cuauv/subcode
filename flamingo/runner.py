@@ -10,12 +10,12 @@ from mission.framework.primitive import Zero
 
 # Check that there is exactly one additional argument.
 if len(sys.argv) != 2:
-    print("Error: Provide the name of the mission file as an argument.")
+    print("Error: Provide the name of the mission file (wiithout the .py) as an argument.")
     sys.exit()
 
 # Import the mission file.
 try:
-    mission = importlib.import_module(sys.argv[1])
+    mission = importlib.import_module("missions." + sys.argv[1])
 except:
     print("Error: Something went wrong when importing " + sys.argv[1] + ".")
     sys.exit()
