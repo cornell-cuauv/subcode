@@ -3,7 +3,7 @@ from mission.framework.combinators import *
 from mission.framework.search import *
 from mission.framework.targeting import *
 
-visible = Condition('red_buoy_results.heuristic_score', GE(0.7))
+visible = Condition('red_buoy_results.heuristic_score', GE(0.7), consistency=(20, 30))
 centered_x = Condition('red_buoy_results.center_x', TH(0, 0.1))
 centered_y = Condition('red_buoy_results.center_y', TH(0, 0.1))
 near = Condition('red_buoy_results.area', GE(10000))
@@ -28,7 +28,7 @@ center = ForwardTarget(
 approach = Sequential(
     VelocityX(0.2),
     While(
-        lambda: None,
+        lambda: NoOp(),
         lambda: shm.red_buoy_results.area.get() < 10000
     ),
     Zero()
@@ -67,7 +67,7 @@ actions = [
         name='ram',
         preconds=[centered_x, centered_y, near],
         invariants=[],
-        postconds=[centered_x, centered_y, near, rammed],
+        postconds=[rammed],
         func=ram
     ) 
 ]
