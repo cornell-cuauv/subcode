@@ -47,27 +47,27 @@ actions = [
         preconds=[],
         invariants=[],
         postconds=[visible],
-        func=search
+        task=search
     ),
     Action(
         name='center',
         preconds=[visible],
         invariants=[visible],
         postconds=[centered_x, centered_y],
-        func=center
+        task=center
     ),
     Action(
         name='approach',
         preconds=[centered_x, centered_y],
         invariants=[centered_x, centered_y],
         postconds=[centered_x, centered_y, near],
-        func=approach
+        task=approach
     ),
     Action(
         name='ram',
         preconds=[centered_x, centered_y, near],
         invariants=[],
         postconds=[rammed],
-        func=ram
+        task=ram
     ) 
 ]
