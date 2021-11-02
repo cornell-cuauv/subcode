@@ -93,6 +93,8 @@ def find_and_execute_plan():
         result = action.execute()
         if not result:
             Zero()()
+            action.run_on_failure()
+            Zero()()
             return False
     return True
 

@@ -2,6 +2,7 @@ import threading
 import time
 
 import shm
+from mission.framework.primitive import NoOp
 
 class Condition:
     def __init__(self, variable, test, consistency=(1, 1)):
@@ -56,12 +57,12 @@ class TH(Test):
         return abs(state[variable] - self.val) <= self.tolerance
 
 class Action:
-    def __init__(self, name, preconds, invariants, postconds, func):
+    def __init__(self, name, preconds, invariants, postconds, task, on_failure=NoOp()):
         self.name = name
         self.preconds = preconds
         self.invariants = invariants
         self.postconds = postconds
-        self.func = func
+        self.task = task
 
     def state_after_action(self, all_variables):
         state = {}
@@ -74,11 +75,11 @@ class Action:
     def execute(self):
         while True:
             try:
-                self.func()
+                self.task()
             except Exception as e:
                 print("Exception thrown by " + self.name + ": " + e)
                 break
-            if self.func.finished:
+            if self.task.finished:
                 break
             for condition in self.invariants:
                 condition.results = condition.results[1:] + [condition.satisfied_in_reality()]
@@ -90,3 +91,13 @@ class Action:
             if not condition.satisfied_in_reality():
                 print("(Postcond) Failing variable: " + condition.variable)
         return True
+
+    def run_on_failure(self):
+        while True:
+            try:
+                self.on_failure()
+            except:
+                return
+            if self.on_failure.finished:
+                return
+            time.sleep(1 / 60)
