@@ -1,9 +1,6 @@
 // TODO: Add prop-types
 import React from "react";
 
-let colorSpace = "rgb";
-let selectedColor = {};
-
 function formatId(name) {
     return name.replace(/\ /g, "_");
 }
@@ -56,41 +53,9 @@ function setCoordinate(x, y) {
     $("#coordinate").text(`X: ${x}, Y: ${y}`);
 }
 
-// Transcribed from the opencv documentation:
-// https://docs.opencv.org/3.4/de/d25/imgproc_color_conversions.html
-function rgbToLAB(r, g, b) {
-    function f(t) {
-        if (t > 0.008856) {
-            return t ** (1 / 3);
-        }
-        return 7.787 * y + 16 / 116;
-    }
-    let x = r * 0.412453 + g * 0.357580 + b * 0.180423;
-    let y = r * 0.212671 + g * 0.715160 + b * 0.072169;
-    let z = r * 0.019334 + g * 0.119193 + b * 0.950227;
-    x /= 0.950456;
-    z /= 1.088754;
-    let lab = {};
-    if (y > 0.008856) {
-        lab.l = 116 * (y ** (1 / 3)) - 16;
-    } else {
-        lab.l = 903.3 * y;
-    }
-    lab.l *= 255 / 100;
-    lab.a = 500 * (f(x) - f(y)) + 128;
-    lab.b = 200 * (f(y) - f(z)) + 128;
-    return lab;
-}
-
 function setColorPicker(r, g, b) {
-    if (colorSpace === "rgb") {
-        $("#color-picker").text(`R: ${r}, G: ${g}, B: ${b}`);
-    } else {
-        const lab = rgbToLAB(r / 255, g / 255, b / 255);
-        $("#color-picker").text(`L: ${Math.round(lab.l)}, A: ${Math.round(lab.a)}, B: ${Math.round(lab.b)}`);
-    }
+    $("#color-picker").text(`R: ${r}, G: ${g}, B: ${b}`);
     $("#color-indicator").css('background-color', rgbToColor(r, g, b));
-    selectedColor = {"r": r, "g": g, "b": b};
 }
 
 class ImageContainer extends React.Component {
@@ -300,7 +265,6 @@ export class VisionModule extends React.Component {
         this.handleOptionUpdate = this.handleOptionUpdate.bind(this);
         this.clearImages = this.clearImages.bind(this);
         this.toggleModule = this.toggleModule.bind(this);
-        this.colorSpace = "rgb";
     }
 
     getOrderedImages() {
@@ -340,18 +304,6 @@ export class VisionModule extends React.Component {
         }));
     }
 
-    switchColorSpace() {
-        if (colorSpace === "rgb") {
-            colorSpace = "lab";
-            $("#switch-color-space").html("Switch to RGB");
-        
-        } else {
-            colorSpace = "rgb";
-            $("#switch-color-space").html("Switch to LAB");
-        }
-        setColorPicker(selectedColor.r, selectedColor.g, selectedColor.b);
-    }
-
     componentDidMount() {
         // Change container to full-width
         $('#body').parent().removeClass('container').addClass('container-fluid');
@@ -384,7 +336,6 @@ export class VisionModule extends React.Component {
     render() {
         return (
             <div id="body" class="container-fluid" role="main">
-                <script async src="https://docs.opencv.org/master/opencv.js" type="text/javascript"></script>
                 {/* <span>{JSON.stringify(this.state)}</span> */}
                 <input
                     type="checkbox"
@@ -398,7 +349,6 @@ export class VisionModule extends React.Component {
                 <span id="coordinate" class="margin-left-right"></span>
                 <span id="color-picker" class="margin-left-right"></span>
                 <div id="color-indicator" class="margin-left-right"></div>
-                <button id="switch-color-space" class="margin-left-right" onClick={this.switchColorSpace}>Switch to LAB</button>
                 <div class="row">
                     <div class="col-xs-10">
                     <ul class="list-group row" id="images">
