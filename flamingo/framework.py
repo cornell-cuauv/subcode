@@ -57,12 +57,14 @@ class TH(Test):
         return abs(state[variable] - self.val) <= self.tolerance
 
 class Action:
-    def __init__(self, name, preconds, invariants, postconds, task, on_failure=NoOp()):
+    def __init__(self, name, preconds, invariants, postconds, task, on_failure=NoOp(), dependencies=[]):
         self.name = name
         self.preconds = preconds
         self.invariants = invariants
         self.postconds = postconds
         self.task = task
+        self.on_failure = on_failure
+        self.dependencies = dependencies
 
     def state_after_action(self, all_variables):
         state = {}
@@ -101,3 +103,9 @@ class Action:
             if self.on_failure.finished:
                 return
             time.sleep(1 / 60)
+
+    def dependencies_functioning(self):
+        for dependency in self.dependencies:
+            if not getattr(shm.system_status, dependency).get():
+                return False
+        return True
