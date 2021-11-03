@@ -1,4 +1,4 @@
-from framework import *
+from flamingo.framework import *
 from mission.framework.combinators import *
 from mission.framework.search import *
 from mission.framework.targeting import *
@@ -9,6 +9,7 @@ centered_y = Condition('red_buoy_results.center_y', TH(0, 0.1))
 near = Condition('red_buoy_results.area', GE(10000))
 rammed = Condition('buoy_rammed', EQ(True))
 
+initial_state = {'buoy_rammed': False}
 goal = [rammed]
 
 search = Sequential(

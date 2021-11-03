@@ -39,8 +39,8 @@ signal.signal(signal.SIGINT, handle_interrupt)
 def find_theoretical_starting_state():
     starting_state = {}
     if hasattr(mission, 'initial_state'):
-        for condition in mission.initial_state:
-            starting_state[condition.variable] = condition.test.assumed_value()
+        for var, val in mission.initial_state.items():
+            starting_state[var] = val
     for condition in mission.goal:
         if condition.variable not in starting_state:
             starting_state[condition.variable] = None
@@ -79,8 +79,9 @@ def solve(starting_state):
         if conditions_satisfied_in_state(mission.goal, node.state):
             return node.plan
         for action in mission.actions:
-            if conditions_satisfied_in_state(action.preconds, node.state) and not conditions_satisfied_in_state(action.postconds, node.state):
-                queue.append(SearchNode(action.state_after_action(starting_state.keys()), node.plan + [action]))
+            if action.dependencies_functioning():
+                if conditions_satisfied_in_state(action.preconds, node.state) and not conditions_satisfied_in_state(action.postconds, node.state):
+                    queue.append(SearchNode(action.state_after_action(starting_state.keys()), node.plan + [action]))
 
 # Find a plan to get from the real starting state to the mission's goal and execute it, one action at a time.
 def find_and_execute_plan():
