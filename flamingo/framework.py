@@ -108,6 +108,6 @@ class Action:
 
     def dependencies_functioning(self):
         for dependency in self.dependencies:
-            if not getattr(shm.system_status, dependency).get():
+            if not dependency.get():
                 return False
         return True
