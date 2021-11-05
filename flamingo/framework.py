@@ -12,11 +12,9 @@ class Condition:
         self.results = [True] * self.window_length
 
     def satisfied_in_reality(self):
-        if not "." in self.variable:
+        if isinstance(self.variable, str):
             return True
-        group, _, name = self.variable.partition(".")
-        real_value = getattr(getattr(shm, group), name).get()
-        return self.test.satisfied_in_state(self.variable, {self.variable: real_value})
+        return self.test.satisfied_in_state(self.variable, {self.variable: self.variable.get()})
 
 class Test:
     def __init__(self, val):
@@ -25,7 +23,7 @@ class Test:
     def assumed_value(self):
         return self.val
     
-    def satisfied_in_state(self, state):
+    def satisfied_in_state(self, variable, state):
         return False
 
 class EQ(Test):
