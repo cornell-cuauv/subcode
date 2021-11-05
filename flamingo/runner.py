@@ -91,10 +91,10 @@ def find_and_execute_plan():
     print("Plan identified: " + ", ".join([action.name for action in plan]))
     for action in plan:
         print("Executing action: " + action.name)
-        result = action.execute()
-        if not result:
+        failing_var = action.execute()
+        if failing_var:
             Zero()()
-            action.run_on_failure()
+            action.run_on_failure(failing_var)
             Zero()()
             return False
     return True
