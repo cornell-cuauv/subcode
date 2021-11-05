@@ -54,9 +54,8 @@ def find_theoretical_starting_state():
 def find_real_starting_state():
     starting_state = find_theoretical_starting_state()
     for variable in starting_state:
-        if "." in variable:
-            group, _, name = variable.partition(".")
-            starting_state[variable] = getattr(getattr(shm, group), name).get()
+        if not isinstance(variable, str):
+            starting_state[variable] = variable.get()
     return starting_state
 
 # Check if a state satisfies a list of conditions.
