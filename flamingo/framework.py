@@ -57,7 +57,7 @@ class TH(Test):
         return abs(state[variable] - self.val) <= self.tolerance
 
 class Action:
-    def __init__(self, name, preconds, invariants, postconds, task, on_failure=NoOp(), dependencies=[]):
+    def __init__(self, name, preconds, invariants, postconds, task, on_failure=lambda failing_var: NoOp(), dependencies=[]):
         self.name = name
         self.preconds = preconds
         self.invariants = invariants
@@ -87,20 +87,22 @@ class Action:
                 condition.results = condition.results[1:] + [condition.satisfied_in_reality()]
                 if condition.results.count(False) > condition.required_failures:
                     print("(Invariant) Failing variable: " + condition.variable)
-                    return False
+                    return condition.variable
             time.sleep(1 / 60)
         for condition in self.postconds:
             if not condition.satisfied_in_reality():
                 print("(Postcond) Failing variable: " + condition.variable)
-        return True
+                return condition.variable
+        return None
 
-    def run_on_failure(self):
+    def run_on_failure(self, failing_var):
+        cleanup_task = self.on_failure(failing_var)
         while True:
             try:
-                self.on_failure()
+                cleanup_task()
             except:
                 return
-            if self.on_failure.finished:
+            if cleanup_task.finished:
                 return
             time.sleep(1 / 60)
 
