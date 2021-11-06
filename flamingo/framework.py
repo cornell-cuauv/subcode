@@ -5,54 +5,47 @@ import shm
 from mission.framework.primitive import NoOp
 
 class Condition:
-    def __init__(self, variable, test, consistency=(1, 1)):
-        self.variable = variable
-        self.test = test
+    def __init__(self, var, val, consistency=(1, 1)):
+        self.var = var
+        self.val = val
         self.required_failures, self.window_length = consistency
         self.results = [True] * self.window_length
 
     def satisfied_in_reality(self):
-        if isinstance(self.variable, str):
+        if isinstance(self.var, str):
             return True
-        return self.test.satisfied_in_state(self.variable, {self.variable: self.variable.get()})
-
-class Test:
-    def __init__(self, val):
-        self.val = val
+        return self.satisfied_in_state({self.var: self.var.get()})
 
     def assumed_value(self):
         return self.val
-    
-    def satisfied_in_state(self, variable, state):
-        return False
 
-class EQ(Test):
-    def satisfied_in_state(self, variable, state):
-        if state[variable] == None:
+class EQ(Condition):
+    def satisfied_in_state(self, state):
+        if state[self.var] == None:
             return False
-        return state[variable] == self.val
+        return state[self.var] == self.val
 
-class GE(Test):
-    def satisfied_in_state(self, variable, state):
-        if state[variable] == None:
+class GE(Condition):
+    def satisfied_in_state(self, state):
+        if state[self.var] == None:
             return False
-        return state[variable] >= self.val
+        return state[self.var] >= self.val
 
-class LE(Test):
-    def satisfied_in_state(self, variable, state):
-        if state[variable] == None:
+class LE(Condition):
+    def satisfied_in_state(self, state):
+        if state[self.var] == None:
             return False
-        return state[variable] <= self.val
+        return state[self.var] <= self.val
 
-class TH(Test):
-    def __init__(self, val, tolerance):
-        self.val = val
+class TH(Condition):
+    def __init__(self, var, val, tolerance, consistency=(1, 1)):
+        super().__init__(var, val, consistency)
         self.tolerance = tolerance
 
-    def satisfied_in_state(self, variable, state):
-        if state[variable] == None:
+    def satisfied_in_state(self, state):
+        if state[self.var] == None:
             return False
-        return abs(state[variable] - self.val) <= self.tolerance
+        return abs(state[self.var] - self.val) <= self.tolerance
 
 class Action:
     def __init__(self, name, preconds, invariants, postconds, task, on_failure=lambda failing_var: NoOp(), dependencies=[]):
@@ -69,7 +62,7 @@ class Action:
         for variable in all_variables:
             state[variable] = None
         for condition in self.postconds:
-            state[condition.variable] = condition.test.assumed_value()
+            state[condition.var] = condition.assumed_value()
         return state
 
     def execute(self):
@@ -83,14 +76,14 @@ class Action:
                 break
             for condition in self.invariants:
                 condition.results = condition.results[1:] + [condition.satisfied_in_reality()]
-                if condition.results.count(False) > condition.required_failures:
-                    print("(Invariant) Failing variable: " + condition.variable)
-                    return condition.variable
+                if condition.results.count(False) >= condition.required_failures:
+                    print("(Invariant) Failing variable: " + condition.var)
+                    return condition.var
             time.sleep(1 / 60)
         for condition in self.postconds:
             if not condition.satisfied_in_reality():
-                print("(Postcond) Failing variable: " + condition.variable)
-                return condition.variable
+                print("(Postcond) Failing variable: " + condition.var)
+                return condition.var
         return None
 
     def run_on_failure(self, failing_var):
