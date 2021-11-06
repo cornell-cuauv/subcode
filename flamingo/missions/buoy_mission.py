@@ -3,11 +3,14 @@ from mission.framework.combinators import *
 from mission.framework.search import *
 from mission.framework.targeting import *
 
-visible = Condition(shm.red_buoy_results.heuristic_score, GE(0.7), consistency=(20, 30))
-centered_x = Condition(shm.red_buoy_results.center_x, TH(0, 0.1))
-centered_y = Condition(shm.red_buoy_results.center_y, TH(0, 0.1))
-near = Condition(shm.red_buoy_results.area, GE(10000))
-rammed = Condition('buoy_rammed', EQ(True))
+import shm
+buoy = shm.red_buoy_results
+
+visible = GE(buoy.heuristic_score, 0.7, consistency=(20, 30))
+centered_x = TH(buoy.center_x, 0, 0.1)
+centered_y = TH(buoy.center_y, 0, 0.1)
+near = GE(buoy.area, 10000)
+rammed = EQ('buoy_rammed', True)
 
 initial_state = {'buoy_rammed': False}
 goal = [rammed]

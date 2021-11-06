@@ -42,12 +42,12 @@ def find_theoretical_starting_state():
         for var, val in mission.initial_state.items():
             starting_state[var] = val
     for condition in mission.goal:
-        if condition.variable not in starting_state:
-            starting_state[condition.variable] = None
+        if condition.var not in starting_state:
+            starting_state[condition.var] = None
     for action in mission.actions:
         for condition in action.preconds + action.invariants + action.postconds:
-            if condition.variable not in starting_state:
-                starting_state[condition.variable] = None
+            if condition.var not in starting_state:
+                starting_state[condition.var] = None
     return starting_state
 
 # Evaluate shm state variables to find the real starting state.
@@ -61,7 +61,7 @@ def find_real_starting_state():
 # Check if a state satisfies a list of conditions.
 def conditions_satisfied_in_state(conditions, state):
     for condition in conditions:
-        if not condition.test.satisfied_in_state(condition.variable, state):
+        if not condition.satisfied_in_state(state):
             return False
     return True
 
