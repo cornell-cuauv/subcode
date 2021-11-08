@@ -42,8 +42,8 @@ class Condition:
     def satisfied_in_reality(self):
         return self.satisfied_in_state(State(shm_values={self.var: self.var.get()}))
 
-    def assumed_value(self):
-        return self.val
+    def assumed_values(self):
+        return {self.var: self.val}
 
     def update_result(self):
         self.results = self.results[1:] + [self.satisfied_in_reality()]
@@ -76,6 +76,25 @@ class TH(Condition):
             return False
         return abs(state.shm_values[self.var] - self.val) <= self.tolerance
 
+class ALL(Condition):
+    def __init__(self, conditions, consistency=(1, 1)):
+        self.conditions
+        self.required_failures, self.window_length = consistency
+        self.results = [True] * self.window_length
+
+    def satisfied_in_reality(self):
+        return all([condition.satisfied_in_reality() for condition in self.conditions])
+
+    def assumed_values(self):
+        values = {}
+        for condition in conditions:
+            values.update(condition.assumed_values())
+        return values
+
+    def satisfied_in_state(self, state):
+        return all([condition.satisfied_in_reality(state) for condition in self.conditions])
+
+
 class Action:
     def __init__(self, name, preconds, invariants, postconds, task, on_failure=lambda failing_var: NoOp(), dependencies=[]):
         self.name = name
@@ -91,7 +110,7 @@ class Action:
         state = State(flags=state_before_action.flags)
         for condition in self.postconds:
             if isinstance(condition, Condition):
-                state.shm_values[condition.var] = condition.assumed_value()
+                state.shm_values.update(condition.assumed_values())
             else:
                 state.flags.add(condition)
         return state

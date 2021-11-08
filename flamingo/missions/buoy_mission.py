@@ -11,6 +11,7 @@ import shm
 buoy = shm.red_buoy_results
 
 visible = GE(buoy.heuristic_score, 0.7, consistency=(3, 5))
+not_visible = LE(buoy.heuristic_score, 0.7)
 centered_x = TH(buoy.center_x, 0, 0.1)
 centered_y = TH(buoy.center_y, 0, 0.1)
 near = GE(buoy.area, 10000)
@@ -60,14 +61,14 @@ ram = Sequential(
 actions = [
     Action(
         name='search',
-        preconds=[],
+        preconds=[not_visible],
         invariants=[],
-        postconds=[visible],
+        postconds=[visible, far],
         task=search
     ),
     Action(
         name='center',
-        preconds=[visible],
+        preconds=[visible, far],
         invariants=[visible, far],
         postconds=[visible, centered_x, centered_y],
         task=center
