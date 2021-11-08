@@ -20,10 +20,17 @@ class State:
         return True
 
     def __str__(self):
-        output = "".join([str(var).split("'")[1][4:] + ": " + str(val) + ", " for var, val in self.shm_values.items()]) + ", ".join(self.flags)
-        if len(self.flags) == 0:
-            output = output[:-2]
-        return output
+        shm_values_str = ", ".join(sorted([str(var)[8:-2] + ": " + str(val) for var, val in self.shm_values.items()]))
+        flags_str = ", ".join(sorted(self.flags))
+        if shm_values_str and flags_str:
+            return shm_values_str + ", " + flags_str
+        return shm_values_str + flags_str
+
+    def __eq__(self, other):
+        return str(self) == str(other)
+
+    def __hash__(self):
+        return hash(str(self))
 
 class Condition:
     def __init__(self, var, val, consistency=(1, 1)):

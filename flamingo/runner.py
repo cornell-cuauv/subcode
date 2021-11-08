@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-import sys
+import argparse
 import importlib
+import sys
 import time
 import signal
 
@@ -9,16 +10,15 @@ import shm
 from mission.framework.primitive import Zero
 from flamingo.framework import State, Condition
 
-# Check that there is exactly one additional argument.
-if len(sys.argv) != 2:
-    print("Error: Provide the name of the mission file (wiithout the .py) as an argument.")
-    sys.exit()
+parser = argparse.ArgumentParser()
+parser.add_argument('filename')
+args = parser.parse_args()
 
 # Import the mission file.
 try:
-    mission = importlib.import_module("missions." + sys.argv[1])
+    mission = importlib.import_module("missions." + args.filename)
 except Exception as e:
-    print("Error: Something went wrong when importing " + sys.argv[1] + ":")
+    print("Error: Something went wrong when importing " + args.filename + ":")
     print(e)
     sys.exit()
 
@@ -50,12 +50,16 @@ class SearchNode:
         self.state = state
         self.plan = plan
 
-# Find a list of actions to get from a starting state to the mission's goal.
+# Find a list of actions to get from a starting state to the mission's goals.
 def solve(starting_state):
+    visited_states = set()
     queue = [SearchNode(starting_state, [])]
     while len(queue) > 0:
         node = queue.pop(0)
-        if node.state.satisfies_conditions(mission.goal):
+        if node.state in visited_states:
+            continue
+        visited_states.add(node.state)
+        if node.state.satisfies_conditions(mission.goals.keys()):
             return node.plan
         for action in mission.actions:
             if action.dependencies_functioning():
