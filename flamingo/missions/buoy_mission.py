@@ -10,7 +10,7 @@ from mission.framework.timing import Timer
 import shm
 buoy = shm.red_buoy_results
 
-visible = GE(buoy.heuristic_score, 0.7, consistency=(20, 30))
+visible = GE(buoy.heuristic_score, 0.7, consistency=(3, 5))
 centered_x = TH(buoy.center_x, 0, 0.1)
 centered_y = TH(buoy.center_y, 0, 0.1)
 near = GE(buoy.area, 10000)

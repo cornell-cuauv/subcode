@@ -45,6 +45,11 @@ class Condition:
     def assumed_value(self):
         return self.val
 
+    def update_result(self):
+        self.results.append(self.satisfied_in_reality())
+        if len(self.results) > self.window_length:
+            self.results = self.results[1:]
+
 class EQ(Condition):
     def satisfied_in_state(self, state):
         if self.var not in state.shm_values:
@@ -82,6 +87,7 @@ class Action:
         self.task = task
         self.on_failure = on_failure
         self.dependencies = dependencies
+        self.currently_executing = False
 
     def state_after_action(self, state_before_action):
         state = State(flags=state_before_action.flags)
@@ -93,6 +99,11 @@ class Action:
         return state
 
     def execute(self):
+        self.currently_executing = True
+        for condition in self.invariants:
+            watcher = shm.watchers.watcher()
+            watcher.watch(condition.var)
+            threading.Thread(target=self.consistency_thread, args=[condition, watcher], daemon=True)
         while True:
             try:
                 self.task()
@@ -102,15 +113,15 @@ class Action:
             if self.task.finished:
                 break
             for condition in self.invariants:
-                condition.results = condition.results[1:] + [condition.satisfied_in_reality()]
                 if condition.results.count(False) >= condition.required_failures:
-                    print("(Invariant) Failing variable: " + str(condition.var).split("'")[1][4])
+                    print("(Invariant) Failing variable: " + str(condition.var)[8:-2])
                     return condition.var
             time.sleep(1 / 60)
+        self.currently_executing = False
         for condition in self.postconds:
             if isinstance(condition, Condition):
                 if not condition.satisfied_in_reality():
-                    print("(Postcond) Failing variable: " + str(condition.var).split("'")[1][4])
+                    print("(Postcond) Failing variable: " + str(condition.var)[8:-2])
                     return condition.var
         return None
 
@@ -130,3 +141,8 @@ class Action:
             if not dependency.get():
                 return False
         return True
+
+    def consistency_thread(self, condition, watcher):
+        while self.currently_executing:
+            condition.update_result()
+            watcher.wait()
