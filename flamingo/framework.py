@@ -46,9 +46,7 @@ class Condition:
         return self.val
 
     def update_result(self):
-        self.results.append(self.satisfied_in_reality())
-        if len(self.results) > self.window_length:
-            self.results = self.results[1:]
+        self.results = self.results[1:] + [self.satisfied_in_reality()]
 
 class EQ(Condition):
     def satisfied_in_state(self, state):
@@ -102,8 +100,8 @@ class Action:
         self.currently_executing = True
         for condition in self.invariants:
             watcher = shm.watchers.watcher()
-            watcher.watch(condition.var)
-            threading.Thread(target=self.consistency_thread, args=[condition, watcher], daemon=True)
+            watcher.watch(getattr(shm, str(condition.var).split('.')[1]))
+            threading.Thread(target=self.consistency_thread, args=[condition, watcher], daemon=True).start()
         while True:
             try:
                 self.task()
