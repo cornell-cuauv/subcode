@@ -17,7 +17,7 @@ near = GE(buoy.area, 10000)
 far = LE(buoy.area, 5000)
 rammed = 'rammed'
 
-goal = [rammed]
+goals = {rammed: 400}
 
 search = Sequential(
     SearchFor(
@@ -67,8 +67,8 @@ actions = [
     ),
     Action(
         name='center',
-        preconds=[visible, far],
-        invariants=[visible],
+        preconds=[visible],
+        invariants=[visible, far],
         postconds=[visible, centered_x, centered_y],
         task=center
     ),
