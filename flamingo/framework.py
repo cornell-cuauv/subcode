@@ -4,6 +4,27 @@ import time
 import shm
 from mission.framework.primitive import NoOp
 
+class State:
+    def __init__(self, shm_values={}, flags=set()):
+        self.shm_values = shm_values.copy()
+        self.flags = flags.copy()
+
+    def satisfies_conditions(self, conditions):
+        for condition in conditions:
+            if isinstance(condition, Condition):
+                if not condition.satisfied_in_state(self):
+                    return False
+            else:
+                if condition not in self.flags:
+                    return False
+        return True
+
+    def __str__(self):
+        output = "".join([str(var).split("'")[1][4:] + ": " + str(val) + ", " for var, val in self.shm_values.items()]) + ", ".join(self.flags)
+        if len(self.flags) == 0:
+            output = output[:-2]
+        return output
+
 class Condition:
     def __init__(self, var, val, consistency=(1, 1)):
         self.var = var
@@ -12,30 +33,28 @@ class Condition:
         self.results = [True] * self.window_length
 
     def satisfied_in_reality(self):
-        if isinstance(self.var, str):
-            return True
-        return self.satisfied_in_state({self.var: self.var.get()})
+        return self.satisfied_in_state(State(shm_values={self.var: self.var.get()}))
 
     def assumed_value(self):
         return self.val
 
 class EQ(Condition):
     def satisfied_in_state(self, state):
-        if state[self.var] == None:
+        if self.var not in state.shm_values:
             return False
-        return state[self.var] == self.val
+        return state.shm_values[self.var] == self.val
 
 class GE(Condition):
     def satisfied_in_state(self, state):
-        if state[self.var] == None:
+        if self.var not in state.shm_values:
             return False
-        return state[self.var] >= self.val
+        return state.shm_values[self.var] >= self.val
 
 class LE(Condition):
     def satisfied_in_state(self, state):
-        if state[self.var] == None:
+        if self.var not in state.shm_values:
             return False
-        return state[self.var] <= self.val
+        return state.shm_values[self.var] <= self.val
 
 class TH(Condition):
     def __init__(self, var, val, tolerance, consistency=(1, 1)):
@@ -43,9 +62,9 @@ class TH(Condition):
         self.tolerance = tolerance
 
     def satisfied_in_state(self, state):
-        if state[self.var] == None:
+        if self.var not in state.shm_values:
             return False
-        return abs(state[self.var] - self.val) <= self.tolerance
+        return abs(state.shm_values[self.var] - self.val) <= self.tolerance
 
 class Action:
     def __init__(self, name, preconds, invariants, postconds, task, on_failure=lambda failing_var: NoOp(), dependencies=[]):
@@ -57,12 +76,13 @@ class Action:
         self.on_failure = on_failure
         self.dependencies = dependencies
 
-    def state_after_action(self, all_variables):
-        state = {}
-        for variable in all_variables:
-            state[variable] = None
+    def state_after_action(self, state_before_action):
+        state = State(flags=state_before_action.flags)
         for condition in self.postconds:
-            state[condition.var] = condition.assumed_value()
+            if isinstance(condition, Condition):
+                state.shm_values[condition.var] = condition.assumed_value()
+            else:
+                state.flags.add(condition)
         return state
 
     def execute(self):
@@ -77,13 +97,14 @@ class Action:
             for condition in self.invariants:
                 condition.results = condition.results[1:] + [condition.satisfied_in_reality()]
                 if condition.results.count(False) >= condition.required_failures:
-                    print("(Invariant) Failing variable: " + condition.var)
+                    print("(Invariant) Failing variable: " + str(condition.var).split("'")[1][4])
                     return condition.var
             time.sleep(1 / 60)
         for condition in self.postconds:
-            if not condition.satisfied_in_reality():
-                print("(Postcond) Failing variable: " + condition.var)
-                return condition.var
+            if isinstance(condition, Condition):
+                if not condition.satisfied_in_reality():
+                    print("(Postcond) Failing variable: " + str(condition.var).split("'")[1][4])
+                    return condition.var
         return None
 
     def run_on_failure(self, failing_var):

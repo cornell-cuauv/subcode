@@ -1,7 +1,11 @@
-from flamingo.framework import *
-from mission.framework.combinators import *
-from mission.framework.search import *
-from mission.framework.targeting import *
+from flamingo.framework import GE, LE, TH, Action
+
+from mission.framework.combinators import Sequential, While
+from mission.framework.search import SearchFor, SwaySearch
+from mission.framework.primitive import Zero, NoOp
+from mission.framework.targeting import ForwardTarget
+from mission.framework.movement import VelocityX
+from mission.framework.timing import Timer
 
 import shm
 buoy = shm.red_buoy_results
@@ -10,9 +14,9 @@ visible = GE(buoy.heuristic_score, 0.7, consistency=(20, 30))
 centered_x = TH(buoy.center_x, 0, 0.1)
 centered_y = TH(buoy.center_y, 0, 0.1)
 near = GE(buoy.area, 10000)
-rammed = EQ('buoy_rammed', True)
+far = LE(buoy.area, 5000)
+rammed = 'rammed'
 
-initial_state = {'buoy_rammed': False}
 goal = [rammed]
 
 search = Sequential(
@@ -37,6 +41,14 @@ approach = Sequential(
     ),
     Zero()
 )
+back_off = Sequential(
+    VelocityX(-0.2),
+    While(
+        lambda: NoOp(),
+        lambda: shm.red_buoy_results.area.get() > 5000
+    ),
+    Zero()
+)
 ram = Sequential(
     VelocityX(0.4),
     Timer(2),
@@ -55,21 +67,28 @@ actions = [
     ),
     Action(
         name='center',
-        preconds=[visible],
+        preconds=[visible, far],
         invariants=[visible],
-        postconds=[centered_x, centered_y],
+        postconds=[visible, centered_x, centered_y],
         task=center
     ),
     Action(
         name='approach',
-        preconds=[centered_x, centered_y],
-        invariants=[centered_x, centered_y],
-        postconds=[centered_x, centered_y, near],
+        preconds=[visible, centered_x, centered_y],
+        invariants=[visible, centered_x, centered_y],
+        postconds=[visible, centered_x, centered_y, near],
         task=approach
     ),
     Action(
+        name='back_off',
+        preconds=[visible],
+        invariants=[visible],
+        postconds=[visible, far],
+        task=back_off
+    ),
+    Action(
         name='ram',
-        preconds=[centered_x, centered_y, near],
+        preconds=[visible, centered_x, centered_y, near],
         invariants=[],
         postconds=[rammed],
         task=ram
