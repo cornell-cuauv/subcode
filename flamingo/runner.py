@@ -12,6 +12,7 @@ from flamingo.framework import State, Condition
 
 parser = argparse.ArgumentParser()
 parser.add_argument('filename')
+parser.add_argument('--max-actions', type=int, default=float("inf"))
 args = parser.parse_args()
 
 # Import the mission file.
@@ -50,21 +51,38 @@ class SearchNode:
         self.state = state
         self.plan = plan
 
+    def score(self):
+        total = 0
+        for goal, value in mission.goals.items():
+            if goal in self.state.flags:
+                total += value
+        return total
+
 # Find a list of actions to get from a starting state to the mission's goals.
 def solve(starting_state):
     visited_states = set()
     queue = [SearchNode(starting_state, [])]
+    best_plan = None
+    best_plan_score = 0
     while len(queue) > 0:
         node = queue.pop(0)
-        if node.state in visited_states:
+        if node.state in visited_states or len(node.plan) > args.max_actions:
             continue
         visited_states.add(node.state)
-        if node.state.satisfies_conditions(mission.goals.keys()):
-            return node.plan
+        if node.score() > best_plan_score:
+            best_plan = node.plan
+            best_plan_score = node.score()
         for action in mission.actions:
             if action.dependencies_functioning():
                 if node.state.satisfies_conditions(action.preconds) and not node.state.satisfies_conditions(action.postconds):
                     queue.append(SearchNode(action.state_after_action(node.state), node.plan + [action]))
+    if best_plan:
+        return best_plan
+    if args.max_actions == float("inf"):
+        print("No plan was found to score any points.")
+    else:
+        print("No plan of at most " + str(args.max_actions) + " actions was found to score any points.")
+    sys.exit(0)
 
 # Find a plan to get from the real starting state to the mission's goal and execute it, one action at a time.
 def find_and_execute_plan():
