@@ -52,9 +52,9 @@ class Synchronizer:
         msg = None
 
         corr_in = (x[-1] - x[0]).reshape(1, -1)
-        corr_pn = self._pn_correlator.push(corr_in).real
-        corr_orth = self._orth_correlator.push(corr_in).real
-        thresh = xp.sqrt(self._thresh_accum.push(corr_orth ** 2).real)
+        corr_pn = xp.abs(self._pn_correlator.push(corr_in))
+        corr_orth = xp.abs(self._orth_correlator.push(corr_in))
+        thresh = xp.sqrt(xp.abs(self._thresh_accum.push(corr_orth ** 2)))
         stacked = xp.concatenate((corr_in, corr_pn, corr_orth, thresh, x))
 
         if self._triggered:
