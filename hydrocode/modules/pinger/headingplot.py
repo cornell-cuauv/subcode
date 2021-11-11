@@ -1,4 +1,5 @@
 import math
+from os import path
 import queue
 import time
 
@@ -18,7 +19,8 @@ class HeadingPlot(plot.PlotBase):
         (pyplot, fig) = plot.PlotBase._daemon_init()
 
         pyplot.suptitle('Relative Heading Plot')
-        pointy = pyplot.imread('img/pointy.png')
+        pointy = pyplot.imread(
+            path.join(path.dirname(path.realpath(__file__)), 'img/pointy.png'))
         (x_center, y_center) = (pointy.shape[0] // 2, pointy.shape[1] // 2)
         (ax, im, text) = HeadingPlot._define_plot(fig, pointy)
 
