@@ -9,6 +9,7 @@ misc/\#LED
 pooltest/slack.py
 pooltest/src
 vehicle-scripts/auv-env/
+install/ssh/
 
 # don't show them what we don't want them to see
 open-source/exclusions
