@@ -96,13 +96,14 @@ class ALL(Condition):
 
 
 class Action:
-    def __init__(self, name, preconds, invariants, postconds, task, on_failure=lambda failing_var: NoOp(), dependencies=[]):
+    def __init__(self, name, preconds, invariants, postconds, task, on_failure=lambda failing_var: NoOp(), time=None, dependencies=[]):
         self.name = name
         self.preconds = preconds
         self.invariants = invariants
         self.postconds = postconds
         self.task = task
         self.on_failure = on_failure
+        self.time = time
         self.dependencies = dependencies
         self.currently_executing = False
 
