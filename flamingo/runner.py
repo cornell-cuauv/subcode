@@ -13,6 +13,7 @@ from flamingo.framework import State, Condition
 parser = argparse.ArgumentParser()
 parser.add_argument('filename')
 parser.add_argument('--max-actions', type=int, default=float("inf"))
+parser.add_argument('--max-time', type=int, default=float("inf"))
 args = parser.parse_args()
 
 # Import the mission file.
@@ -23,6 +24,10 @@ except Exception as e:
     print(e)
     sys.exit()
 
+# Check that all actions specify time.
+if args.max_time != float("inf") and any([action.time == None for action in mission.actions]):
+    print("Not all actions specify time, so --max-time will be ignored.")
+    args.max_time = float("inf")
 
 # Clean up on interrupt.
 vision_modules_state = shm.vision_modules.get()
@@ -58,6 +63,13 @@ class SearchNode:
                 total += value
         return total
 
+    def time(self):
+        total = 0
+        for action in self.plan:
+            if action.time != None:
+                total += action.time
+        return total
+
 # Find a list of actions to get from a starting state to the mission's goals.
 def solve(starting_state):
     visited_states = set()
@@ -66,7 +78,7 @@ def solve(starting_state):
     best_plan_score = 0
     while len(queue) > 0:
         node = queue.pop(0)
-        if node.state in visited_states or len(node.plan) > args.max_actions:
+        if node.state in visited_states or len(node.plan) > args.max_actions or node.time() > args.max_time:
             continue
         visited_states.add(node.state)
         if node.score() > best_plan_score:
