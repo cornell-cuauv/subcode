@@ -1,4 +1,4 @@
-from flamingo.framework import GE, LE, TH, Action
+from flamingo.framework import Flag, GE, LE, TH, Action
 
 from mission.framework.combinators import Sequential, While
 from mission.framework.search import SearchFor, SwaySearch
@@ -16,7 +16,7 @@ centered_x = TH(buoy.center_x, 0, 0.1)
 centered_y = TH(buoy.center_y, 0, 0.1)
 near = GE(buoy.area, 10000)
 far = LE(buoy.area, 5000)
-rammed = 'rammed'
+rammed = Flag('rammed')
 
 goals = {rammed: 400}
 
