@@ -4,6 +4,20 @@ import time
 import shm
 from mission.framework.primitive import NoOp
 
+class Flag:
+    def __init__(self, name, ephemeral=False):
+        self.name = name
+        self.ephemeral = ephemeral
+
+    def __str__(self):
+        return self.name
+
+    def __eq__(self, other):
+        return str(self) == str(other)
+
+    def __hash__(self):
+        return hash(str(self))
+
 class State:
     def __init__(self, shm_values={}, flags=set()):
         self.shm_values = shm_values.copy()
@@ -19,15 +33,18 @@ class State:
                     return False
         return True
 
+    def clear_ephemeral_flags(self):
+        self.flags = {flag for flag in self.flags if not flag.ephemeral}
+
     def __str__(self):
         shm_values_str = ", ".join(sorted([str(var)[8:-2] + ": " + str(val) for var, val in self.shm_values.items()]))
-        flags_str = ", ".join(sorted(self.flags))
+        flags_str = ", ".join(sorted(map(str, self.flags)))
         if shm_values_str and flags_str:
             return shm_values_str + ", " + flags_str
         return shm_values_str + flags_str
 
     def __eq__(self, other):
-        return str(self) == str(other)
+        return isinstance(other, State) and str(self) == str(other)
 
     def __hash__(self):
         return hash(str(self))
@@ -109,6 +126,7 @@ class Action:
 
     def state_after_action(self, state_before_action):
         state = State(flags=state_before_action.flags)
+        state.clear_ephemeral_flags()
         for condition in self.postconds:
             if isinstance(condition, Condition):
                 state.shm_values.update(condition.assumed_values())
