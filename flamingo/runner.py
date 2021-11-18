@@ -16,17 +16,20 @@ parser.add_argument('--max-actions', type=int, default=float("inf"))
 parser.add_argument('--max-time', type=int, default=float("inf"))
 args = parser.parse_args()
 
+def error(message):
+    print('\033[1;31;40m' + str(message) + '\033[0m')
+
 # Import the mission file.
 try:
     mission = importlib.import_module("missions." + args.filename)
 except Exception as e:
-    print("Error: Something went wrong when importing " + args.filename + ":")
-    print(e)
+    error("Something went wrong when importing " + args.filename + ":")
+    error(e)
     sys.exit()
 
 # Check that all actions specify time.
 if args.max_time != float("inf") and any([action.time == None for action in mission.actions]):
-    print("Not all actions specify time, so --max-time will be ignored.")
+    error("Not all actions specify time, so --max-time will be ignored.")
     args.max_time = float("inf")
 
 # Clean up on interrupt.
@@ -43,6 +46,7 @@ def cleanup(*args):
 
 signal.signal(signal.SIGINT, cleanup)
 
+# Evaluate all the relevent SHM variables.
 def find_starting_state():
     state = State()
     for action in mission.actions:
@@ -70,7 +74,7 @@ class SearchNode:
                 total += action.time
         return total
 
-# Find a list of actions to get from a starting state to the mission's goals.
+# Find a list of actions to achieve as many goals as possible from a starting state.
 def solve(starting_state):
     visited_states = set()
     queue = [SearchNode(starting_state, [])]
@@ -96,10 +100,9 @@ def solve(starting_state):
         print("No plan of at most " + str(args.max_actions) + " actions was found to score any points.")
     sys.exit(0)
 
-# Find a plan to get from the real starting state to the mission's goal and execute it, one action at a time.
+# Find a plan and execute it, one action at a time.
 def find_and_execute_plan():
     starting_state = find_starting_state()
-    print("Current state: " + str(starting_state))
     plan = solve(starting_state)
     print("Plan identified: " + ", ".join([action.name for action in plan]))
     for action in plan:
