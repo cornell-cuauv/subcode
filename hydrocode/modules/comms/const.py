@@ -1,8 +1,9 @@
+import os
+
 DECIM_FACTOR = 1024
 DUR_GAIN_INTERVAL = 2.2
 BANDWIDTH = 3000
 FIR_ORDER = 1024
-FREQUENCY = 52000
 L_FIR_BLOCK = 16384
 L_SYM = 32
 L_THRESH_CALC = 256
@@ -14,6 +15,13 @@ SQUELCH_THRESH = 100
 SYMBOL_SIZE = 2
 SYMBOL_STOPBAND_FRAC = 0.75
 THRESHOLD_FACTOR = 3
+
+if os.environ['CUAUV_VEHICLE_TYPE'] == "mainsub":
+    TX_FREQ = 48000
+    RX_FREQ = 54000
+else:
+    TX_FREQ = 54000
+    RX_FREQ = 48000
 
 PN_SEQ = [1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, -1, -1, 1, -1, -1, -1, -1, 1,
     -1, 1, -1, 1, 1, 1, -1, 1, 1, -1, -1, -1]

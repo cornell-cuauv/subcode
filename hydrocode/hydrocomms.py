@@ -40,7 +40,7 @@ class Receive:
             convert.omega_hat(symbol_stopband),
             comms.const.FIR_ORDER,
         )
-        symbols = (comms.const.FREQUENCY - comms.const.BANDWIDTH / 2 +
+        symbols = (comms.const.RX_FREQ - comms.const.BANDWIDTH / 2 +
             xp.arange(num_symbols) * symbol_spacing)
         dwncnvs = []
         for symbol in symbols:
