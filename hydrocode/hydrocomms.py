@@ -5,7 +5,6 @@ from threading import Thread
 
 try:
     import cupy as xp
-    print('Using CuPy\n')
 except ImportError:
     import numpy as xp
 
