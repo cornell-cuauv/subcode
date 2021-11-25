@@ -3,6 +3,9 @@ from os import path
 import queue
 import time
 
+import matplotlib
+from matplotlib import pyplot, transforms
+
 from common import const, plot
 
 class HeadingPlot(plot.PlotBase):
@@ -14,9 +17,9 @@ class HeadingPlot(plot.PlotBase):
 
     @staticmethod
     def _daemon(q):
-        from matplotlib import transforms
-
-        (pyplot, fig) = plot.PlotBase._daemon_init()
+        matplotlib.use('TkAgg')
+        pyplot.ioff()
+        fig = pyplot.figure(figsize=(5, 5))
 
         pyplot.suptitle('Relative Heading Plot')
         pointy = pyplot.imread(

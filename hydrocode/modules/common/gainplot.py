@@ -5,6 +5,8 @@ try:
     import cupy as xp
 except ImportError:
     import numpy as xp
+import matplotlib
+from matplotlib import pyplot
 import numpy as np
 from scipy.interpolate import interp1d
 
@@ -32,7 +34,9 @@ class GainPlot(plot.PlotBase):
 
     @staticmethod
     def _daemon(q):
-        (pyplot, fig) = plot.PlotBase._daemon_init()
+        matplotlib.use('TkAgg')
+        pyplot.ioff()
+        fig = pyplot.figure(figsize=(5, 5))
 
         orig_indices = np.arange(0, const.L_GAIN_PLOT)
         interp_indices = np.linspace(0, const.L_GAIN_PLOT - 1, num=1000)

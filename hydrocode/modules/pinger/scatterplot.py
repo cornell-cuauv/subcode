@@ -2,6 +2,9 @@ import math
 import queue
 import time
 
+import matplotlib
+from matplotlib import pyplot
+from matplotlib.ticker import AutoMinorLocator
 import numpy as np
 
 from common import const, plot
@@ -15,9 +18,9 @@ class ScatterPlot(plot.PlotBase):
 
     @staticmethod
     def _daemon(q):
-        from matplotlib.ticker import AutoMinorLocator
-
-        (pyplot, fig) = plot.PlotBase._daemon_init()
+        matplotlib.use('TkAgg')
+        pyplot.ioff()
+        fig = pyplot.figure(figsize=(5, 5))
 
         pyplot.suptitle('Relative Heading/Elevation Scatter Plot')
         (ax, points, text) = ScatterPlot._define_plot(fig, AutoMinorLocator)
