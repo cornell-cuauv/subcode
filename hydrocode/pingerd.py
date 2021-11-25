@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
+import multiprocessing
 from os import path
 import sys
 
 try:
     import cupy as xp
-    print('Using CuPy\n')
 except ImportError:
     import numpy as xp
 
@@ -22,6 +22,8 @@ except ImportError:
 if __name__ == '__main__':
     print('Pingerd starting...')
 
+    multiprocessing.set_start_method('spawn')
+
     L_INTERVAL = int(pinger.const.DUR_INTERVAL * common.const.SAMPLE_RATE)
 
     gainctrl = gain.Controller(
@@ -36,8 +38,8 @@ if __name__ == '__main__':
     )
     freq = shm.hydrophones_pinger_settings.frequency.get()
     if freq not in pinger.const.USUAL_FREQS:
-        print("Warning: Tracking unusual frequency " + str(freq) + " Hz")
-        print("Track frequency must be set manually in shm")
+        print('Warning: Tracking unusual frequency ' + str(freq) + ' Hz')
+        print('Track frequency must be set manually in shm')
     dwncnv = downconv.Downconverter(
         4 if common.const.USE_4CHS else 3,
         pinger.const.L_FIR_BLOCK,

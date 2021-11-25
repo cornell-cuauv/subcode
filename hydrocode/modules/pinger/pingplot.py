@@ -5,6 +5,8 @@ try:
     import cupy as xp
 except ImportError:
     import numpy as xp
+import matplotlib
+from matplotlib import pyplot
 import numpy as np
 from scipy.interpolate import interp1d
 
@@ -31,7 +33,9 @@ class PingPlot(plot.PlotBase):
 
     @staticmethod
     def _daemon(q):
-        (pyplot, fig) = plot.PlotBase._daemon_init()
+        matplotlib.use('TkAgg')
+        pyplot.ioff()
+        fig = pyplot.figure(figsize=(5, 5))
 
         interp_indices = np.linspace(0, pinger.const.L_PING_PLOT - 1, num=1000)
 

@@ -54,6 +54,6 @@ class Controller:
 
         peak_for_gains = peak / gain_at_peak * self._gain_values_array
 
-        desire = int((peak_for_gains < const.CLIPPING_THRESHOLD).sum() - 1)
+        desire = int((peak_for_gains < const.CLIP_THRESH).sum() - 1)
 
         return desire if desire > 0 else 0
