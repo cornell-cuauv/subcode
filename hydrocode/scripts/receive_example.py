@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import multiprocessing
 from os import path
 import queue
 import sys
@@ -9,6 +10,8 @@ import hydrocomms
 
 if __name__ == '__main__':
     print('Listening for comms...')
+
+    multiprocessing.set_start_method('spawn')
 
     q = queue.Queue(maxsize=1)
     r = hydrocomms.Receive(

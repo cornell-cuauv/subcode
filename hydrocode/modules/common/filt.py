@@ -4,7 +4,7 @@ try:
     import cupy as xp
 except ImportError:
     import numpy as xp
-from scipy.signal import firwin, kaiserord, windows
+from scipy.signal import windows
 
 class FIR:
     def __init__(self, num_chs, L_x, h, D=1):
@@ -43,13 +43,6 @@ class FIR:
         self._overlap_samples = x[:, self._L_x :]
 
         return y
-
-def firkaiser(passband, stopband, atten=60):
-    (L_filt, beta) = kaiserord(atten, (stopband - passband) / (2 * math.pi))
-    h = firwin(L_filt, passband / 2, window=('kaiser', beta), nyq=math.pi)
-    h = xp.asarray(h)
-
-    return h
 
 def firgauss(stopband, order, atten=60):
     assert stopband > 0, 'Stopband must be greater than 0'

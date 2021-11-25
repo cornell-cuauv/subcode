@@ -20,16 +20,5 @@ class PlotBase:
         pass
 
     @staticmethod
-    def _daemon_init():
-        import matplotlib
-        from matplotlib import pyplot
-        matplotlib.use('TkAgg')
-
-        pyplot.ioff()
-        fig = pyplot.figure(figsize=(5, 5))
-
-        return (pyplot, fig)
-
-    @staticmethod
     def _auto_ylim(ax, x):
         ax.set_ylim(x.min() - 0.1 * np.abs(x.min()), 1.1 * x.max())
