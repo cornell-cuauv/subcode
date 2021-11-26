@@ -1,3 +1,5 @@
+"""Spoofed SHM variables, allows running the code without Docker"""
+
 class _Group:
     pass
 
