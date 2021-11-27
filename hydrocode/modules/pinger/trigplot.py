@@ -17,7 +17,24 @@ L_plot = (int(pinger.const.DUR_INTERVAL * common.const.SAMPLE_RATE) //
     pinger.const.DECIM_FACTOR)
 
 class TriggerPlot(plot.PlotBase):
+    """This plot shows the trigger point in a ping processing interval.
+
+    Plot updates on every ping processing interval.
+    Upper subplot shows the combined amplitude of all channels in the
+    downconverted signal during a full ping processing interval.
+    Lower subplot shows the trigger function during the interval.
+    A cursor marks the trigger point, where phases are extracted.
+    """
+
     def plot(self, ampl, trigger_f, ping_pos):
+        """Push the amplitude and trigger function for an interval.
+
+        :param ampl: combined amplitude of all channels
+        :param trigger_f: trigger function
+        :param ping_pos: the phase extraction point in the interval
+        """
+
+        # Matplotlib doesn't work with CuPy arrays
         if hasattr(xp, 'asnumpy'):
             ampl = xp.asnumpy(ampl)
             trigger_f = xp.asnumpy(trigger_f)
@@ -64,6 +81,11 @@ class TriggerPlot(plot.PlotBase):
 
     @staticmethod
     def _define_ampl_plot(fig, indices):
+        # Combined amplitude subplot. X-axis limits fixed to ping
+        # processing interval length, y-axis limits adjusted to
+        # capture the signal with a small added margin. Cursor at the
+        # phase extraction point (just past the ping rising edge).
+
         ax = fig.add_subplot(211)
         ax.set_ylabel('Combined Signal Amplitude')
         ax.set_xticks(np.linspace(0, pinger.const.DUR_INTERVAL, num=10))
@@ -75,6 +97,12 @@ class TriggerPlot(plot.PlotBase):
 
     @staticmethod
     def _define_trigger_f_plot(fig, indices):
+        # Trigger function subplot. X-axis limits fixed to ping
+        # processing interval length, y-axis limits adjusted to
+        # capture the trigger function with a small added margin.
+        # Cursor at the phase extraction point (just past the ping
+        # rising edge).
+
         ax = fig.add_subplot(212)
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Trigger Function')

@@ -9,7 +9,19 @@ from matplotlib import pyplot, transforms
 from common import const, plot
 
 class HeadingPlot(plot.PlotBase):
+    """This plot shows the heading of the last ping relative to the sub.
+
+    Plot updates on every ping processing interval. Also shows the
+    numerical value of elevation (degrees).
+    """
+
     def plot(self, hdg, elev):
+        """Push the heading and elevation to display.
+
+        :param hdg: heading (rad)
+        :param elev: elevation (rad)
+        """
+
         try:
             self._q.put_nowait((hdg, elev))
         except queue.Full:
@@ -17,7 +29,7 @@ class HeadingPlot(plot.PlotBase):
 
     @staticmethod
     def _daemon(q):
-        matplotlib.use('TkAgg')
+        matplotlib.use('TkAgg') # only backend that works on macOS
         pyplot.ioff()
         fig = pyplot.figure(figsize=(5, 5))
 
@@ -47,6 +59,9 @@ class HeadingPlot(plot.PlotBase):
 
     @staticmethod
     def _define_plot(fig, img):
+        # Heading plot. Shows an Arch Linux logo rotating to point
+        # towards the pinger.
+
         ax0 = fig.add_subplot(111, label='pointy')
         ax0.axis('off')
         im = ax0.imshow(img)
