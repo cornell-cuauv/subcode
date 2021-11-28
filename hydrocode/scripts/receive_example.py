@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+"""Example client for hydrocomms receive
+
+Prints ASCII messages received over hydrocomms.
+
+Options: --gain_plot        to produce gain plot
+         --correlation_plot to produce correlation plot
+         --dump             to dump raw hydrophones data to disk
+"""
+
 import multiprocessing
 from os import path
 import queue
@@ -11,6 +20,9 @@ import hydrocomms
 if __name__ == '__main__':
     print('Listening for comms...')
 
+    # using the Linux default (fork) for starting processes introduces
+    # concurency problems with multithreaded programs, and also requires a hack
+    # to make Matplotlib work
     multiprocessing.set_start_method('spawn')
 
     q = queue.Queue(maxsize=1)
