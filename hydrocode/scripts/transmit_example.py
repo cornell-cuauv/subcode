@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+"""Example client for hydrocomms transmit
+
+Allows user to specify ASCII messages of the correct size, and transmits
+them using hydrocomms.
+"""
+
 import multiprocessing
 from os import path
 import queue
@@ -9,6 +15,9 @@ sys.path.insert(0, path.dirname(path.dirname(path.realpath(__file__))))
 import hydrocomms
 
 if __name__ == '__main__':
+    # using the Linux default (fork) for starting processes introduces
+    # concurency problems with multithreaded programs, and also requires a hack
+    # to make Matplotlib work
     multiprocessing.set_start_method('spawn')
 
     q = queue.Queue(maxsize=1)
