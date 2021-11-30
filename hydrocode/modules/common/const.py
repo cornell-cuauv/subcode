@@ -21,7 +21,7 @@ USE_4CHS = False # set to True if experimenting with four hydrophone array
 
 # enclosure heading offset (rad), potentially different on the two subs
 if os.environ['CUAUV_VEHICLE_TYPE'] == 'mainsub':
-    ENCLOSURE_OFFSET = -math.pi / 2
+    ENCLOSURE_OFFSET = 0
 else:
     ENCLOSURE_OFFSET = 0
 
