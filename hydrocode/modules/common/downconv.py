@@ -19,10 +19,11 @@ class Downconverter:
             an integer multiple the decimation factor
         :param D: decimation factor, defaults to 1
         :param ph: local oscillator phase, defaults to 0
-        :param w: local osciallator frequency, defaults to 0
+        :param w: downconversion frequency, positive value results in
+            negative frequency shift, defaults to 0
         """
 
-        self._mixr = mix.Mixer(L_b, ph=ph, w=w)
+        self._mixr = mix.Mixer(L_b, ph=ph, w=-w) # -w for DOWN conversion
         self._filtr = filt.FIR(num_chs, L_b, h, D=D)
 
         self._pkr = pack.Packer(L_b)
@@ -43,17 +44,17 @@ class Downconverter:
         return None
 
     def set_freq(self, w):
-        """Set a new frequency for the local oscillator.
+        """Set a new downconversion frequency.
 
         :param w: new normalized frequency
         """
 
-        self._mixr.set_freq(w)
+        self._mixr.set_freq(-w) # -w for DOWN conversion
 
     def get_freq(self):
-        """Get the frequency of the local oscillator.
+        """Get the downconversion frequency.
 
-        :return: normalized frequency of the local oscillator
+        :return: normalized downconversion frequency
         """
 
-        return self._mixr.get_freq()
+        return -self._mixr.get_freq()

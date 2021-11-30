@@ -45,10 +45,10 @@ class AnglesMLE:
         d = list(self._path_diff(wrap_angle(ping_phase - ping_phase[0]), w))
 
         v = math.sqrt(d[1] ** 2 + d[2] ** 2)
-        hdg = 0 if v == 0 else -math.atan2(d[2], d[1])
+        hdg = 0 if v == 0 else math.atan2(d[1], d[2])
 
         if const.USE_4CHS:
-            elev = 0 if v == 0 and d[3] == 0 else math.atan2(d[3], v)
+            elev = 0 if v == 0 and d[3] == 0 else -math.atan2(d[3], v)
         else:
             elev = 0 if v > 1 else -math.acos(v)
 
@@ -67,7 +67,7 @@ class AnglesMLE:
     def _path_diff(ph, w):
         """Get path differences corresponding to a phase differences.
 
-        Result is normalized to the baseline, so range is [0, 1].
+        Result is normalized to the baseline, so range is [-1, 1].
 
         :param ph: array of phase differences (rad)
         :param w: normalized angular frequency of the tracked signal
