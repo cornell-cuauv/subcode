@@ -50,7 +50,7 @@ while True:
         hdg_deg = float(input('Enter heading in the interval [0, 360): '))
         if not (0 <= hdg_deg < 360):
             raise ValueError('Heading not in the correct interval')
-        hdg = np.radians(hdg_deg)
+        hdg = np.radians(hdg_deg) - const.ENCLOSURE_OFFSET
         break
     except ValueError as e:
         print(e)
@@ -110,8 +110,8 @@ with open(input_filename) as input_file:
         # phases at the four elements, obtained from heading/elevation angles
         ph = np.array([
             [0],
-            [max_travel_time * np.sin(hdg) * np.cos(elev) * freq],
-            [max_travel_time * np.cos(hdg) * np.cos(elev) * freq],
+            [max_travel_time * np.sin(hdg) * np.cos(-elev) * freq],
+            [max_travel_time * np.cos(hdg) * np.cos(-elev) * freq],
             [max_travel_time * np.sin(-elev) * freq]])
 
         # although phases are realistic, the fact that the signal arrives at
@@ -124,7 +124,14 @@ with open(input_filename) as input_file:
         signal = signal.astype('<i2')
 
         samples.append(signal)
-    samples = np.concatenate(samples, axis=1)
+
+samples = np.concatenate(samples, axis=1)
+
+# switch channels [0, 1] -> [1, 0], [2, 3] -> [3, 2]
+# (minor screw-up on the hydrophones board)
+if pkt_type == 0:
+    samples[[0, 1]] = samples[[1, 0]]
+    samples[[2, 3]] = samples[[3, 2]]
 
 print('Writing data...')
 
