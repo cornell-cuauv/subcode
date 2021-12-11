@@ -1,8 +1,8 @@
 import os
 
-DECIM_FACTOR = 1024 # decimation factor after downconversion
+DECIM_FACTOR = 256 # decimation factor after downconversion
 DUR_GAIN_INTERVAL = 2.2 # duration of gain control interval (s)
-BANDWIDTH = 3000 # FSK transmission bandwidth (Hz)
+BANDWIDTH = 4000 # FSK transmission bandwidth (Hz)
 FIR_ORDER = 1024 # order of the gaussian lowpass FIR used during downconversion
 L_FIR_BLOCK = 16384 # amount of samples per filtering operation
 L_SYM = 32 # symbol length (samples after decimation)
