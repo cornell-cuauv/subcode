@@ -11,7 +11,22 @@ except ImportError:
     from common import shm
 
 class Controller:
+    """Gain controller specific to our hardware and tasks.
+
+    Supports three modes specified from shm:
+    0 - Manual gain from shm
+    1 - Host autogain, high latency, can be synchronized with pinger DSP
+    2 - Board-level autogain, fast attack & low latency, good for comms
+    """
+
     def __init__(self, section, L_interval, plot=False):
+        """Constructor.
+
+        :param section: section of the board to control, PINGER or COMMS
+        :param L_interval: gain change time interval (samples)
+        :param plot: True to produce gain plot, defaults to False
+        """
+
         if section is HydrophonesSection.PINGER:
             self._shm_settings = shm.hydrophones_pinger_settings
             self._shm_settings.gain_control_mode.set(1)
@@ -30,6 +45,22 @@ class Controller:
         self._gains_pkr = pack.Packer(L_interval)
 
     def push(self, sig, gains):
+        """Push a block of samples.
+
+        Returned gain configurations have structure
+        (board autogain enable, manual/host gain setting)
+
+        The samples themselves are technically needed only for the host
+        autogain mode, but this is how the controller keeps track of
+        time.
+
+        :param sig: input signal
+        :param gains: the gain level at which each sample was taken,
+            must have the same length as sig
+        :return: None if gain change interval has not elapsed
+                 new gain configuration otherwise
+        """
+
         packed_sig = self._sig_pkr.push(sig)
         packed_gains = self._gains_pkr.push(gains)
 
@@ -38,22 +69,29 @@ class Controller:
                 self._plot.plot(packed_sig, packed_gains)
 
             gain_ctrl_mode = self._shm_settings.gain_control_mode.get()
-            if gain_ctrl_mode == 0:
+            if gain_ctrl_mode == 0: # user controls gain
                 return (False, self._shm_settings.user_gain_lvl.get())
-            elif gain_ctrl_mode == 1:
+            elif gain_ctrl_mode == 1: # host (Python code) controls gain
                 return (False, self._best_gain_lvl(packed_sig, packed_gains))
-            else:
+            else: # hydrophones board controls gain
                 return (True, 0)
 
         return None
 
     def _best_gain_lvl(self, sig, gains):
+        # Host autogain algorithm:
+        # Pick the gain level that would have brought the highest sample
+        # in the last interval as close as possible, but not above the
+        # clipping threshold. Pinger Tracking DSP document explains why
+        # this is good for pinger.
+
         peak = xp.abs(sig).max()
         peak_pos = xp.abs(sig).argmax() % sig.shape[1]
         gain_at_peak = gains[:, peak_pos]
 
+        # the hypothetical value of the highest sample for all gain settings
         peak_for_gains = peak / gain_at_peak * self._gain_values_array
 
-        desire = int((peak_for_gains < const.CLIPPING_THRESHOLD).sum() - 1)
+        desire = int((peak_for_gains < const.CLIP_THRESH).sum() - 1)
 
         return desire if desire > 0 else 0

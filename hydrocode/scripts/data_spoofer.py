@@ -1,12 +1,30 @@
 #!/usr/bin/env python3
 
+"""Simple hydrophones data simulator
+
+Takes as input a CSV file containing a sequence of pulses where the
+first column represents the frequency (Hz) and the second column the
+duration (s). In addition, the user specifies from keyboard parameters
+such as heading/elevation. The result is a dump replayable by the same
+script that replays real data dumps.
+
+Must be called with the input file name as an argument.
+
+This is only useful for basic testing, since it can add gaussian noise,
+but doesn't simulate multipath propagation.
+"""
+
+from os import path
 import sys
 
 import numpy as np
 
-sys.path.insert(0, '../modules')
+sys.path.insert(0, path.join(
+    path.dirname(path.dirname(path.realpath(__file__))), 'modules'))
 from common import const
 
+# maximum simulation time (samples), not infinite because the signal is created
+# in memory, then written to disk
 MAX_DUR = 10 ** 7
 
 max_travel_time = const.NIPPLE_DIST / const.SOUND_SPEED * const.SAMPLE_RATE
@@ -32,7 +50,7 @@ while True:
         hdg_deg = float(input('Enter heading in the interval [0, 360): '))
         if not (0 <= hdg_deg < 360):
             raise ValueError('Heading not in the correct interval')
-        hdg = np.radians(hdg_deg)
+        hdg = np.radians(hdg_deg) - const.ENCLOSURE_OFFSET
         break
     except ValueError as e:
         print(e)
@@ -89,12 +107,15 @@ with open(input_filename) as input_file:
         if len(samples) // const.NUM_CHS + dur > MAX_DUR:
             raise ValueError('Specified signal too long')
 
+        # phases at the four elements, obtained from heading/elevation angles
         ph = np.array([
             [0],
-            [max_travel_time * np.sin(hdg) * np.cos(elev) * freq],
-            [max_travel_time * np.cos(hdg) * np.cos(elev) * freq],
+            [max_travel_time * np.sin(hdg) * np.cos(-elev) * freq],
+            [max_travel_time * np.cos(hdg) * np.cos(-elev) * freq],
             [max_travel_time * np.sin(-elev) * freq]])
 
+        # although phases are realistic, the fact that the signal arrives at
+        # different times at the elements is not simulated
         n = np.arange(dur)
         signal = signal_ampl * np.sin(freq * n + (freq_hz != 0) * ph)
         noise = np.random.normal(scale=noise_rms, size=(const.NUM_CHS, dur))
@@ -103,7 +124,14 @@ with open(input_filename) as input_file:
         signal = signal.astype('<i2')
 
         samples.append(signal)
-    samples = np.concatenate(samples, axis=1)
+
+samples = np.concatenate(samples, axis=1)
+
+# switch channels [0, 1] -> [1, 0], [2, 3] -> [3, 2]
+# (minor screw-up on the hydrophones board)
+if pkt_type == 0:
+    samples[[0, 1]] = samples[[1, 0]]
+    samples[[2, 3]] = samples[[3, 2]]
 
 print('Writing data...')
 

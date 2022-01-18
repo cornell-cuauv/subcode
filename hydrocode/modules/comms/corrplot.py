@@ -5,6 +5,8 @@ try:
     import cupy as xp
 except ImportError:
     import numpy as xp
+import matplotlib
+from matplotlib import pyplot
 import numpy as np
 
 from common import plot
@@ -16,7 +18,26 @@ L_msg = comms.const.MSG_BYTES * 8 // comms.const.SYMBOL_SIZE
 L_plot = (L_head + L_msg) * comms.const.L_SYM
 
 class CorrelationPlot(plot.PlotBase):
+    """This plot shows PN code correlation peaks that cause triggering.
+
+    Plot updates for every triggering event, showing a snippet that
+    starts when the PN correlation output first exceeds the dynamic
+    threshold.
+    Upper subplot shows the correlator input.
+    Lower subplot shows the PN code correlation output, the orthogonal
+    code correlation output, and the dynamic threshold.
+    """
+
     def plot(self, corr_in, corr_pn, corr_orth, thresh):
+        """Push the correlator input and outputs to plot.
+
+        :param corr_in: correlator input
+        :param corr_pn: PN code correlation output
+        :param corr_orth: orthogonal PN code correlation output
+        :param thresh: dynamic threshold
+        """
+
+        # Matplotlib doesn't work with CuPy arrays
         if hasattr(xp, 'asnumpy'):
             corr_in = xp.asnumpy(corr_in)
             corr_pn = xp.asnumpy(corr_pn)
@@ -29,7 +50,9 @@ class CorrelationPlot(plot.PlotBase):
 
     @staticmethod
     def _daemon(q):
-        (pyplot, fig) = plot.PlotBase._daemon_init()
+        matplotlib.use('TkAgg') # only backend that works on macOS
+        pyplot.ioff()
+        fig = pyplot.figure(figsize=(5, 5))
 
         indices = np.arange(0, L_plot)
 
@@ -62,6 +85,10 @@ class CorrelationPlot(plot.PlotBase):
 
     @staticmethod
     def _define_corr_in_plot(fig, indices):
+        # Correlation input subplot. X-axis limits fixed to snippet
+        # length, y-axis limits adjusted to capture the signal with a
+        # small added margin.
+
         ax = fig.add_subplot(211)
         ax.set_ylabel('Correlation Input')
         ax.set_xticks(np.arange(0, L_plot, L_plot // 10))
@@ -72,6 +99,11 @@ class CorrelationPlot(plot.PlotBase):
 
     @staticmethod
     def _define_corr_results_plot(fig, indices):
+        # Correlation outputs subplot. Different colors for the two
+        # outputs and the dynamic threshold, x-axis limits fixed to
+        # snippet length, y-axis limits adjusted to capture the signals
+        # with a small added margin.
+
         ax = fig.add_subplot(212)
         ax.set_xlabel('Decimated Sample Number')
         ax.set_ylabel('Correlation Results')

@@ -2,12 +2,29 @@ import math
 import queue
 import time
 
+import matplotlib
+from matplotlib import pyplot
+from matplotlib.ticker import AutoMinorLocator
 import numpy as np
 
 from common import const, plot
 
 class ScatterPlot(plot.PlotBase):
+    """This plot shows the tracking precision if the sub is held fixed.
+
+    Plot updates on every ping processing interval. New points are
+    progressively added for each tracked ping in a 2D graph with
+    heading on the x-axis and elevation on the y-axis. Plot also shows
+    an updating mean and standard deviation for both angles.
+    """
+
     def plot(self, hdg, elev):
+        """Add a new datapoint.
+
+        :param hdg: heading (rad)
+        :param elev: elevation (rad)
+        """
+
         try:
             self._q.put_nowait((hdg, elev))
         except queue.Full:
@@ -15,9 +32,9 @@ class ScatterPlot(plot.PlotBase):
 
     @staticmethod
     def _daemon(q):
-        from matplotlib.ticker import AutoMinorLocator
-
-        (pyplot, fig) = plot.PlotBase._daemon_init()
+        matplotlib.use('TkAgg') # only backend that works on macOS
+        pyplot.ioff()
+        fig = pyplot.figure(figsize=(5, 5))
 
         pyplot.suptitle('Relative Heading/Elevation Scatter Plot')
         (ax, points, text) = ScatterPlot._define_plot(fig, AutoMinorLocator)
@@ -47,6 +64,9 @@ class ScatterPlot(plot.PlotBase):
 
     @staticmethod
     def _define_plot(fig, AutoMinorLocator):
+        # Scatter plot with visible grid. X-axis limits fixed to
+        # [-pi, pi], y-axis limits fixed to [-pi / 2, pi / 2].
+
         ax = fig.add_subplot(111)
         ax.set_xlabel('Heading (rad)')
         ax.set_ylabel('Elevation (rad)')

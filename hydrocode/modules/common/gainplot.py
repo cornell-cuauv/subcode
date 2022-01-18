@@ -5,15 +5,33 @@ try:
     import cupy as xp
 except ImportError:
     import numpy as xp
+import matplotlib
+from matplotlib import pyplot
 import numpy as np
 from scipy.interpolate import interp1d
 
 from common import const, crop, plot
 
 class GainPlot(plot.PlotBase):
+    """This plot helps debug autogain / signal strength issues.
+
+    Plot updates on every gain control interval.
+    Upper subplot shows the raw hydrophones signal for all channels
+    (short snippet centered around the highest sample in the interval).
+    Lower subplot shows the gain during the same snippet.
+    """
+
     def plot(self, sig, gains):
+        """Push the signal and gains for a gain control interval.
+
+        :param sig: raw hydrophones signal
+        :param gains: the gain level at which each sample was taken,
+            must have the same length as sig
+        """
+
         L_interval = sig.shape[1]
 
+        # find the short snippet around the highest sample
         peak_pos = int(xp.abs(sig).argmax() % L_interval)
         (plot_start, plot_end) = crop.find_bounds(
             L_interval, const.L_GAIN_PLOT, peak_pos)
@@ -22,6 +40,7 @@ class GainPlot(plot.PlotBase):
         sig = sig[:, plot_start : plot_end]
         gains = gains[:, plot_start : plot_end]
 
+        # Matplotlib doesn't work with CuPy arrays
         if hasattr(xp, 'asnumpy'):
             sig = xp.asnumpy(sig)
             gains = xp.asnumpy(gains)
@@ -32,8 +51,13 @@ class GainPlot(plot.PlotBase):
 
     @staticmethod
     def _daemon(q):
-        (pyplot, fig) = plot.PlotBase._daemon_init()
+        matplotlib.use('TkAgg') # only backend that works on macOS
+        pyplot.ioff()
+        fig = pyplot.figure(figsize=(5, 5))
 
+        # interpolate signal to 1000 points so it looks smooth even
+        # though it contains frequencies relatively close to half the
+        # sampling rate
         orig_indices = np.arange(0, const.L_GAIN_PLOT)
         interp_indices = np.linspace(0, const.L_GAIN_PLOT - 1, num=1000)
 
@@ -47,6 +71,7 @@ class GainPlot(plot.PlotBase):
             try:
                 (sig, gains, cursor_pos) = q.get_nowait()
 
+                # cubic splines interpolation
                 sig = interp1d(orig_indices, sig, kind='cubic')(interp_indices)
                 for ch_num in range(sig.shape[0]):
                     sig_lines[ch_num].set_ydata(sig[ch_num])
@@ -65,6 +90,11 @@ class GainPlot(plot.PlotBase):
 
     @staticmethod
     def _define_sig_plot(fig, indices):
+        # Raw signal subplot. One color for each of four channels,
+        # x-axis limits fixed to snippet length, y-axis limits fixed to
+        # the maximum positive and negative values of the signal. Cursor
+        # at the highest sample in absolute value.
+
         ax = fig.add_subplot(211)
         ax.set_ylabel('Raw Signal')
         ax.set_xticks(np.arange(0, const.L_GAIN_PLOT, const.L_GAIN_PLOT // 10))
@@ -80,6 +110,10 @@ class GainPlot(plot.PlotBase):
 
     @staticmethod
     def _define_gains_plot(fig, indices):
+        # Logarithmic gain value subplot. X-axis limits fixed to snippet
+        # length, y-axis limits fixed to the maximum gain level. Cursor
+        # at the highest sample in absolute value.
+
         ax = fig.add_subplot(212)
         ax.set_xlabel('Sample Number')
         ax.set_ylabel('Gain')
