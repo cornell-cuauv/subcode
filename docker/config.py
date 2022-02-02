@@ -31,7 +31,7 @@ defaults = {
     "DOCKER_REPO": "docker.cuauv.org/cuauv",
     "DOCKER_REPO_JETSON": "docker.cuauv.org/cuauv-jetson",
 
-    "GIT_REPO_URL": "ssh://git@bitbucket.cuauv.org:7999/sof/subcode.git",
+    "GIT_REPO_URL": "ssh://git@gitlab.cuauv.org:2222/software/subcode.git",
     "BRANCH": "master",
 
     "GROUP_ID": 9999,
