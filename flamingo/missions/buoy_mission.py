@@ -1,4 +1,4 @@
-from flamingo.framework import Flag, GE, LE, TH, Action
+from flamingo.framework import Flag, GE, LE, TH, ALL, Action
 
 from mission.framework.combinators import Sequential, While
 from mission.framework.search import SearchFor, SwaySearch
@@ -12,8 +12,7 @@ buoy = shm.red_buoy_results
 
 visible = GE(buoy.heuristic_score, 0.7, consistency=(3, 5))
 not_visible = LE(buoy.heuristic_score, 0.7)
-centered_x = TH(buoy.center_x, 0, 0.1)
-centered_y = TH(buoy.center_y, 0, 0.1)
+centered = ALL([TH(buoy.center_x, 0, 0.1), TH(buoy.center_y, 0, 0.1)])
 near = GE(buoy.area, 10000)
 far = LE(buoy.area, 5000)
 rammed = Flag('rammed')
@@ -70,14 +69,14 @@ actions = [
         name='center',
         preconds=[visible, far],
         invariants=[visible, far],
-        postconds=[visible, centered_x, centered_y],
+        postconds=[visible, centered],
         task=center
     ),
     Action(
         name='approach',
-        preconds=[visible, centered_x, centered_y],
-        invariants=[visible, centered_x, centered_y],
-        postconds=[visible, centered_x, centered_y, near],
+        preconds=[visible, centered],
+        invariants=[visible, centered],
+        postconds=[visible, centered, near],
         task=approach
     ),
     Action(
@@ -89,7 +88,7 @@ actions = [
     ),
     Action(
         name='ram',
-        preconds=[visible, centered_x, centered_y, near],
+        preconds=[visible, centered, near],
         invariants=[],
         postconds=[rammed],
         task=ram
