@@ -65,6 +65,9 @@ class Condition:
     def update_result(self):
         self.results = self.results[1:] + [self.satisfied_in_reality()]
 
+    def failing_cond(self):
+        return self
+
 class EQ(Condition):
     def satisfied_in_state(self, state):
         if self.var not in state.shm_values:
@@ -95,7 +98,7 @@ class TH(Condition):
 
 class ALL(Condition):
     def __init__(self, conditions, consistency=(1, 1)):
-        self.conditions
+        self.conditions = conditions
         self.required_failures, self.window_length = consistency
         self.results = [True] * self.window_length
 
@@ -104,13 +107,23 @@ class ALL(Condition):
 
     def assumed_values(self):
         values = {}
-        for condition in conditions:
+        for condition in self.conditions:
             values.update(condition.assumed_values())
         return values
 
     def satisfied_in_state(self, state):
-        return all([condition.satisfied_in_reality(state) for condition in self.conditions])
+        return all([condition.satisfied_in_state(state) for condition in self.conditions])
 
+    def update_result(self):
+        for condition in self.conditions:
+            condition.update_result()
+        results = results[1:] + [self.satisfied_in_reality()]
+
+    def failing_cond(self):
+        for condition in self.conditions:
+            if condition.results.count(False) >= condition.required_failures():
+                return condition
+        return self
 
 class Action:
     def __init__(self, name, preconds, invariants, postconds, task, on_failure=lambda failing_var: NoOp(), time=None, dependencies=[]):
@@ -150,15 +163,15 @@ class Action:
                 break
             for condition in self.invariants:
                 if condition.results.count(False) >= condition.required_failures:
-                    print("(Invariant) Failing variable: " + str(condition.var)[8:-2])
-                    return condition.var
+                    print("(Invariant) Failing condition: " + str(condition.failing_cond())[8:-2])
+                    return condition.failing_cond()
             time.sleep(1 / 60)
         self.currently_executing = False
         for condition in self.postconds:
             if isinstance(condition, Condition):
                 if not condition.satisfied_in_reality():
-                    print("(Postcond) Failing variable: " + str(condition.var)[8:-2])
-                    return condition.var
+                    print("(Postcond) Failing condition: " + str(condition.failing_cond())[8:-2])
+                    return condition.failing_cond()
         return None
 
     def run_on_failure(self, failing_var):
