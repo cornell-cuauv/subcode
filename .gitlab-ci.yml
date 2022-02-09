@@ -1,0 +1,26 @@
+# Builds the docker container using gitlab ci
+
+stages:
+  - build
+  - push
+  - open-source
+
+
+build-job:
+  stage: build
+  script:
+    - echo "Building cuauv:$CI_COMMIT_BRANCH"
+    - docker build -t cuauv:$CI_COMMIT_BRANCH .
+
+# Disabled, remove . to enable
+.push-job:
+  stage: push
+  script:
+    # TODO: provide username and password through secrets
+    - docker login docker.cuauv.org
+    - 
+
+.open-source-job:
+  stage: open-source
+  script: 
+    - bash open-source/update.sh
