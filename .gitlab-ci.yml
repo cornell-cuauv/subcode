@@ -1,4 +1,7 @@
 # Builds the docker container using gitlab ci
+# TODO: This uses gitlab variables, which is not secure at all. Should
+# transition to using vault at some point
+# see https://gitlab.cuauv.org/help/ci/secrets/index.md
 
 stages:
   - build
@@ -12,15 +15,17 @@ build-job:
     - echo "Building cuauv:$CI_COMMIT_BRANCH"
     - docker build -t cuauv:$CI_COMMIT_BRANCH .
 
-# Disabled, remove . to enable
-.push-job:
+push-job:
   stage: push
   script:
     # TODO: provide username and password through secrets
-    - docker login docker.cuauv.org
-    - 
+    - docker login docker.cuauv.org -u $DOCKER_LOGIN_USERNAME -p $DOCKER_LOGIN_PASSWORD
+    - docker push cuauv:$CI_COMMIT_BRANCH
 
+# Disabled, remove . to enable
 .open-source-job:
   stage: open-source
+  only:
+    - master
   script: 
     - bash open-source/update.sh
