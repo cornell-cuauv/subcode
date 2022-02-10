@@ -13,14 +13,14 @@ build-job:
   stage: build
   script:
     - echo "Building cuauv:$CI_COMMIT_BRANCH"
-    - docker build -t cuauv:$CI_COMMIT_BRANCH .
+    - docker build -t docker.cuauv.org/cuauv:$CI_COMMIT_BRANCH .
 
 push-job:
   stage: push
   script:
     # TODO: provide username and password through secrets
-    - docker login docker.cuauv.org -u $DOCKER_LOGIN_USERNAME -p $DOCKER_LOGIN_PASSWORD
-    - docker push cuauv:$CI_COMMIT_BRANCH
+    # - docker login docker.cuauv.org -u $DOCKER_LOGIN_USERNAME -p $DOCKER_LOGIN_PASSWORD
+    - docker push docker.cuauv.org/cuauv:$CI_COMMIT_BRANCH
 
 # Disabled, remove . to enable
 .open-source-job:
