@@ -161,9 +161,10 @@ class Action:
         # Monitor shm variables associated with invariants on parallel threads,
         # to keep up to date with when they fail.
         for comparison in self.invariants:
-            watcher = shm.watchers.watcher()
-            watcher.watch(getattr(shm, str(comparison.var).split('.')[1]))
-            threading.Thread(target=self.consistency_thread, args=[comparison, watcher], daemon=True).start()
+            for var, _ in comparison.assumed_values():
+                watcher = shm.watchers.watcher()
+                watcher.watch(getattr(shm, str(var).split('.')[1]))
+                threading.Thread(target=self.consistency_thread, args=[comparison, watcher], daemon=True).start()
         
         # Run the task's run() method every 60th of a second, checking that
         # all invariants are maintained.
