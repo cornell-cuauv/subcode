@@ -27,8 +27,7 @@ def find_starting_state(mission):
     for action in mission.actions:
         for condition in action.preconds + action.invariants + action.postconds:
             if isinstance(condition, Comparison):
-                for var, _ in condition.assumed_values().items():
-                    state.shm_values[var] = var.get()
+                state.shm_values[condition.var] = condition.var.get()
     return state
 
 class SearchNode:
