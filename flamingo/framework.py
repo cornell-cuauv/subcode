@@ -1,5 +1,6 @@
 import threading
 import time
+import copy
 
 import shm
 from mission.framework.primitive import NoOp
@@ -9,7 +10,8 @@ class State:
         self.shm_values = shm_values.copy()
         self.flags = flags.copy()
 
-    # If every comparison is satisfied by known shm values and every flag is present.
+    # If every comparison is satisfied by known shm values and every flag is
+    # present.
     def satisfies_conditions(self, conditions):
         for condition in conditions:
             if isinstance(condition, Comparison):
@@ -64,14 +66,8 @@ class Comparison:
         reality = State(shm_values={self.var: self.var.get()})
         return self.satisfied_in_state(reality)
 
-    def assumed_values(self):
-        return {self.var: self.val}
-
     def update_result(self):
         self.results = self.results[1:] + [self.satisfied_in_reality()]
-
-    def failing_comp(self):
-        return self
 
 class EQ(Comparison):
     def satisfied_in_state(self, state):
@@ -101,37 +97,8 @@ class TH(Comparison):
             return False
         return abs(state.shm_values[self.var] - self.val) <= self.tolerance
 
-# A special condition which requires the truth of multiple comparisons.
-class ALL(Comparison):
-    def __init__(self, comparisons, consistency=(1, 1)):
-        self.comparisons = comparisons
-        self.required_failures, self.window_length = consistency
-        self.results = [True] * self.window_length
-
-    def assumed_values(self):
-        values = {}
-        for comparison in self.comparisons:
-            values.update(comparison.assumed_values())
-        return values
-
-    def satisfied_in_state(self, state):
-        return all([comparison.satisfied_in_state(state) for comparison in self.comparisons])
-
-    def update_result(self):
-        for comparison in self.comparisons:
-            comparison.update_result()
-        results = results[1:] + [self.satisfied_in_reality()]
-
-    # In the event that this ALL comparison fails, failing_comp() determines
-    # child comparison is at fault.
-    def failing_comp(self):
-        for comparison in self.comparisons:
-            if comparison.results.count(False) >= comparison.required_failures():
-                return comparison
-        return self
-
 class Action:
-    def __init__(self, name, preconds, invariants, postconds, task, on_failure=lambda failing_var: NoOp(), time=None, dependencies=[]):
+    def __init__(self, name, preconds, invariants, postconds, task, on_failure=lambda failing_comparison: NoOp(), time=None, dependencies=[]):
         self.name = name
         self.preconds = preconds
         self.invariants = invariants
@@ -148,7 +115,7 @@ class Action:
         state.clear_ephemeral_flags()
         for condition in self.postconds:
             if isinstance(condition, Comparison):
-                state.shm_values.update(condition.assumed_values())
+                state.shm_values[condition.var] = condition.val
             else:
                 state.flags.add(condition)
         return state
@@ -161,25 +128,27 @@ class Action:
         # Monitor shm variables associated with invariants on parallel threads,
         # to keep up to date with when they fail.
         for comparison in self.invariants:
-            for var, _ in comparison.assumed_values():
-                watcher = shm.watchers.watcher()
-                watcher.watch(getattr(shm, str(var).split('.')[1]))
-                threading.Thread(target=self.consistency_thread, args=[comparison, watcher], daemon=True).start()
+            watcher = shm.watchers.watcher()
+            watcher.watch(getattr(shm, str(comparison.var).split('.')[1]))
+            threading.Thread(target=self.consistency_thread,
+                             args=[comparison, watcher],
+                             daemon=True).start()
         
         # Run the task's run() method every 60th of a second, checking that
         # all invariants are maintained.
+        task_copy = copy.deepcopy(self.task)
         while True:
             try:
-                self.task()
+                task_copy()
             except Exception as e:
                 print("Exception thrown by " + self.name + ": " + e)
                 break
-            if self.task.finished:
+            if task_copy.finished:
                 break
             for comparison in self.invariants:
                 if comparison.results.count(False) >= comparison.required_failures:
-                    print("(Invariant) Failing comparison: " + str(comparison.failing_comp())[8:-2])
-                    return comparison.failing_comp()
+                    print("(Invariant) Failing variable: " + str(comparison.var)[12:-2])
+                    return comparison
             time.sleep(1 / 60)
 
         self.currently_executing = False
@@ -188,14 +157,14 @@ class Action:
         for condition in self.postconds:
             if isinstance(condition, Comparison):
                 if not condition.satisfied_in_reality():
-                    print("(Postcond) Failing comparison: " + str(condition.failing_comp())[8:-2])
-                    return condition.failing_comp()
+                    print("(Postcond) Failing variable: " + str(condition.var)[12:-2])
+                    return condition
         return None
 
     # Reset the sub in some way after a failure, by running the task given by
     # self.on_failure() parameterized on the comparison which failed.
-    def run_on_failure(self, failing_comp):
-        cleanup_task = self.on_failure(failing_comp)
+    def run_on_failure(self, failing_comparison):
+        cleanup_task = self.on_failure(failing_comparison)
         while True:
             try:
                 cleanup_task()
