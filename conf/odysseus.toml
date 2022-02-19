@@ -10,7 +10,8 @@ sub_height = 0.50
 # distance from dvl beam to axis of rotation used to offset velocity
 # to account for misaligned reference point and dvl position
 # for minisub, probably doesn't matter
-dvl_offset = -0.2286
+dvl_offset = 0.2286
+dvl_reversed = true
 
 # Moments of inertia (kg * m^2) from solidworks.
 # In the model frame.
