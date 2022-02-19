@@ -12,7 +12,7 @@ import shm
 
 from auv_math.quat import Quaternion
 from auv_python_helpers.angles import abs_heading_sub_degrees
-from conf.vehicle import sensors, dvl_present, gx_hpr, dvl_offset
+from conf.vehicle import sensors, dvl_present, gx_hpr, dvl_offset, dvl_reversed
 from settings import dt
 
 from kalman_unscented import UnscentedKalmanFilter
@@ -146,6 +146,11 @@ def get_velocity(sub_quat, heading_rate):
         vel[0], vel[1] = vel[1], -vel[0]
         # Invert z axis, so that we measure depth rate instead of altitude rate
         vel[2] = -vel[2]
+
+        # If DVL is reversed, reverse X and Y
+        if dvl_reversed:
+            vel[0] = -vel[0]
+            vel[1] = -vel[1]
 
         # Offset velocity to account for misaligned reference point and DVL position
         skew_factor = dvl_offset * 2 * math.pi / 360
