@@ -5,6 +5,7 @@ import sys
 import shm
 import time
 import math
+from os.path import exists
 
 all_dimensions = ['depth', 'heading', 'pitch', 'roll', 'north', 'east']
 filepath = '/home/software/cuauv/workspaces/worktrees/master/misc/waypoint/data.csv'
@@ -51,8 +52,9 @@ def exit(status):
     sys.exit(status)
 
 # Create data.csv if it doesn't exist.
-with open(filepath, 'w') as _:
-    pass
+if not exists(filepath):
+    with open(filepath, 'w') as _:
+        pass
 
 # Take CLI args.
 parser = argparse.ArgumentParser()
