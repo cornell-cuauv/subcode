@@ -50,6 +50,10 @@ def exit(status):
     # Zero navigation desires.
     sys.exit(status)
 
+# Create data.csv if it doesn't exist.
+with open(filepath, 'w') as _:
+    pass
+
 # Take CLI args.
 parser = argparse.ArgumentParser()
 parser.add_argument('-s', '--save', nargs='?', const='')
