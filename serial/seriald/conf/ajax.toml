@@ -5,6 +5,5 @@ includes = [
     "him.toml",
     "ajaxPdActuator.toml",
     "sensor.toml",
-    "merge.toml",
-    "transmit.toml"
+    "merge.toml"
 ]
