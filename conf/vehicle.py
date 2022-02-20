@@ -28,11 +28,14 @@ is_minisub = VEHICLE_TYPE == "minisub"
 with open(os.path.join(DIR, "conf", "{}.toml".format(VEHICLE))) as f:
     d = tomlkit.parse(f.read())
 
+# TODO: Why is this hardcoded. Why cant we generate this dynamically
+
 center_of_buoyancy = np.array(d['center_of_buoyancy'])
 buoyancy_force = d['buoyancy_force']
 gravity_force = d['gravity_force']
 sub_height = d['sub_height']
 dvl_offset = d['dvl_offset']  # TODO
+dvl_reversed = d['dvl_reversed']  # TODO
 I = np.array(d['I'])
 thrusters = d['thrusters']
 sensors = d['sensors']
