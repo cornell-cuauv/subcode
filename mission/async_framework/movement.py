@@ -11,6 +11,15 @@ async def setter(target : float, desire_var : Any, current_var : Any,
         await asyncio.sleep(0.01)
     return True
 
+async def setter_for_secs(target : float, desire_var : Any, current_var : Any,
+                          duration : float, error : float = 0,
+                          modulo_error : bool = False) -> bool:
+    init = current_var.get()
+    await setter(target, desire_var, current_var, error, modulo_error)
+    await asyncio.sleep(duration)
+    await setter(init, desire_var, current_var, error, modulo_error)
+    return True
+
 async def relative_to_initial_setter(offset : float, desire_var : Any,
                                      current_var : Any, error : float = 0,
                                      modulo_error : bool = False) -> bool:
@@ -41,6 +50,10 @@ def generate_setters(desire_var : Any, current_var : Any,
         with PositionalControls(positional_controls):
             return await setter(target, desire_var, current_var, error, modulo_error)
 
+    async def sfs(target : float, duration : float, error : float = default_error) -> bool:
+        with PositionalControls(positional_controls):
+            return await setter_for_secs(target, desire_var, current_var, duration, error, modulo_error)
+
     async def rtis(offset : float, error : float = default_error) -> bool:
         with PositionalControls(positional_controls):
             return await relative_to_initial_setter(offset, desire_var, current_var, error, modulo_error)
@@ -51,33 +64,33 @@ def generate_setters(desire_var : Any, current_var : Any,
 
     return (s, rtis, rtcs)
 
-heading, relative_to_initial_heading, relative_to_current_heading = \
+heading, heading_for_secs, relative_to_initial_heading, relative_to_current_heading = \
     generate_setters(shm.navigation_desires.heading, shm.kalman.heading, 3,
              modulo_error=True)
 
-pitch, relative_to_initial_pitch, relative_to_current_pitch = \
+pitch, pitch_for_secs, relative_to_initial_pitch, relative_to_current_pitch = \
     generate_setters(shm.navigation_desires.pitch, shm.kalman.pitch, 10,
              modulo_error=True)
 
-roll, relatitve_to_initial_pitch, relative_to_current_pitch = \
+roll, roll_for_secs, relatitve_to_initial_pitch, relative_to_current_pitch = \
     generate_setters(shm.navigation_desires.pitch, shm.kalman.pitch, 10,
              modulo_error=True)
 
-depth, relative_to_initial_depth, relative_to_current_depth = \
+depth, depth_for_secs, relative_to_initial_depth, relative_to_current_depth = \
     generate_setters(shm.navigation_desires.depth, shm.kalman.depth, 0.07)
 
-velocity_x, relative_to_initial_velocity_x, relative_to_current_velocity_x = \
+velocity_x, velocity_x_for_secs, relative_to_initial_velocity_x, relative_to_current_velocity_x = \
     generate_setters(shm.navigation_desires.speed, shm.kalman.velx, 0.05,
              positional_controls=False)
 
-velocity_y, relative_to_initial_velocity_y, relative_to_current_velocity_y = \
+velocity_y, velocity_y_for_secs, relative_to_initial_velocity_y, relative_to_current_velocity_y = \
     generate_setters(shm.navigation_desires.sway_speed, shm.kalman.vely, 0.05,
              positional_controls=False)
 
-position_n, relative_to_initial_position_n, relative_to_current_position_n = \
+position_n, position_n_for_secs, relative_to_initial_position_n, relative_to_current_position_n = \
     generate_setters(shm.navigation_desires.north, shm.kalman.north, 0.05,
              positional_controls=True)
 
-position_e, relative_to_initial_position_e, relative_to_current_position_e = \
+position_e, position_e_for_secs, relative_to_initial_position_e, relative_to_current_position_e = \
     generate_setters(shm.navigation_desires.east, shm.kalman.east, 0.05,
              positional_controls=True)
