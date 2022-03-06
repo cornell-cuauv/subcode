@@ -1,6 +1,6 @@
 
 # The below are highly dependent on trim
-center_of_buoyancy = [0.00012155, -0.000034256, -0.00089525]
+center_of_buoyancy = [0.058897334, 0.007543965, -0.020125111]
 buoyancy_force = 190.0 # green: 215, black: 187 FUDGED to assume postively buoyant sub
 gravity_force = 189.38
 
@@ -14,9 +14,9 @@ dvl_offset = 0.0
 
 # Moments of inertia (kg * m^2) from solidworks.
 # In the model frame.
-I = [[ 0.6149, -0.0054, -0.0662],
-     [-0.0054,  0.7710, -0.0084],
-     [-0.0662, -0.0084,  1.0121]]
+I = [[ 0.5423,  0.0733, -0.0274],
+     [-0.0733,  1.5777, -0.0041],
+     [-0.0274, -0.0041,  1.3106]]
 
 # Ib and body_rot calculated using auv-body-frame-calc.
 Ib = [0.60389, 0.771048, 1.02306]
@@ -34,56 +34,56 @@ gx_hpr = [0.0, 0.0, 0.0] # Note: You probably want to re-tare the GX rather than
 [[thrusters]]
 name = "fore_port"
 type = "T200"
-pos = [0.235, -0.201, -0.0204]
+pos = [0.205, -0.233, 0.005]
 heading_pitch = [0.0, 90.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "port"
 type = "T200"
-pos = [0.00474, -0.252, -0.0056]
+pos = [0.029, -0.233, -0.073]
 heading_pitch = [0.0, 0.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "aft_port"
 type = "T200"
-pos = [-0.271, -0.201, -0.0204]
+pos = [-0.176, -0.233, 0.005]
 heading_pitch = [0.0, 90.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "sway_aft"
 type = "T200"
-pos = [-0.271, -0.006, 0.031]
+pos = [-0.394, -0.011, -0.003]
 heading_pitch = [90.0, 0.0]
 reversed = false
 
 [[thrusters]]
 name = "aft_starboard"
 type = "T200"
-pos = [-0.271, 0.201, -0.0204]
+pos = [-0.176, 0.233, 0.005]
 heading_pitch = [0.0, 90.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "starboard"
 type = "T200"
-pos = [0.00474, 0.252, -0.0056]
+pos = [0.029, 0.233, -0.073]
 heading_pitch = [0.0, 0.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "fore_starboard"
 type = "T200"
-pos = [0.235,  0.201, -0.0204]
+pos = [0.205, 0.233, 0.005]
 heading_pitch = [0.0, 90.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "sway_fore"
 type = "T200"
-pos = [0.280, -0.006, 0.031]
+pos = [0.423, -0.015, -0.003]
 heading_pitch = [90.0, 0.0]
 reversed = false
 
