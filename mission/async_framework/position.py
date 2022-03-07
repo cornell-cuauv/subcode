@@ -3,7 +3,10 @@ from typing import Tuple
 
 import shm
 from auv_math.math_utils import rotate
-from mission.async_framework.movement import position_n, position_e, heading, depth
+from mission.async_framework.movement import (position_n, position_e,
+        relative_to_initial_position_n, relative_to_initial_position_e,
+        heading as set_heading, depth as set_depth)
+from mission.async_framework.contexts import PositionalControls
 
 
 async def move_xy(vector : Tuple[float, float], deadband : float = 0.01) -> bool:
@@ -35,10 +38,10 @@ async def go_to_position(north : float, east : float, heading : float = None,
         if depth == None:
             depth = shm.kalman.depth.get()
         return await asyncio.gather(
-            position_n(north, deadband=deadband),
-            position_e(east, deadband=deadband),
-            heading(heading, deadband=deadband),
-            depth(depth, deadband=deadband)
+            position_n(north, error=deadband),
+            position_e(east, error=deadband),
+            set_heading(heading, error=deadband),
+            set_depth(depth, error=deadband)
         )
 
 
