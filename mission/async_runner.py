@@ -29,8 +29,6 @@ def run(mission : Coroutine[Any, Any, None]):
     control_settings = shm.settings_control.get()
     navigation_settings = shm.navigation_settings.get()
 
-    initially_recording = shm.vision_modules.Record.get()
-
     # Ensure only one mission can run at a time.
     LOCK_NAME = ".mission_lock"
     lock_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), LOCK_NAME)
@@ -68,18 +66,6 @@ def run(mission : Coroutine[Any, Any, None]):
         duration = end_time - start_time
         print("Mission finished in %i seconds!" % (duration))
 
-
-        if not args.no_record:
-            print('Disabling "Record" vision module')
-            shm.vision_modules.Debug.set(False)
-            if not initially_recording:
-                shm.vision_modules.Record.set(False)
-
-            active_mission = shm.active_mission.get()
-            if not initially_recording:
-                active_mission.active = False
-            shm.active_mission.set(active_mission)
-
     global has_caught_sigint
     has_caught_sigint = False
     def exit_handler(signal, frame):
@@ -107,5 +93,4 @@ async def run_task(task : Task):
         start_time = time.time()
         task()
         duration = time.time() - start_time
-        if duration < 1 / 60:
-            await asyncio.sleep(1 / 60 - duration)
+        await asyncio.sleep(max(1 / 60 - duration, 0))
