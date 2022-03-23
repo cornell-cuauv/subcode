@@ -1,2 +1,3 @@
 [mypy]
 mypy_path = /home/software/cuauv/software
+follow_imports = silent
