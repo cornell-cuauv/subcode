@@ -100,8 +100,7 @@ class MasterConcurrent(Task):
         self.master_task = None
         self.concurrent = Concurrent()
 
-    def on_run(self, master_task, *tasks, subtasks=(),
-               finite: bool = True, **kwargs):
+    def on_run(self, master_task, *tasks, subtasks=(), finite: bool = True, **kwargs): # type: ignore
         """
         :param master_task: Task to be run concurrently and the only Task to be checked for finishing.
         :param tasks: Tasks to be run concurrently.

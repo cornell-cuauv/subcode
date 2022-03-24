@@ -1,9 +1,5 @@
 import time
 import libshm.py as shm
-<<<<<<< HEAD
-from shm import active_mission
-=======
->>>>>>> End of semester commit
 import functools
 
 from auvlog.client import Logger
@@ -225,7 +221,7 @@ class Task:
         :param level: The level to be logged. Use the other helper log methods for standard levels.
         :param copy_to_stdout: If True, the message will be copied to standard out. This is useful for quick debugging.
         """
-        log_path = active_mission.log_path.get()
+        log_path = active_mission.log_path.get() # type: ignore
         log_file = "%s/mission.log" % log_path
         Logger(Task.task_call_stack + [level])(*args,
                 copy_to_stdout=copy_to_stdout or Task.should_print(level),

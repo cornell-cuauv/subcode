@@ -6,7 +6,7 @@ import shm
 
 from conf.vehicle import actuators
 
-actuator_group = shm.actuator_desires
+actuator_group = shm.actuator_desires # type: ignore
 FIRE_TIME = 0.1
 
 def set_actuator_num(group, num, value):
