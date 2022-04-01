@@ -64,6 +64,7 @@ packages3=(
     pycairo
 
     mypy
+    types-termcolor
 )
 
 # it would be better to not have this

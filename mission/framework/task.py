@@ -1,10 +1,9 @@
 import time
-import shm
+import libshm.py as shm
 import functools
 
 from auvlog.client import Logger
 from mission.framework.helpers import dict_join
-
 
 class Task:
     """A Task performs an action.
@@ -222,7 +221,7 @@ class Task:
         :param level: The level to be logged. Use the other helper log methods for standard levels.
         :param copy_to_stdout: If True, the message will be copied to standard out. This is useful for quick debugging.
         """
-        log_path = shm.active_mission.log_path.get()
+        log_path = active_mission.log_path.get()
         log_file = "%s/mission.log" % log_path
         Logger(Task.task_call_stack + [level])(*args,
                 copy_to_stdout=copy_to_stdout or Task.should_print(level),

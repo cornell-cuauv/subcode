@@ -1,8 +1,8 @@
 from runtime import *
-from test import vehicle, level, environment, autonomous, Test, MAINSUB, MINISUB, ERR, WARN, WATER, LAND
+from test import vehicle, level, environment, Test, MAINSUB, MINISUB, ERR, WARN, WATER, LAND
 from gevent import sleep
 from mission.constants.region import  PINGER_FREQUENCY
-import shutil, os, time
+import shutil, os
 import conf
 
 # Sensors
@@ -45,17 +45,6 @@ class Vision(Test):
         changing_downward = is_changing(shm.poster_status.downward_counter.get)
         return changing_forward and changing_downward
 
-    @autonomous(True)
-    def vision_recording():
-        shm_vision_recording = shm.vision_modules.Record.get()
-        shm_active_mission = shm.active_mission.active.get()
-        vid_path = "/home/software/cuauv/workspaces/logs/current"
-        initSize = sum(os.path.getsize(vid_path + "/" + f) for f in os.listdir(vid_path) if os.path.isfile(f))
-        time.sleep(1)
-        scndSize = sum(os.path.getsize(vid_path + "/" + f) for f in os.listdir(vid_path) if os.path.isfile(f))
-        return (shm_vision_recording == 1 and shm_active_mission == 1 and initSize < scndSize)
-        
-
 class Depth(Test):
     def updating():
         return is_changing(shm.depth.depth.get)
@@ -65,7 +54,7 @@ class Depth(Test):
 
 class Pressure(Test):
     def valid():
-        return .6 < shm.pressure.hull.get() < .89
+        return .7 < shm.pressure.hull.get() < .89
 
     def updating():
         return is_changing(shm.pressure.hull.get)
@@ -78,6 +67,7 @@ class Serial(Test):
     def merge_connected():
         return shm.connected_devices.merge.get()
 
+    @vehicle(MAINSUB)
     def thrusters_connected():
         return shm.connected_devices.thrusters.get()
 
@@ -87,7 +77,7 @@ class Serial(Test):
 
     @vehicle(MINISUB)
     def thrusters_mini_connected():
-        return shm.connected_devices.thruster_board_2.get()
+        return shm.connected_devices.thrusters_mini.get()
 
     def power_distribution_connected():
         return shm.connected_devices.PD.get()
@@ -99,52 +89,22 @@ class System(Test):
     def disk_space_available():
         return shutil.disk_usage(os.environ["CUAUV_LOG"]).free > 10 * 1000 ** 3 # 10GB
 
-    @autonomous(False)
     def services_up():
         # Please forgive me for this.
         service_down_color = '[1;31m'
         return service_down_color not in str(shell('trogdor').stdout)
 
-    @autonomous(True)
-    def services_up_no_deadman():
-        service_down_color = '[1;31m'
-        tOut = str(shell('trogdor').stdout).replace('[1;31mdeadman', '')
-        no_deadman = service_down_color not in tOut
-        deadman_off = '[1;32mdeaman' not in tOut
-        return no_deadman and deadman_off
-
-class Typing(Test):
-
-    @autonomous(True)
-    def check_typing_of_master_mission():
-        print('Enter the path to the master mission file:')
-        check_file = input()
-        os.system('mypy ' + check_file)
-        return True
-
 class Hydrophones(Test):
     def board_talking():
-        return is_changing(shm.hydrophones_pinger_status.packet_number.get)
+        return is_changing(shm.hydrophones_status.packet_count.get)
 
     @environment(WATER)
     def getting_pings():
         #freq = shm.hydrophones_settings.track_frequency.get()
         #shm.hydrophones_settings.track_frequency.set(PINGER_FREQUENCY)
-        ret = is_changing(shm.hydrophones_pinger_status.packet_number.get, 500)
+        ret = is_changing(shm.hydrophones_status.packet_count.get, 500)
         #shm.hydrophones_settings.track_frequency.set(freq)
         return ret
-
-    @autonomous(True)
-    def correct_frequency():
-        print('Is ' + str(shm.hydrophones_pinger_settings.frequency.get()) + ' the correct frequency?(y/n)')
-        correct_pinger = input()
-        if(correct_pinger != 'y'):
-            print('Input correct frequency:')
-            try:
-                shm.hydrophones_pinger_settings.frequency.set(int(input()))
-            except Exception as err:
-                return False
-        return True
 
 @environment(WATER)
 class Trim(Test):

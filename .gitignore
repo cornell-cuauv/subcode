@@ -30,6 +30,7 @@ stats-newest
 /aslam/build/
 /libshm/doc/
 /serial/doc/
+*.mypy_cache
 
 *.o
 *.hi
