@@ -1,8 +1,8 @@
 
 # The below are highly dependent on trim
-center_of_buoyancy = [0.00012155, -0.000034256, -0.00089525]
-buoyancy_force = 190.0 # green: 215, black: 187 FUDGED to assume postively buoyant sub
-gravity_force = 189.38
+center_of_buoyancy = [0.058897334, 0.007543965, -0.020125111]
+buoyancy_force = 243.0 # green: 215, black: 187 FUDGED to assume postively buoyant sub
+gravity_force = 200.2
 
 # only used for partially submerged buoyancy force calculation, non critical
 sub_height = 0.50
@@ -16,9 +16,9 @@ dvl_reversed = false
 
 # Moments of inertia (kg * m^2) from solidworks.
 # In the model frame.
-I = [[ 0.6149, -0.0054, -0.0662],
-     [-0.0054,  0.7710, -0.0084],
-     [-0.0662, -0.0084,  1.0121]]
+I = [[ 0.5423,  0.0733, -0.0274],
+     [-0.0733,  1.5777, -0.0041],
+     [-0.0274, -0.0041,  1.3106]]
 
 # Ib and body_rot calculated using auv-body-frame-calc.
 Ib = [0.60389, 0.771048, 1.02306]
@@ -30,70 +30,70 @@ thruster_maximums = [74.15710109200003, 74.15710109199999, 101.28118145900001, 2
 
 quaternion_filtering = 1
 dvl_present = false
-gx_hpr = [0.0, 0.0, 0.0] # Note: You probably want to re-tare the GX rather than use this offset
+gx_hpr = [180.0, 90.0, 0.0] # Note: You probably want to re-tare the GX rather than use this offset
 
 
 [[thrusters]]
 name = "fore_port"
 type = "T200"
-pos = [0.235, -0.201, -0.0204]
+pos = [0.205, -0.233, 0.005]
 heading_pitch = [0.0, 90.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "port"
 type = "T200"
-pos = [0.00474, -0.252, -0.0056]
+pos = [0.029, -0.233, -0.073]
 heading_pitch = [0.0, 0.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "aft_port"
 type = "T200"
-pos = [-0.271, -0.201, -0.0204]
+pos = [-0.176, -0.233, 0.005]
 heading_pitch = [0.0, 90.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "sway_aft"
 type = "T200"
-pos = [-0.271, -0.006, 0.031]
+pos = [-0.394, -0.011, -0.003]
 heading_pitch = [90.0, 0.0]
 reversed = false
 
 [[thrusters]]
 name = "aft_starboard"
 type = "T200"
-pos = [-0.271, 0.201, -0.0204]
+pos = [-0.176, 0.233, 0.005]
 heading_pitch = [0.0, 90.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "starboard"
 type = "T200"
-pos = [0.00474, 0.252, -0.0056]
+pos = [0.029, 0.233, -0.073]
 heading_pitch = [0.0, 0.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "fore_starboard"
 type = "T200"
-pos = [0.235,  0.201, -0.0204]
+pos = [0.205, 0.233, 0.005]
 heading_pitch = [0.0, 90.0]
-reversed = false
+reversed = true
 
 [[thrusters]]
 name = "sway_fore"
 type = "T200"
-pos = [0.280, -0.006, 0.031]
+pos = [0.423, -0.015, -0.003]
 heading_pitch = [90.0, 0.0]
 reversed = false
 
 
 [control_settings]
-depth   = { kP = 7.00, kI = 0.15, kD = 15.00, rD = 0.3, ramp_speed = 0.5 }
-pitch   = { kP = 0.10, kI = 0.10, kD = 11.00, rD = 30.0 }
-heading = { kP = 0.40, kI = 0.00, kD = 18.00, rD = 20.0 }
+depth   = { kP = 7.50, kI = 0.15, kD = 13.00, rD = 0.3, ramp_speed = 0.5 }
+pitch   = { kP = 0.07, kI = 0.20, kD = 14.00, rD = 30.0 }
+heading = { kP = 0.40, kI = 0.05, kD = 29.00, rD = 20.0 }
 velx    = { kP = 5.00, kI = 0.00, kD = 0.00, rD = 0.1547 }
 vely    = { kP = 5.00, kI = 0.00, kD = 0.00, rD = 0.5 }
 roll    = { kP = 0.14, kI = 0.01, kD = 10.00, rD = 30.0 }
@@ -183,6 +183,7 @@ width = 1280
 height = 1024
 position = [0.48, 0.15, -0.08]
 orientation_hpr = [0.0, 0.0, 0.0]
+rotate180=true
 
 # The optical sensor size of the CAMERA, width and height in mm
 # This should typically be in the same ratio as the resolution, above.
@@ -194,8 +195,8 @@ focal_length_mm = 3.6
 type = "ueye"
 id = 4
 camera_name = "ueye_downward_ajax" # for configuration
-width = 1024
-height = 768
+width = 1000
+height = 800
 rotate180 = false
 position = [0.0, 0.0, 0.15]
 orientation_hpr = [0.0, -90.0, 0.0]
