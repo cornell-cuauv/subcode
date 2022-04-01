@@ -2,7 +2,10 @@ import tomlkit
 import numpy as np
 import os
 import sys
-from typing import Union
+from typing import Union, Any, Dict
+from tomlkit.container import Container
+
+from tomlkit.items import Item
 
 DIR = os.environ.get("CUAUV_SOFTWARE")
 if DIR is None:
@@ -45,9 +48,9 @@ measurement_error = d['measurement_error']
 control_settings = d['control_settings']
 quaternion_filtering = d['quaternion_filtering']
 
-actuators = {} # type: ignore
+actuators = {} # type: Union[Item, Container, Dict]
 if 'actuators' in d:
-    actuators = d['actuators'] # type: ignore
+    actuators = d['actuators']
 
 dvl_present = d['dvl_present']
 
@@ -62,6 +65,8 @@ class DragPlane(object):
 
         self.torque_hat = np.cross(self.pos, self.n)
 
+
+# I refuse to type drag planes if we're not using them
 drag_planes = []
 for dp in d['drag_planes']: # type: ignore
     drag_planes.append(DragPlane(np.array(dp['pos']), np.array(dp['normal']), dp['cD'], dp['area'])) # type: ignore
@@ -75,4 +80,4 @@ except KeyError:
 try:
   vision_modules = d['vision_modules']
 except KeyError:
-    print("WARNING: Vehicle is missing vision module configuration." % VEHICLE) # type: ignore
+    print("WARNING: Vehicle %s is missing vision module configuration." % VEHICLE)
