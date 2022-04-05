@@ -1,29 +1,42 @@
 import shm
 
-class PositionalControls():
-    locked = False
+from typing import Optional
 
-    def __init__(self, enable = True, optimize = False):
+class PositionalControls():
+    enable_locked = False
+    optimize_locked = False
+
+    def __init__(self, enable : Optional[bool] = True,
+            optimize : Optional[bool] = False):
         self.enable = enable
         self.optimize = optimize
 
     def __enter__(self):
         self.init_enable = shm.navigation_settings.position_controls.get()
-        self.init_optimize = shm.navigation_settings.optimize.get()
-
-        self.cancelled = PositionalControls.locked
-        if PositionalControls.locked and (self.enable != self.init_enable
-                or self.optimize != self.init_optimize):
+        self.enable_cancelled = PositionalControls.enable_locked
+        if (PositionalControls.enable_locked and
+                self.enable == not self.init_enable):
             raise Exception("Attempted PositionalControls contradiction.")
-        if not PositionalControls.locked:
-            PositionalControls.locked = True
+        if self.enable != None and not PositionalControls.enable_locked:
+            PositionalControls.enable_locked = True
             shm.navigation_settings.position_controls.set(self.enable)
+
+        self.init_optimize = shm.navigation_settings.optimize.get()
+        self.optimize_cancelled = PositionalControls.optimize_locked
+        if (PositionalControls.optimize_locked and
+                self.optimize == not self.init_optimize):
+            raise Exception("Attempted PositionalControls contradiction.")
+        if self.optimize != None and not PositionalControls.optimize_locked:
+            PositionalControls.optimize_locked = True
             shm.navigation_settings.optimize.set(self.optimize)
 
     def __exit__(self, type, value, traceback):
-        if not self.cancelled:
-            PositionalControls.locked = False
+        if self.enable != None and not self.enable_cancelled:
+            PositionalControls.enable_locked = False
             shm.navigation_settings.position_controls.set(self.init_enable)
+
+        if self.optimize != None and not self.optimize_cancelled:
+            PositionalControls.optimize_locked = False
             shm.navigation_settings.optimize.set(self.init_optimize)
 
 
