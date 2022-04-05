@@ -25,7 +25,7 @@ class PositionalControls():
             PositionalControls.enable_depth += 1
         if self.optimize != None:
             if PositionalControls.optimize_depth == 0:
-                Positionalcontrols.init_optimize = self.optimize_var.get()
+                PositionalControls.init_optimize = self.optimize_var.get()
                 self.optimize_var.set(self.optimize)
             elif self.optimize == (not self.optimize_var.get()):
                 raise Exception("Attempted PositionalControls contradiction.")
