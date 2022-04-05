@@ -1,23 +1,29 @@
 import shm
 
-
 class PositionalControls():
-    def __init__(self, enable : bool = True, optimize : bool = False):
+    locked = False
+
+    def __init__(self, enable = True, optimize = False):
         self.enable = enable
         self.optimize = optimize
 
     def __enter__(self):
         self.init_enable = shm.navigation_settings.position_controls.get()
         self.init_optimize = shm.navigation_settings.optimize.get()
-        if self.enable != None:
+
+        self.cancelled = locked
+        if locked and (self.enable != self.init_enable
+                or self.optimize != self.init_optimize):
+            raise Exception("Attempted PositionalControls contradiction.")
+        if not locked:
+            locked = True
             shm.navigation_settings.position_controls.set(self.enable)
-        if self.optimize != None:
             shm.navigation_settings.optimize.set(self.optimize)
 
     def __exit__(self, type, value, traceback):
-        if self.enable != None:
+        if not self.cancelled:
+            locked = False
             shm.navigation_settings.position_controls.set(self.init_enable)
-        if self.optimize != None:
             shm.navigation_settings.optimize.set(self.init_optimize)
 
 
