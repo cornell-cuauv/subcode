@@ -3,42 +3,45 @@ import shm
 from typing import Optional
 
 class PositionalControls():
-    enable_locked = False
-    optimize_locked = False
-
+    init_enable = False
+    enable_depth = 0
+    init_optimize = True
+    optimize_depth = 0
+    
     def __init__(self, enable : Optional[bool] = True,
             optimize : Optional[bool] = False):
         self.enable = enable
+        self.enable_var = shm.navigation_settings.position_controls
         self.optimize = optimize
+        self.optimize_var = shm.navigation_settings.optimize
 
     def __enter__(self):
-        self.init_enable = shm.navigation_settings.position_controls.get()
-        self.enable_cancelled = PositionalControls.enable_locked
-        if (PositionalControls.enable_locked and
-                self.enable == (not self.init_enable)):
-            raise Exception("Attempted PositionalControls contradiction.")
-        if self.enable != None and not PositionalControls.enable_locked:
-            PositionalControls.enable_locked = True
-            shm.navigation_settings.position_controls.set(self.enable)
+        if self.enable != None:
+            if enable_depth == 0:
+                PositionalControls.init_enable = self.enable_var.get()
+                self.enable_var.set(self.enable)
+            elif self.enable == (not self.enable_var.get()):
+                raise Exception("Attempted PositionalControls contradiction.")
+            PositionalControls.enable_depth += 1
+        if self.optimize != None:
+            if optimize_depth == 0:
+                Positionalcontrols.init_optimize = self.optimize_var.get()
+                self.optimize_var.set(self.optimize)
+            elif self.optimize == (not self.optimize_var.get()):
+                raise Exception("Attempted PositionalControls contradiction.")
+            PositionalControls.optimize_depth += 1
 
-        self.init_optimize = shm.navigation_settings.optimize.get()
-        self.optimize_cancelled = PositionalControls.optimize_locked
-        if (PositionalControls.optimize_locked and
-                self.optimize == (not self.init_optimize)):
-            raise Exception("Attempted PositionalControls contradiction.")
-        if self.optimize != None and not PositionalControls.optimize_locked:
-            PositionalControls.optimize_locked = True
-            shm.navigation_settings.optimize.set(self.optimize)
 
-    def __exit__(self, type, value, traceback):
-        if self.enable != None and not self.enable_cancelled:
-            PositionalControls.enable_locked = False
-            shm.navigation_settings.position_controls.set(self.init_enable)
-
-        if self.optimize != None and not self.optimize_cancelled:
-            PositionalControls.optimize_locked = False
-            shm.navigation_settings.optimize.set(self.init_optimize)
-
+    def __exit__(self):
+        if self.enable != None:
+            PositionalControls.enable_depth -= 1
+            if PositionalControls.enable_depth == 0:
+                self.enable_var.set(PositionalControls.init_enable)
+        if self.optimize != None:
+            PositionalControls.optimize_depth -= 1
+            if PositionalControls.optimize_depth == 0:
+                self.optimize_var.set(PositionalControls.init_optimize)
+            
 
 class MaxSpeed():
     def __init__(self, speed : float):
