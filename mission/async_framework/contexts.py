@@ -15,7 +15,7 @@ class PositionalControls():
         self.init_enable = shm.navigation_settings.position_controls.get()
         self.enable_cancelled = PositionalControls.enable_locked
         if (PositionalControls.enable_locked and
-                self.enable == not self.init_enable):
+                self.enable == (not self.init_enable)):
             raise Exception("Attempted PositionalControls contradiction.")
         if self.enable != None and not PositionalControls.enable_locked:
             PositionalControls.enable_locked = True
@@ -24,7 +24,7 @@ class PositionalControls():
         self.init_optimize = shm.navigation_settings.optimize.get()
         self.optimize_cancelled = PositionalControls.optimize_locked
         if (PositionalControls.optimize_locked and
-                self.optimize == not self.init_optimize):
+                self.optimize == (not self.init_optimize)):
             raise Exception("Attempted PositionalControls contradiction.")
         if self.optimize != None and not PositionalControls.optimize_locked:
             PositionalControls.optimize_locked = True
