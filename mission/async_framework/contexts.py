@@ -17,14 +17,14 @@ class PositionalControls():
 
     def __enter__(self):
         if self.enable != None:
-            if enable_depth == 0:
+            if PositionalControls.enable_depth == 0:
                 PositionalControls.init_enable = self.enable_var.get()
                 self.enable_var.set(self.enable)
             elif self.enable == (not self.enable_var.get()):
                 raise Exception("Attempted PositionalControls contradiction.")
             PositionalControls.enable_depth += 1
         if self.optimize != None:
-            if optimize_depth == 0:
+            if PositionalControls.optimize_depth == 0:
                 Positionalcontrols.init_optimize = self.optimize_var.get()
                 self.optimize_var.set(self.optimize)
             elif self.optimize == (not self.optimize_var.get()):
