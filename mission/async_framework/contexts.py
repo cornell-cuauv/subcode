@@ -32,7 +32,7 @@ class PositionalControls():
             PositionalControls.optimize_depth += 1
 
 
-    def __exit__(self):
+    def __exit__(self, type, value, traceback):
         if self.enable != None:
             PositionalControls.enable_depth -= 1
             if PositionalControls.enable_depth == 0:
