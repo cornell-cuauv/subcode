@@ -1,25 +1,47 @@
 import shm
 
+from typing import Optional
 
 class PositionalControls():
-    def __init__(self, enable : bool = True, optimize : bool = False):
+    init_enable = False
+    enable_depth = 0
+    init_optimize = True
+    optimize_depth = 0
+    
+    def __init__(self, enable : Optional[bool] = True,
+            optimize : Optional[bool] = False):
         self.enable = enable
+        self.enable_var = shm.navigation_settings.position_controls
         self.optimize = optimize
+        self.optimize_var = shm.navigation_settings.optimize
 
     def __enter__(self):
-        self.init_enable = shm.navigation_settings.position_controls.get()
-        self.init_optimize = shm.navigation_settings.optimize.get()
         if self.enable != None:
-            shm.navigation_settings.position_controls.set(self.enable)
+            if PositionalControls.enable_depth == 0:
+                PositionalControls.init_enable = self.enable_var.get()
+                self.enable_var.set(self.enable)
+            elif None != self.enable != self.enable_var.get():
+                raise Exception("Attempted PositionalControls contradiction.")
+            PositionalControls.enable_depth += 1
         if self.optimize != None:
-            shm.navigation_settings.optimize.set(self.optimize)
+            if PositionalControls.optimize_depth == 0:
+                PositionalControls.init_optimize = self.optimize_var.get()
+                self.optimize_var.set(self.optimize)
+            elif None != self.optimize != self.optimize_var.get():
+                raise Exception("Attempted PositionalControls contradiction.")
+            PositionalControls.optimize_depth += 1
+
 
     def __exit__(self, type, value, traceback):
         if self.enable != None:
-            shm.navigation_settings.position_controls.set(self.init_enable)
+            PositionalControls.enable_depth -= 1
+            if PositionalControls.enable_depth == 0:
+                self.enable_var.set(PositionalControls.init_enable)
         if self.optimize != None:
-            shm.navigation_settings.optimize.set(self.init_optimize)
-
+            PositionalControls.optimize_depth -= 1
+            if PositionalControls.optimize_depth == 0:
+                self.optimize_var.set(PositionalControls.init_optimize)
+            
 
 class MaxSpeed():
     def __init__(self, speed : float):
