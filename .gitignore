@@ -7,9 +7,16 @@ binaries/
 *.ninja
 *.pyc
 *.o
+*.so
+*.bin
+*.exe
+*.run
 *.sw[a-z]
 *~
 *.log
+*.shmlog
+*.mat
+*.rdb
 *.csv
 *.pickle
 stats-newest
@@ -30,9 +37,10 @@ stats-newest
 /aslam/build/
 /libshm/doc/
 /serial/doc/
-*.mypy_cache
 
-*.o
+.mypy_cache/
+node_modules/
+
 *.hi
 *.dyn_hi
 *.dyn_o

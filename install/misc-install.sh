@@ -99,3 +99,9 @@ cat > /usr/local/share/ueye/ueyeethd/ueyeethd.conf << 'EOF'
 [camp]
  Port_Base = 50000
 EOF
+
+# **************** git-lfs ****************
+
+curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+
+apt-get -y install git-lfs
