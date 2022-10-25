@@ -5,7 +5,7 @@ import os
 import shutil
 import sys
 
-from lib import pyratemp
+import pyratemp
 from libshm import parse
 
 if os.getcwd().split('/')[-1] != 'libshm':

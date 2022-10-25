@@ -44,6 +44,7 @@ packages=(
     fire
 
     tomlkit
+    pyratemp
 )
 
 # packages2=(

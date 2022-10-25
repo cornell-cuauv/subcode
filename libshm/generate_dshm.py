@@ -15,7 +15,7 @@ import sys
 import os
 
 from libshm.parse import parse, ParseError
-from lib import pyratemp as pyra
+import pyratemp as pyra
 
 GROUP_MEMBER_DELIMITER = "__"
 TYPES = ["int", "float", "double", "string", "bool"]
