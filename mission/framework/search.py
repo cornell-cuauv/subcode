@@ -1,372 +1,217 @@
-import numpy as np
 import math
+import numpy as np
+import asyncio
+from typing import Callable, Optional, Any
 
-import shm
-
-from auv_math.math_utils import rotate
-from auv_math.quat import quat_from_axis_angle
 from auv_python_helpers.angles import abs_heading_sub_degrees
-from mission.framework.combinators import Sequential, While
-from mission.framework.helpers import call_if_function
-from mission.framework.consistency import ConsistencyCheck, ConsistentTask
-from mission.framework.movement import (
-    Heading, Pitch, Roll,
-    RelativeToInitialHeading, VelocityX,
-    RelativeToCurrentHeading, VelocityY
-)
-from mission.framework.position import MoveX, MoveY, GoToPosition
-from mission.framework.task import Task
-from mission.framework.timing import Timer, Timed
-from mission.framework.primitive import Zero
-from auv_python_helpers.angles import heading_sub_degrees
+from mission.async_framework.movement import (velocity_x, velocity_x_for_secs,
+        velocity_y_for_secs, roll_for_secs, heading,
+        relative_to_initial_heading)
+from mission.async_framework.position import move_x, move_y, go_to_position
+from mission.async_framework.primitive import zero
+from mission.async_framework.logger import timeline
+from mission.constants.sub import Tolerance
+from conf import vehicle
 
-def _sub_position():
-    return np.array([
-        shm.kalman.north.get(),
-        shm.kalman.east.get(),
-        shm.kalman.depth.get(),
-    ])
+@timeline()
+async def search(visible : Callable[[], bool], pattern: Any):
+    """Move in a given pattern until finding something.
 
-class VelocitySwaySearch(Task):
-    def make_repeat(self, width, stride, speed, rightFirst, checkBehind):
-        sway_time = width/speed
-        stride_time = stride/speed
-        dir = 1 if rightFirst else -1
-        if checkBehind:
-            self.repeat = Sequential(
-                                Timed(VelocityX(-speed), stride_time),
-                                Timed(VelocityX(speed), stride_time),
-                                VelocityX(0),
-                                Timed(VelocityY(speed * dir), sway_time),
-                                VelocityY(0.0),
-                                Timed(VelocityX(speed), stride_time),
-                                VelocityX(0.0),
-                                Timed(VelocityY(-speed * dir), sway_time),
-                                VelocityY(0.0),
-                                Timed(VelocityY(-speed * dir), sway_time),
-                                VelocityY(0.0),
-                                Timed(VelocityX(speed), stride_time),
-                                VelocityX(0.0),
-                                Timed(VelocityY(speed * dir), sway_time),
-                                VelocityY(0.0))
+    Arguments:
+    visible -- a function that returns true if the object has been found
+    pattern -- a coroutine that will move the sub along the desired pattern
+    """
+    search = asyncio.create_task(pattern)
+    try:
+        while not visible():
+            await asyncio.sleep(0.01)
+    except asyncio.CancelledError:
+        raise
+    finally:
+        search.cancel()
+        await asyncio.sleep(0)
+        await zero()
+
+@timeline()
+async def spin_pattern(interval_size : float, clockwise : bool = True):
+    """Rotate continuously.
+
+    Note that this function will never terminate if not interrupted.
+
+    Arguments:
+    interval_size -- how many degrees the sub should rotate at a time
+    clockwise     -- if the sub should spin clockwise
+    """
+    direction = 1 if clockwise else -1
+    while True:
+        await relative_to_initial_heading(offset = direction  * interval_size)
+
+async def spin_search(visible : Callable[[], bool], interval_size : float,
+        clockwise : bool = True):
+    """Rotates continuously until finding something.
+
+    Arguments:
+    visible -- a function that returns True if the object has been found
+    ...     -- same as spin_pattern
+    """
+    await search(visible, spin_pattern(interval_size, clockwise))
+
+async def heading_rotation(direction, amplitude, splits):
+    """Rotate a little bit at a time.
+
+    Arguments:
+    direction -- -1 for counterclockwise, 1 for clockwise
+    amplitude -- the number of degrees to rotate in total
+    splits    -- the number of small rotations which make up the whole
+    """
+    for i in range(splits):
+        await relative_to_initial_heading(rection * amplitude / splits)
+
+@timeline()
+async def velocity_sway_pattern(width : float, stride : float, speed : float,
+        right_first : bool, check_behind : bool, heading_search : bool,
+        heading_amplitude : float, splits : int):
+    """Sway left and right intermittently while generally moving forward.
+
+    Designed for minisub. Note that this function will never terminate if not
+    interrupted.
+
+    Arguments:
+    width             -- the width of the sub's sways
+    stride            -- the distance the sub moves forward between sways
+    speed             -- how fast the sub moves in each direction
+    right_first       -- the sub can start by swaying either left or right
+    check_behind      -- if the sub should move backward briefly before swaying
+    heading_search    -- if the sub should perform a heading search at the end
+                         of each stride
+    heading_amplitude -- the angle of rotation the heading search does
+    splits            -- the number of splits on each heading rotation, increase
+                         for slower rotation
+    """
+    sway_time = width / speed
+    stride_time = stride / speed
+    direction = 1 if right_first else -1
+    while True:
+        await zero()
+        if check_behind:
+            await velocity_x_for_secs(-speed, stride_time)
+            await velocity_x_for_secs(speed, stride_time)
+            await velocity_x(0)
+        await velocity_y_for_secs(speed * direction, sway_time)
+        await velocity_x_for_secs(speed, stride_time)
+        if heading_search:
+            await heading_rotation(direction, heading_amplitude, splits)
+        await velocity_y_for_secs(-speed * direction, 2 * sway_time)
+        await velocity_x_for_secs(speed, stride_time)
+        if heading_search:
+            await heading_rotation(-direction, heading_amplitude, splits)    
+        await velocity_y_for_secs(speed * direction, sway_time)
+
+@timeline()
+async def velocity_sway_search(visible : Callable[[], bool], width : float = 1,
+        stride : float = 1, speed : float = 0.3, right_first : bool = True,
+        check_behind : bool = False, heading_search : bool = False,
+        heading_amplitude : float = 45.0, split : int = 1):
+    """Move in a forward sway pattern until finding something.
+    
+    Designed for minisub.
+
+    Arguments:
+    visible -- a function that returns true if the object has been found
+    ...     -- same as velocity_sway_pattern
+    """
+    if vehicle.is_mainsub:
+        split = 2
+    await search(visible, velocity_sway_pattern(width, stride, speed,
+        right_first, check_behind, heading_search, heading_amplitude, split))
+
+
+@timeline()
+async def sway_pattern(width : float, stride : float, roll_extension : bool,
+        tolerance : float = Tolerance.POSITION):
+    """Sway left and right intermittently while generally moving forward.
+
+    Requires the DVL. Note that this function will never terminate if not
+    interrupted.
+
+    Arguments:
+    width          -- the width of the sub's sways
+    stride         -- the distance the sub moves forward between sways
+    roll_extension -- if the sub should roll briefly between movements
+    tolerance      -- the tolerance in each movement's length
+    """
+    async def maybe_roll(roll_direction : int):
+        if roll_extension:
+            await roll_for_secs(-roll_direction * 45, 1)
+
+    await move_y(-width / 2, tolerance=tolerance)
+    await maybe_roll(-1)
+    while True:
+        await move_y(width, tolerance=tolerance)
+        await maybe_roll(1)
+        await move_x(stride, tolerance=tolerance)
+        await maybe_roll(1)
+        await move_y(-width, tolerance=tolerance)
+        await maybe_roll(-1)
+        await move_x(stride, tolerance=tolerance)
+        await maybe_roll(-1)
+
+
+@timeline()
+async def sway_search(visible : Callable[[], bool], width : float = 1,
+        stride : float = 1, roll_extension : bool = False,
+        tolerance : float = Tolerance.POSITION):
+    """Move in a forward sway pattern until finding something.
+
+    Requires the DVL.
+
+    Arguments:
+    visible -- a function that returns true if the object has been found
+    ...     -- same as sway_pattern
+    """
+    await search(visible, sway_pattern(width, stride, roll_extension,
+            tolerance))
+
+async def square_pattern(first_dist : float = 0.5, dist_increase : float = 1,
+        tolerance : float = 0.25, constant_heading : bool = False):
+    """Move in an outwardly-expanding square spiral.
+
+    Requires the DVL. Note that this function will never terminate if not
+    interrupted.
+
+    Arguments:
+    first_dist       -- the length of the first two sides of the first square
+    dist_increase    -- the increase in sidelength of the squares
+    tolerance        -- the tolerance in the sidelength of the squares
+    constant_heading -- if the sub should maintain a constant heading
+    """
+    distance = first_dist
+    while True:
+        if constant_heading:
+            await move_x(distance, tolerance=tolerance)
+            await move_y(distance, tolerance=tolerance)
+            distance += dist_increase
+            await move_x(-distance, tolerance=tolerance)
+            await move_y(-distance, tolerance=tolerance)
+            distance += dist_increase
         else:
-            self.repeat = Sequential(
-                                Timed(VelocityY(speed * dir), sway_time),
-                                VelocityY(0.0),
-                                Timed(VelocityX(speed), stride_time),
-                                VelocityX(0.0),
-                                Timed(VelocityY(-speed * dir), sway_time),
-                                VelocityY(0.0),
-                                Timed(VelocityY(-speed * dir), sway_time),
-                                VelocityY(0.0),
-                                Timed(VelocityX(speed), stride_time),
-                                VelocityX(0.0),
-                                Timed(VelocityY(speed * dir), sway_time),
-                                VelocityY(0.0))
+            await move_x(distance, tolerance=tolerance)
+            await relative_to_initial_heading(90)
+            await move_x(distance, tolerance=tolerance)
+            await relative_to_initial_heading(90)
+            distance += dist_increase
 
-    def on_first_run(self, width=1 ,stride=1, speed=0.3, rightFirst=True, checkBehind=False):
-        self.make_repeat(width, stride, speed, rightFirst, checkBehind)
+@timeline()
+async def square_search(visible: Callable[[], bool], first_dist : float = 0.5,
+        dist_increase : float = 1, tolerance : float = 0.25,
+        constant_heading : bool = False):
+    """Move in a square spiral pattern until finding something.
 
-    def on_run(self, width=1, stride = 1, speed=0.3, rightFirst=True, checkBehind=False):
-        self.repeat()
-        if self.repeat.finished:
-            self.make_repeat(width, stride, speed, rightFirst, checkBehind)
+    Requires the DVL.
 
-class VelocityTSearch(Task):
-    def make_repeat(self, forward, stride, rightFirst, checkBehind):
-        dir = 1 if rightFirst else -1
-        self.back_check = Timed(VelocityX(-.3), forward)
-        self.checked_b = not checkBehind
-        self.repeat = Sequential(
-                                Timed(VelocityX(.3 ), forward),
-                                VelocityX(0.0),
-                                Timed(VelocityY(.3 * dir), stride),
-                                VelocityY(0.0),
-                                Timed(VelocityY(-.3 * dir), stride * 2),
-                                VelocityY(0.0),
-                                Timed(VelocityY(.3 * dir),stride),
-                                VelocityY(0.0),
-                                )
-
-    def on_first_run(self, forward = 1, stride=1, rightFirst=True, checkBehind=False):
-        self.make_repeat(forward, stride, rightFirst, checkBehind)
-
-    def on_run(self, forward = 1, stride=1, rightFirst=True, checkBehind=False):
-        if not self.checked_b:
-            self.back_check()
-        else:
-            self.repeat()
-        if self.back_check.finished:
-            self.checked_b=True
-        if self.repeat.finished:
-            self.make_repeat(forward, stride, rightFirst, checkBehind)
-
-class SearchFor(Task):
-    def on_first_run(self, search_task, visible, consistent_frames=(3, 5)):
-        self.found_checker = ConsistencyCheck(*consistent_frames)
-
-    def on_run(self, search_task, visible, consistent_frames=(3, 5)):
-        visible = call_if_function(visible)
-        if self.found_checker.check(visible):
-            self.finish()
-        else:
-            search_task()
-            if search_task.finished:
-                self.finish(success=False)
-
-class PitchSearch(Task):
-    def on_first_run(self, angle, dps=45):
-        self.degrees_per_second = dps
-        self.revolve_angle = 0
-        self.revolve_task = RelativeToInitialHeading(current=shm.kalman.heading.get())
-        Pitch(angle)()
-
-    def on_run(self, *args):
-        if self.last_run_time is None:
-            return
-
-        dt = self.this_run_time - self.last_run_time
-
-        self.revolve_angle += self.degrees_per_second * dt
-        self.revolve_task(self.revolve_angle)
-
-        if self.revolve_angle > 360:
-            self.revolve_task(360)
-            Pitch(0)()
-            self.finish()
-
-class OrientationSearch(Task):
+    Arguments:
+    visible -- a function that returns true if the object has been found
+    ...     -- same as square_pattern
     """
-       Revolves around the depth axis at an angle in degrees.
-    """
-
-    def on_first_run(self, angle, dps=45):
-        self.conic_angle_rad = math.radians(angle)
-        self.degrees_per_second = dps
-        self.revolve_angle = 0
-        self.initial_heading = shm.kalman.heading.get()
-
-    def on_run(self, *args):
-        if self.last_run_time is None:
-            return
-
-        dt = self.this_run_time - self.last_run_time
-
-        self.revolve_angle += self.degrees_per_second * dt
-
-        if self.revolve_angle > 390:
-            Heading(self.initial_heading)()
-            Pitch(0)()
-            Roll(0)()
-            self.finish()
-            return
-
-        rot_2d = rotate((0, 1), self.revolve_angle)
-        rotation_axis = np.array((rot_2d[0], rot_2d[1], 0))
-
-        conic_quat = quat_from_axis_angle(rotation_axis, self.conic_angle_rad)
-
-        # TODO How can we achieve the same effect without using heading?
-        heading, pitch, roll = conic_quat.hpr()
-
-        Heading(heading)()
-        Pitch(pitch)()
-        Roll(roll)()
-
-class SwaySearch(Task):
-    def maybe_add_roll(self, original, roll_direction):
-        tasks = [original]
-        if self.roll_extension:
-            roll = -roll_direction * 45
-            tasks.extend([Roll(roll, error=10), Timer(1.0), Roll(0, error=3)])
-        return Sequential(*tasks)
-
-    def on_first_run(self, width, stride, roll_extension=False):
-        self.width = width
-        self.stride = stride
-        self.roll_extension = roll_extension
-
-        self.repeat = Sequential(self.maybe_add_roll(MoveY(self.width / 2, deadband=0.2), 1),
-                                 self.maybe_add_roll(MoveY(-self.width, deadband=0.2), -1),
-                                 self.maybe_add_roll(MoveX(self.stride, deadband=0.2), -1))
-
-    def make_repeat(self):
-        self.repeat = Sequential(self.maybe_add_roll(MoveY(self.width), 1),
-                                 self.maybe_add_roll(MoveX(self.stride), 1),
-                                 self.maybe_add_roll(MoveY(-self.width), -1),
-                                 self.maybe_add_roll(MoveX(self.stride), -1))
-
-    def on_run(self, *args, **kwargs):
-        self.repeat()
-
-        if self.repeat.finished:
-            self.make_repeat()
-
-class SpiralSearch(Task):
-  def calc_radius(self, theta, meters_per_revolution):
-    return meters_per_revolution * theta / 360.
-
-  def calc_position(self, theta, meters_per_revolution, relative_depth_range):
-    radius = self.calc_radius(theta, meters_per_revolution)
-    vector = np.array([math.cos(math.radians(theta)), math.sin(math.radians(theta)), 0])
-    delta = radius * vector
-    delta[2] = relative_depth_range * math.sin(math.radians(theta))
-    return self.start_position + delta
-
-  def on_first_run(self, *args, **kwargs):
-    self.theta = 0
-    self.start_position = _sub_position()
-    self.started_heading = False
-
-  def on_run(self, meters_per_revolution = 1.3, deadband = 0.2, spin_ratio = 1, relative_depth_range = 0.0, heading_change_scale = None, optimize_heading = False, min_spin_radius=None):
-    radius = self.calc_radius(self.theta, meters_per_revolution)
-    target = self.calc_position(self.theta, meters_per_revolution, relative_depth_range)
-    delta  = target - _sub_position()
-    # fake_target = target + (delta * 10)
-    fake_target = target
-    GoToPosition(fake_target[0], fake_target[1], depth = fake_target[2])()
-    desired_heading = (spin_ratio * self.theta) + 90
-    if heading_change_scale is not None:
-      desired_heading *= min(1.0, radius) * heading_change_scale
-    if optimize_heading:
-      desired_heading = math.degrees(math.atan2(delta[1], delta[0]))
-      if min_spin_radius is not None:
-        if (not abs_heading_sub_degrees(shm.kalman.heading.get(), desired_heading) < 10 or not radius > min_spin_radius) and not self.started_heading:
-          desired_heading = shm.navigation_desires.heading.get()
-        else:
-          self.started_heading = True
-
-    Heading(desired_heading % 360)()
-    if np.linalg.norm(_sub_position() - target) < deadband:
-      self.theta += 10
-
-class CheckSpinCompletion(Task):
-    def on_first_run(self, n):
-        self.heading = shm.kalman.heading.get()
-        self.cumul = 0
-
-    def on_run(self, n):
-        new_heading = shm.kalman.heading.get()
-        self.cumul += heading_sub_degrees(new_heading, self.heading)
-        self.heading = new_heading
-
-        if abs(self.cumul) > 360 * n:
-            self.finish()
-
-class HeadingSearch(Task):
-    """
-    Search by moving forward and oscillating heading
-    """
-    class Scan(Task):
-        def on_run(self, target, *args, **kwargs):
-            current = shm.kalman.heading.get()
-            diff = heading_sub_degrees(target, current)
-            inc = [-1, 1][diff > 0] * 12
-            RelativeToCurrentHeading(inc)()
-            if abs(diff) < 5:
-                self.finish()
-
-    class MoveIncrement(Task):
-        def on_run(self, north, east, *args, **kwargs):
-            GoToPosition(north, east)()
-            current = _sub_position()[:2]
-            target = np.array([north, east])
-            if sum((current - target) ** 2) < 0.25:
-                self.finish()
-
-    def on_first_run(self, initial_heading, heading_amplitude=45, stride=2.5, *args, **kwargs):
-        self.initial_heading = initial_heading
-        self.heading_amplitude = heading_amplitude
-        self.stride = stride
-        self.initial_pos = np.array(_sub_position()[:2])
-        self.new_pos = self.initial_pos
-        heading_radians = math.radians(initial_heading)
-        self.direction_vector = np.array([
-            math.cos(heading_radians),
-            math.sin(heading_radians),
-        ])
-        self.offset_len = 0
-        self.new_task()
-
-    def new_task(self):
-        self.offset_len += self.stride;
-        new_pos = self.initial_pos + self.direction_vector * self.offset_len
-        self.task = Sequential(
-            self.Scan(self.initial_heading + self.heading_amplitude),
-            Timer(1.0),
-            self.Scan(self.initial_heading - self.heading_amplitude),
-            Timer(1.0),
-            Heading(self.initial_heading),
-            self.MoveIncrement(new_pos[0], new_pos[1]),
-        )
-
-    def on_run(self, *args, **kwargs):
-        self.task()
-        if self.task.finished:
-            self.new_task()
-
-class VelocityHeadingSearch(Task):
-    """
-    Search by moving forward and oscillating heading, without using absolute
-    positional controls
-    """
-
-    def on_first_run(self, initial_heading=None, stride_speed=1, stride_time=1.5, heading_amplitude=45, *args, **kwargs):
-        if initial_heading is None:
-            initial_heading = shm.desires.heading.get()
-        Heading(initial_heading)(),
-
-        self.use_task(While(lambda: Sequential(
-            Timed(VelocityX(stride_speed), stride_time), Zero(),
-            HeadingSearch.Scan(initial_heading + heading_amplitude),
-            HeadingSearch.Scan(initial_heading - heading_amplitude),
-            Heading(initial_heading),
-        ), True))
-
-
-def cons(task, total=1*60, success=1*60*0.85, debug=False):
-    return ConsistentTask(task, total=total, success=success, debug=debug)
-
-
-class SaneHeadingSearch(Task):
-    def make_turn(self):
-        h = self.base_heading + (self.side * 90)
-        h %= 360
-        print("Turning to {}".format(h))
-        return cons(Heading(h))
-
-
-    def make_move(self):
-        t = (self.loop + (self.side == 3)) * 6
-        print("Moving for {}".format(t))
-        return Timed(VelocityX(0.3), t)
-
-
-    def on_first_run(self, *args, **kwargs):
-        self.base_heading = shm.kalman.heading.get()
-        self.side = 0
-        self.loop = 1
-        self.heading_task = self.make_turn()
-        self.heading_task()
-        self.movement_task = None
-        self.stop_task = VelocityX(0)
-        self.state = "h"
-
-
-    def on_run(self, *args, **kwargs):
-        if self.state == "h":
-            self.heading_task()
-            if self.heading_task.finished:
-                self.state = "x"
-                self.movement_task = self.make_move()
-                self.logw("Turned")
-        elif self.state == "x":
-            self.movement_task()
-            if self.movement_task.finished:
-                self.stop_task()
-                self.side = (self.side + 1) % 4
-                if self.side == 0:
-                    self.loop += 1
-                self.heading_task = self.make_turn()
-                self.state = "h"
-                self.logw("Moved")
+    await search(visible, square_pattern(first_dist, dist_increase, tolerance,
+            constant_heading))

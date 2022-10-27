@@ -13,6 +13,7 @@ sub_height = 0.50
 dvl_offset = 0.0
 # If the dvl is reversed. Does not matter if dvl_present is false.
 dvl_reversed = false
+dvl_scaling_factor = 1 # does not matter on minisub
 
 # Moments of inertia (kg * m^2) from solidworks.
 # In the model frame.
