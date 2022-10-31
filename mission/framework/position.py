@@ -9,14 +9,12 @@ from typing import Tuple
 
 from shm import kalman
 from auv_math.math_utils import rotate
-from mission.async_framework.movement import (position_n as set_position_n,
+from mission.framework.movement import (position_n as set_position_n,
         position_e as set_position_e, relative_to_initial_position_n,
         relative_to_initial_position_e, heading as set_heading,
         depth as set_depth)
-from mission.async_framework.contexts import PositionalControls
-from mission.async_framework.logger import timeline
+from mission.framework.contexts import PositionalControls
 
-@timeline()
 async def move_xy(vector : Tuple[float, float], tolerance : float = 0.01):
     """Move some distance forward and some distance right.
 
@@ -39,7 +37,6 @@ async def move_xy(vector : Tuple[float, float], tolerance : float = 0.01):
         await asyncio.sleep(0)
         raise
 
-@timeline()
 async def move_x(distance : float, tolerance : float = 0.01):
     """Move some distance forward (or backward).
 
@@ -51,7 +48,6 @@ async def move_x(distance : float, tolerance : float = 0.01):
     """
     await move_xy((distance, 0), tolerance=tolerance)
 
-@timeline()
 async def move_y(distance : float, tolerance : float = 0.01):
     """Move some distance to the right (or left).
 
@@ -63,7 +59,6 @@ async def move_y(distance : float, tolerance : float = 0.01):
     """
     await move_xy((0, distance), tolerance=tolerance)
 
-@timeline()
 async def move_angle(angle : float, distance : float, tolerance : float = 0.01):
     """Move some distance in some direction.
 
@@ -78,7 +73,6 @@ async def move_angle(angle : float, distance : float, tolerance : float = 0.01):
     vector = rotate((distance, 0), angle)
     await move_xy(vector, tolerance=tolerance)
 
-@timeline()
 async def go_to_position(north : float, east : float, heading : float = None,
         depth : float = None, tolerance : float = 0.05,
         heading_tolerance : float = 2):

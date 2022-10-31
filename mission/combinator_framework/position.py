@@ -1,10 +1,10 @@
 import shm
 
 from auv_math.math_utils import rotate
-from mission.framework.combinators import Concurrent, Defer, Sequential
-from mission.framework.movement import RelativeToInitialPositionN, RelativeToInitialPositionE, PositionN, PositionE, Heading, Depth
-from mission.framework.task import Task
-from mission.framework.primitive import FunctionTask
+from mission.combinator_framework.combinators import Concurrent, Defer, Sequential
+from mission.combinator_framework.movement import RelativeToInitialPositionN, RelativeToInitialPositionE, PositionN, PositionE, Heading, Depth
+from mission.combinator_framework.task import Task
+from mission.combinator_framework.primitive import FunctionTask
 from shm import kalman
 
 class WithPositionalControl(Task):

@@ -13,8 +13,8 @@ from typing import Coroutine, Any
 import shm
 from auvlog.client import log
 from misc.utils import register_exit_signals
-from mission.framework.task import Task
-from mission.async_framework.primitive import zero
+from mission.combinator_framework.task import Task
+from mission.framework.primitive import zero
 
 has_caught_sigint = False
 def run(mission : Coroutine[Any, Any, None], name : str):
@@ -114,7 +114,7 @@ def run(mission : Coroutine[Any, Any, None], name : str):
                 copy_to_stdout=True)
 
         # Unset active mission.
-        active_mission = shm.active_mission.ge()
+        active_mission = shm.active_mission.get()
         active_mission.active = False
         shm.active_mission.set(active_mission)
 

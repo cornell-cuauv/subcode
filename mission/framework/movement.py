@@ -17,9 +17,8 @@ from typing import Any, Callable, Optional
 
 import shm
 from conf.vehicle import dvl_scaling_factor
-from mission.framework.helpers import within_deadband
-from mission.async_framework.contexts import PositionalControls
-from mission.async_framework.logger import timeline
+from mission.combinator_framework.helpers import within_deadband
+from mission.framework.contexts import PositionalControls
 from mission.constants.sub import Tolerance
 
 async def setter(target : float, desire_var : Any, current_var : Any,
@@ -126,8 +125,7 @@ async def relative_to_current_setter(offset : Callable[[], float],
 
 def generate_setters(desire_var : Any, current_var : Any,
         default_tolerance : float, modulo_error : bool = False,
-        positional_controls : Optional[bool] = None,
-        timeline_name : str = ""):
+        positional_controls : Optional[bool] = None):
     """Create setter functions specific to a given degree of freedom.
 
     For the given degree of freedom (specified through desire_var and
@@ -144,18 +142,15 @@ def generate_setters(desire_var : Any, current_var : Any,
                            360
     positional_controls -- if positional controls need to be enabled when
                            manipulating this degree of freedom
-    timeline_name       -- a name for this degree of freedom (used for logging)
     """
     
     # Corresponds to setter() above.
-    @timeline(timeline_name)
     async def s(target : float, tolerance : float = default_tolerance):
         with PositionalControls(positional_controls):
             await setter(target, desire_var, current_var, tolerance,
                     modulo_error)
 
     # Corresponds to setter_for_secs() above.
-    @timeline(timeline_name + "_for_secs")
     async def sfs(target : float, duration : float,
             tolerance : float = default_tolerance):
         with PositionalControls(positional_controls):
@@ -163,14 +158,12 @@ def generate_setters(desire_var : Any, current_var : Any,
                     tolerance, modulo_error)
 
     # Corresponds to relative_to_initial_setter() above.
-    @timeline("relative_to_initial_" + timeline_name)
     async def rtis(offset : float, tolerance : float = default_tolerance):
         with PositionalControls(positional_controls):
             await relative_to_initial_setter(offset, desire_var, current_var,
                     tolerance, modulo_error)
 
     # Corresponds to relative_to_current_setter() above.
-    @timeline("relative_to_current_" + timeline_name)
     async def rtcs(offset : Callable[[], float],
             tolerance : float = default_tolerance):
         with PositionalControls(positional_controls):
@@ -204,34 +197,33 @@ class Scalar:
 (heading, heading_for_secs, relative_to_initial_heading,
         relative_to_current_heading) = generate_setters(
         shm.navigation_desires.heading, shm.kalman.heading, Tolerance.HEAD,
-        modulo_error=True, timeline_name='heading')
+        modulo_error=True)
 
 (pitch, pitch_for_secs, relative_to_initial_pitch,
         relative_to_current_pitch) = generate_setters(
         shm.navigation_desires.pitch, shm.kalman.pitch, Tolerance.PITCH,
-        modulo_error=True, timeline_name='pitch')
+        modulo_error=True)
 
 (roll, roll_for_secs, relatitve_to_initial_pitch,
         relative_to_current_pitch) = generate_setters(
         shm.navigation_desires.roll, shm.kalman.roll, Tolerance.ROLL,
-        modulo_error=True, timeline_name='roll')
+        modulo_error=True)
 
 (depth, depth_for_secs, relative_to_initial_depth,
         relative_to_current_depth) = generate_setters(
-        shm.navigation_desires.depth, shm.kalman.depth, Tolerance.POSITION,
-        timeline_name='depth')
+        shm.navigation_desires.depth, shm.kalman.depth, Tolerance.POSITION)
 
 (position_n, position_n_for_secs, relative_to_initial_position_n,
         relative_to_current_position_n) = generate_setters(
         Scalar(shm.navigation_desires.north, dvl_scaling_factor),
         Scalar(shm.kalman.north, 1 / dvl_scaling_factor), Tolerance.POSITION,
-        positional_controls=True, timeline_name='position_n')
+        positional_controls=True)
 
 (position_e, position_e_for_secs, relative_to_initial_position_e,
         relative_to_current_position_e) = generate_setters(
         Scalar(shm.navigation_desires.east, dvl_scaling_factor),
         Scalar(shm.kalman.east, 1 / dvl_scaling_factor), Tolerance.POSITION,
-        positional_controls=True, timeline_name='position_e')
+        positional_controls=True)
 
 """
 These velocity setters automatically turn off and hold off positional controls
@@ -246,9 +238,9 @@ in contexts.py.
 (velocity_x, velocity_x_for_secs, relative_to_initial_velocity_x,
         relative_to_current_velocity_x) = generate_setters(
         shm.navigation_desires.speed, shm.kalman.velx, Tolerance.VELOCITY,
-        positional_controls=False, timeline_name='velocity_x')
+        positional_controls=False)
 
 (velocity_y, velocity_y_for_secs, relative_to_initial_velocity_y,
         relative_to_current_velocity_y) = generate_setters(
         shm.navigation_desires.sway_speed, shm.kalman.vely, Tolerance.VELOCITY,
-        positional_controls=False, timeline_name='velocity_y')
+        positional_controls=False)

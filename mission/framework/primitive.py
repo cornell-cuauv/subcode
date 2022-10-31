@@ -1,5 +1,4 @@
 import shm
-from mission.async_framework.logger import log
 
 async def zero_without_heading(pitch : bool = True, roll : bool = True):
     """Set navigation desires to match current values (except for heading).
@@ -29,7 +28,7 @@ async def zero(pitch : bool = True, roll : bool = True):
 
 async def enable_controller():
     """Enable the controller and every PID loop."""
-    log("Enabling controller and all PID loops.")
+    print("Enabling controller and all PID loops.")
     control = shm.settings_control
     control.enabled.set(1)
     control.heading_active.set(1)

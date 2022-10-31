@@ -6,18 +6,18 @@ import shm
 from auv_math.math_utils import rotate
 from auv_math.quat import quat_from_axis_angle
 from auv_python_helpers.angles import abs_heading_sub_degrees
-from mission.framework.combinators import Sequential, While
-from mission.framework.helpers import call_if_function
-from mission.framework.consistency import ConsistencyCheck, ConsistentTask
-from mission.framework.movement import (
+from mission.combinator_framework.combinators import Sequential, While
+from mission.combinator_framework.helpers import call_if_function
+from mission.combinator_framework.consistency import ConsistencyCheck, ConsistentTask
+from mission.combinator_framework.movement import (
     Heading, Pitch, Roll,
     RelativeToInitialHeading, VelocityX,
     RelativeToCurrentHeading, VelocityY
 )
-from mission.framework.position import MoveX, MoveY, GoToPosition
-from mission.framework.task import Task
-from mission.framework.timing import Timer, Timed
-from mission.framework.primitive import Zero
+from mission.combinator_framework.position import MoveX, MoveY, GoToPosition
+from mission.combinator_framework.task import Task
+from mission.combinator_framework.timing import Timer, Timed
+from mission.combinator_framework.primitive import Zero
 from auv_python_helpers.angles import heading_sub_degrees
 
 def _sub_position():

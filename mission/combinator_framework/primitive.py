@@ -1,8 +1,8 @@
-from mission.framework.task import Task
-from mission.framework.movement import Heading, Pitch, Roll, \
+from mission.combinator_framework.task import Task
+from mission.combinator_framework.movement import Heading, Pitch, Roll, \
                                        Depth, VelocityX, VelocityY, \
                                        PositionN, PositionE
-from mission.framework.helpers import call_if_function
+from mission.combinator_framework.helpers import call_if_function
 import shm
 
 class NoOp(Task):

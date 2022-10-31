@@ -1,8 +1,8 @@
 import itertools
 
-from mission.framework.helpers import should_run, should_finish, call_if_function
-from mission.framework.task import Task
-from mission.framework.primitive import NoOp, Succeed
+from mission.combinator_framework.helpers import should_run, should_finish, call_if_function
+from mission.combinator_framework.task import Task
+from mission.combinator_framework.primitive import NoOp, Succeed
 
 
 class Sequential(Task):

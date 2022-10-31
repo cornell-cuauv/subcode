@@ -7,8 +7,7 @@ import time
 import asyncio
 
 import shm
-from mission.async_framework.primitive import zero
-from mission.async_framework.logger import log
+from mission.framework.primitive import zero
 from mission import runner
 
 class AsyncBase(ABC):

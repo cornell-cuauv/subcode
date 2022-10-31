@@ -2,9 +2,9 @@ from conf.vehicle import actuators
 
 from misc.actuator import actuator_group, set_triggers_by_name
 
-from mission.framework.timing import Timer
-from mission.framework.combinators import Sequential
-from mission.framework.task import Task
+from mission.combinator_framework.timing import Timer
+from mission.combinator_framework.combinators import Sequential
+from mission.combinator_framework.task import Task
 
 class SetActuators(Task):
     """

@@ -1,9 +1,9 @@
 import math
 from control.pid import DynamicPID
-from mission.framework.helpers import call_if_function, within_deadband
-from mission.framework.position import PositionalControl
-from mission.framework.movement import Heading, VelocityY, VelocityX, RelativeToCurrentDepth, RelativeToCurrentHeading, clamp_target_to_range
-from mission.framework.task import Task
+from mission.combinator_framework.helpers import call_if_function, within_deadband
+from mission.combinator_framework.position import PositionalControl
+from mission.combinator_framework.movement import Heading, VelocityY, VelocityX, RelativeToCurrentDepth, RelativeToCurrentHeading, clamp_target_to_range
+from mission.combinator_framework.task import Task
 
 
 # TODO: Documentation!

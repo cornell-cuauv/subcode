@@ -1,8 +1,8 @@
-from mission.framework.task import *
-from mission.framework.position import *
-from mission.framework.movement import *
-from mission.framework.timing import *
-from mission.framework.combinators import *
+from mission.combinator_framework.task import *
+from mission.combinator_framework.position import *
+from mission.combinator_framework.movement import *
+from mission.combinator_framework.timing import *
+from mission.combinator_framework.combinators import *
 
 class Timeout(Task):
     def on_first_run(self, time, task, *args, **kwargs):

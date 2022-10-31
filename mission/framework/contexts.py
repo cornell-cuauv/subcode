@@ -4,8 +4,6 @@ import inspect
 import shm
 from conf.vehicle import is_minisub
 
-from mission.async_framework.logger import log
-
 class SetterContext:
     """A context manager for holding a SHM variables at a value."""
     initial_values : Dict[Any, Any] = {}
@@ -103,9 +101,8 @@ class PositionalControls(SetterContext):
 
     def __enter__(self):
         if is_minisub and self.value == True:
-            log("Warning: Turning on positional controls on minisub will have "
-                    "no effect.", detail="Something is probably wrong.",
-                    level="warning")
+            print("Warning: Turning on positional controls on minisub will have "
+                    "no effect. (Something is probably wrong.)")
         super().__enter__()
 
 class OptimizeControls(SetterContext):
