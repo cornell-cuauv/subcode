@@ -1,124 +1,376 @@
-import math
+"""In my opinion, this file is not quite up to spec style-wise. I will remedy
+this shortly."""
+
+import shm
+import time
+import asyncio 
+
+from typing import Any, Tuple, Callable
+from dataclasses import dataclass, field
+
 from control.pid import DynamicPID
-from mission.framework.helpers import call_if_function, within_deadband
-from mission.framework.position import PositionalControl
-from mission.framework.movement import Heading, VelocityY, VelocityX, RelativeToCurrentDepth, RelativeToCurrentHeading, clamp_target_to_range
-from mission.framework.task import Task
+from mission.framework.primitive import zero
+from mission.framework.contexts import PositionalControls
+from mission.combinator_framework.helpers import within_deadband
+from mission.constants.sub import PidVal
+
+def clamp(a, lo, hi):
+    return min(max(a, lo), hi)
+
+def clamped_depth(delta, lo, hi):
+    current = shm.kalman.depth.get()
+    final   = clamp(current + delta, lo, hi)
+    shm.navigation_desires.depth.set(final)
+
+def clamped_heading(delta, lo, hi):
+    current = shm.kalman.heading.get()
+    final   = clamp((current + delta) % 360, lo, hi)
+    shm.navigation_desires.heading.set(final)
+
+def clamped_vx(delta, lo, hi):
+    final = clamp(delta, lo, hi)
+    shm.navigation_desires.speed.set(final)
+
+def clamped_vy(delta, lo, hi):
+    final = clamp(delta, lo, hi)
+    shm.navigation_desires.sway_speed.set(final)
+
+@dataclass
+class ConsistencyPidLoop:
+    output_function : Callable[[float, float, float], None]
+    p               : float
+    i               : float
+    d               : float
+    min_output      : float
+    max_output      : float
+    finished        : Callable[[], bool]
+    modulo_error    : bool      = False
+    negate          : bool      = False
+
+    _hold_start     : float     = field(init = False, default_factory=time.time)
+    _within_target  : bool      = field(init = False, default=False)
+    _is_done        : bool      = field(init = False, default=False)
+    _pid            : DynamicPID= field(init = False, default_factory=DynamicPID)
+
+    def tick(self, current : float,  desire : float):
+        pid_output = self._pid.tick(value=current, desired=desire, p=self.p, i=self.i, d=self.d)
+        pid_output = -pid_output if self.negate else pid_output
+        self.output_function(pid_output, self.min_output, self.max_output)
+
+@dataclass
+class PidLoop:
+    output_function : Callable[[float, float, float], None]
+    tolerance       : float
+    p               : float
+    i               : float
+    d               : float
+    min_output      : float
+    max_output      : float
+    hold_time       : float
+    modulo_error    : bool      = False
+    negate          : bool      = False
+
+    _hold_start     : float     = field(init = False, default_factory=time.time)
+    _within_target  : bool      = field(init = False, default=False)
+    _is_done        : bool      = field(init = False, default=False)
+    _pid            : DynamicPID= field(init = False, default_factory=DynamicPID)
+
+    def tick(self, current : float,  desire : float):
+        pid_output = self._pid.tick(value=current, desired=desire, p=self.p, i=self.i, d=self.d)
+
+        pid_output = -pid_output if self.negate else pid_output
+        self.output_function(pid_output, self.min_output, self.max_output)
+        
+        result = within_deadband(current, desire, self.tolerance, self.modulo_error)
+        if not self._within_target and result:
+            self._hold_start = time.time()
+            self._within_target = True
+        elif not result:
+            self._within_target = False
+
+    def finished(self) -> bool:
+        return self._within_target and time.time() - self._hold_start >= self.hold_time
+
+async def forward_target(
+        point       : Callable[[], Tuple[float,float]], 
+        target      : Tuple[float, float], 
+        visible     : Callable[[], bool],
+        tolerance   : Tuple[float,float]    = (0.03, 0.03),
+        hold_time   : float                 = 1,
+        limits_y    : Tuple[float, float]   = (-float('inf'), float('inf')),
+        limits_z    : Tuple[float, float]   = (0            , float('inf')),
+        py          : float                 = PidVal.PY,
+        iy          : float                 = PidVal.IY,
+        dy          : float                 = PidVal.DY,    
+        pz          : float                 = PidVal.PZ,
+        iz          : float                 = PidVal.IZ,
+        dz          : float                 = PidVal.DZ):
+    return await _wait_for_finish(
+        forward_target_scary(point, target, tolerance, hold_time, limits_y, limits_z, 
+            py, iy, dy, pz, iz, dz), visible)
+
+async def forward_target_scary(
+        point       : Callable[[], Tuple[float,float]], 
+        target      : Tuple[float, float], 
+        tolerance   : Tuple[float,float]    = (0.03, 0.03),
+        hold_time   : float                 = 1,
+        limits_y    : Tuple[float, float]   = (-float('inf'), float('inf')),
+        limits_z    : Tuple[float, float]   = (0            , float('inf')),
+        py          : float                 = PidVal.PY,
+        iy          : float                 = PidVal.IY,
+        dy          : float                 = PidVal.DY,    
+        pz          : float                 = PidVal.PZ,
+        iz          : float                 = PidVal.IZ,
+        dz          : float                 = PidVal.DZ):
+    pidy = PidLoop(clamped_vy, tolerance[0], p = py, i = iy, d = dy,
+            min_output = limits_y[0], max_output = limits_y[1], hold_time=hold_time, modulo_error = False, 
+            negate = True)
+    pidz = PidLoop(clamped_depth, tolerance[1], p = pz, i = iz, d = dz,
+            min_output = limits_z[0], max_output = limits_z[1], hold_time=hold_time, modulo_error = False,
+            negate = True)
+
+    with PositionalControls(False):
+        while not (pidy.finished() and pidz.finished()):
+            (x,y) = point()
+            pidy.tick(x, target[0])
+            pidz.tick(y, target[1])
+            await asyncio.sleep(0.01)
+
+#returns false if lost visibility, true if succeeds
+async def heading_target(
+        point       : Callable[[], Tuple[float,float]], 
+        target      : Tuple[float, float], 
+        visible     : Callable[[], bool],
+        tolerance   : Tuple[float,float]    = (0.03, 0.03),
+        hold_time   : float                 = 1, 
+        limits_h    : Tuple[float, float]   = (-float('inf'), float('inf')),
+        limits_z    : Tuple[float, float]   = (0.6          , float('inf')),
+        ph          : float                 = PidVal.PH,
+        ih          : float                 = PidVal.IH,
+        dh          : float                 = PidVal.DH,    
+        pz          : float                 = PidVal.PZ,
+        iz          : float                 = PidVal.IZ,
+        dz          : float                 = PidVal.DZ):
+    return await _wait_for_finish(
+        heading_target_scary(point, target, tolerance, hold_time, limits_h, limits_z,
+            ph, ih, dh, pz, iz, dz), visible)
+
+async def heading_target_scary(
+        point       : Callable[[], Tuple[float,float]], 
+        target      : Tuple[float, float], 
+        tolerance   : Tuple[float,float]    = (0.03, 0.03),
+        hold_time   : float                 = 1, 
+        limits_h    : Tuple[float, float]   = (-float('inf'), float('inf')),
+        limits_z    : Tuple[float, float]   = (0.6          , float('inf')),
+        ph          : float                 = PidVal.PH,
+        ih          : float                 = PidVal.IH,
+        dh          : float                 = PidVal.DH,    
+        pz          : float                 = PidVal.PZ,
+        iz          : float                 = PidVal.IZ,
+        dz          : float                 = PidVal.DZ):
+
+    pidh = PidLoop(clamped_heading, tolerance[0], p = ph, i = ih, d = dh,
+            min_output = limits_h[0], max_output = limits_h[1], hold_time=hold_time, modulo_error = True, 
+            negate = True)
+    pidz = PidLoop(clamped_depth, tolerance[1], p = pz, i = iz, d = dz,
+            min_output = limits_z[0], max_output = limits_z[1], hold_time=hold_time, modulo_error = False,
+            negate = True)
+
+    with PositionalControls(False):
+        while not (pidh.finished() and pidz.finished()):
+            (x,y) = point()
+            pidh.tick(x, target[0])
+            pidz.tick(y, target[1])
+            await asyncio.sleep(0.01)
+
+async def downward_target(
+        point       : Callable[[], Tuple[float,float]], 
+        target      : Tuple[float, float], 
+        visible     : Callable[[], bool],
+        tolerance   : Tuple[float,float]    = (0.03, 0.03),
+        hold_time   : float                 = 1, 
+        limits_x    : Tuple[float, float]   = (-float('inf'), float('inf')),
+        limits_y    : Tuple[float, float]   = (-float('inf'), float('inf')),
+        px          : float                 = PidVal.PX,
+        ix          : float                 = PidVal.IX,
+        dx          : float                 = PidVal.DX,    
+        py          : float                 = PidVal.PY,
+        iy          : float                 = PidVal.IY,
+        dy          : float                 = PidVal.DY):
+
+    return await _wait_for_finish(
+        downward_target_scary(point, target, tolerance, hold_time, limits_x, limits_y,
+            px, ix, dx, py, iy, dy), visible)
+
+async def downward_target_scary(
+        point       : Callable[[], Tuple[float,float]], 
+        target      : Tuple[float, float], 
+        tolerance   : Tuple[float,float]    = (0.03, 0.03),
+        hold_time   : float                 = 1, 
+        limits_x    : Tuple[float, float]   = (-float('inf'), float('inf')),
+        limits_y    : Tuple[float, float]   = (-float('inf'), float('inf')),
+        px          : float                 = PidVal.PX,
+        ix          : float                 = PidVal.IX,
+        dx          : float                 = PidVal.DX,    
+        py          : float                 = PidVal.PY,
+        iy          : float                 = PidVal.IY,
+        dy          : float                 = PidVal.DY):
+    # Camera X axis is Sub Y axis
+    # The "Untangling" is done here so for the user, x deals with forward/backward 
+    #   and y deals with left/right
+    pidx = PidLoop(clamped_vy, tolerance[0], p = py, i = iy, d = dy,
+            min_output = limits_y[0], max_output = limits_y[1], hold_time=hold_time, modulo_error = False,
+            negate = True)
+    pidy = PidLoop(clamped_vx, tolerance[1], p = px, i = ix, d = dx,
+            min_output = limits_x[0], max_output = limits_x[1], hold_time=hold_time, modulo_error = False, 
+            negate = False)
+
+    with PositionalControls(False):
+        while not (pidx.finished() and pidy.finished()):
+            (x,y) = point()
+            pidx.tick(x, target[0])
+            pidy.tick(y, target[1])
+            await asyncio.sleep(0.01)
+
+async def downward_align(
+        angle       : Callable[[], float],
+        target      : float,
+        visible     : Callable[[], bool],
+        tolerance   : float                 = 1,
+        hold_time   : float                 = 1,
+        limits      : Tuple[float, float]   = (-float('inf'), float('inf'))
+    ):
+    return await _wait_for_finish(downward_align_scary(angle, target, tolerance,
+            hold_time, limits), visible)
+
+async def downward_align_scary(
+        angle       : Callable[[], float],
+        target      : float                 = 0,
+        tolerance   : float                 = 0.05,
+        hold_time   : float                 = 1,
+        limits      : Tuple[float, float]   = (-float('inf'), float('inf'))
+    ):
+    # there really isn't a need for a PID loop if you already know you current and desired angle. 
+    # but I also don't want to change the code
+    # thus a p value of 1 accomplishes the same thing lol
+    pid = PidLoop(clamped_heading, tolerance, p=1, i=0, d=0,
+            min_output=limits[0], max_output=limits[1], hold_time=hold_time,
+            modulo_error=True, negate=True)
+
+    with PositionalControls(False):
+        while not pid.finished():
+            pid.tick(angle(), target)
+            await asyncio.sleep(0.01)
+
+async def downward_approach(
+        size       : Callable[[], float],
+        target      : float,
+        visible     : Callable[[], bool],
+        tolerance   : float                 = 0.001,
+        hold_time   : float                 = 1,
+        limits      : Tuple[float, float]   = (0.6, float('inf')),
+        p           : float                 = PidVal.PA,
+        i           : float                 = PidVal.IA,
+        d           : float                 = PidVal.DA):
+    return await _wait_for_finish(downward_approach_scary(size, target, tolerance,
+            hold_time, limits, p, i, d), visible)
+
+async def downward_approach_scary(
+        size        : Callable[[], float],
+        target      : float                 = 0,
+        tolerance   : float                 = 0.001,
+        hold_time   : float                 = 1,
+        limits      : Tuple[float, float]   = (0.6, float('inf')),
+        p           : float                 = PidVal.PA,
+        i           : float                 = PidVal.IA,
+        d           : float                 = PidVal.DA):
+
+    pid = PidLoop(clamped_depth, tolerance, p=p, i=i, d=d, 
+            min_output = limits[0], max_output = limits[1], hold_time=hold_time,
+            modulo_error=False, negate=False)
+
+    with PositionalControls(False):
+        while not pid.finished():
+            pid.tick(size(), target)
+            await asyncio.sleep(0.01)
+
+"""
+async def consistency_forward_align(
+        angle       : Callable[[], float],
+        target      : float,
+        visible     : Callable[[], bool],
+        finished    : Callable[[], bool],
+        limits      : Tuple[float, float]   = (-float('inf'), float('inf')),
+        p           : float                 = PidVal.PH,
+        i           : float                 = PidVal.IH,
+        d           : float                 = PidVal.DH):
+        #Uses "rectangularity" instead of angle
+    return await _wait_for_finish(consistency_forward_align_scary(angle, finished,
+            target, limits, p, i, d), visible)
+
+async def consistency_forward_align_scary(
+        angle       : Callable[[], float],
+        finished    : Callable[[], bool],
+        target      : float                 = 0,
+        limits      : Tuple[float, float]   = (-float('inf'), float('inf')),
+        p           : float                 = PidVal.PH,
+        i           : float                 = PidVal.IH,
+        d           : float                 = PidVal.DH):
+    pid = ConsistencyPidLoop(clamped_heading, tolerance, p=p, i=i, d=d,
+            min_output=limits[0], max_output=limits[1], finished=finished,
+            modulo_error=True, negate=True)
+    while not pid.finished():
+        pid.tick(angle(), target)
+        await asyncio.sleep(0.01)
+"""
+
+async def forward_align(
+        angle       : Callable[[], float], #point on camera
+        target      : float, #point we are aligning to
+        visible     : Callable[[], bool],
+        tolerance   : float                 = 0.05,
+        hold_time   : float                 = 1,
+        limits      : Tuple[float, float]   = (-float('inf'), float('inf')),
+        p           : float                 = PidVal.PH,
+        i           : float                 = PidVal.IH,
+        d           : float                 = PidVal.DH):
+        #Uses "rectangularity" instead of angle
+    return await _wait_for_finish(forward_align_scary(angle, target, tolerance,
+            hold_time, limits, p, i, d), visible)
+
+async def forward_align_scary(
+        angle       : Callable[[], float],
+        target      : float                 = 0,
+        tolerance   : float                 = 0.05,
+        hold_time   : float                 = 1,
+        limits      : Tuple[float, float]   = (-float('inf'), float('inf')),
+        p           : float                 = PidVal.PH,
+        i           : float                 = PidVal.IH,
+        d           : float                 = PidVal.DH):
+    pid = PidLoop(clamped_heading, tolerance, p=p, i=i, d=d,
+            min_output=limits[0], max_output=limits[1], hold_time=hold_time,
+            modulo_error=True, negate=True)
+    while not pid.finished():
+        pid.tick(angle(), target)
+        await asyncio.sleep(0.01)
 
 
-# TODO: Documentation!
-class PIDLoop(Task):
-    def on_first_run(self, *args, **kwargs):
-        self.pid = DynamicPID()
 
-    def on_run(self, input_value, output_function, target=0, modulo_error=False, deadband=1, p=1, d=0, i=0,
-               negate=False, max_out=None, min_target=None, max_target=None, *args, **kwargs):
-        # TODO: minimum_output too?
-        input_value = call_if_function(input_value)
-        target = call_if_function(target)
-
-        if max_out is None:
-            max_out = float('inf')
-
-        output = self.pid.tick(value=input_value, desired=target, p=p, d=d, i=i)
-        output = math.copysign(min(abs(output), max_out), output)
-        output = -output if negate else output
-        output = clamp_target_to_range(target=output, min_target=min_target, max_target=max_target)
-
-        output_function(output)
-
-        if within_deadband(input_value, target, deadband=call_if_function(deadband), use_mod_error=modulo_error):
-            # TODO: Should this zero on finish? Or set to I term?
-            self.finish()
-
-
-class CameraTarget(Task):
-    def on_run(self, point, target, deadband=(0.01875, 0.01875), px=None, ix=0, dx=0, py=None, iy=0, dy=0,
-               max_out=None, valid=True, min_target_x=None, max_target_x=None,
-               min_target_y=None, max_target_y=None, *args, **kwargs):
-        if px is None:
-            px = self.px_default
-        if py is None:
-            py = self.py_default
-
-        try:
-            max_out_x, max_out_y = call_if_function(max_out)
-        except:
-            max_out_x = max_out_y = call_if_function(max_out)
-
-        if valid:
-            point = call_if_function(point)
-            target = call_if_function(target)
-            self.pid_loop_x(input_value=point[0], p=px, i=ix, d=dx, target=target[0], deadband=deadband[0], max_out=max_out_x, min_target=min_target_x, max_target=max_target_x)
-            self.pid_loop_y(input_value=point[1], p=py, i=iy, d=dy, target=target[1], deadband=deadband[1], max_out=max_out_x, min_target=min_target_y, max_target=max_target_y)
-        else:
-           self.stop()
-
-        if self.pid_loop_x.finished and self.pid_loop_y.finished:
-            # TODO: Should the output be zeroed on finish?
-            self.finish()
-
-
-class ForwardApproach(CameraTarget):
-    '''pid loop for approaching a point until it is a target size
-
-    uses heading and x velocity
-    '''
-    def on_first_run(self, current_size, current_x, target_size, depth_bounds=(None, None), *args, **kwargs):
-        self.pid_loop_x = PIDLoop(output_function=RelativeToCurrentHeading(), negate=True)
-        self.pid_loop_x_vel = PIDLoop(output_function=VelocityX(), negate=True)
-        self.pid_loop_y = PIDLoop(output_function=RelativeToCurrentDepth(min_target=depth_bounds[0], max_target=depth_bounds[1]), negate=True)
-        self.px_default = 8
-        self.py_default = 0.8
-
-    def stop(self):
-        RelativeToCurrentDepth(0)()
-        RelativeToCurrentHeading(0)()
-
-
-class ForwardTarget(CameraTarget):
-    def on_first_run(self, depth_bounds=(None, None), *args, **kwargs):
-        self.pid_loop_x = PIDLoop(output_function=VelocityY(), negate=True)
-        self.pid_loop_y = PIDLoop(output_function=RelativeToCurrentDepth(min_target=depth_bounds[0], max_target=depth_bounds[1]), negate=True)
-        self.px_default = 0.8
-        self.py_default = 0.8
-        PositionalControl(False)()
-
-    def stop(self):
-        VelocityY(0)()
-        RelativeToCurrentDepth(0)()
-
-class DownwardTarget(CameraTarget):
-    def on_first_run(self, *args, **kwargs):
-        # x-axis on the camera corresponds to sway axis for the sub
-        self.pid_loop_x = PIDLoop(output_function=VelocityY(), negate=True)
-        self.pid_loop_y = PIDLoop(output_function=VelocityX(), negate=False)
-        self.px_default = 0.4
-        self.py_default = 0.8
-        PositionalControl(False)()
-
-    def stop(self):
-        VelocityY(0)()
-        VelocityX(0)()
-
-class HeadingTarget(CameraTarget):
-    def on_first_run(self, depth_bounds=(None, None), *args, **kwargs):
-        self.pid_loop_x = PIDLoop(output_function=RelativeToCurrentHeading(), negate=True)
-        self.pid_loop_y = PIDLoop(output_function=RelativeToCurrentDepth(min_target=depth_bounds[0], max_target=depth_bounds[1]), negate=True)
-        self.px_default = 8
-        self.py_default = 0.8
-
-    def stop(self):
-        RelativeToCurrentDepth(0)()
-        RelativeToCurrentHeading(0)()
-
-class DownwardAlign(Task):
-    def on_first_run(self, *args, **kwargs):
-        self.pid_loop_heading = PIDLoop(output_function=RelativeToCurrentHeading(), modulo_error=True)
-
-    def on_run(self, angle, deadband=0.05, p=.8, i=0, d=0, target=0, modulo_error=True):
-        angle = call_if_function(angle)
-        self.pid_loop_heading(input_value=angle, p=p, i=i, d=d, target=target, deadband=deadband, negate=True)
-
-        if self.pid_loop_heading.finished:
-            self.finish()
+async def _wait_for_finish(targetting_task: Any, visible: Callable[[], bool]):
+    future = asyncio.create_task(targetting_task)
+    try:
+        while not future.done():
+            if not visible():
+                print('not visible')
+                future.cancel()
+                await asyncio.sleep(0)
+                await zero()
+                return False
+            await asyncio.sleep(0.05)
+    except asyncio.CancelledError:
+        future.cancel()
+        await asyncio.sleep(0)
+        raise
+    await zero()
+    return True
+ 

@@ -1,4 +1,4 @@
-from mission.framework.task import Task
+from mission.combinator_framework.task import Task
 
 class StatefulTask(Task):
     """State Machine a la AUV Mission System Task

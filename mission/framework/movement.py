@@ -1,177 +1,246 @@
-from functools import partial
+"""Defines async functions for moving the sub in each degree of freedom*.
 
-from mission.framework.helpers import call_if_function, within_deadband
-from mission.framework.task import Task
-from shm import kalman
-from shm import navigation_desires as desires
-from shm.navigation_settings import position_controls
+Each of the first four generalized functions in this file (setter,
+setter_for_secs, relative_to_initial_setter, and relative_to_current_setter) is
+used repeatedly to build many more functions specific to a given degree of
+freedom of the sub.
 
-class PositionalControlNeedy(Task):
-    def on_first_run(self, *args, **kwargs):
-        if 'positional_controls' in kwargs and \
-           kwargs['positional_controls'] is not None:
-            position_controls.set(kwargs['positional_controls'])
+The generate_setters function below uses these generalized setters to create
+four specific setters for a given degree of freedom. It is then called once for
+each of the eight degrees of freedom to create a total of 32 specific setters.
 
-def clamp_target_to_range(target, min_target=None, max_target=None):
-    target, min_target, max_target = call_if_function(target), call_if_function(min_target), call_if_function(max_target)
-    if min_target is not None and max_target is not None and min_target > max_target:
-        raise Exception("min_target is greater than max_target")
+* Degree of freedom is used loosely here.
+"""
 
-    if min_target is not None and target < min_target:
-        target = min_target
+import asyncio
+from typing import Any, Callable, Optional
 
-    if max_target is not None and target > max_target:
-        target = max_target
+import shm
+from conf.vehicle import dvl_scaling_factor
+from mission.combinator_framework.helpers import within_deadband
+from mission.framework.contexts import PositionalControls
+from mission.constants.sub import Tolerance
 
-    return target
+async def setter(target : float, desire_var : Any, current_var : Any,
+        tolerance : float = 0, modulo_error : bool = False):
+    """Set a desire and then await until it is achieved.
 
+    Arguments:
+    target       -- the desired value
+    desire_var   -- the SHM variable to which the desire can be written
+    current_var  -- the SHM variable from which the current value can be read
+    tolerance    -- the tolerance in the desired value
+    modulo_error -- if the tolerance should "wrap around" between 0 and 360
 
-class Setter(PositionalControlNeedy):
-    """Generic setter which also checks the end condition"""
+    Example usage:
+    await setter(180, shm.navigation_desires.heading, shm.kalman.heading,
+            tolerance=5, modulo_error=True)
+    Instructs the sub to turn to the direction in which its heading is 180 degrees
+    (due south) plus or minus 5 degrees.
+    """
+    desire_var.set(target)
+    while not within_deadband(target, current_var.get(), tolerance, modulo_error):
+        await asyncio.sleep(0.01)
 
-    def on_run(self, target, desire_setter, current, default_error, error=None, modulo_error=False, min_target=None, max_target=None, *args, **kwargs):
-        """
-        Note: This does not 0 the desire when completed.
+async def setter_for_secs(target : float, desire_var : Any, current_var : Any,
+        duration : float, tolerance : float = 0, modulo_error : bool = False):
+    """Set a desire and then unset it after some time has passed.
+    
+    Arguments:
+    target       -- the temporarily desired value
+    desire_var   -- the SHM variable to which the desire can be written
+    current_var  -- the SHM variable from which the current value can be read
+    duration     -- how long the desired value should be held
+    tolerance    -- the tolerance in the temporarily desired value
+    module_error -- if the tolerance should "wrap around" between 0 and 360
 
-        :param target: A Number or function that when called with no arguments returns a Number that represents the
-        value to be targeted.
-        :param desire_setter: A SHM variable (object with a set method) that will be called with a single argument to target.
-        :param current: A Number or function that when called with no arguments returns the current value as a Number.
-        :param error: A Number representing the allowed error before a wrapper is finished.
-        :param modulo_error: a Boolean that is true only if the error calculated should be with respect to modulo 360.
-        """
-        if error is None:
-            error = default_error
+    Example usage:
+    await setter_for_secs(0.4, shm.navigation_desires.speed, shm.kalman.velx,
+            duration=10, tolerance=0.1, modulo_error=False)
+    Instructs the sub to move forward at 0.4 meters per second plus or minus 0.1
+    meters per second for 10 seconds (thus travelling approximately 4 meters).
+    """
+    init = current_var.get()
+    await setter(target, desire_var, current_var, tolerance, modulo_error)
+    await asyncio.sleep(duration)
+    await setter(init, desire_var, current_var, tolerance, modulo_error)
 
-        target, current = call_if_function(target), call_if_function(current)
-        target = clamp_target_to_range(target=target, min_target=min_target, max_target=max_target)
+async def relative_to_initial_setter(offset : float, desire_var : Any,
+        current_var : Any, tolerance : float = 0, modulo_error : bool = False):
+    """Set a desire relative to the current value of a variable.
 
-        desire_setter(target)
-        if within_deadband(target, current, error, use_mod_error=modulo_error):
-            self.finish()
+    Arguments:
+    offset       -- how much higher should the value be than it currently is
+    desire_var   -- the SHM variable to which the desire can be written
+    current_var  -- the SHM variable from which the current value can be read
+    tolerance    -- the tolerance in the desired value
+    modulo_error -- if the tolerance should "wrap around" between 0 and 360
 
+    Example usage:
+    await relative_to_initial_setter(2, shm.navigation_desires.north,
+            shm.kalman.north, tolerance=0.3, modulo_error=False)
+    Instructs the sub to move 2 meters plus or minus 0.3 meters north of where
+    it is now. (Note that in this specific example, positional controls would
+    need to be enabled. See how to do that in contexts.py.)
+    """
+    target = current_var.get() + offset
+    desire_var.set(target)
+    while not within_deadband(target, current_var.get(), tolerance,
+            modulo_error):
+        await asyncio.sleep(0.01)
 
-class RelativeToInitialSetter(PositionalControlNeedy):
-    """Generic setter relative to initial value"""
+async def relative_to_current_setter(offset : Callable[[], float],
+        desire_var : Any, current_var : Any, tolerance : float = 0,
+        modulo_error : bool = False):
+    """Set and hold a desire at a changing offset from the value of a variable.
 
-    def on_first_run(self, *args, **kwargs):
-        super().on_first_run(*args, **kwargs)
-        self.initial_value = call_if_function(kwargs['current'])
+    Think of this function as defining a "moving target." A previous version of
+    this docstring made the claim that this function is never used. That is
+    quite untrue. In particular, it is used by targeting functions to indirectly
+    control the sub's depth and angular velocities.
 
-    def on_run(self, offset, desire_setter, current, default_error, error=None, modulo_error=False, min_target=None, max_target=None, *args, **kwargs):
-        """
-        Note: This does not 0 the desire when completed.
+    Arguments:
+    offset       -- a function which returns how much higher the sub should try
+                    to get the value
+    desire_var   -- the SHM variable to which the desire can be written
+    current_var  -- the SHM variable from which the current value can be read
+    tolerance    -- the tolerance in the desired value
+    module_error -- if the tolerance should "wrap around" between 0 and 360
 
-        :param offset: A Number or function that when called with no arguments returns a Number that represents the
-        value to be targeted. This offset will be added to the current value on the first run.
-        :param desire_setter: A SHM variable (object with a set method) that will be called with a single argument to target.
-        :param current: A Number or function that when called with no arguments returns the current value as a Number.
-        :param error: A Number representing the allowed error before a wrapper is finished.
-        :param modulo_error: a Boolean that is true only if the error calculated should be with respect to modulo 360.
-        """
-        if error is None:
-            error = default_error
+    Example usage:
+    offset = lambda: 15 if shm.kalman.heading.get() < 180 else 0
+    await relative_to_current_setter(offset, shm.navigation_desires.roll,
+            shm.kalman.roll, tolerance=5, modulo_error=True)
+    Instructs the sub to roll clockwise until it is upside down and then stop.
+    None of the above functions could achieve this in a single call, since
+    simply setting the roll desire to 180 would allow the sub to roll either
+    clockwise or counter-clockwise.
+    """
+    target = current_var.get() + offset()
+    desire_var.set(target)
+    while not within_deadband(target, current_var.get(), tolerance, modulo_error):
+        await asyncio.sleep(0.01)
+        target = current_var.get() + offset()
+        desire_var.set(target)
 
-        offset, current = call_if_function(offset), call_if_function(current)
+def generate_setters(desire_var : Any, current_var : Any,
+        default_tolerance : float, modulo_error : bool = False,
+        positional_controls : Optional[bool] = None):
+    """Create setter functions specific to a given degree of freedom.
 
-        target = self.initial_value + offset
-        target = clamp_target_to_range(target=target, min_target=min_target, max_target=max_target)
+    For the given degree of freedom (specified through desire_var and
+    current_var), define and return four functions, one corresponding to each of
+    the generalized functions above.
 
-        desire_setter(target)
-        if within_deadband(self.initial_value + offset, current, error, use_mod_error=modulo_error):
-            self.finish()
+    Arguments:
+    desire_var          -- the SHM variable to which desires can be written
+    current_var         -- the SHM variable from which the current value can be
+                           read
+    default_tolerance   -- the tolerance in the desired value used if no
+                           specific error is specified
+    modulo_error        -- if the tolerance should "wrap around" between 0 and
+                           360
+    positional_controls -- if positional controls need to be enabled when
+                           manipulating this degree of freedom
+    """
+    
+    # Corresponds to setter() above.
+    async def s(target : float, tolerance : float = default_tolerance):
+        with PositionalControls(positional_controls):
+            await setter(target, desire_var, current_var, tolerance,
+                    modulo_error)
 
+    # Corresponds to setter_for_secs() above.
+    async def sfs(target : float, duration : float,
+            tolerance : float = default_tolerance):
+        with PositionalControls(positional_controls):
+            await setter_for_secs(target, desire_var, current_var, duration,
+                    tolerance, modulo_error)
 
-class RelativeToCurrentSetter(PositionalControlNeedy):
-    """Generic setter relative to current value"""
+    # Corresponds to relative_to_initial_setter() above.
+    async def rtis(offset : float, tolerance : float = default_tolerance):
+        with PositionalControls(positional_controls):
+            await relative_to_initial_setter(offset, desire_var, current_var,
+                    tolerance, modulo_error)
 
-    def on_run(self, offset, desire_setter, current, default_error, error=None, modulo_error=False, min_target=None, max_target=None, *args, **kwargs):
-        """
-        Note: This does not 0 the desire when completed.
+    # Corresponds to relative_to_current_setter() above.
+    async def rtcs(offset : Callable[[], float],
+            tolerance : float = default_tolerance):
+        with PositionalControls(positional_controls):
+            await relative_to_current_setter(offset, desire_var, current_var,
+                    tolerance, modulo_error)
 
-        :param offset: A Number or function that when called with no arguments returns a Number that represents the
-        value to be targeted. This offset will be added to the current value.
-        :param desire_setter: A SHM variable (object with a set method) that will be called with a single argument to
-        target.
-        :param current: A Number or function that when called with no arguments returns the current value as a Number.
-        :param error: A Number representing the allowed error before a wrapper is finished.
-        :param modulo_error: a Boolean that is true only if the error calculated should be with respect to modulo 360.
-        """
-        if error is None:
-            error = default_error
+    # Return all four specific setters.
+    return (s, sfs, rtis, rtcs)
 
-        offset, current = call_if_function(offset), call_if_function(current)
+class Scalar:
+    """A highly jank utility class to allow for DVL input / output scaling.
 
-        target = current + offset
-        target = clamp_target_to_range(target=target, min_target=min_target, max_target=max_target)
+    An instance of this class impersonates a shm variable, providing get and set
+    methods which call the real shm variable's get and set methods but with
+    values multiplied by some factor.
 
-        desire_setter(target)
-        if within_deadband(current + offset, current, error, use_mod_error=modulo_error):
-            self.finish()
+    Hopefully the need for this will be eliminated very soon. Someone should
+    figure out how to recalibrate the DVL, or at least how to perform the
+    necessary scaling at a lower level.
+    """
+    def __init__(self, shm_var, factor):
+        self.shm_var = shm_var
+        self.factor = factor
 
+    def get(self):
+        return self.shm_var.get() * self.factor
 
-class VelocitySetter(PositionalControlNeedy):
-    """Generic setter that simulates velocity controller using a positional controller"""
+    def set(self, value):
+        self.shm_var.set(value * self.factor)
 
-    def on_first_run(self, *args, **kwargs):
-        super().on_first_run(*args, **kwargs)
-        self.relative_to_current_setter = RelativeToCurrentSetter()
+(heading, heading_for_secs, relative_to_initial_heading,
+        relative_to_current_heading) = generate_setters(
+        shm.navigation_desires.heading, shm.kalman.heading, Tolerance.HEAD,
+        modulo_error=True)
 
-    def on_run(self, velocity, desire_setter, current, default_error, target=None, error=None, modulo_error=False, min_target=None, max_target=None, *args, **kwargs):
-        """
-        Note: This does not 0 the desire when completed.
+(pitch, pitch_for_secs, relative_to_initial_pitch,
+        relative_to_current_pitch) = generate_setters(
+        shm.navigation_desires.pitch, shm.kalman.pitch, Tolerance.PITCH,
+        modulo_error=True)
 
-        :param velocity: A Number or function that when called with no arguments returns a Number that represents the
-        value to be targeted. This target will be multiplied with the time in seconds from the last call and be added to
-        the current value.
-        :param desire_setter: A SHM variable (object with a set method) that will be called with a single argument to
-        target.
-        :param current: A Number or function that when called with no arguments returns the current value as a Number.
-        :param target: A Number (or function) that represents the target velocity (units/second).
-        :param error: A Number representing the allowed error before a wrapper is finished.
-        :param modulo_error: a Boolean that is true only if the error calculated should be with respect to modulo 360.
-        """
-        if error is None:
-            error = default_error
+(roll, roll_for_secs, relatitve_to_initial_pitch,
+        relative_to_current_pitch) = generate_setters(
+        shm.navigation_desires.roll, shm.kalman.roll, Tolerance.ROLL,
+        modulo_error=True)
 
-        velocity, current, target = call_if_function(velocity), call_if_function(current), call_if_function(target)
+(depth, depth_for_secs, relative_to_initial_depth,
+        relative_to_current_depth) = generate_setters(
+        shm.navigation_desires.depth, shm.kalman.depth, Tolerance.POSITION)
 
-        target_for_velocity = velocity * (self.this_run_time - self.last_run_time)
+(position_n, position_n_for_secs, relative_to_initial_position_n,
+        relative_to_current_position_n) = generate_setters(
+        Scalar(shm.navigation_desires.north, dvl_scaling_factor),
+        Scalar(shm.kalman.north, 1 / dvl_scaling_factor), Tolerance.POSITION,
+        positional_controls=True)
 
-        self.relative_to_current_setter.on_run(offset=target_for_velocity, desire_setter=desire_setter, current=current,
-                                               error=error, modulo_error=modulo_error, min_target=min_target, max_target=max_target)
+(position_e, position_e_for_secs, relative_to_initial_position_e,
+        relative_to_current_position_e) = generate_setters(
+        Scalar(shm.navigation_desires.east, dvl_scaling_factor),
+        Scalar(shm.kalman.east, 1 / dvl_scaling_factor), Tolerance.POSITION,
+        positional_controls=True)
 
-        if target is not None or within_deadband(target, current, error, use_mod_error=modulo_error):
-            if target is not None:
-                desire_setter()
+"""
+These velocity setters automatically turn off and hold off positional controls
+while they are running. But the setters not of the for_secs variety terminate as
+soon as the sub has achieved the desired velocity, releasing control of
+positional controls. If the mission writer expects the sub to continue moving at
+the desired velocity once it has been achieved, they are responsible for making
+sure that positional controls remain off. Learn more about positional controls
+in contexts.py.
+"""
 
-            self.finish()
-        else:
-            desire_setter()
+(velocity_x, velocity_x_for_secs, relative_to_initial_velocity_x,
+        relative_to_current_velocity_x) = generate_setters(
+        shm.navigation_desires.speed, shm.kalman.velx, Tolerance.VELOCITY,
+        positional_controls=False)
 
-def generate_setters(**kwargs):
-    return (partial(MetaSetter, **kwargs) for MetaSetter in (Setter, RelativeToInitialSetter, RelativeToCurrentSetter, VelocitySetter))
-
-Heading, RelativeToInitialHeading, RelativeToCurrentHeading, VelocityHeading = \
-    generate_setters(desire_setter=desires.heading.set, current=kalman.heading.get, modulo_error=True, default_error=3)
-
-Pitch, RelativeToInitialPitch, RelativeToCurrentPitch, VelocityPitch = \
-    generate_setters(desire_setter=desires.pitch.set, current=kalman.pitch.get, modulo_error=True, default_error=10)
-
-Roll, RelativeToInitialRoll, RelativeToCurrentRoll, VelocityRoll = \
-    generate_setters(desire_setter=desires.roll.set, current=kalman.roll.get, modulo_error=True, default_error=10)
-
-Depth, RelativeToInitialDepth, RelativeToCurrentDepth, VelocityDepth = \
-    generate_setters(desire_setter=desires.depth.set, current=kalman.depth.get, modulo_error=False, default_error=0.07)
-
-VelocityX, RelativeToInitialVelocityX, RelativeToCurrentVelocityX, VelocityVelocityX = \
-    generate_setters(desire_setter=desires.speed.set, current=kalman.velx.get, modulo_error=False, default_error=0.05, positional_controls=False)
-
-VelocityY, RelativeToInitialVelocityY, RelativeToCurrentVelocityY, VelocityVelocityY = \
-    generate_setters(desire_setter=desires.sway_speed.set, current=kalman.vely.get, modulo_error=False, default_error=0.05, positional_controls=False)
-
-PositionN, RelativeToInitialPositionN, RelativeToCurrentPositionN, VelocityPositionN = \
-    generate_setters(desire_setter=desires.north.set, current=kalman.north.get, modulo_error=False, default_error=0.05, positional_controls=True)
-
-PositionE, RelativeToInitialPositionE, RelativeToCurrentPositionE, VelocityPositionE = \
-    generate_setters(desire_setter=desires.east.set, current=kalman.east.get, modulo_error=False, default_error=0.05, positional_controls=True)
+(velocity_y, velocity_y_for_secs, relative_to_initial_velocity_y,
+        relative_to_current_velocity_y) = generate_setters(
+        shm.navigation_desires.sway_speed, shm.kalman.vely, Tolerance.VELOCITY,
+        positional_controls=False)

@@ -40,6 +40,8 @@ gravity_force = d['gravity_force']
 sub_height = d['sub_height']
 dvl_offset = d['dvl_offset']  # TODO
 dvl_reversed = d['dvl_reversed']  # TODO
+dvl_scaling_factor = (d['dvl_scaling_factor'] if os.getenv('CUAUV_LOCALE') !=
+        'simulator' else 1)
 I = np.array(d['I'])
 thrusters = d['thrusters']
 sensors = d['sensors']

@@ -3,8 +3,8 @@ import threading
 
 import shm
 
-from mission.framework.task import Task
-from mission.framework.helpers import call_if_function
+from mission.combinator_framework.task import Task
+from mission.combinator_framework.helpers import call_if_function
 
 class ConsistencyCheck:
     ''' Call 'check' on a value to tell if it is consistently True.

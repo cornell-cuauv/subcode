@@ -3,10 +3,10 @@
 import math
 import shm
 
-from mission.framework.movement import Depth, Heading, Pitch, VelocityX, VelocityY
-from mission.framework.primitive import Zero, Log, FunctionTask, Fail
-from mission.framework.task import Task
-from mission.framework.timing import Timer, Timed
+from mission.combinator_framework.movement import Depth, Heading, Pitch, VelocityX, VelocityY
+from mission.combinator_framework.primitive import Zero, Log, FunctionTask, Fail
+from mission.combinator_framework.task import Task
+from mission.combinator_framework.timing import Timer, Timed
 
 '''
 Oh no you're using jank.

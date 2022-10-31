@@ -1,7 +1,7 @@
-from mission.framework.combinators import Sequential, MasterConcurrent
-from mission.framework.helpers import call_if_function
-from mission.framework.task import Task
-from mission.framework.primitive import Fail, Log
+from mission.combinator_framework.combinators import Sequential, MasterConcurrent
+from mission.combinator_framework.helpers import call_if_function
+from mission.combinator_framework.task import Task
+from mission.combinator_framework.primitive import Fail, Log
 
 
 class Timer(Task):

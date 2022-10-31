@@ -12,6 +12,7 @@ sub_height = 0.50
 # for minisub, probably doesn't matter
 dvl_offset = 0.2286
 dvl_reversed = true
+dvl_scaling_factor = 0.4 # such that <dvl-reported distance> * dvl_scaling_factor == <real distance>
 
 # Moments of inertia (kg * m^2) from solidworks.
 # In the model frame.

@@ -1,108 +1,109 @@
-import shm
+"""Defines async functions for moving the sub precise distances or to positions.
 
-from auv_math.math_utils import rotate
-from mission.framework.combinators import Concurrent, Defer, Sequential
-from mission.framework.movement import RelativeToInitialPositionN, RelativeToInitialPositionE, PositionN, PositionE, Heading, Depth
-from mission.framework.task import Task
-from mission.framework.primitive import FunctionTask
+Note that every function in this file requires the DVL and thus can only be used
+on mainsub.
+"""
+
+import asyncio
+from typing import Tuple
+
 from shm import kalman
+from auv_math.math_utils import rotate
+from mission.framework.movement import (position_n as set_position_n,
+        position_e as set_position_e, relative_to_initial_position_n,
+        relative_to_initial_position_e, heading as set_heading,
+        depth as set_depth)
+from mission.framework.contexts import PositionalControls
 
-class WithPositionalControl(Task):
-    def on_first_run(self, task, enable=True, optimize=False):
-        enable_var = shm.navigation_settings.position_controls
-        optimize_var = shm.navigation_settings.optimize
+async def move_xy(vector : Tuple[float, float], tolerance : float = 0.01):
+    """Move some distance forward and some distance right.
 
-        init_enable, init_optimize = enable_var.get(), optimize_var.get()
+    Requires the DVL.
 
-        def set_shm(enable, optimize):
-            enable_var.set(enable)
-            optimize_var.set(optimize)
-
-        self.use_task(Defer(
-            Sequential(
-                FunctionTask(lambda: set_shm(enable, optimize)),
-                task,
-            ),
-
-            FunctionTask(lambda: set_shm(init_enable, init_optimize)),
-        ))
-
-class PositionalControl(Task):
-    def on_run(self, enable=True, *args, **kwargs):
-        shm.navigation_settings.position_controls.set(enable)
-        self.finish()
-
-class MoveXY(Task):
-    def on_first_run(self, vector, deadband=0.01, *args, **kwargs):
-        delta_north, delta_east = rotate(vector, kalman.heading.get())
-
-        n_position = RelativeToInitialPositionN(offset=delta_north, error=deadband)
-        e_position = RelativeToInitialPositionE(offset=delta_east, error=deadband)
-        self.use_task(WithPositionalControl(
-            Concurrent(n_position, e_position, finite=False),
-        ))
-
-class MoveAngle(MoveXY):
-    def on_first_run(self, angle, distance, deadband=0.01, *args, **kwargs):
-        super().on_first_run(rotate((distance, 0), angle), deadband=deadband)
-
-def MoveX(distance, deadband=0.01):
-    return MoveAngle(0, distance, deadband)
-
-def MoveY(distance, deadband=0.01):
-    return MoveAngle(90, distance, deadband)
-
-class GoToPosition(Task):
-    def on_first_run(self, north, east, heading=None, depth=None, optimize=False, rough=False, deadband=0.05):
-        self.north = north
-        self.east = east
-
-        if heading is None:
-            self.heading = shm.navigation_desires.heading.get()
-        else:
-            self.heading = heading
-
-        if depth is None:
-            self.depth = shm.navigation_desires.depth.get()
-        else:
-            self.depth = depth
-
-        self.use_task(WithPositionalControl(
-            Concurrent(
-                PositionN(self.north, error=deadband),
-                PositionE(self.east, error=deadband),
-                Heading(self.heading, error=deadband),
-                Depth(self.depth, error=deadband)
-            ),
-            optimize=optimize,
-        ))
-
-def NavigationSpeed(task, speed):
-    speed_var = shm.navigation_settings.max_speed
-    init_speed = speed_var.get()
-
-    return Defer(
-        Sequential(
-            FunctionTask(lambda: speed_var.set(speed)),
-            task,
-        ),
-
-        FunctionTask(lambda: speed_var.set(init_speed)),
-    )
-
-class CheckDistance(Task):
+    Arguments:
+    vector    -- how far the sub should move in the form (foward, right)
+    tolerance -- the tolerance in the sub's final position in each direction
     """
-    Finished once we've traveled too far
+    delta_north, delta_east = rotate(vector, kalman.heading.get())
+    n_position = asyncio.ensure_future(relative_to_initial_position_n(
+            offset=delta_north, tolerance=tolerance))
+    e_position = asyncio.ensure_future(relative_to_initial_position_e(
+            offset=delta_east, tolerance=tolerance))
+    try:
+        await asyncio.gather(n_position, e_position)
+    except asyncio.CancelledError:
+        n_position.cancel()
+        e_position.cancel()
+        await asyncio.sleep(0)
+        raise
+
+async def move_x(distance : float, tolerance : float = 0.01):
+    """Move some distance forward (or backward).
+
+    Requires the DVL.
+
+    Arguments:
+    distance -- how far forward the sub should move (negative for backward)
+    tolerance -- the tolerance in the sub's final position
     """
-    def on_first_run(self, *args, **kwargs):
-        self.initial_pos = self.pos()
+    await move_xy((distance, 0), tolerance=tolerance)
 
-    def on_run(self, distance, *args, **kwargs):
-        if self.dist_sq(self.pos(), self.initial_pos) > distance ** 2:
-            self.finish()
+async def move_y(distance : float, tolerance : float = 0.01):
+    """Move some distance to the right (or left).
 
-    def pos(self):
-        return [kalman.north.get(), kalman.east.get()]
+    Requires the DVL.
 
-    def dist_sq(self, p1, p2):
-        return (p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2
+    Arguments:
+    distance -- how far right the sub should move (negative for leftward)
+    deadbadn -- the tolerance in the sub's final position
+    """
+    await move_xy((0, distance), tolerance=tolerance)
+
+async def move_angle(angle : float, distance : float, tolerance : float = 0.01):
+    """Move some distance in some direction.
+
+    Requires the DVL. Note that the angle is in absolute terms, not relative to
+    the sub's current direction.
+
+    Arguments:
+    angle    -- the direction in which the sub should move
+    distance -- how far the sub should move
+    tolerance -- the tolerance in the sub's final position
+    """
+    vector = rotate((distance, 0), angle)
+    await move_xy(vector, tolerance=tolerance)
+
+async def go_to_position(north : float, east : float, heading : float = None,
+        depth : float = None, tolerance : float = 0.05,
+        heading_tolerance : float = 2):
+    """Move the sub to a specific location in absolute space.
+
+    Requires the DVL.
+
+    Arguments:
+    north             -- the desired final north coordinate of the sub
+    east              -- the desired final east coordinate of the sub
+    heading           -- the desired final direction in which the sub will face
+    depth             -- the desired final depth coordinate of the sub
+    tolerance         -- the tolerance in the sub's final position in each
+                         dimension
+    heading_tolerance -- the tolerance in the sub's final heading
+    """
+    with PositionalControls():
+        position_n_task = asyncio.ensure_future(set_position_n(north,
+            tolerance=tolerance))
+        position_e_task = asyncio.ensure_future(set_position_e(east,
+            tolerance=tolerance))
+        heading_task = asyncio.ensure_future(set_heading(
+            heading or kalman.heading.get(), tolerance=heading_tolerance))
+        depth_task = asyncio.ensure_future(set_depth(
+            depth or kalman.depth.get(), tolerance=tolerance))
+        try:
+            await asyncio.gather(position_n_task, position_e_task, heading_task,
+                   depth_task)
+        except asyncio.CancelledError:
+            position_n_task.cancel()
+            position_e_task.cancel()
+            heading_task.cancel()
+            depth_task.cancel()
+            raise 
