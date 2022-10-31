@@ -8,7 +8,7 @@ class Jinja2TemplateRendering:
         self.application = application
         _app_settings = application.settings
         _jinja_config = dict(
-            extensions  = ['jinja2.ext.autoescape', 'jinja2.ext.with_'],
+            extensions  = [],
             auto_reload = _app_settings.get('autoreload', False),
             loader      = jinja2.FileSystemLoader(_app_settings.get('template_path', 'templates'))
         )
