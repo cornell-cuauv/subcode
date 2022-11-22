@@ -18,6 +18,11 @@ if args.bamboo:
 
 from build import ninja_syntax
 
+rflags = [
+        '--quiet',
+        '--release',
+        '--offline',
+        ]
 cflags = [
           '-pthread',
           '-lrt',
@@ -136,6 +141,7 @@ n.variable('cflags', ' '.join(cflags))
 n.variable('cppflags', ' '.join(cppflags))
 n.variable('ldflags', ' '.join(ldflags))
 n.variable('absdir', os.getcwd())
+n.variable('rflags', ' '.join(rflags))
 n.newline()
 
 n.rule('cxx',
@@ -167,6 +173,10 @@ n.rule('generate',
        command = './$in $args',
        description = 'GENERATE $out',
        restat = True)
+
+n.rule('rust',
+       command = 'cargo build $rflags -p $out',
+       description = 'CARGO $out')
 
 n.rule('run',
        command = '$in $args',

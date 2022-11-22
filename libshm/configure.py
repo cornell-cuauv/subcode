@@ -97,3 +97,5 @@ build.build_cmd('auv-diagnose-shm',
 build.chicken_lib("cuauv-shm", [
         "scm/shm.scm"
     ], where="libshm/scm", auv_deps=["shm"])
+
+build.rust_build('rust_shm', auv_c_deps=["shm"])
