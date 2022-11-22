@@ -19,6 +19,9 @@ packages=(
     libpopt-dev
     libpython3-dev
     nano
+    llvm-dev
+    libclang-dev
+    clang
     neovim
     nload
     rsync

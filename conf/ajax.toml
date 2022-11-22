@@ -31,7 +31,7 @@ thruster_maximums = [74.15710109200003, 74.15710109199999, 101.28118145900001, 2
 
 quaternion_filtering = 1
 dvl_present = false
-gx_hpr = [180.0, 90.0, 0.0] # Note: You probably want to re-tare the GX rather than use this offset
+gx_hpr = [0.0, 0.0, 0.0] # Note: You probably want to re-tare the GX rather than use this offset
 
 
 [[thrusters]]

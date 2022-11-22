@@ -1,4 +1,4 @@
-FROM cuauv/phusion-baseimage:0.11
+FROM cuauv/phusion-baseimage:0.11 as cuauv
 CMD ["/sbin/my_init"]
 RUN rm -f /etc/service/sshd/down && \
     sed -i'' 's/http:\/\/archive.ubuntu.com/http:\/\/us.archive.ubuntu.com/' /etc/apt/sources.list && \
@@ -39,6 +39,9 @@ RUN setuser software /dependencies/ocaml-user-install.sh
 COPY install/node-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/node-install.sh
 
+COPY install/rust/rust-install.sh /dependencies/
+RUN bash /dependencies/rust-install.sh
+
 # Spacemacs install is breaking for some reason, but we don't need it anyway
 #COPY install/spacemacs-install.sh /dependencies/
 #RUN bash /dependencies/aptstrap.sh /dependencies/spacemacs-install.sh
@@ -54,6 +57,16 @@ RUN bash /dependencies/aptstrap.sh /dependencies/apt-install.sh
 
 COPY install/pip-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/pip-install.sh
+    
+
+### Multistage rust depedendency install
+FROM cuauv as fetcher
+COPY install/rust/fetch_crates.sh /dependencies/fetch_crates.sh
+COPY . /dependencies/software_stack/
+RUN bash /dependencies/fetch_crates.sh
+
+FROM cuauv
+COPY --from=fetcher /home/software/.cargo/registry /home/software/.cargo/registry/
 
 COPY install/misc-install.sh /dependencies/
 RUN bash /dependencies/aptstrap.sh /dependencies/misc-install.sh

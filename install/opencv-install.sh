@@ -58,11 +58,14 @@ CMAKE_FLAGS+=(-DBUILD_opencv_python2=OFF -DBUILD_opencv_python3=ON)
 # build perf flags
 CMAKE_FLAGS+=(-DBUILD_EXAMPLES=OFF -DBUILD_opencv_apps=OFF -DBUILD_DOCS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF)
 
-if [[ "$(uname -m)" == "aarch64" ]]; then
+
+
+if [[ $(uname -a | grep "tegra") ]]; then
     # CUDA
     # Pascal is the version we need for the Jetson TX2
     CMAKE_FLAGS+=(-DWITH_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-10.0 -DCUDA_GENERATION=Pascal)
 fi
+
 
 # Ensure FFMPEG
 CMAKE_FLAGS+=(-DWITH_FFMPEG=ON)
