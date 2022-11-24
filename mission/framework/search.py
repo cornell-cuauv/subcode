@@ -1,8 +1,7 @@
 import math
 import numpy as np
 import asyncio
-from typing import Callable, Optional, Any
-import shm
+from typing import Callable, Any
 
 from auv_python_helpers.angles import abs_heading_sub_degrees
 from mission.framework.movement import (velocity_x, velocity_x_for_secs,
@@ -11,7 +10,7 @@ from mission.framework.movement import (velocity_x, velocity_x_for_secs,
 from mission.framework.position import move_x, move_y, go_to_position
 from mission.framework.primitive import zero
 from mission.constants.sub import Tolerance
-from conf import vehicle
+from conf.vehicle import dvl_present
 
 async def search(visible : Callable[[], bool], pattern: Any):
     """Move in a given pattern until finding something.
@@ -86,6 +85,10 @@ async def sway_pattern(width : float, stride : float, tolerance : float,
     splits            -- the number of splits on each heading rotation, increase
                          for slower rotation
     """
+    if not dvl_present:
+        print("Error: sway_pattern requires the DVL. Skipping task. Use "
+                "velocity_sway_pattern instead.")
+        return False
     direction = 1 if right_first else -1
     await move_y(0.5 * width * direction, tolerance)
     while True:
@@ -107,6 +110,10 @@ async def sway_search(visible : Callable[[], bool], width : float = 2,
     visible -- a function that returns true if the object has been found
     ...     -- same as sway_pattern
     """
+    if not dvl_present:
+        print("Error: sway_search requires the DVL. Skipping task. Use "
+                "velocity_sway_search instead.")
+        return False
     await search(visible, sway_pattern(width, stride, tolerance, right_first,
             heading_search, heading_amplitude, splits))
 
@@ -166,6 +173,10 @@ async def square_pattern(first_dist : float, dist_increase : float,
     tolerance        -- the tolerance in the sidelength of the squares
     constant_heading -- if the sub should maintain a constant heading
     """
+    if not dvl_present:
+        print("Error: square_pattern requires the DVL. Skipping task. Use "
+                "velocity_square_pattern instead.")
+        return False
     distance = first_dist
     while True:
         if constant_heading:
@@ -193,6 +204,10 @@ async def square_search(visible: Callable[[], bool], first_dist : float = 0.5,
     visible -- a function that returns true if the object has been found
     ...     -- same as square_pattern
     """
+    if not dvl_present:
+        print("Error: square_search requires the DVL. Skipping task. Use "
+                "velocity_square_search instead.")
+        return False
     await search(visible, square_pattern(first_dist, dist_increase, tolerance,
             constant_heading))
 
