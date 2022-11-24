@@ -2,6 +2,7 @@ import math
 import numpy as np
 import asyncio
 from typing import Callable, Optional, Any
+import shm
 
 from auv_python_helpers.angles import abs_heading_sub_degrees
 from mission.framework.movement import (velocity_x, velocity_x_for_secs,
@@ -30,7 +31,7 @@ async def search(visible : Callable[[], bool], pattern: Any):
         await asyncio.sleep(0)
         await zero()
 
-async def spin_pattern(interval_size : float, clockwise : bool = True):
+async def spin_pattern(interval_size : float, clockwise : bool):
     """Rotate continuously.
 
     Note that this function will never terminate if not interrupted.
@@ -43,9 +44,9 @@ async def spin_pattern(interval_size : float, clockwise : bool = True):
     while True:
         await relative_to_initial_heading(offset = direction  * interval_size)
 
-async def spin_search(visible : Callable[[], bool], interval_size : float,
+async def spin_search(visible : Callable[[], bool], interval_size : float = 20,
         clockwise : bool = True):
-    """Rotates continuously until finding something.
+    """Rotate continuously until finding something.
 
     Arguments:
     visible -- a function that returns True if the object has been found
@@ -54,19 +55,64 @@ async def spin_search(visible : Callable[[], bool], interval_size : float,
     await search(visible, spin_pattern(interval_size, clockwise))
 
 async def heading_rotation(direction, amplitude, splits):
-    """Rotate a little bit at a time.
+    """Rotate a little bit at a time one way and then back.
 
     Arguments:
-    direction -- -1 for counterclockwise, 1 for clockwise
-    amplitude -- the number of degrees to rotate in total
+    direction -- -1 to start counterclockwise, 1 to start clockwise
+    amplitude -- the number of degrees to rotate in total in each direction
     splits    -- the number of small rotations which make up the whole
     """
     for i in range(splits):
-        await relative_to_initial_heading(rection * amplitude / splits)
+        await relative_to_initial_heading(direction * amplitude / splits)
+    for i in range(splits):
+        await relative_to_initial_heading(-direction * amplitude / splits)
+
+async def sway_pattern(width : float, stride : float, tolerance : float,
+        right_first : bool, heading_search : bool, heading_amplitude : float,
+        splits: int):
+    """Sway left and right intermittently while generally moving forward.
+
+    Requires the DVL. Note that this function will never terminate if not
+    interrupted.
+
+    Arguments:
+    width             -- the width of the sub's sways
+    stride            -- the distance the sub moves forward between sways
+    tolerance         -- the tolerance in each movement's length
+    right_first       -- the sub can start by swaying either left of right
+    heading_search    -- if the sub should perform a heading search at the end
+                         of each stride
+    heading_amplitude -- the angle of rotation of the heading search
+    splits            -- the number of splits on each heading rotation, increase
+                         for slower rotation
+    """
+    direction = 1 if right_first else -1
+    await move_y(0.5 * width * direction, tolerance)
+    while True:
+        await move_x(stride, tolerance)
+        if heading_search:
+            await heading_rotation(direction, heading_amplitude, splits)
+        await move_y(-width * direction, tolerance)
+        direction *= -1
+
+async def sway_search(visible : Callable[[], bool], width : float = 2,
+        stride : float = 1, tolerance : float = Tolerance.POSITION,
+        right_first : bool = True, heading_search : bool = False,
+        heading_amplitude : float = 45.0, splits : int = 1):
+    """Move in a forward sway pattern until finding something.
+
+    Requires the DVL.
+
+    Arguments:
+    visible -- a function that returns true if the object has been found
+    ...     -- same as sway_pattern
+    """
+    await search(visible, sway_pattern(width, stride, tolerance, right_first,
+            heading_search, heading_amplitude, splits))
 
 async def velocity_sway_pattern(width : float, stride : float, speed : float,
-        right_first : bool, check_behind : bool, heading_search : bool,
-        heading_amplitude : float, splits : int):
+        right_first : bool, heading_search : bool, heading_amplitude : float,
+        splits : int):
     """Sway left and right intermittently while generally moving forward.
 
     Designed for minisub. Note that this function will never terminate if not
@@ -77,36 +123,25 @@ async def velocity_sway_pattern(width : float, stride : float, speed : float,
     stride            -- the distance the sub moves forward between sways
     speed             -- how fast the sub moves in each direction
     right_first       -- the sub can start by swaying either left or right
-    check_behind      -- if the sub should move backward briefly before swaying
     heading_search    -- if the sub should perform a heading search at the end
                          of each stride
-    heading_amplitude -- the angle of rotation the heading search does
+    heading_amplitude -- the angle of rotation of the heading search
     splits            -- the number of splits on each heading rotation, increase
                          for slower rotation
     """
-    sway_time = width / speed
-    stride_time = stride / speed
     direction = 1 if right_first else -1
+    await velocity_y_for_secs(speed * direction, 0.5 * width / speed)
     while True:
-        await zero()
-        if check_behind:
-            await velocity_x_for_secs(-speed, stride_time)
-            await velocity_x_for_secs(speed, stride_time)
-            await velocity_x(0)
-        await velocity_y_for_secs(speed * direction, sway_time)
-        await velocity_x_for_secs(speed, stride_time)
+        await velocity_x_for_secs(speed, stride / speed)
         if heading_search:
             await heading_rotation(direction, heading_amplitude, splits)
-        await velocity_y_for_secs(-speed * direction, 2 * sway_time)
-        await velocity_x_for_secs(speed, stride_time)
-        if heading_search:
-            await heading_rotation(-direction, heading_amplitude, splits)    
-        await velocity_y_for_secs(speed * direction, sway_time)
+        await velocity_y_for_secs(-speed * direction, width / speed)
+        direction *= -1
 
-async def velocity_sway_search(visible : Callable[[], bool], width : float = 1,
+async def velocity_sway_search(visible : Callable[[], bool], width : float = 2,
         stride : float = 1, speed : float = 0.3, right_first : bool = True,
-        check_behind : bool = False, heading_search : bool = False,
-        heading_amplitude : float = 45.0, split : int = 1):
+        heading_search : bool = False, heading_amplitude : float = 45.0,
+        splits : int = 1):
     """Move in a forward sway pattern until finding something.
     
     Designed for minisub.
@@ -115,58 +150,11 @@ async def velocity_sway_search(visible : Callable[[], bool], width : float = 1,
     visible -- a function that returns true if the object has been found
     ...     -- same as velocity_sway_pattern
     """
-    if vehicle.is_mainsub:
-        split = 2
     await search(visible, velocity_sway_pattern(width, stride, speed,
-        right_first, check_behind, heading_search, heading_amplitude, split))
+        right_first, heading_search, heading_amplitude, splits))
 
-
-async def sway_pattern(width : float, stride : float, roll_extension : bool,
-        tolerance : float = Tolerance.POSITION):
-    """Sway left and right intermittently while generally moving forward.
-
-    Requires the DVL. Note that this function will never terminate if not
-    interrupted.
-
-    Arguments:
-    width          -- the width of the sub's sways
-    stride         -- the distance the sub moves forward between sways
-    roll_extension -- if the sub should roll briefly between movements
-    tolerance      -- the tolerance in each movement's length
-    """
-    async def maybe_roll(roll_direction : int):
-        if roll_extension:
-            await roll_for_secs(-roll_direction * 45, 1)
-
-    await move_y(-width / 2, tolerance=tolerance)
-    await maybe_roll(-1)
-    while True:
-        await move_y(width, tolerance=tolerance)
-        await maybe_roll(1)
-        await move_x(stride, tolerance=tolerance)
-        await maybe_roll(1)
-        await move_y(-width, tolerance=tolerance)
-        await maybe_roll(-1)
-        await move_x(stride, tolerance=tolerance)
-        await maybe_roll(-1)
-
-
-async def sway_search(visible : Callable[[], bool], width : float = 1,
-        stride : float = 1, roll_extension : bool = False,
-        tolerance : float = Tolerance.POSITION):
-    """Move in a forward sway pattern until finding something.
-
-    Requires the DVL.
-
-    Arguments:
-    visible -- a function that returns true if the object has been found
-    ...     -- same as sway_pattern
-    """
-    await search(visible, sway_pattern(width, stride, roll_extension,
-            tolerance))
-
-async def square_pattern(first_dist : float = 0.5, dist_increase : float = 1,
-        tolerance : float = 0.25, constant_heading : bool = False):
+async def square_pattern(first_dist : float, dist_increase : float,
+        tolerance : float, constant_heading : bool):
     """Move in an outwardly-expanding square spiral.
 
     Requires the DVL. Note that this function will never terminate if not
@@ -181,21 +169,21 @@ async def square_pattern(first_dist : float = 0.5, dist_increase : float = 1,
     distance = first_dist
     while True:
         if constant_heading:
-            await move_x(distance, tolerance=tolerance)
-            await move_y(distance, tolerance=tolerance)
+            await move_x(distance, tolerance)
+            await move_y(distance, tolerance)
             distance += dist_increase
-            await move_x(-distance, tolerance=tolerance)
-            await move_y(-distance, tolerance=tolerance)
+            await move_x(-distance, tolerance)
+            await move_y(-distance, tolerance)
             distance += dist_increase
         else:
-            await move_x(distance, tolerance=tolerance)
+            await move_x(distance, tolerance)
             await relative_to_initial_heading(90)
-            await move_x(distance, tolerance=tolerance)
+            await move_x(distance, tolerance)
             await relative_to_initial_heading(90)
             distance += dist_increase
 
 async def square_search(visible: Callable[[], bool], first_dist : float = 0.5,
-        dist_increase : float = 1, tolerance : float = 0.25,
+        dist_increase : float = 1, tolerance : float = Tolerance.POSITION,
         constant_heading : bool = False):
     """Move in a square spiral pattern until finding something.
 
@@ -207,3 +195,46 @@ async def square_search(visible: Callable[[], bool], first_dist : float = 0.5,
     """
     await search(visible, square_pattern(first_dist, dist_increase, tolerance,
             constant_heading))
+
+async def velocity_square_pattern(first_dist : float,
+        dist_increase : float, speed : float, constant_heading : bool):
+    """Move in an outwardly-expanding square spiral.
+
+    Designed for minisub. Note that this function will never terminate if not
+    interrupted.
+
+    Arguments:
+    first_dist       -- the length of the first two sides of the first square
+    dist_increase    -- the increase in side length of the squares
+    speed            -- how fast the sub moves in each direction
+    constant_heading -- if the sub should maintain a constant heading
+    """
+    distance = first_dist
+    while True:
+        if constant_heading:
+            await velocity_x_for_secs(speed, distance / speed)
+            await velocity_y_for_secs(speed, distance / speed)
+            distance += dist_increase
+            await velocity_x_for_secs(-speed, distance / speed)
+            await velocity_y_for_secs(-speed, distance / speed)
+            distance += dist_increase
+        else:
+            await velocity_x_for_secs(speed, distance / speed)
+            await relative_to_initial_heading(90)
+            await velocity_x_for_secs(speed, distance / speed)
+            await relative_to_initial_heading(90)
+            distance += dist_increase
+
+async def velocity_square_search(visible : Callable[[], bool],
+        first_dist : float = 0.5, dist_increase : float = 1,
+        speed : float = 0.3, constant_heading : bool = False):
+    """Move in an outwardly-expanding square spiral until finding something.
+
+    Designed for minisub.
+
+    Arguments:
+    visible -- a function that returns true if the thing has been found
+    ...     -- same as velocity_square_pattern
+    """
+    await search(visible, velocity_square_pattern(first_dist, dist_increase,
+            speed, constant_heading))
