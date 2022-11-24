@@ -86,8 +86,8 @@ async def sway_pattern(width : float, stride : float, tolerance : float,
                          for slower rotation
     """
     if not dvl_present:
-        print("Error: sway_pattern requires the DVL. Skipping task. Use "
-                "velocity_sway_pattern instead.")
+        print("Error: sway_pattern requires the DVL. Skipping task. Use"
+                " velocity_sway_pattern instead.")
         return False
     direction = 1 if right_first else -1
     await move_y(0.5 * width * direction, tolerance)
@@ -111,8 +111,8 @@ async def sway_search(visible : Callable[[], bool], width : float = 2,
     ...     -- same as sway_pattern
     """
     if not dvl_present:
-        print("Error: sway_search requires the DVL. Skipping task. Use "
-                "velocity_sway_search instead.")
+        print("Error: sway_search requires the DVL. Skipping task. Use"
+                " velocity_sway_search instead.")
         return False
     await search(visible, sway_pattern(width, stride, tolerance, right_first,
             heading_search, heading_amplitude, splits))
@@ -136,6 +136,9 @@ async def velocity_sway_pattern(width : float, stride : float, speed : float,
     splits            -- the number of splits on each heading rotation, increase
                          for slower rotation
     """
+    if dvl_present:
+        print("Warning: sway_pattern is preferable to velocity_sway_pattern"
+                " when the DVL is available.")
     direction = 1 if right_first else -1
     await velocity_y_for_secs(speed * direction, 0.5 * width / speed)
     while True:
@@ -157,6 +160,9 @@ async def velocity_sway_search(visible : Callable[[], bool], width : float = 2,
     visible -- a function that returns true if the object has been found
     ...     -- same as velocity_sway_pattern
     """
+    if dvl_present:
+        print("Warning: sway_search is preferable to velocity_sway_search when"
+                " the DVL is available.")
     await search(visible, velocity_sway_pattern(width, stride, speed,
         right_first, heading_search, heading_amplitude, splits))
 
@@ -174,8 +180,8 @@ async def square_pattern(first_dist : float, dist_increase : float,
     constant_heading -- if the sub should maintain a constant heading
     """
     if not dvl_present:
-        print("Error: square_pattern requires the DVL. Skipping task. Use "
-                "velocity_square_pattern instead.")
+        print("Error: square_pattern requires the DVL. Skipping task. Use"
+                " velocity_square_pattern instead.")
         return False
     distance = first_dist
     while True:
@@ -205,8 +211,8 @@ async def square_search(visible: Callable[[], bool], first_dist : float = 0.5,
     ...     -- same as square_pattern
     """
     if not dvl_present:
-        print("Error: square_search requires the DVL. Skipping task. Use "
-                "velocity_square_search instead.")
+        print("Error: square_search requires the DVL. Skipping task. Use"
+                " velocity_square_search instead.")
         return False
     await search(visible, square_pattern(first_dist, dist_increase, tolerance,
             constant_heading))
@@ -224,6 +230,9 @@ async def velocity_square_pattern(first_dist : float,
     speed            -- how fast the sub moves in each direction
     constant_heading -- if the sub should maintain a constant heading
     """
+    if dvl_present:
+        print("Warning: square_pattern is preferable to velocity_square_pattern"
+                " when the DVL is available.")
     distance = first_dist
     while True:
         if constant_heading:
@@ -251,5 +260,8 @@ async def velocity_square_search(visible : Callable[[], bool],
     visible -- a function that returns true if the thing has been found
     ...     -- same as velocity_square_pattern
     """
+    if dvl_present:
+        print("Warning: square_search is preferable to velocity_square_search"
+                " when the DVL is available.")
     await search(visible, velocity_square_pattern(first_dist, dist_increase,
             speed, constant_heading))
