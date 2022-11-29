@@ -1,6 +1,7 @@
 from collections import deque
 from threading import Thread
 from typing import Callable, Tuple, Any
+import shm
 
 class ConsistencyTracker:
     """Stores a conditions's results to track if it is consistently met.
