@@ -39,7 +39,7 @@ class ConsistencyTracker:
         if true_window.count(True) > self.count_true[0]:
             self.consistent = True
         false_window = list(self.results)[:self.count_false[1]]
-        if false_window.count(True) > self.count_false[0]:
+        if false_window.count(False) > self.count_false[0]:
             self.consistent = False
         return self.consistent
     
