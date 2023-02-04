@@ -10,3 +10,5 @@ build.build_shared("conf",
         pkg_confs=["eigen3"],
         lflags=[],
         cflags=[])
+
+build.rust_build('rust_conf')

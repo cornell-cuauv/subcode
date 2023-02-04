@@ -217,6 +217,17 @@ class Build:
     def go_build(self, exe, pkg, inputs, go_deps, auv_deps=None, auv_static_deps=None):
         self.go_common(pkg, inputs, go_deps, auv_deps, auv_static_deps, exe=exe)
 
+    def rust_build(self, pkg, auv_c_deps=[], auv_rust_deps=[]):
+        # if this breaks, talk to Jeffrey if he still exists
+        # otherwise try to contact him on slack or talk to Attilus if he exists...
+        #   not that he worked on this project or anything. It's just because he's Attilus. 
+        project_name = os.path.join(self.wd, pkg) if pkg not in self.wd else self.wd
+
+        auv_dep_sos = ['link-stage/lib%s.so' % d for d in auv_c_deps]
+        self.n.build(pkg, 'rust', implicit=auv_dep_sos + auv_rust_deps)
+        self.add_code_target(pkg)
+        
+
     def go_common(self, pkg, inputs, go_deps, auv_deps=None, auv_static_deps=None, exe=None):
         inputs = ['%s/%s/%s' % (GOSRC, pkg, f) for f in inputs]
         inputs += ['%s/%s.a' % (GOPKG, d) for d in go_deps]

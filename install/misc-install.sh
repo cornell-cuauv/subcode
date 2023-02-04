@@ -103,3 +103,4 @@ EOF
 # **************** git-lfs ****************
 
 apt-get -y install git-lfs
+git lfs install

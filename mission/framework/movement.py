@@ -39,7 +39,8 @@ async def setter(target : float, desire_var : Any, current_var : Any,
     (due south) plus or minus 5 degrees.
     """
     desire_var.set(target)
-    while not within_deadband(target, current_var.get(), tolerance, modulo_error):
+    while not within_deadband(target, current_var.get(), tolerance,
+            modulo_error):
         await asyncio.sleep(0.01)
 
 async def setter_for_secs(target : float, desire_var : Any, current_var : Any,
@@ -60,7 +61,7 @@ async def setter_for_secs(target : float, desire_var : Any, current_var : Any,
     Instructs the sub to move forward at 0.4 meters per second plus or minus 0.1
     meters per second for 10 seconds (thus travelling approximately 4 meters).
     """
-    init = current_var.get()
+    init = desire_var.get()
     await setter(target, desire_var, current_var, tolerance, modulo_error)
     await asyncio.sleep(duration)
     await setter(init, desire_var, current_var, tolerance, modulo_error)

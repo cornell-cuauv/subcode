@@ -73,3 +73,8 @@ node_modules/
 /vehicle-scripts/auv-env/home/**
 !/vehicle-scripts/auv-env/home/default/.zshrc
 !/vehicle-scripts/auv-env/home/default/.zsh_prompt
+
+target/
+dump.rdb
+
+conf/gui/static/js/bundle.js.LICENSE.txt
