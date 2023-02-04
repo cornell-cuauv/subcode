@@ -1,4 +1,5 @@
 [devices.thruster_board_1.vars]
+<<<<<<< Updated upstream
 Thruster1PwmVal = "motor_desires.fore_starboard"
 Thruster2PwmVal = "motor_desires.starboard"
 Thruster3PwmVal = "motor_desires.sway_aft"
@@ -7,6 +8,16 @@ Thruster4PwmVal = "motor_desires.aft_starboard"
 Thruster1PwmReadback = "ramp_status.fore_starboard_ramp"
 Thruster2PwmReadback = "ramp_status.starboard_ramp"
 Thruster3PwmReadback = "ramp_status.sway_aft_ramp"
+=======
+Thruster1PwmVal = "motor_desires.sway_aft"
+Thruster2PwmVal = "motor_desires.starboard"
+Thruster3PwmVal = "motor_desires.fore_starboard"
+Thruster4PwmVal = "motor_desires.aft_starboard"
+
+Thruster1PwmReadback = "ramp_status.sway_aft_ramp"
+Thruster2PwmReadback = "ramp_status.starboard_ramp"
+Thruster3PwmReadback = "ramp_status.fore_starboard_ramp"
+>>>>>>> Stashed changes
 Thruster4PwmReadback = "ramp_status.aft_starboard_ramp"
 
 RampPeriod = "ramp.ramp_period"
