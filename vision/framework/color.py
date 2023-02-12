@@ -44,7 +44,7 @@ def elementwise_color_dist(mat, c):
     """
     return np.linalg.norm(as_mat(mat) - c, axis=2)
 
-def thresh_color_distance(split, color, distance, auto_distance_percentile=None, ignore_channels=[], weights=[1, 1, 1]):
+def thresh_color_distance(split, color, distance, auto_distance_percentile=None, ignore_channels=[], weights=(1, 1, 1)):
     """
     thresholds the image according to the weighted distance of each pixel to the color
     :param split: a list of monocolored images (see _convert_colorspace)
@@ -57,14 +57,15 @@ def thresh_color_distance(split, color, distance, auto_distance_percentile=None,
              color distance to color larger than distance set to zero and all other
              values set to 255, and a matrix of distances of the point to the specified color.
     """
+    weights_cp = list(weights)
     for idx in ignore_channels:
-        weights[idx] = 0
-    weights /= np.linalg.norm(weights)
+        weights_cp[idx] = 0
+    weights_cp /= np.linalg.norm(weights)
     dists = np.zeros(split[0].shape, dtype=np.float32)
     for i in range(3):
         if i in ignore_channels:
             continue
-        dists += weights[i] * (np.float32(split[i]) - color[i])**2
+        dists += weights_cp[i] * (np.float32(split[i]) - color[i])**2
     if auto_distance_percentile:
         distance = min(np.percentile(dists, auto_distance_percentile), distance**2)
     else:
