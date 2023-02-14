@@ -116,9 +116,55 @@ def build_thruster_helm():
         var = getattr(shm.motor_desires, thruster)
         var.set(0 if var.get() else 30)
 
-    def write_to_conf_file():
 
-        return
+    #(Nathaniel Navarro): Writes to appropriate <vehicle>.toml file based on environment variables after
+    # asking for confirmation. Based on toml reading logic from ../../conf/vehicle.py
+    # as of 2023-02-13
+    def write_to_conf_file():
+        import tomlkit #modules are only ever loaded once
+        import sys
+        import os
+
+        DIR = os.environ.get("CUAUV_SOFTWARE")
+        if DIR is None:
+            sys.stderr.write("vehicle.py: CUAUV_SOFTWARE must be set "
+                             "to the root of the software repository.\n")
+            sys.exit(1)
+        
+        VEHICLE = os.getenv("CUAUV_VEHICLE")
+        VEHICLE_TYPE = os.getenv("CUAUV_VEHICLE_TYPE")
+        
+        if VEHICLE is None or not VEHICLE in ["odysseus", "ajax"]:
+            sys.stderr.write("vehicle.py: CUAUV_VEHICLE must be set "
+                             "to one of { odysseus, ajax }.\n")
+            sys.exit(1)
+        if VEHICLE_TYPE is None or not VEHICLE_TYPE in ["mainsub", "minisub"]:
+            sys.stderr.write("vehicle.py: CUAUV_VEHICLE_TYPE must be set "
+                             "to one of { mainsub, minisub }.\n")
+            sys.exit(1)
+        
+        is_mainsub = VEHICLE_TYPE == "mainsub"
+        is_minisub = VEHICLE_TYPE == "minisub"
+        is_in_simulator = os.getenv('CUAUV_LOCALE') == 'simulator'
+        
+        toml_conf = None
+        with open(os.path.join(DIR, "conf", "{}.toml".format(VEHICLE))) as f:
+            toml_conf = tomlkit.parse(f.read())
+        
+        print(toml_conf["thrusters"])
+        print()
+        print()
+
+        #(Nathaniel Navarro): Yuck yuck nested loops
+        for thruster_name in thrusters:
+            for i, thruster_toml in enumerate(toml_conf["thrusters"]): #list of thrusters
+                if thruster_toml["name"] == thruster_name:
+                    print(getattr(shm.reversed_thrusters,thruster_name).get())
+                    toml_conf["thrusters"]["reversed"] = False
+                    #toml_conf["thrusters"][i] = thruster_toml
+
+        print(toml_conf["thrusters"])
+
 
     callbacks = {
         " ": (lambda: soft_kill(True)),
@@ -126,7 +172,7 @@ def build_thruster_helm():
         "\\": (lambda: soft_kill(False)),
         "|": toggle_controller,
         curses.KEY_F12: toggle_controller,
-        #"w": write_to_conf_file
+        "w": write_to_conf_file
     }
 
     modal_callbacks = {}
@@ -144,7 +190,6 @@ def build_thruster_helm():
     modal_callbacks["reversed"] = {
         "b": lambda: change_mode("broken"),
         "s": lambda: change_mode("spinning"),
-        "w": lambda: change_mode("write"),
     }
     # another hacky thing
     modal_callbacks["default"] = modal_callbacks["reversed"]
@@ -153,14 +198,12 @@ def build_thruster_helm():
     modal_callbacks["broken"] = {
         "r": lambda: change_mode("reversed"),
         "s": lambda: change_mode("spinning"),
-        "w": lambda: change_mode("write"),
     }
 
     # spinning
     modal_callbacks["spinning"] = {
         "b": lambda: change_mode("broken"),
         "r": lambda: change_mode("reversed"),
-        "w": lambda: change_mode("write"),
     }
 
     def add_thruster_callbacks(thruster, index):
