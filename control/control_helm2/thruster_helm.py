@@ -15,7 +15,6 @@ BOX_WIDTH = 24
 BOX_HEIGHT = 8
 
 
-
 def build_thruster_helm():
     thrusters = [name for name, typ in shm.motor_desires._fields]
 
@@ -71,11 +70,11 @@ def build_thruster_helm():
         ),
         Hbox(
             *map(make_thruster_panel, thrusters[: len(thrusters) // 2]),
-            height=BOX_HEIGHT
+            height=BOX_HEIGHT,
         ),
         Hbox(
             *map(make_thruster_panel, thrusters[len(thrusters) // 2 :]),
-            height=BOX_HEIGHT
+            height=BOX_HEIGHT,
         ),
         Hbox(
             LineLambdaPanel(
@@ -92,11 +91,17 @@ def build_thruster_helm():
             )
         ),
         Hbox(
-                LineLambdaPanel(
-                    [
-                        lambda: f"Press <space> to soft kill.",
-                        lambda: f"Press \\ to enable.",
-                        lambda : f"Press {{w}} to write current reversal settings to the appropriate <vehicle>.toml file."], title="Controls", width = BOX_WIDTH * 4, height = 6))
+            LineLambdaPanel(
+                [
+                    lambda: f"Press <space> to soft kill.",
+                    lambda: f"Press \\ to enable.",
+                    lambda: f"Press {{w}} to write current reversal settings to the appropriate <vehicle>.toml file.",
+                ],
+                title="Controls",
+                width=BOX_WIDTH * 4,
+                height=6,
+            )
+        ),
     )
 
     def soft_kill(killed):
@@ -117,63 +122,66 @@ def build_thruster_helm():
         var = getattr(shm.motor_desires, thruster)
         var.set(0 if var.get() else 30)
 
-
-    #(Nathaniel Navarro): Writes to appropriate <vehicle>.toml file based on environment variables after
+    # (Nathaniel Navarro): Writes to appropriate <vehicle>.toml file based on environment variables after
     # asking for confirmation. Based on toml reading logic from ../../conf/vehicle.py
     # as of 2023-02-13
     def write_to_conf_file():
-        import tomlkit #modules are only ever loaded once
+        import tomlkit  # modules are only ever loaded once
         import sys
         import os
 
         DIR = os.environ.get("CUAUV_SOFTWARE")
         if DIR is None:
-            sys.stderr.write("vehicle.py: CUAUV_SOFTWARE must be set "
-                             "to the root of the software repository.\n")
+            sys.stderr.write(
+                "vehicle.py: CUAUV_SOFTWARE must be set "
+                "to the root of the software repository.\n"
+            )
             sys.exit(1)
-        
+
         VEHICLE = os.getenv("CUAUV_VEHICLE")
         VEHICLE_TYPE = os.getenv("CUAUV_VEHICLE_TYPE")
-        
+
         if VEHICLE is None or not VEHICLE in ["odysseus", "ajax"]:
-            sys.stderr.write("vehicle.py: CUAUV_VEHICLE must be set "
-                             "to one of { odysseus, ajax }.\n")
+            sys.stderr.write(
+                "vehicle.py: CUAUV_VEHICLE must be set "
+                "to one of { odysseus, ajax }.\n"
+            )
             sys.exit(1)
         if VEHICLE_TYPE is None or not VEHICLE_TYPE in ["mainsub", "minisub"]:
-            sys.stderr.write("vehicle.py: CUAUV_VEHICLE_TYPE must be set "
-                             "to one of { mainsub, minisub }.\n")
+            sys.stderr.write(
+                "vehicle.py: CUAUV_VEHICLE_TYPE must be set "
+                "to one of { mainsub, minisub }.\n"
+            )
             sys.exit(1)
-        
+
         is_mainsub = VEHICLE_TYPE == "mainsub"
         is_minisub = VEHICLE_TYPE == "minisub"
-        is_in_simulator = os.getenv('CUAUV_LOCALE') == 'simulator'
-        
+        is_in_simulator = os.getenv("CUAUV_LOCALE") == "simulator"
+
         conf_toml = None
         file_path = os.path.join(DIR, "conf", f"{VEHICLE}.toml")
         with open(file_path) as f:
             conf_toml = tomlkit.parse(f.read())
-        
 
-        #(Nathaniel Navarro): Yuck yuck nested loops
         for thruster_name in thrusters:
-            for i in range(len(conf_toml["thrusters"])): #list of thrusters
+            for i in range(len(conf_toml["thrusters"])):  # list of thrusters
                 if conf_toml["thrusters"][i]["name"] == thruster_name:
-                    #print(getattr(shm.reversed_thrusters,thruster_name).get())
-                    shm_direction = bool(getattr(shm.reversed_thrusters, thruster_name).get())
+                    shm_direction = bool(
+                        getattr(shm.reversed_thrusters, thruster_name).get()
+                    )
                     conf_toml["thrusters"][i]["reversed"] = shm_direction
 
-        with open(file_path,"w") as f:
+        with open(file_path, "w") as f:
             f.write(tomlkit.dumps(conf_toml))
 
-
-
+    #(Nathaniel Navarro): generla callbacks not needing a number to be pressed to change things
     callbacks = {
         " ": (lambda: soft_kill(True)),
         curses.KEY_F5: (lambda: soft_kill(False)),
         "\\": (lambda: soft_kill(False)),
         "|": toggle_controller,
         curses.KEY_F12: toggle_controller,
-        "w": write_to_conf_file
+        "w": write_to_conf_file,
     }
 
     modal_callbacks = {}
