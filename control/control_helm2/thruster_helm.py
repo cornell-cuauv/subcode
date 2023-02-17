@@ -15,6 +15,7 @@ BOX_WIDTH = 24
 BOX_HEIGHT = 8
 
 
+
 def build_thruster_helm():
     thrusters = [name for name, typ in shm.motor_desires._fields]
 
@@ -95,7 +96,7 @@ def build_thruster_helm():
                     [
                         lambda: f"Press <space> to soft kill.",
                         lambda: f"Press \\ to enable.",
-                        lambda : f"Press w to write current reversal settings to the appropriate <vehicle>.toml file."], title="Controls", width = BOX_WIDTH * 4, height = 6))
+                        lambda : f"Press {{w}} to write current reversal settings to the appropriate <vehicle>.toml file."], title="Controls", width = BOX_WIDTH * 4, height = 6))
     )
 
     def soft_kill(killed):
@@ -147,23 +148,23 @@ def build_thruster_helm():
         is_minisub = VEHICLE_TYPE == "minisub"
         is_in_simulator = os.getenv('CUAUV_LOCALE') == 'simulator'
         
-        toml_conf = None
-        with open(os.path.join(DIR, "conf", "{}.toml".format(VEHICLE))) as f:
-            toml_conf = tomlkit.parse(f.read())
+        conf_toml = None
+        file_path = os.path.join(DIR, "conf", f"{VEHICLE}.toml")
+        with open(file_path) as f:
+            conf_toml = tomlkit.parse(f.read())
         
-        print(toml_conf["thrusters"])
-        print()
-        print()
 
         #(Nathaniel Navarro): Yuck yuck nested loops
         for thruster_name in thrusters:
-            for i, thruster_toml in enumerate(toml_conf["thrusters"]): #list of thrusters
-                if thruster_toml["name"] == thruster_name:
-                    print(getattr(shm.reversed_thrusters,thruster_name).get())
-                    toml_conf["thrusters"]["reversed"] = False
-                    #toml_conf["thrusters"][i] = thruster_toml
+            for i in range(len(conf_toml["thrusters"])): #list of thrusters
+                if conf_toml["thrusters"][i]["name"] == thruster_name:
+                    #print(getattr(shm.reversed_thrusters,thruster_name).get())
+                    shm_direction = bool(getattr(shm.reversed_thrusters, thruster_name).get())
+                    conf_toml["thrusters"][i]["reversed"] = shm_direction
 
-        print(toml_conf["thrusters"])
+        with open(file_path,"w") as f:
+            f.write(tomlkit.dumps(conf_toml))
+
 
 
     callbacks = {
