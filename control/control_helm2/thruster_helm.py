@@ -96,10 +96,11 @@ def build_thruster_helm():
                     lambda: f"Press <space> to soft kill.",
                     lambda: f"Press \\ to enable.",
                     lambda: f"Press {{w}} to write current reversal settings to the appropriate <vehicle>.toml file.",
+                    lambda: f"trogdor restart controld3 to reset thruster reversals according to <vehicle>.toml file"
                 ],
                 title="Controls",
                 width=BOX_WIDTH * 4,
-                height=6,
+                height=7,
             )
         ),
     )
