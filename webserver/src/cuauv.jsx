@@ -11,6 +11,7 @@ import {SHM} from './modules/shm.jsx'
 import {Admin} from './modules/admin.jsx'
 import {VisionIndex} from './modules/vision_index.jsx'
 import {VisionModule} from './modules/vision_module.jsx'
+import {Map} from './modules/map.jsx'
 
 const blueprint = [
     {
@@ -54,6 +55,12 @@ const blueprint = [
         path: "/vision/:module",
         component: VisionModule,
         headerInclude: false,
+    },
+    {
+        name: "Map",
+        path: "/map",
+        component: Map,
+        headerInclude: true,
     },
 ];
 

@@ -14,7 +14,7 @@ class HeaderLinks extends React.Component {
         return this.props.links.map(link => (
             // we want "exact" matching for the url === location.pathname
             <LinkContainer exact key={link.name} to={link.path} activeClassName="active">
-                <NavItem eventKey={link.name}>{link.name}</NavItem>
+                <NavItem eventKey={link.name} onClick={window.location.reload}>{link.name}</NavItem>
             </LinkContainer>
         ));
     }

@@ -16,6 +16,7 @@ from handlers.status import StatusHandler
 from handlers.deadman import DeadmanHandler
 from handlers.admin import AdminHandler, KillHandler
 from handlers.vision import VisionIndexHandler, VisionModuleHandler, VisionSocketHandler, VisionActiveModulesHandler
+from handlers.map import MapHandler, MapSocketHandler
 
 DEFAULT_PORT = 8080
 SECRET_KEY = "AUV_WEBSERVER"
@@ -49,6 +50,8 @@ def make_app(debug=False):
         url(r"/vision/([^/]+)", VisionModuleHandler, name="vision_module"),
         url(r"/vision/modules/active", VisionActiveModulesHandler, name="vision active modules"),
         url(r"/vision/ws/([^/]+)", VisionSocketHandler, name="vision websocket"),
+        url(r"/map", MapHandler, name="map"),
+        url(r"/map/ws", MapSocketHandler, name="map websocket"),
         url(r"/(favicon.ico)", tornado.web.StaticFileHandler, {"path": "static"})
     ], debug=debug, **settings)
     return application
