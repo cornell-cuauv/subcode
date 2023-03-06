@@ -13,6 +13,8 @@ ROOT=$CUAUV_SOFTWARE
 LOGS=$CUAUV_LOG/current # Should be set up by auv-pooltest
 BIN=$ROOT/link-stage
 
+mkdir -p $LOGS
+
 # Very important variables
 export PATH=$PATH:$ROOT/link-stage
 export PYTHONPATH=$ROOT
