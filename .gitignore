@@ -77,4 +77,5 @@ node_modules/
 target/
 dump.rdb
 
+webserver/static/bundle.js.LICENSE.txt
 conf/gui/static/js/bundle.js.LICENSE.txt
