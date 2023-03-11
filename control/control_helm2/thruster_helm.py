@@ -131,29 +131,20 @@ def build_thruster_helm():
         import sys
         import os
 
-        DIR = os.environ.get("CUAUV_SOFTWARE")
+        DIR = os.environ.get("CUAUV_SOFTWARE_TEST")
         if DIR is None:
-            sys.stderr.write(
-                "vehicle.py: CUAUV_SOFTWARE must be set "
-                "to the root of the software repository.\n"
-            )
-            sys.exit(1)
+            sys.stderr.write("vehicle.py: CUAUV_SOFTWARE must be set to the root of the software repository. Nothing was written\n")
+            return
 
         VEHICLE = os.getenv("CUAUV_VEHICLE")
         VEHICLE_TYPE = os.getenv("CUAUV_VEHICLE_TYPE")
 
-        if VEHICLE is None or not VEHICLE in ["odysseus", "ajax"]:
-            sys.stderr.write(
-                "vehicle.py: CUAUV_VEHICLE must be set "
-                "to one of { odysseus, ajax }.\n"
-            )
-            sys.exit(1)
+        if VEHICLE is None :
+            sys.stderr.write("vehicle.py: CUAUV_VEHICLE must be set. Nothing was written\n")
+            return
         if VEHICLE_TYPE is None or not VEHICLE_TYPE in ["mainsub", "minisub"]:
-            sys.stderr.write(
-                "vehicle.py: CUAUV_VEHICLE_TYPE must be set "
-                "to one of { mainsub, minisub }.\n"
-            )
-            sys.exit(1)
+            sys.stderr.write("vehicle.py: CUAUV_VEHICLE_TYPE must be set to one of { mainsub, minisub }. Nothing was written. \n")
+            return
 
         is_mainsub = VEHICLE_TYPE == "mainsub"
         is_minisub = VEHICLE_TYPE == "minisub"
@@ -175,7 +166,7 @@ def build_thruster_helm():
         with open(file_path, "w") as f:
             f.write(tomlkit.dumps(conf_toml))
 
-    #(Nathaniel Navarro): generla callbacks not needing a number to be pressed to change things
+    #(Nathaniel Navarro): general callbacks not needing a number to be pressed to change things
     callbacks = {
         " ": (lambda: soft_kill(True)),
         curses.KEY_F5: (lambda: soft_kill(False)),
