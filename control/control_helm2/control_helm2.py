@@ -199,6 +199,9 @@ def build_control_helm(expert=False):
         msg = 'Surface!' if surface else 'Zero movements'
 
     def soft_kill(killed):
+        #only zero if we were killed and now we're not
+        if(shm.switches.soft_kill.get() and not killed):
+            zero(False)
         nonlocal msg
         shm.switches.soft_kill.set(killed)
         msg = 'KILLED' if killed else 'UNKILLED'
