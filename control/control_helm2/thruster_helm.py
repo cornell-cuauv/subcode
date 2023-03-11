@@ -152,8 +152,12 @@ def build_thruster_helm():
 
         conf_toml = None
         file_path = os.path.join(DIR, "conf", f"{VEHICLE}.toml")
-        with open(file_path) as f:
-            conf_toml = tomlkit.parse(f.read())
+        try:
+            with open(file_path) as f:
+                conf_toml = tomlkit.parse(f.read())
+        except FileNotFoundError:
+            sys.stderr.write(f"Config file {VEHICLE}.toml was not found as {file_path}. Nothing was written.\n")
+            return
 
         for thruster_name in thrusters:
             for i in range(len(conf_toml["thrusters"])):  # list of thrusters
