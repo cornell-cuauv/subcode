@@ -32,6 +32,9 @@ class _PsuedoOptionsDict:
 
     def __getattr__(self, name):
         return self.__getitem__(name)
+    
+    def __contains__(self, item):
+        return item in self._options_dict
 
     def __getitem__(self, name):
         if name not in self._options_dict:
