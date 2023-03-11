@@ -131,7 +131,7 @@ def build_thruster_helm():
         import sys
         import os
 
-        DIR = os.environ.get("CUAUV_SOFTWARE_TEST")
+        DIR = os.environ.get("CUAUV_SOFTWARE")
         if DIR is None:
             sys.stderr.write("vehicle.py: CUAUV_SOFTWARE must be set to the root of the software repository. Nothing was written\n")
             return
