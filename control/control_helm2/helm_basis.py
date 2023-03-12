@@ -22,7 +22,7 @@ class StyledString(str):
     """
 
     def highlight_if(text, b):
-        return StyledString('[{}]'.format(text) if b else text)
+        return StyledString(f'[{text}]' if b else text)
 
     def __add__(self, to):
         return StyledString(str(self) + to)
