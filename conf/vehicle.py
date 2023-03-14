@@ -5,7 +5,7 @@ import sys
 from typing import Union, Any, Dict
 from tomlkit.container import Container
 
-from tomlkit.items import Item
+from tomlkit.items import Item, Array
 
 DIR = os.environ.get("CUAUV_SOFTWARE")
 if DIR is None:
@@ -32,29 +32,23 @@ is_minisub = VEHICLE_TYPE == "minisub"
 with open(os.path.join(DIR, "conf", "{}.toml".format(VEHICLE))) as f:
     d = tomlkit.parse(f.read())
 
-# TODO: Why is this hardcoded. Why cant we generate this dynamically
+#(Nathaniel 2023-03): IMO vehicle should be encapsulated as a class,
+#but for now this enables backwards compatability with current way of 
+#accessing global variables through importing vehicle.
 
-center_of_buoyancy = np.array(d['center_of_buoyancy'])
-buoyancy_force = d['buoyancy_force']
-gravity_force = d['gravity_force']
-sub_height = d['sub_height']
-dvl_offset = d['dvl_offset']  # TODO
-dvl_reversed = d['dvl_reversed']  # TODO
-dvl_scaling_factor = (d['dvl_scaling_factor'] if os.getenv('CUAUV_LOCALE') !=
-        'simulator' else 1)
-I = np.array(d['I'])
-thrusters = d['thrusters']
-sensors = d['sensors']
-gx_hpr = d['gx_hpr']
-measurement_error = d['measurement_error']
-control_settings = d['control_settings']
-quaternion_filtering = d['quaternion_filtering']
+#dict of global variables in this module
+g = globals()
 
-actuators = {} # type: Union[Item, Container, Dict]
-if 'actuators' in d:
-    actuators = d['actuators']
+for key in d:
+    value = d[key]
+    if type(value) is Array:
+        value = np.array(value)
+    g[key] = value
 
-dvl_present = d['dvl_present']
+
+if os.getenv('CUAUV_LOCALE') == 'simulator':
+    dvl_scaling_factor = 1
+
 
 # note: the inherit from object is needed for Python 2 compatibility
 # (it makes it a 'new-style' object, which is the default in Python 3)
@@ -73,7 +67,7 @@ drag_planes = []
 for dp in d['drag_planes']: # type: ignore
     drag_planes.append(DragPlane(np.array(dp['pos']), np.array(dp['normal']), dp['cD'], dp['area'])) # type: ignore
 
-components = d['components']
+
 try:
   cameras = d['cameras']
 except KeyError:
