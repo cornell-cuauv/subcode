@@ -4,6 +4,7 @@ import os
 import sys
 from typing import Union, Any, Dict
 from tomlkit.container import Container
+from auvlog.client import log
 
 from tomlkit.items import Item, Array
 
@@ -63,17 +64,16 @@ class DragPlane(object):
 
 
 # I refuse to type drag planes if we're not using them
+#There is a drag_planes array in toml, this aliases it and makes DragPlane objects be stored ind rag_planes for ease of use.
+toml_drag_planes = drag_planes
 drag_planes = []
-for dp in d['drag_planes']: # type: ignore
+for dp in drag_planes:
+    print(dp)
+    # type: ignore
     drag_planes.append(DragPlane(np.array(dp['pos']), np.array(dp['normal']), dp['cD'], dp['area'])) # type: ignore
 
 
-try:
-  cameras = d['cameras']
-except KeyError:
-  print("WARNING: Vehicle %s is missing camera configuration." % VEHICLE)
-
-try:
-  vision_modules = d['vision_modules']
-except KeyError:
-    print("WARNING: Vehicle %s is missing vision module configuration." % VEHICLE)
+if 'cameras' not in d:
+    log.conf.vehicle(f"WARNING: Vehicle {VEHICLE} is missing camera configuration.", copy_to_stdout=True)
+if 'vision_modules' not in d:
+    logs.conf.vehicle(f"WARNING: Vehicle {VEHICLE} is missing vision module configuration.", copy_to_stdout=True)
