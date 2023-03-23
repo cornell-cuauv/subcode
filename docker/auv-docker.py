@@ -52,8 +52,13 @@ EMAIL_CONFIG_PATH = CONFIGS_DIRECTORY / "email"
 
 CUAUV_CONTAINER_PREFIX = 'cuauv-workspace-'
 
-
-client = docker.from_env()
+try:
+    client = docker.from_env()
+except docker.errors.DockerException as e:
+    print("Error connecting to docker daemon: {}".format(e))
+    print("Make sure docker is installed and running")
+    print("If you are on WSL2, make sure you have enabled docker integration and have docker desktop open")
+    quit()
 
 
 def guarded_call(name, function, message=None):
@@ -381,7 +386,7 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False):
             },
             "devices": [],
             "shm_size": "7G",
-            "ports": {},
+            "ports": {22:2353, 8080:8080},
             "security_opt": ["seccomp=unconfined"], # for gdb
         }
 
@@ -443,12 +448,14 @@ def cdw(branch=BRANCH):
 
     branch: Branch workspace to enter (and possibly create/start).
     """
+    
+    os.environ['DISPLAY'] = ":0"
 
     container = start(branch=branch)
     ip = client.api.inspect_container(container.id)["NetworkSettings"]["Networks"]["bridge"]["IPAddress"]
 
     subprocess.run(
-        ["ssh", "software@{}".format(ip), "-p", "22", "-A", "-o", "StrictHostKeyChecking no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ForwardX11Timeout 596h"]
+        ["ssh", "software@localhost", "-p", "2353", "-A", "-o", "StrictHostKeyChecking no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ForwardX11Timeout 596h"]
     )
 
 
