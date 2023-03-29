@@ -8,12 +8,14 @@ from mission.framework.movement import heading, velocity_x_for_secs
 from mission.framework.position import move_x
 from mission.constants.sub import Tolerance
 
-# The list of elements tracked by the dead reckoning system.
-# 'sub' refers to the position of the sub when transform_coords_to_real_space
-# was called, not its current position.
-elements = ["sub", "gate_approach", "gate", "buoys_approach", "buoys",
-        "bins_approach", "bins", "torpedoes_approach", "torpedoes",
-        "octagon_approach", "octagon"]
+# The list of elements tracked by the dead reckoning system, deduced from the
+# variables present in the dead_reckoning_virtual SHM group.
+# One of these elements will be 'sub', which refers to the position of the sub
+# when transform_coords_to_real_space was called, not its current position.
+elements = []
+for var in vars(shm.dead_reckoning_virtual).keys():
+    if var.endswith('_in_pool'):
+        elements.append(var[:-8])
 
 def transform_coords_to_real_space():
     """Transform coordinates from the virtual to the real reference frame.
@@ -122,7 +124,7 @@ def check_element_validity(element: str):
     """
     if element not in elements:
         print("Error: '" + element + "' is not the name of a known element."
-                "(Known element names: ['" + "', '".join(elements) + "'])")
+                "\n(Known element names: ['" + "', '".join(elements) + "'])")
         return False
     if not getattr(shm.dead_reckoning_real.get(), element + "_in_pool"):
         print("Error: The " + element + " element was marked as not present in"
@@ -188,8 +190,8 @@ async def go_to_element(target: str, stop_dist: float = 0,
     if not check_element_validity(target):
         return False
     if not dvl_present:
-        print("Error: go_to_element requires the DVL.", detail="(Skipping task."
-                " Use go_from_element_to_element instead.)")
+        print("Error: go_to_element requires the DVL.\n(Skipping task. Use"
+                " go_from_element_to_element instead.)")
         return False
     await heading(heading_to_element(target))
     distance_to_travel = distance_to_element(target) - stop_dist
