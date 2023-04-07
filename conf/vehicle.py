@@ -64,13 +64,12 @@ class DragPlane(object):
 
 
 # I refuse to type drag planes if we're not using them
-#There is a drag_planes array in toml, this aliases it and makes DragPlane objects be stored ind rag_planes for ease of use.
+#There is a drag_planes array in toml, this aliases it and makes DragPlane objects be stored in drag_planes for ease of use.
 toml_drag_planes = drag_planes
 drag_planes = []
-for dp in drag_planes:
-    print(dp)
+for dp in toml_drag_planes:
     # type: ignore
-    drag_planes.append(DragPlane(np.array(dp['pos']), np.array(dp['normal']), dp['cD'], dp['area'])) # type: ignore
+    drag_planes.append(DragPlane(np.array(dp['pos']), np.array(dp['normal']), dp['cD'], dp['area']))
 
 
 if 'cameras' not in d:
