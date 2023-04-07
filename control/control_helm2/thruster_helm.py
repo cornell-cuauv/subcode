@@ -104,6 +104,9 @@ def build_thruster_helm():
             )
         ),
     )
+    #############################
+    #Functions used in callbacks#
+    #############################
 
     def soft_kill(killed):
         shm.switches.soft_kill.set(killed)
@@ -162,13 +165,18 @@ def build_thruster_helm():
         for thruster_name in thrusters:
             for i in range(len(conf_toml["thrusters"])):  # list of thrusters
                 if conf_toml["thrusters"][i]["name"] == thruster_name:
-                    shm_direction = bool(
-                        getattr(shm.reversed_thrusters, thruster_name).get()
-                    )
+                    shm_direction = bool(getattr(shm.reversed_thrusters, thruster_name).get())
                     conf_toml["thrusters"][i]["reversed"] = shm_direction
+                    shm_broken = bool(getattr(shm.broken_thrusters, thruster_name).get())
+                    conf_toml["thrusters"][i]["broken"] = shm_broken
+
 
         with open(file_path, "w") as f:
             f.write(tomlkit.dumps(conf_toml))
+
+    #################################
+    #End functions used in callbacks#
+    #################################
 
     #(Nathaniel Navarro): general callbacks not needing a number to be pressed to change things
     callbacks = {
