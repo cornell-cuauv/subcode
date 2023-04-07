@@ -418,8 +418,8 @@ for thruster in vehicle.thrusters:
 
     t_class = globals()[t_class_s]
 
-    min_pos_pwm = thrusters.get('min_pos_pwm', t_class.min_pwm)
-    min_neg_pwm = thrusters.get('min_neg_pwm', -t_class.min_pwm)
+    min_pos_pwm = thruster.get('min_pos_pwm', t_class.min_pwm)
+    min_neg_pwm = thruster.get('min_neg_pwm', -t_class.min_pwm)
 
     thruster_name = thruster.get('real_name', thruster['name'])
     reversed_func = vars(shm.reversed_thrusters)[thruster_name].get
