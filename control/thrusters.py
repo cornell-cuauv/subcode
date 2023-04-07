@@ -404,14 +404,12 @@ class Simple(GenericThruster):
 all_thrusters = []
 
 for thruster in vehicle.thrusters:
-    def get_default(key, default):
-        return thruster[key] if key in thruster else default
 
     h, p = thruster['heading_pitch']
-    reversed_polarity = get_default('reversed', False)
-    broken = get_default('broken', False)
-    t_class_s = get_default('type', 'VideoRay')
-    vector = get_default('vector', False)
+    reversed_polarity = thruster.get('reversed', False)
+    broken = thruster.get('broken', False)
+    t_class_s = thrusters.get('type', 'VideoRay')
+    vector = thruster.get('vector', False)
 
     if t_class_s not in globals():
         log("Invalid type \"%s\" for thruster %s!" % (t_class_s, thruster['name']),
@@ -420,8 +418,8 @@ for thruster in vehicle.thrusters:
 
     t_class = globals()[t_class_s]
 
-    min_pos_pwm = get_default('min_pos_pwm', t_class.min_pwm)
-    min_neg_pwm = get_default('min_neg_pwm', -t_class.min_pwm)
+    min_pos_pwm = thrusters.get('min_pos_pwm', t_class.min_pwm)
+    min_neg_pwm = thrusters.get('min_neg_pwm', -t_class.min_pwm)
 
     thruster_name = thruster.get('real_name', thruster['name'])
     reversed_func = vars(shm.reversed_thrusters)[thruster_name].get
