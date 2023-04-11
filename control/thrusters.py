@@ -408,7 +408,7 @@ for thruster in vehicle.thrusters:
     h, p = thruster['heading_pitch']
     reversed_polarity = thruster.get('reversed', False)
     broken = thruster.get('broken', False)
-    t_class_s = thrusters.get('type', 'VideoRay')
+    t_class_s = thruster.get('type', 'VideoRay')
     vector = thruster.get('vector', False)
 
     if t_class_s not in globals():
