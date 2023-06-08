@@ -458,6 +458,23 @@ def cdw(branch=BRANCH):
         ["ssh", "software@localhost", "-p", "2353", "-A", "-o", "StrictHostKeyChecking no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ForwardX11Timeout 596h"]
     )
 
+def cdw_docker(branch=BRANCH):
+    """
+    Enter the workspace container for a branch, creating and starting a
+    workspace/container as needed.
+    
+    branch: Branch workspace to enter (and possibly create/start).
+    """
+
+    os.environ['DISPLAY'] = ":0"
+
+    container = start(branch=branch)
+    ip = client.api.inspect_container(container.id)["NetworkSettings"]["Networks"]["bridge"]["IPAddress"]
+
+    subprocess.run(
+        ["ssh", "software@localhost", "-p", "2353", "-A", "-o", "StrictHostKeyChecking no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ForwardX11Timeout 596h"]
+    )
+
 
 def stop(branch=BRANCH, vehicle=False):
     """
@@ -591,4 +608,4 @@ def stop_all():
             container.stop()
 
 
-clize.run(init, start, create_worktree, cdw, _list, stop, stop_all, destroy, vehicle, set_permissions)
+clize.run(init, start, create_worktree, cdw, cdw_docker, _list, stop, stop_all, destroy, vehicle, set_permissions)
