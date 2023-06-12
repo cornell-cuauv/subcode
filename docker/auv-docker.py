@@ -463,7 +463,7 @@ def cdw(branch=BRANCH):
         ["ssh", "software@localhost", "-p", "2353", "-A", "-o", "StrictHostKeyChecking no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ForwardX11Timeout 596h"]
     )
 
-def cdw_(branch=BRANCH):
+def cdw_wsl(branch=BRANCH):
     """
     Enter the workspace container for a branch, creating and starting a
     workspace/container as needed.
