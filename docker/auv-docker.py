@@ -330,7 +330,7 @@ def create_worktree(branch=BRANCH, print_help=True, *, b=False):
         )
 
 
-def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False):
+def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=False):
     """
     Starts a Docker container with the proper configuration. This does not
     currently recreate a container if different configurations options are
@@ -346,6 +346,8 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False):
 
     vehicle: Indicates the container should be configured to run
     directly on a vehicle.
+
+    mount_gpu: If True, the GPU device will be mounted into the container.
     """
 
     create_worktree(branch, print_help=False)
@@ -398,6 +400,9 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False):
                 "mode": "rw",
             }
             docker_args["devices"] += ["/dev/dri:/dev/dri:rw"]
+            
+        if mount_gpu:
+            docker_args["device_requests"] = [docker.types.DeviceRequest(count=-1, capabilities=[['gpu']])]
 
         if vehicle:
             docker_args["image"] = "{}:{}".format(DOCKER_REPO_JETSON, branch)
@@ -458,7 +463,7 @@ def cdw(branch=BRANCH):
         ["ssh", "software@localhost", "-p", "2353", "-A", "-o", "StrictHostKeyChecking no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ForwardX11Timeout 596h"]
     )
 
-def cdw_docker(branch=BRANCH):
+def cdw_(branch=BRANCH):
     """
     Enter the workspace container for a branch, creating and starting a
     workspace/container as needed.
@@ -468,8 +473,7 @@ def cdw_docker(branch=BRANCH):
 
     os.environ['DISPLAY'] = ":0"
 
-    container = start(branch=branch)
-    ip = client.api.inspect_container(container.id)["NetworkSettings"]["Networks"]["bridge"]["IPAddress"]
+    container = start(branch=branch, mount_gpu=True)
 
     subprocess.run(
         ["ssh", "software@localhost", "-p", "2353", "-A", "-o", "StrictHostKeyChecking no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ForwardX11Timeout 596h"]
@@ -608,4 +612,4 @@ def stop_all():
             container.stop()
 
 
-clize.run(init, start, create_worktree, cdw, cdw_docker, _list, stop, stop_all, destroy, vehicle, set_permissions)
+clize.run(init, start, create_worktree, cdw, cdw_wsl, _list, stop, stop_all, destroy, vehicle, set_permissions)
