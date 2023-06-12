@@ -1,4 +1,4 @@
-FROM cuauv/phusion-baseimage:0.11 as cuauv
+FROM docker.cuauv.org/phusion-baseimage:0.11 as cuauv
 CMD ["/sbin/my_init"]
 RUN rm -f /etc/service/sshd/down && \
     sed -i'' 's/http:\/\/archive.ubuntu.com/http:\/\/us.archive.ubuntu.com/' /etc/apt/sources.list && \
