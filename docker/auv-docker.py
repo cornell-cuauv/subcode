@@ -460,7 +460,7 @@ def cdw(branch=BRANCH):
     ip = client.api.inspect_container(container.id)["NetworkSettings"]["Networks"]["bridge"]["IPAddress"]
 
     subprocess.run(
-        ["ssh", "software@localhost", "-p", "2353", "-A", "-o", "StrictHostKeyChecking no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ForwardX11Timeout 596h"]
+         ["ssh", "software@{}".format(ip), "-p", "22", "-A", "-o", "StrictHostKeyChecking no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ForwardX11Timeout 596h"]
     )
 
 def cdw_wsl(branch=BRANCH):
