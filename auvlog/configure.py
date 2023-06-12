@@ -10,7 +10,10 @@ build.install('auv-log',  f='auvlog/logger.py')
 
 build.build_shared('auvlog',
   [   
-      'client.cpp'
-  ])
+      'logger.cpp'
+  ], auv_deps = ['fmt'], deps=['nanomsg']
+)
 
-build.build_cmd('auvlog-example', ['example.cpp'], deps = ['nanomsg'], auv_deps = ['auvlog'])
+build.build_c_cmd('auvlog-c-example', ['examples/example.c'], auv_deps = ['auvlog'])
+build.build_cmd('auvlog-cpp-example', ['examples/example.cpp'], auv_deps = ['auvlog', 'fmt'])
+# build.build_cmd('auvlog-example', ['example.cpp'], deps = ['nanomsg'], auv_deps = ['auvlog'])
