@@ -7,7 +7,7 @@ import shm
 
 from auvlog.client import log
 import shm
-from mission.framework.primitive import Zero
+from mission.combinator_framework.primitive import Zero
 import subprocess
 
 IP_ADDRESS = '192.168.0.1'
