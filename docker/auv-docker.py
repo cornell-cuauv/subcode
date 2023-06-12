@@ -453,8 +453,6 @@ def cdw(branch=BRANCH):
 
     branch: Branch workspace to enter (and possibly create/start).
     """
-    
-    os.environ['DISPLAY'] = ":0"
 
     container = start(branch=branch)
     ip = client.api.inspect_container(container.id)["NetworkSettings"]["Networks"]["bridge"]["IPAddress"]
