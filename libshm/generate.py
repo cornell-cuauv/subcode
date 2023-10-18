@@ -20,6 +20,7 @@ for d in generated_dirs:
 # constants to use in file generation
 ctypes=dict(double='double', float='float', int='int32_t', bool='int32_t', int16='int16_t', int32='int32_t', string='char*')
 ptypes=dict(double='c_double', float='c_float', int='c_int', bool='c_int', string='c_char_p')
+mypytypes=dict(double='float', float='float', int='int', bool='bool', string='str')
 scmtypes=dict(double='double', float='float', int='int32', bool='bool', int16='int16', int32='int32', string='c-string')
 ocamlctypes=dict(double='double', float='float', int='int', bool='bool', int16='int16_t', int32='int32_t', string='string')
 ocamltypes=dict(double='float', float='float', int='int', bool='bool', int16='Int16.t', int32='Int32.t', string='string')
@@ -89,6 +90,7 @@ for g in groups:
     for k in g['vars']:
         g['vars'][k]['ctype'] = ctypes[g['vars'][k]['type']]
         g['vars'][k]['ptype'] = ptypes[g['vars'][k]['type']]
+        g['vars'][k]['mypytype'] = mypytypes[g['vars'][k]['type']]
         g['vars'][k]['scmtype'] = scmtypes[g['vars'][k]['type']]
         g['vars'][k]['ocamlctype'] = ocamlctypes[g['vars'][k]['type']]
         g['vars'][k]['ocamltype'] = ocamltypes[g['vars'][k]['type']]
