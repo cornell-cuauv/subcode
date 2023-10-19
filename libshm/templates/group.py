@@ -31,11 +31,16 @@ def add_watcher(watcher):
 def remove_watcher(watcher):
     return _unwatch_$!g['groupname']!$(watcher.watcher_id)
 
-def set(g):
+class $!g['groupname'].title()!$Group:
+    <!--(for k in g['varnames'])-->
+    $!k!$: $!g['vars'][k]['mypytype']!$
+    <!--(end)-->
+
+def set(g: $!g['groupname'].title()!$Group):
     auv_var_lib.shm_set_$!g['groupname']!$(g)
 
 auv_var_lib.shm_get_$!g['groupname']!$.restype = group
-def get():
+def get() -> $!g['groupname'].title()!$Group:
     return auv_var_lib.shm_get_$!g['groupname']!$()
 
 
