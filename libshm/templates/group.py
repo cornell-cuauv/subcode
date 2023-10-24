@@ -1,4 +1,5 @@
 import ctypes
+from typing import List, Any
 
 import shm.base
 auv_var_lib = shm.base.auv_var_lib
@@ -8,7 +9,7 @@ _watch_$!g['groupname']!$.argtypes = [ctypes.c_int]
 _unwatch_$!g['groupname']!$ = auv_var_lib.shm_unwatch_$!g['groupname']!$
 _unwatch_$!g['groupname']!$.argtypes = [ctypes.c_int]
 
-_fields = []
+_fields: List[Any] = []
 <!--(for k in g['varnames'])-->
     <!--(if g['vars'][k]['type'] == 'string')-->
 _fields.append(("$!k!$", ctypes.c_char * ($!g['vars'][k]['length']!$ + 1)))
@@ -30,11 +31,16 @@ def add_watcher(watcher):
 def remove_watcher(watcher):
     return _unwatch_$!g['groupname']!$(watcher.watcher_id)
 
-def set(g):
+class $!g['groupname'].title()!$Group:
+    <!--(for k in g['varnames'])-->
+    $!k!$: $!g['vars'][k]['mypytype']!$
+    <!--(end)-->
+
+def set(g: $!g['groupname'].title()!$Group):
     auv_var_lib.shm_set_$!g['groupname']!$(g)
 
 auv_var_lib.shm_get_$!g['groupname']!$.restype = group
-def get():
+def get() -> $!g['groupname'].title()!$Group:
     return auv_var_lib.shm_get_$!g['groupname']!$()
 
 
@@ -47,15 +53,16 @@ class $!k!$(shm.base.ShmVar):
     _set_$!g['groupname']!$_$!k!$.argtypes = [ctypes.c_char_p]
 
     @classmethod
-    def get(cls):
+    def get(cls) -> str:
         tmp = ctypes.create_string_buffer($!g['vars'][k]['length']!$ + 1)
         cls._get_$!g['groupname']!$_$!k!$(tmp)
         v=tmp.value
-        #decode bytes to str in python3
-        return v if type(v)==str else v.decode()
+        # Decode bytes to str in python3
+        #   str(v) is necessary for mypy only
+        return str(v) if type(v)==str else v.decode()
 
     @classmethod
-    def set(cls,value):
+    def set(cls, value: str):
         cls._set_$!g['groupname']!$_$!k!$(value.encode())
         return value
 
@@ -66,13 +73,13 @@ class $!k!$(shm.base.ShmVar):
     _get.restype = ctypes.$!g['vars'][k]['ptype']!$
     _set = auv_var_lib.shm_set_$!g['groupname']!$_$!k!$
     _set.argtypes = [ctypes.$!g['vars'][k]['ptype']!$]
-
+    
     @classmethod
-    def get(cls):
+    def get(cls) -> $!g['vars'][k]['mypytype']!$:
         return cls._get()
 
     @classmethod
-    def set(cls, value):
+    def set(cls, value: $!g['vars'][k]['mypytype']!$):
         cls._set(ctypes.$!g['vars'][k]['ptype']!$(value))
     <!--(end)-->
 
