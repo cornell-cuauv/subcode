@@ -30,7 +30,7 @@ from mission.missions.will_common import is_mainsub
 
 
 from conf.vehicle import VEHICLE
-is_mainsub = VEHICLE == 'odysseus'
+is_mainsub = VEHICLE == 'polaris'
 
 
 # WILL ITS THIS ONE!

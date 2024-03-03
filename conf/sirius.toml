@@ -179,7 +179,7 @@ sonar = [0.0, 0.0, 0.0]
 [cameras.forward]
 type = "ueye"
 id = 3
-camera_name = "ueye_forward_ajax" # for configuration
+camera_name = "ueye_forward_sirius" # for configuration
 width = 1280
 height = 1024
 position = [0.48, 0.15, -0.08]
@@ -195,7 +195,7 @@ focal_length_mm = 3.6
 [cameras.downward]
 type = "ueye"
 id = 4
-camera_name = "ueye_downward_ajax" # for configuration
+camera_name = "ueye_downward_sirius" # for configuration
 width = 1000
 height = 800
 rotate180 = false

@@ -3,7 +3,7 @@ includes = [
     "leviathanThruster1.toml",
     "leviathanThruster2.toml",
     "him.toml",
-    "ajaxPdActuator.toml",
+    "siriusPdActuator.toml",
     "sensor.toml",
     "merge.toml"
 ]

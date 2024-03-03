@@ -1,4 +1,4 @@
-## Odysseus / Ajax Hubless Serial Board
+## Polaris / Sirius Hubless Serial Board
 
 KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", MODE="0666", TAG+="systemd"
 

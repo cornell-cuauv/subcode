@@ -62,7 +62,7 @@ def load_serial_conf(fname):
     """
     Load a TOML file from the serial daemon's conf directory. The directory is
     specified by SERIAL_CONF_DIR; :fname: is just the name of the file, e.g.
-    'odysseus.toml'.
+    'polaris.toml'.
     """
     full_path = os.path.join(SERIAL_CONF_DIR, fname)
     if not os.path.isfile(full_path):
