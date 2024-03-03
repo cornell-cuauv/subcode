@@ -369,7 +369,7 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=Fal
                 "software_path": str(software_path),
                 "CUAUV_SOFTWARE": "{}/".format(software_path),
                 "CUAUV_LOCALE": "simulator",
-                "CUAUV_VEHICLE": "odysseus",
+                "CUAUV_VEHICLE": "polaris",
                 "CUAUV_VEHICLE_TYPE": "mainsub",
                 "CUAUV_CONTEXT": "development",
                 "VISION_TEST_PATH": str(CONTAINER_WORKSPACE_DIRECTORY / "videos"),
@@ -547,7 +547,7 @@ def vehicle(*, branch:"b"="master", vehicle:"v"=None):
         vehicle = socket.gethostname()
 
     vehicle_types = {
-        "odysseus": "mainsub",
+        "polaris": "mainsub",
         "ajax": "minisub",
     }
 
