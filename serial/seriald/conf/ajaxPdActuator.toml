@@ -2,7 +2,7 @@
 Enable12V_GX = "power_distribution.enable_12v_gx"
 Enable12V_H2O = "power_distribution.enable_12v_hydrophones"
 #Enable12VDCAM = "power_distribution.enable_12v_downcam"
-Enable12V_DownCam = "power_distribution.enable_12v_downcam" # different on sirius?
+Enable12V_DownCam = "power_distribution.enable_12v_downcam" # different on ajax?
 Enable12V_X1 = "power_distribution.enable_12v_x1"
 Enable12V_X2 = "power_distribution.enable_12v_x2"
 #Enable12V_X3 = "power_distribution.enable_12v_x3"

@@ -18,9 +18,9 @@ d = None
 VEHICLE = os.getenv("CUAUV_VEHICLE")
 VEHICLE_TYPE = os.getenv("CUAUV_VEHICLE_TYPE")
 
-if VEHICLE is None or not VEHICLE in ["polaris", "sirius"]:
+if VEHICLE is None or not VEHICLE in ["odysseus", "ajax"]:
     sys.stderr.write("vehicle.py: CUAUV_VEHICLE must be set "
-                     "to one of { polaris, sirius }.\n")
+                     "to one of { odysseus, ajax }.\n")
     sys.exit(1)
 if VEHICLE_TYPE is None or not VEHICLE_TYPE in ["mainsub", "minisub"]:
     sys.stderr.write("vehicle.py: CUAUV_VEHICLE_TYPE must be set "

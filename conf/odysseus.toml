@@ -145,7 +145,7 @@ sonar = [0.0, 0.0, 0.0]
 [cameras.forward]
 type = "ueye"
 id = 1
-camera_name = "ueye_forward_polaris" # for configuration
+camera_name = "ueye_forward_odysseus" # for configuration
 width = 640
 height = 512
 position = [0.48, 0.15, -0.08]
@@ -160,7 +160,7 @@ focal_length_mm = 3.6
 [cameras.downward]
 type = "ueye"
 id = 2
-camera_name = "ueye_downward_polaris" # for configuration
+camera_name = "ueye_downward_odysseus" # for configuration
 width = 1600
 height = 1200
 rotate180 = true
