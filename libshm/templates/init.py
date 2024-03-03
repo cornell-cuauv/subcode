@@ -9,6 +9,7 @@ __all__ = ['watchers',
 <!--(for g in groups)-->
 import shm.$!g['groupname']!$
 <!--(end)-->
+import shm.watchers
 
 from shm.base import auv_var_lib
 
