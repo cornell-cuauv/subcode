@@ -209,27 +209,6 @@ capture_sources = ["default"]
 [vision_modules.auto_calibrate]
 capture_sources = ["forward", "downward"]
 
-[vision_modules.torpedoes_board_2023]
-capture_sources = ["forward"]
-
-[vision_modules.torpedoes_hole_2023]
-capture_sources = ["forward"]
-
-[vision_modules.bins_cover]
-capture_sources = ["downward"]
-
-[vision_modules.gate_2023]
-capture_sources = ["forward"]
-
-[vision_modules.buoy_scout_2023]
-capture_sources = ["forward"]
-
-[vision_modules.buoy_infantry_2023]
-capture_sources = ["forward"]
-
-[vision_modules.octagon_chevron]
-capture_sources = ["downward"]
-
 [actuators]
 bottom_torpedo = 8
 top_torpedo = 4
