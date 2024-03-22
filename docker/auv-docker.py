@@ -330,7 +330,7 @@ def create_worktree(branch=BRANCH, print_help=True, *, b=False):
         )
 
 
-def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=False):
+def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=False, ports={}):
     """
     Starts a Docker container with the proper configuration. This does not
     currently recreate a container if different configurations options are
@@ -360,6 +360,7 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=Fal
 
         software_path = CONTAINER_WORKSPACE_DIRECTORY / "worktrees" / branch
 
+
         docker_args = {
             "image": "{}:{}".format(DOCKER_REPO, branch),
             "command": "/sbin/my_init",
@@ -388,9 +389,11 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=Fal
             },
             "devices": [],
             "shm_size": "7G",
-            "ports": {22:2353, 8080:8080},
             "security_opt": ["seccomp=unconfined"], # for gdb
         }
+
+        if len(ports) > 0:
+            docker_args["ports"] = ports
 
         if gpu:
             subprocess.run(["xhost", "+local:"])
@@ -471,12 +474,11 @@ def cdw_wsl(branch=BRANCH):
 
     os.environ['DISPLAY'] = ":0"
 
-    container = start(branch=branch, mount_gpu=True)
+    container = start(branch=branch, mount_gpu=True, ports={22:2353, 8080:8080, 6060:6060})
 
     subprocess.run(
         ["ssh", "software@localhost", "-p", "2353", "-A", "-o", "StrictHostKeyChecking no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ForwardX11Timeout 596h"]
     )
-
 
 def stop(branch=BRANCH, vehicle=False):
     """
