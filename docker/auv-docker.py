@@ -11,7 +11,8 @@ def check_imports(*names):
             not_found.append(name)
 
     if len(not_found) > 0:
-        print(('\nauv-docker requires these packages: {}\n'
+        print(('\
+            nauv-docker requires these packages: {}\n'
               + 'Install with "pip3 install {}"\n')
               .format(', '.join(not_found), ' '.join(not_found)))
         quit()
