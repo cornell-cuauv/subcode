@@ -359,17 +359,6 @@ class Timeline(Gtk.DrawingArea):
                 cr.fill()
 
         #Draw the tag data visible in the current view
-        tag_select = self.parent.video_tree_manager.get_selected_tag()
-        if tag_select is not None:
-            cr.set_source_rgb(*DATA_COLOR)
-            frame_list = tag_select.get_frame_list(frame_min=self.view_start, frame_max=self.view_end)
-            draw_frame_range(frame_list, DATA_HEIGHT)
-
-            cr.set_source_rgb(*DATA_POS)
-            draw_frame_range(tag_select.test_pos, DATA_RESULT_HEIGHT)
-
-            cr.set_source_rgb(*DATA_NEG)
-            draw_frame_range(tag_select.test_neg, DATA_RESULT_HEIGHT)
 
         #Draw the image previews
         requested_frames = []

@@ -22,7 +22,7 @@ class AddVideo:
         warning_label = self.builder.get_object("warningLabel")
 
         self.video_filename = self.video_path.get_filename()
-        if not (self.video_filename is not None and os.path.isfile(self.video_filename)):
+        if not (self.video_filename is not None and os.path.isfile(self.video_filename) and self.is_valid_video_file(self.video_filename)):
             warning_label.set_text("Invalid Video File")
             return False
 
@@ -47,6 +47,14 @@ class AddVideo:
 
         return True
 
+    def is_valid_video_file(self, filename):
+        valid_extensions = ['.avi', '.mp4', '.mkv']  # Add more valid video extensions as needed
+
+        # Check if the file has a valid video extension
+        _, file_extension = os.path.splitext(filename)
+        if file_extension.lower() not in valid_extensions:
+            return False
+        return True
 
     def cancel_click(self, object, data=None):
         self.window.destroy()
@@ -85,6 +93,7 @@ class AddVideo:
         if AddVideo.last_path is not None:
             self.video_path.set_current_folder(AddVideo.last_path)
             self.log_path.set_current_folder(AddVideo.last_path)
+        
         #Set default folders for the file-buttons
         elif default_folder is not None:
             self.video_path.set_current_folder(default_folder)

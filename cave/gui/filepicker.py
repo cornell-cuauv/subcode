@@ -28,6 +28,10 @@ class FilePicker:
         return cls.__prompt(Gtk.FileChooserAction.OPEN, Gtk.STOCK_OPEN, **args)
 
     @classmethod
+    def folder(cls, **args):
+        return cls.__prompt(Gtk.FileChooserAction.SELECT_FOLDER, "Select", **args)
+    
+    @classmethod
     def __prompt(cls, opt1, opt2, title="", default_filename=None, type_list=[]):
         #Generic file choose prompt for open / new
         dialog = Gtk.FileChooserDialog(title,

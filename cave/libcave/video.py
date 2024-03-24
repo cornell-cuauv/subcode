@@ -32,16 +32,9 @@ class Video(SqlClass):
     #Is this video present? (the files linked properly)
     def present(self):
         return os.path.isfile(self.db.get_absolute_path(self.video_path))
-
-    #Gets all tags associated with this video
-    def get_tags(self):
-        return Tag.get_all(filter_str="WHERE vid=%d" % self.id)
-
+    
     #Overloaded remove method
     def remove(self):
-        tgs = self.get_tags()
         SqlClass.remove(self) #Remove this video
-        for t in tgs: #Remove all tags
-            t.remove()
 
 

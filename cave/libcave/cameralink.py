@@ -11,8 +11,6 @@ import shm
 #This may be useful if these vision names are ever changed.
 camera_map = {
     "Forward": "forward",
-    "ForwardRight": "forward_right",
-    "ForwardLeft": "forward_left",
     "Downward": "downward"
 }
 

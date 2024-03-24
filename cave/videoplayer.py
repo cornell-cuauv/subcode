@@ -17,6 +17,8 @@ class VideoPlayer(Thread):
         Thread.__init__(self)
         self.c = Condition()
         self.play = False
+        self.increment = False
+        self.switcher = False
         self.kill = Event()
 
         self.parent = parent
@@ -25,9 +27,11 @@ class VideoPlayer(Thread):
 
         self.start()
 
-    def set_play(self, play):
+    def set_play(self, play, increment):
         with self.c:
             self.play = play
+            self.increment = increment
+            self.switcher = True
             self.c.notify()
 
     def destroy(self):
@@ -38,17 +42,19 @@ class VideoPlayer(Thread):
     def run(self):
         while not self.kill.is_set():
             with self.c:
-                while not self.play:
+                while not self.increment and not self.play:
                     self.c.wait()
                     if self.kill.is_set():
                         break
-
             #Playing, increment frame count
             t1 = time()
             Gdk.threads_enter()
             #Currently loops. If undesired, change to:
-            #self.parent.increment_frame(1)
-            self.parent.increment_frame_loop(1)
+            #self.parent.increment_frame(1)\
+            if self.increment:                
+                self.parent.increment_frame_loop(1)
+            else:
+                self.parent.increment_frame_loop(0)
             Gdk.threads_leave()
             dt = time() - t1
             self.kill.wait(1.0 / FPS - dt)
