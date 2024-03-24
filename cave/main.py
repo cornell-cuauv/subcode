@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, signal, sys
+import os, signal, sys, json
 import logging
 
 import gi
@@ -11,19 +11,18 @@ from gi.repository import Gtk, Gdk, GLib
 import argparse
 import math
 
-from cave.libcave.tags.registered_tags import load_tag_modules
-
 from cave.addvideo import AddVideo
+from cave.adddb import AddDatabase
+from cave.newdbname import AddDatabaseName
 from cave.editvideo import EditVideo
-from cave.addtag import AddTag
 from cave.testwindow import TestWindow
 from cave.gui.filepicker import FilePicker, FileTypes
 from cave.libcave.database import Database
 from cave.statusbarmanager import StatusBarManager
 from misc.log import init_logging, with_logging
 from cave.libcave.videotreemanager import VideoTreeManager
+from cave.libcave.dbtreemanager import DatabaseTreeManager
 from cave.libcave.video import Video
-from cave.libcave.tag import Tag
 from cave.timeline import Timeline
 from cave.videobox import VideoBox
 from cave.videoplayer import VideoPlayer
@@ -33,8 +32,6 @@ from cave.videopreviewmanager import VideoPreviewManager
 from cave.libcave.videoutils import hash_video
 
 from misc.utils import register_exit_signals
-
-load_tag_modules()
 
 __location__ = os.path.dirname(os.path.realpath(os.path.abspath(sys.argv[0])))
 
@@ -79,7 +76,57 @@ class Cave:
                 f.write("%s" % self.db.get_filename())
                 f.close()
 
+    def db_add(self, event):
+        """
+        Invoked when +DB is clicked.
+        Adds a database to the list of loaded directories.
+        """
+
+        self.logger.info("Database add clicked")
+        ad = AddDatabase(self.db_add_callback, default_folder=self.db.root_dir)
+        pass
+
+    def db_add_callback(self, ad):
+        """
+        Invoked when OK is selected after the AddDatabase file.
+        Adds a database to the directory.
+        """
+        self.logger.info("Database add callback invoked")
+
+        json_file_path = self.database_tree_manager.database_json_path
+
+        # Add database to the records
+        self.database_tree_manager.records[ad.db_name] = ad.db_filename
+        with open(json_file_path, 'w') as file:
+            json.dump(self.database_tree_manager.records, file, indent=2)
+        self.database_tree_manager.redraw()
+
+    def db_remove(self, event):
+        """
+        Invoked when -DB is clicked.
+        Removes a database to the list of loaded directories.
+        """
+
+        self.logger.info("Database remove clicked")
+
+        db_select = self.database_tree_manager.get_selection(get_name=True)
+        if db_select is None:
+            self.logger.error("Removal failed. No video was selected.")
+            self.statusbar.display("No video selected", 3)
+        else:
+            self.database_tree_manager.records.pop(db_select)
+            json_file_path = self.database_tree_manager.database_json_path
+            with open(json_file_path, 'w') as file:
+                json.dump(self.database_tree_manager.records, file, indent=2)
+            self.database_tree_manager.redraw()
+        pass
+
     def database_add(self, event):
+        """
+        Invoked when +Video is clicked.
+        Adds a video to the currently selected database.
+        """
+
         #Launch DB add window
         self.logger.debug("Database add clicked")
         if self.db is None:
@@ -91,6 +138,11 @@ class Cave:
 
     #Add Video callback; compute paths and add video to database
     def database_add_callback(self, av):
+        """
+        Invoked when OK is selected after the AddVideo file.
+        Adds a video to the currently selected database.
+        """
+
         self.logger.debug("Callback executed")
 
         if av.log_filename is None:
@@ -109,30 +161,10 @@ class Cave:
         self.statusbar.display("Added video \"%s\"" % vid.name, 3)
         self.video_tree_manager.redraw()
 
-
-    def tag_add(self, event):
-        vid_target = self.video_tree_manager.get_selected_video()
-        if vid_target is None:
-            self.logger.warning("No video selected to make new tag")
-            self.statusbar.display("No video selected for making a tag", 3)
-            return
-        self.logger.debug("Tag add clicked")
-        a = AddTag(self.tag_add_callback)
-        a.vid_target = vid_target
-
-    def tag_add_callback(self, at):
-        vid_target = at.vid_target
-        tag = Tag.tag_new(vid=vid_target.id, name=at.tag_name, mission_element=at.mission_element, tag_type=at.tag_type)
-        self.logger.info("Added tag \"%s\" (tag id %d) to video id %d" % (tag.name, tag.id, tag.vid))
-        self.statusbar.display("Added tag \"%s\"" % tag.name, 3)
-        self.video_tree_manager.redraw()
-        self.video_tree_manager.set_selected_tag(tag)
-
     #Load the database from a given path
     def load_db(self, path):
         if path is None:
             return
-
         self.db = Database(path)
         if self.db is not None and self.db.error:
             self.log.error("Failed to load database %s" % path)
@@ -162,34 +194,41 @@ class Cave:
             self.logger.info("Removed video \"%s\" from the database." % vid_select.name)
             self.statusbar.display("Removed video \"%s\"" % vid_select.name, 3)
 
-    def tag_remove(self, event):
-        #Remove selected tag from the database
-        tag_select = self.video_tree_manager.get_selected_tag()
-        if tag_select is None:
-            self.logger.error("Removal failed. No tag was selected.")
-            self.statusbar.display("No tag selected",3)
-        else:
-            tag_select.remove()
-            self.video_tree_manager.redraw()
-            self.logger.info("Removed tag \"%s\" from the database." % tag_select.name)
-            self.statusbar.display("Removed tag \"%s\"" % tag_select.name, 3)
-
     def database_open(self, event):
         self.load_db(FilePicker.open(title="Open an existing CAVE database", type_list=[FileTypes.CDB]))
 
     def database_new(self, event):
-        self.load_db(FilePicker.new(title="Select a location to save a new cave database", default_filename="database.cdb", type_list=[FileTypes.CDB]))
+        path = FilePicker.new(title="Select a location to save a new cave database", default_filename="database.cdb", type_list=[FileTypes.CDB])
+        self.load_db(path)
+        if path is not None:
+            adn = AddDatabaseName(self.dummy, path=path, default_folder=self.db.root_dir)
+        
+    # THIS IS SO JANK
+    def dummy(self, av):
+        print("-----")
+        print(av)
+
+        # Add database to the records
+        name = av.db_name
+        self.database_tree_manager.records[name] = av.path
+        json_file_path = self.database_tree_manager.database_json_path
+        with open(json_file_path, 'w') as file:
+            json.dump(self.database_tree_manager.records, file, indent=2)
+        self.database_tree_manager.redraw()
+        pass
 
     def videotree_selected(self, vt):
         if self.init:
             self.video_tree_manager.on_select(vt)
             self.timeline.enabled = True
 
-    def tag_enable_clicked(self, vt):
-        self.video_tree_manager.set_tag_vision_enabled(self.enable_button.get_active())
-
-    def tag_toggle_all_clicked(self, vt):
-        self.video_tree_manager.toggle_all_tags()
+    def databasetree_selected(self, vt):
+        if self.init:
+            self.database_tree_manager.on_select(vt)
+            v = self.database_tree_manager.get_selection()
+            self.load_db(v)
+            # print(v)
+            
 
     def play_button_toggled(self, vt):
         if self.manual_play_reset:
@@ -203,7 +242,7 @@ class Cave:
             self.manual_play_reset = True
             self.play_button.set_active(not self.play_button.get_active())
         else:
-            self.video_player.set_play(self.play_button.get_active())
+            self.video_player.set_play(self.builder.get_object("exportCheck").get_active(), self.play_button.get_active())
 
     def loop_button_toggled(self, event):
         self.timeline.set_loop_enabled(self.loop_button.get_active())
@@ -211,6 +250,8 @@ class Cave:
     def frames_to_vision_checked(self, event):
         button = self.builder.get_object("exportCheck")
         self.video_box.export_to_vision(button.get_active())
+        if self.video_tree_manager.get_selected_video() is not None:
+            self.video_player.set_play(self.builder.get_object("exportCheck").get_active(), self.play_button.get_active())
 
     def frames_to_log_checked(self, event):
         button = self.builder.get_object("logCheck")
@@ -233,12 +274,6 @@ class Cave:
         button = self.builder.get_object("previewCheck")
         self.video_preview_manager.set_enabled(button.get_active())
         self.timeline.queue_draw()
-
-    def clear_tag(self, event):
-        tag = self.video_tree_manager.get_selected_tag()
-        if tag is not None:
-            tag.remove_frame_info(self.timeline.cursor)
-            self.increment_frame_loop(1) #refresh
 
     def edit_video(self, event):
         self.logger.debug("Edit video clicked")
@@ -329,6 +364,11 @@ class Cave:
 
         #Set up the filter box
         self.filter_box = self.builder.get_object("filterEntry")
+
+        # Set up the database
+        self.database_tree = self.builder.get_object("databaseTreeView")
+        self.database_tree_manager = DatabaseTreeManager(self.database_tree, self)
+        self.database_tree_manager.redraw()
 
         #Create & link video display widget
         self.video_box_container = self.builder.get_object("videoBox")

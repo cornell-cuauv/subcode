@@ -1,3 +1,4 @@
 old.*
 *.sw[abcdefghijklmnopqrstuvqxyz]
 *~
+libcave/databases.json
