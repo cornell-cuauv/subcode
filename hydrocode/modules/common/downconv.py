@@ -1,4 +1,4 @@
-from common import filt, mix, pack
+from hydrocode.modules.common import filt, mix, pack
 
 class Downconverter:
     """IQ Downconverter with optional decimation.

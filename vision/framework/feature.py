@@ -12,6 +12,16 @@ def outer_contours(mat):
     return contours
 
 
+def all_contours(mat):
+    """
+    Extracts all contours in the image, not just outermost
+    :param mat: input image; the image should be grayscale
+    :return: contours in the image
+    """
+    contours, _ = cv2.findContours(mat, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    return contours
+
+
 def canny(mat, lower, upper):
     """
     Performs Canny edge detection on the image using the given thresholds for hysteresis.

@@ -72,7 +72,7 @@ rm -rf /build_tmp_sloth
 mkdir -p /tmp/ueye
 pushd /tmp/ueye
 
-apt-get -y install libqtgui4
+apt-get -y install libqt5gui5 
 
 if [[ "$(uname -m)" == "x86_64" ]]; then
     #wget https://cuauv.org/nix-res-private/uEye-Linux-4.90.06-64.tgz
@@ -91,16 +91,24 @@ mkdir -p /usr/local/share/ueye/ueyeethd/
 cat > /usr/local/share/ueye/ueyeethd/ueyeethd.conf << 'EOF'
 ;Ni1
 [Parameters]
- Interfaces = camc camp
+ Interfaces = eth0
 
-[camc]
- Port_Base = 50000
-
-[camp]
+[eth0]
  Port_Base = 50000
 EOF
 
 # **************** git-lfs ****************
 
+# ubuntu 20/22 cannot install newer versions of git-lfs, this command makes it possible
+curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
 apt-get -y install git-lfs
 git lfs install
+
+# **************** vscode online **********
+curl -fsSL https://code-server.dev/install.sh | sh
+
+# *************** ZED *********************
+
+cd /usr/local/zed/resources/
+curl -O https://resources.cuauv.org/neural_depth_3.6.model
+curl -O https://resources.cuauv.org/.neural_depth_3.6.model_optimized-fbcbl-1-87-12020-8904-8602-8-128-4096-48-164-512-8-1-0e53-512

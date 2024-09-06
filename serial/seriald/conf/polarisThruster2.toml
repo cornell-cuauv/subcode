@@ -1,0 +1,15 @@
+[devices.thruster_board_2.vars]
+Thruster5PwmVal = "motor_desires.aft_starboard"
+Thruster6PwmVal = "motor_desires.port"
+Thruster7PwmVal = "motor_desires.aft_port"
+Thruster8PwmVal = "motor_desires.fore_port"
+
+Thruster5PwmReadback = "ramp_status.aft_starboard_ramp"
+Thruster6PwmReadback = "ramp_status.port_ramp"
+Thruster7PwmReadback = "ramp_status.aft_port_ramp"
+Thruster8PwmReadback = "ramp_status.fore_port_ramp"
+
+RampPeriod = "ramp.ramp_period"
+RampInc = "ramp.ramp_inc"
+RampDec = "ramp.ramp_dec"
+

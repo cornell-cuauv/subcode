@@ -9,6 +9,7 @@ from tornado.platform.asyncio import AnyThreadEventLoopPolicy
 
 from handlers.index import IndexHandler
 from handlers.login import LoginHandler
+from handlers.controlpoint import ControlpointHandler
 from handlers.drive import DriveHandler, ZeroHandler, MovementHandler, VelocityHandler
 from handlers.test import TestHandler, TestRunHandler, ThrusterList, ActuatorList
 from handlers.shm import SHMHandler, SHMSocketHandler
@@ -32,6 +33,7 @@ def make_app(debug=False):
         url(r"/", IndexHandler, name="index"),
         url(r"/login", LoginHandler, name="login"),
         url(r"/deadman", DeadmanHandler, name="deadman"),
+        url(r"/controlpoint/(relative|absolute)/([^/]+)/([^/]+)", ControlpointHandler, name="controlpoint"),
         url(r"/drive", DriveHandler, name="drive"),
         url(r"/drive/(zero|0)", ZeroHandler, name="drive_zero"),
         url(r"/drive/movement/([x|y|z|h])/(-?\d*\.?\d+)", MovementHandler, name="drive_movement"),

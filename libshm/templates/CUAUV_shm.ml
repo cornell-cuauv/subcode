@@ -2,7 +2,7 @@ open Ctypes
 open Foreign
 open Lwt
 
-let libshm_so = Filename.concat (Sys.getenv "CUAUV_SOFTWARE" ^ Filename.dir_sep ^ "link-stage") "libshm.so"
+let libshm_so = Filename.concat (Sys.getenv "CUAUV_SOFTWARE" ^ Filename.dir_sep ^ "link-stage") "libauvshm.so"
 let _ = Dl.dlopen ~filename:libshm_so ~flags:[Dl.RTLD_LAZY; Dl.RTLD_GLOBAL]
 
 module Watcher = struct

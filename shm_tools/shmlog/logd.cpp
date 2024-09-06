@@ -88,7 +88,7 @@ int main(int argc, char *argv[]){
 
     static char timeBuf[256];
     static char timeBufDir[65];
-    static char timeBufFile[65];
+    static char timeBufFile[128];
     static char timeBufFileTime[65];
 
     strftime( timeBuf, 255, "%a %b %d %Y %X", timeinfo );

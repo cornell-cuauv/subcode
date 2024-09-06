@@ -1,7 +1,6 @@
 import React from "react";
 import {Row, Col, PageHeader, Button} from "react-bootstrap";
 import keydown, { Keys } from 'react-keydown';
-import { CUAUV_VEHICLE, CUAUV_LOCALE } from '../framework/environment.jsx';
 import { SHMValuesTable } from '../framework/shm-table.jsx';
 
 const { up, down, left, right, space, z } = Keys;

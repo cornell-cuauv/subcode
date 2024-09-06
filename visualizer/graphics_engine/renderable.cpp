@@ -136,7 +136,7 @@ Renderable get_points_renderable(Renderer *renderer, int n_points) {
   renderable.add_attribute("in_position", verts.data(), n_points, 3, GL_DYNAMIC_DRAW);
   renderable.add_attribute("in_color", colors.data(), n_points, 3, GL_DYNAMIC_DRAW);
   renderable.add_index_buffer(inds.data(), n_points);
-  return std::move(renderable);
+  return renderable; // updated
 }
 
 Renderable get_line_renderable(Renderer *renderer) {
@@ -149,7 +149,7 @@ Renderable get_line_renderable(Renderer *renderer) {
   renderable.add_attribute("in_position", (GLfloat *)verts, 2, 3, GL_DYNAMIC_DRAW);
   renderable.add_attribute("in_color", colors, 2, 3);
   renderable.add_index_buffer(inds, 2);
-  return std::move(renderable);
+  return renderable;
 }
 
 // Axis renderable.
@@ -165,7 +165,7 @@ Renderable get_axes_renderable(Renderer *renderer) {
   renderable.add_attribute("in_position", (GLfloat *)verts, 8, 3);
   renderable.add_attribute("in_color", colors, 8, 3);
   renderable.add_index_buffer(inds, 12);
-  return std::move(renderable);
+  return renderable;
 }
 
 // OBJ mesh renderable.
@@ -199,5 +199,5 @@ Renderable get_renderable(Mesh *mesh, Renderer *renderer) {
     fprintf(stderr, "WARNING: Failed to initialize Renderable material.\n");
   }
 
-  return std::move(renderable);
+  return renderable;
 }

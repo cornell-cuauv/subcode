@@ -16,7 +16,8 @@ class ConnectionsPanel(Panel):
     def get_cols_lines(self, width, height):
         with open('/home/software/cuauv/workspaces/worktrees/master/control/control_helm2/activity/activity.csv', 'r') as f:
             lines = f.readlines()
-        return [[line.split(',')[0] for line in filter(lambda x: time.time() - float(x.split(',')[1]) > self.min_recency and time.time() - float(x.split(',')[1]) <= self.max_recency, lines)]]
+        return []
+        #return [[line.split(',')[0] for line in filter(lambda x: time.time() - float(x.split(',')[1]) > self.min_recency and time.time() - float(x.split(',')[1]) <= self.max_recency, lines)]]
 
 # A panel which displays up to one name from the mission file
 class MissionPanel(Panel):

@@ -1,7 +1,6 @@
 import React from "react";
 import {Grid, Row, Col, PageHeader, Button} from "react-bootstrap";
 import keydown, { Keys } from 'react-keydown';
-import {CUAUV_VEHICLE, CUAUV_LOCALE} from '../framework/environment.jsx';
 
 const { space } = Keys;
 

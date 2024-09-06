@@ -5,7 +5,7 @@ import shm
 from conf.vehicle import dvl_scaling_factor, dvl_present
 from auv_math import math_utils
 from mission.framework.movement import heading, velocity_x_for_secs
-from mission.framework.position import move_x
+from mission.framework.position import move_x, go_to_position
 from mission.constants.sub import Tolerance
 
 # The list of elements tracked by the dead reckoning system, deduced from the
@@ -17,7 +17,7 @@ for var in vars(shm.dead_reckoning_virtual).keys():
     if var.endswith('_in_pool'):
         elements.append(var[:-8])
 
-def transform_coords_to_real_space():
+def transform_coords_to_real_space(initial_real_heading : float = None):
     """Transform coordinates from the virtual to the real reference frame.
 
     The webgui mapper tool uses coordinates in a pool-aligned reference frame,
@@ -36,6 +36,12 @@ def transform_coords_to_real_space():
 
     Only after calling this function should any of the other functions in this
     file be used.
+
+    Note: If initial_real_heading is provided, this function calculates element
+    positions and orientations relative to that instead of to the sub's current
+    heading. This allows the master mission to save the sub's reference heading
+    before the sub is put into the water, but still use the sub's in-water
+    position.
     """
     virtual = shm.dead_reckoning_virtual.get()
     real = shm.dead_reckoning_real.get()
@@ -45,6 +51,10 @@ def transform_coords_to_real_space():
         print("Error: It seems no results from the dead reckoning mapper tool"
                 " have been saved to SHM. (Proceeding, but unexpected"
                 " behavior will surely ensue.)")
+    
+    if initial_real_heading is None:
+        initial_real_heading = kalman.heading
+
     for element in elements:
         if not getattr(virtual, element + "_in_pool"):
             setattr(real, element + "_in_pool", 0)
@@ -71,7 +81,7 @@ def transform_coords_to_real_space():
         # frame and the same heading according to the real reference frame.
         # This is where we have to assume that the sub is already facing in the
         # correct direction in the pool.
-        virtual_real_heading_offset = kalman.heading - virtual.sub_heading
+        virtual_real_heading_offset = initial_real_heading - virtual.sub_heading
 
         # The heading according to the virtual reference frame at which the sub
         # would have to travel to reach the element.
@@ -193,9 +203,12 @@ async def go_to_element(target: str, stop_dist: float = 0,
         print("Error: go_to_element requires the DVL.\n(Skipping task. Use"
                 " go_from_element_to_element instead.)")
         return False
-    await heading(heading_to_element(target))
-    distance_to_travel = distance_to_element(target) - stop_dist
-    return await move_x(distance_to_travel, tolerance=tolerance)
+    north, east = get_element_position(target)
+    heading = heading_to_element(target)
+    return await go_to_position(north, east, heading)
+    # await heading(heading_to_element(target))
+    # distance_to_travel = distance_to_element(target) - stop_dist
+    # return await move_x(distance_to_travel, tolerance=tolerance)
 
 async def go_from_element_to_element(current: str, target: str,
         speed: float, stop_dist: float = 0):

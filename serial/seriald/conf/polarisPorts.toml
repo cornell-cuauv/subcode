@@ -1,0 +1,10 @@
+ports = [
+    "/dev/serial/by-id/usb-CUAUV_Polaris_FTDI3_AUV-POLARIS3-if01-port0", # merge
+    "/dev/serial/by-id/usb-CUAUV_Polaris_FTDI3_AUV-POLARIS3-if03-port0", # led
+    "/dev/serial/by-id/usb-CUAUV_Polaris_FTDI1_AUV-POLARIS1-if00-port0", # sensor
+    "/dev/serial/by-id/usb-CUAUV_Polaris_FTDI1_AUV-POLARIS1-if01-port0", # actuators
+    "/dev/serial/by-id/usb-CUAUV_Polaris_FTDI1_AUV-POLARIS1-if02-port0", # pd
+    "/dev/serial/by-id/usb-CUAUV_Polaris_FTDI2_AUV-POLARIS2-if02-port0", # thruster 1
+    "/dev/serial/by-id/usb-CUAUV_Polaris_FTDI2_AUV-POLARIS2-if01-port0", # thruster 2
+    "/dev/serial/by-id/usb-CUAUV_Polaris_FTDI4_AUV-POLARIS4-if00-port0", # transmit
+]

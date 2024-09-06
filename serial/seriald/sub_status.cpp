@@ -32,7 +32,7 @@ SubStatus::SubStatus(const std::shared_ptr<Config> config):
 
 		try {
 			v = m_connectedDevices->var(dev.first);
-		} catch (std::invalid_argument e) {
+		} catch (const std::invalid_argument& e) {
 			throw std::runtime_error("Device '{}' not found in shm group '{}'"_format(
 					dev.first, m_connectedDevices->name()));
 		}

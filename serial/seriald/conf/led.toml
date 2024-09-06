@@ -1,9 +1,27 @@
 [devices.led.vars]
-LightShowWriteVar = "leds_internal.light_show"
-# Green and blue are flipped
-PortColorRedWriteVar = "leds_internal.port_color_red"
-PortColorGreenWriteVar = "leds_internal.port_color_blue"
-PortColorBlueWriteVar = "leds_internal.port_color_green"
-StarboardColorRedWriteVar = "leds_internal.starboard_color_red"
-StarboardColorGreenWriteVar = "leds_internal.starboard_color_blue"
-StarboardColorBlueWriteVar = "leds_internal.starboard_color_green"
+LED_MODE = "leds.mode"
+SECTION = "leds.section"
+PIXEL_0R = "leds.pixel_0r"
+PIXEL_0G = "leds.pixel_0g"
+PIXEL_0B = "leds.pixel_0b"
+PIXEL_1R = "leds.pixel_1r"
+PIXEL_1G = "leds.pixel_1g"
+PIXEL_1B = "leds.pixel_1b"
+PIXEL_2R = "leds.pixel_2r"
+PIXEL_2G = "leds.pixel_2g"
+PIXEL_2B = "leds.pixel_2b"
+PIXEL_3R = "leds.pixel_3r"
+PIXEL_3G = "leds.pixel_3g"
+PIXEL_3B = "leds.pixel_3b"
+PIXEL_4R = "leds.pixel_4r"
+PIXEL_4G = "leds.pixel_4g"
+PIXEL_4B = "leds.pixel_4b"
+PIXEL_5R = "leds.pixel_5r"
+PIXEL_5G = "leds.pixel_5g"
+PIXEL_5B = "leds.pixel_4b"
+DOWN_LED = "leds.down_led"
+
+[devices.led.low_priority]
+interval_ms = "leds_internal.interval_ms"
+
+

@@ -1,0 +1,259 @@
+
+# The below are highly dependent on trim
+center_of_buoyancy = [-0.013897334, 0.002543965, -0.020125111]
+buoyancy_force = 241.0 # green: 215, black: 187 FUDGED to assume postively buoyant sub
+gravity_force = 200.2
+
+# only used for partially submerged buoyancy force calculation, non critical
+sub_height = 0.50
+
+# distance from dvl beam to axis of rotation used to offset velocity
+# to account for misaligned reference point and dvl position
+# for minisub, probably doesn't matter
+dvl_offset = 0.0
+# If the dvl is reversed. Does not matter if dvl_present is false.
+dvl_reversed = false
+dvl_scaling_factor = 1 # does not matter on minisub
+
+# Moments of inertia (kg * m^2) from solidworks.
+# In the model frame.
+I = [[ 0.5423,  0.0733, -0.0274],
+     [-0.0733,  1.5777, -0.0041],
+     [-0.0274, -0.0041,  1.3106]]
+
+# Ib and body_rot calculated using auv-body-frame-calc.
+Ib = [0.60389, 0.771048, 1.02306]
+# A normalized quaternion representing rotation from the body to the model frame.
+btom_rq = [-0.0211005, -0.0803856, -0.0130816, 0.996455]
+cwhe_axes = [69.35220358000004, 69.35220358, 106.68669116000001, 23.593943234140003, 27.380105203528004, 36.58328738845]
+thruster_minimums = [-64.54730606800004, -64.547306068, -112.09220086100001, -23.742895057012003, -27.504311804213202, -36.561665349646006]
+thruster_maximums = [74.15710109200003, 74.15710109199999, 101.28118145900001, 23.444991411268003, 27.2558986028428, 36.604909427254]
+
+quaternion_filtering = 1
+dvl_present = false
+gx_hpr = [180.0, 0.0, 0.0] # Note: You probably want to re-tare the GX rather than use this offset
+
+
+[[thrusters]]
+name = "fore_port"
+type = "T200"
+pos = [0.205, -0.233, 0.005]
+heading_pitch = [0.0, 90.0]
+reversed = true
+broken = false
+
+[[thrusters]]
+name = "port"
+type = "T200"
+pos = [0.029, -0.233, -0.073]
+heading_pitch = [0.0, 0.0]
+reversed = false
+broken = false
+
+[[thrusters]]
+name = "aft_port"
+type = "T200"
+pos = [-0.176, -0.233, 0.005]
+heading_pitch = [0.0, 90.0]
+reversed = true
+broken = false
+
+[[thrusters]]
+name = "sway_aft"
+type = "T200"
+pos = [-0.394, -0.011, -0.003]
+heading_pitch = [90.0, 0.0]
+reversed = false
+broken = false
+
+[[thrusters]]
+name = "aft_starboard"
+type = "T200"
+pos = [-0.176, 0.233, 0.005]
+heading_pitch = [0.0, 90.0]
+reversed = false
+broken = false
+
+[[thrusters]]
+name = "starboard"
+type = "T200"
+pos = [0.029, 0.233, -0.073]
+heading_pitch = [0.0, 0.0]
+reversed = true
+broken = false
+
+[[thrusters]]
+name = "fore_starboard"
+type = "T200"
+pos = [0.205, 0.233, 0.005]
+heading_pitch = [0.0, 90.0]
+reversed = true
+broken = false
+
+[[thrusters]]
+name = "sway_fore"
+type = "T200"
+pos = [0.423, -0.015, -0.003]
+heading_pitch = [90.0, 0.0]
+reversed = true
+broken = false
+
+
+[control_settings]
+depth   = { kP = 1.70, kI = 0.01, kD = 1.50, rD = 10.0, ramp_speed = 0.50 }
+pitch   = { kP = 0.07, kI = 0.20, kD = 14.00, rD = 30.0 }
+heading = { kP = 0.40, kI = 0.05, kD = 29.00, rD = 20.0 }
+velx    = { kP = 5.00, kI = 0.00, kD = 0.00, rD = 0.1547 }
+vely    = { kP = 5.00, kI = 0.00, kD = 0.00, rD = 0.5 }
+roll    = { kP = 0.14, kI = 0.01, kD = 10.00, rD = 30.0 }
+quat    = { kP = 30.0, kI = 0.00, kD = 4.00 }
+
+
+# horizontal, produces drag when diving and pitching
+[[drag_planes]]
+pos = [0.25, 0.0, 0.0]
+normal = [0.0, 0.0, 1.0]
+cD = 2.0
+area = 0.0
+
+[[drag_planes]]
+pos = [-1.0, 0.0, 0.0]
+normal = [0.0, 0.0, 1.0]
+cD = 2.0
+area = 0.0
+
+# fore sway, produces drag when swaying and rolling
+[[drag_planes]]
+pos = [0.0, 0.0, -0.10]
+normal = [0.0, 1.0, 0.0]
+cD = 2.0
+area = 0.0
+
+# aft sway
+[[drag_planes]]
+pos = [0.0, 0.0, 0.10]
+normal = [0.0, 1.0, 0.0]
+cD = 2.0
+area = 0.0
+
+# vertical, produces drag when going forward and yawing
+[[drag_planes]]
+pos = [0.0, -0.25, 0.0]
+normal = [1.0, 0.0, 0.0]
+cD = 2.0
+area = 0.0
+
+[[drag_planes]]
+pos = [0.0, 0.25, 0.0]
+normal = [1.0, 0.0, 0.0]
+cD = 2.0
+area = 0.0
+
+
+# horizontal, produces drag when diving and pitching
+[[uncompensated_drag_planes]]
+pos = [0.25, 0.0, 0.0]
+normal = [0.0, 0.0, 1.0]
+cD = 2.0
+area = 0.0
+
+[[uncompensated_drag_planes]]
+pos = [-0.25, 0.0, 0.0]
+normal = [0.0, 0.0, 1.0]
+cD = 2.0
+area = 0.0
+
+
+[sensors]
+heading = "gx4.heading"
+pitch = "gx4.pitch"
+roll = "gx4.roll"
+
+heading_rate = "gx4.ratez"
+pitch_rate = "gx4.ratey"
+roll_rate = "gx4.ratex"
+
+velx = "kalman.velx"
+vely = "kalman.vely"
+velz = "kalman.depth_rate"
+
+accelx = "gx4.accelx" 
+accely = "gx4.accely"
+accelz = "gx4.accelz" 
+
+depth = "depth.depth"
+depth_offset = "depth.offset_minisub"
+quaternion = "gx4"
+
+[measurement_error]
+velSigma = 0.005
+depthSigma = 1.0
+accSigma = 1000.0
+
+[components]
+port_forecam = [0.0, 0.0, 0.0]
+starboard_forecam = [0.0, 0.0, 0.0]
+downcam = [0.0, 0.0, 0.0]
+sonar = [0.0, 0.0, 0.0]
+
+
+[cameras.forward]
+type = "ueye"
+id = 3
+camera_name = "ueye_forward_ajax" # for configuration
+width = 640
+height = 512
+position = [0.48, 0.15, -0.08]
+orientation_hpr = [0.0, 0.0, 0.0]
+rotate180=false
+
+# The optical sensor size of the CAMERA, width and height in mm
+# This should typically be in the same ratio as the resolution, above.
+sensor_size_wh_mm = [7.2, 5.4]
+# The focal length of the LENS in mm
+focal_length_mm = 3.6
+
+[cameras.downward]
+type = "ueye"
+id = 2
+camera_name = "ueye_downward_ajax" # for configuration
+width = 640
+height = 512
+rotate180 = true
+position = [0.0, 0.0, 0.15]
+orientation_hpr = [0.0, -90.0, 0.0]
+
+# The optical sensor size of the CAMERA, width and height in mm
+# This should typically be in the same ratio as the resolution, above.
+sensor_size_wh_mm = [4.76, 3.57]
+focal_length_mm = 3.5
+
+
+[vision_modules.record]
+capture_sources = ["forward", "downward"]
+
+[vision_modules.poster]
+capture_sources = ["forward", "downward"]
+
+[vision_modules.auto_calibrate]
+capture_sources = ["default"]
+
+[vision_modules.gate_2023]
+capture_sources = ["forward"]
+
+[vision_modules.path_2023]
+capture_sources = ["downward"]
+
+[vision_modules.buoy_2023]
+capture_sources = ["forward"]
+
+[vision_modules.buoy_scout_2023]
+capture_sources = ["forward"]
+
+[vision_modules.buoy_infantry_2023]
+capture_sources = ["forward"]
+
+
+[actuators]
+left_marker = 2
+right_marker = 2

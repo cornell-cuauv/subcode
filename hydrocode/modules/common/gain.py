@@ -3,12 +3,12 @@ try:
 except ImportError:
     import numpy as xp
 
-from common import const, gainplot, pack
-from common.hardware import HydrophonesSection
+from hydrocode.modules.common import const, gainplot, pack
+from hydrocode.modules.common.hardware import HydrophonesSection
 try:
     import shm
 except ImportError:
-    from common import shm
+    from hydrocode.modules.common import shm
 
 class Controller:
     """Gain controller specific to our hardware and tasks.

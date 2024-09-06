@@ -10,7 +10,7 @@ from matplotlib import pyplot
 import numpy as np
 from scipy.interpolate import interp1d
 
-from common import crop, plot
+from hydrocode.modules.common import crop, plot
 import common.const
 import pinger.const
 

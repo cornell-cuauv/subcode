@@ -1,7 +1,7 @@
 import math
 
-from common import const
-from pinger import headingplot, scatterplot
+from hydrocode.modules.common import const
+from hydrocode.modules.pinger import headingplot, scatterplot
 
 class AnglesMLE:
     """Obtains relative heading/elevation angles from phase differences.
@@ -83,5 +83,7 @@ def wrap_angle(theta):
     :param theta: array of angles to wrap (rad)
     :return: wrapped angles (rad)
     """
-
-    return (theta + math.pi) % (2 * math.pi) - math.pi
+    PI = 3.14159265358979323846
+    theta = (theta + 3 * PI) % (2 * PI) - PI
+    theta = (theta + 3 * PI) % (2 * PI) - PI
+    return (theta + 3 * PI) % (2 * PI) - PI

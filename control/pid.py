@@ -1,12 +1,15 @@
-import operator
+import os
 import math
 import time
+import operator
 
 import numpy as np
 
+from functools import reduce
 from auv_math.quat import Quaternion
 from auv_python_helpers.angles import heading_sub_degrees
 
+import shm
 from shm import kalman, dvl, desires, settings_control, \
                 control_internal_depth, control_internal_heading, \
                 control_internal_pitch, control_internal_velx, \
@@ -16,6 +19,10 @@ from shm import kalman, dvl, desires, settings_control, \
                 control_locked
 
 from conf.vehicle import sensors
+
+rec_get_attr = lambda s: \
+                 reduce(lambda acc, e: getattr(acc, e),
+                        s.split('.'), shm)
 
 class PID:
   """

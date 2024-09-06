@@ -1,0 +1,22 @@
+[devices.PODA.vars]
+
+a_tos_voltage_V = "pod_a.tos_voltage_v"
+a_current_A = "pod_a.current_a"
+
+a_rem_cap_pct = "pod_a.rem_cap_pct"
+a_rem_cap_mAh = "pod_a.rem_cap_mah"
+
+a_batt_temp_C = "pod_a.batt_temp_c"
+a_fet_temp_C = "pod_a.fet_temp_c"
+
+a_time_to_full_mins = "pod_a.time_to_full_mins"
+a_time_to_empty_mins = "pod_a.time_to_empty_mins"
+
+a_safety_status_high_BM = "pod_a.safety_status_high_bm"
+a_safety_status_low_BM = "pod_a.safety_status_low_bm"
+
+a_terminate_charge_alarm = "pod_a.terminate_charge_alarm"
+a_terminate_discharge_alarm = "pod_a.terminate_discharge_alarm"
+
+a_remaining_capacity_alarm = "pod_a.remaining_capacity_alarm"
+a_remaining_time_alarm = "pod_a.remaining_time_alarm"

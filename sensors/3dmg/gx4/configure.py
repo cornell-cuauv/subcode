@@ -21,7 +21,7 @@ build.build_shared('gx4sdk',
 
 build.build_cmd('auv-3dmgx4d',
                 ['main.cpp'],
-                auv_deps=['shm', 'gx4sdk'],
+                auv_deps=['auvshm', 'gx4sdk'],
                 )
 
 build.build_cmd('auv-3dmgx4-calibrate',

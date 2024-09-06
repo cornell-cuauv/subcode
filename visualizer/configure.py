@@ -42,7 +42,7 @@ build.build_shared('aslam_comm', ['aslam_comm.cpp'], auv_deps=['utils'])
 build.build_cmd('auv-visualizer-nodisplay',
                 ['visualizer.cpp', 'keyboard.cpp', 'point_manager.cpp',
                 'fishbowl_manager.cpp', 'async_manager.cpp'],
-                auv_deps=['shm', 'utils', 'vis',
+                auv_deps=['auvshm', 'utils', 'vis',
                         'fishbowl_comm', 'math', 'quat', 'aslam_comm'],
                 pkg_confs=['gl', 'libconfig++', 'glfw3'], lflags=['-ldl'])
 

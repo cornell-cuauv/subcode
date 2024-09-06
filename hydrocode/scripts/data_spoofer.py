@@ -21,7 +21,7 @@ import numpy as np
 
 sys.path.insert(0, path.join(
     path.dirname(path.dirname(path.realpath(__file__))), 'modules'))
-from common import const
+from hydrocode.modules.common import const
 
 # maximum simulation time (samples), not infinite because the signal is created
 # in memory, then written to disk

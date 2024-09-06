@@ -11,4 +11,4 @@ build.build_cmd('auv-shm',
                     'server.cpp',
                 ],
                 implicit=['libshm/c/checksum.h'],
-                auv_deps=['shm'])
+                auv_deps=['auvshm'])

@@ -81,7 +81,7 @@ def main(args):
 
             # Handle controller enable / disable feature
             if not shm.settings_control.enabled.get() or \
-                   shm.switches.soft_kill.get() or shm.switches.hard_kill.get():
+                   shm.switches.soft_kill.get():
                 # controller is disabled
                 if controller_enabled:
                     set_shm_wrench(shm.control_internal_wrench, [0] * 6)

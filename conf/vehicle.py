@@ -18,9 +18,9 @@ d = None
 VEHICLE = os.getenv("CUAUV_VEHICLE")
 VEHICLE_TYPE = os.getenv("CUAUV_VEHICLE_TYPE")
 
-if VEHICLE is None or not VEHICLE in ["polaris", "ajax"]:
+if VEHICLE is None or not VEHICLE in ["sirius", "polaris"]:
     sys.stderr.write("vehicle.py: CUAUV_VEHICLE must be set "
-                     "to one of { polaris, ajax }.\n")
+                     "to one of { sirius, polaris }.\n")
     sys.exit(1)
 if VEHICLE_TYPE is None or not VEHICLE_TYPE in ["mainsub", "minisub"]:
     sys.stderr.write("vehicle.py: CUAUV_VEHICLE_TYPE must be set "
@@ -56,7 +56,7 @@ if os.getenv('CUAUV_LOCALE') == 'simulator':
 class DragPlane(object):
     def __init__(self, pos, normal, cD, area):
         self.pos = pos
-        self.n = normal
+        self.n= normal
         self.cD = cD
         self.area = area
 
@@ -75,4 +75,4 @@ for dp in toml_drag_planes:
 if 'cameras' not in d:
     log.conf.vehicle(f"WARNING: Vehicle {VEHICLE} is missing camera configuration.", copy_to_stdout=True)
 if 'vision_modules' not in d:
-    logs.conf.vehicle(f"WARNING: Vehicle {VEHICLE} is missing vision module configuration.", copy_to_stdout=True)
+    log.conf.vehicle(f"WARNING: Vehicle {VEHICLE} is missing vision module configuration.", copy_to_stdout=True)

@@ -1,4 +1,5 @@
 import cv2
+import math
 
 
 def draw_circle(mat, center, radius, color=(0, 0, 255), thickness=1):
@@ -66,6 +67,32 @@ def draw_rect(mat, pt1, pt2, color=(0, 0, 255), thickness=1):
     """
     cv2.rectangle(mat, pt1, pt2, color, thickness=thickness)
 
+def draw_rot_rect(mat, center_x, center_y, width, height, angle, color=(0, 0, 255), thickness=1):
+    """
+    Draws a rotated rectangle on the input image. The input image is modified.
+    :param mat: input image
+    :param center_x: x-coordinate of the center of the rectangle
+    :param center_y: y-coordinate of the center of the rectangle
+    :param width: width of the rectangle
+    :param height: height of the rectangle
+    :param angle: rotation angle of the rectangle, in degrees
+    :return: None
+    """
+
+    _angle = angle * math.pi / 180.0
+    b = math.cos(_angle) * 0.5
+    a = math.sin(_angle) * 0.5
+    pt0 = (int(center_x - a * height - b * width),
+           int(center_y + b * height - a * width))
+    pt1 = (int(center_x + a * height - b * width),
+           int(center_y - b * height - a * width))
+    pt2 = (int(2 * center_x - pt0[0]), int(2 * center_y - pt0[1]))
+    pt3 = (int(2 * center_x - pt1[0]), int(2 * center_y - pt1[1]))
+
+    cv2.line(mat, pt0, pt1, color, thickness)
+    cv2.line(mat, pt1, pt2, color, thickness)
+    cv2.line(mat, pt2, pt3, color, thickness)
+    cv2.line(mat, pt3, pt0, color, thickness)
 
 def draw_text(mat, s, origin, scale, color=(0, 0, 255), thickness=1):
     """

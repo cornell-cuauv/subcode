@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
+import asyncio
 from helm_basis import *
 
 import shm
+import shm.debug_name_thrusters
+from control.thrusters import all_thrusters
+
 
 # auv-thruster-helm: Easy controls for changing reversed/broken thruster status in SHM.
 #
@@ -11,12 +15,26 @@ import shm
 #  - display which thruster board and ECE-side variable each thruster is connected to?
 #      (see thruster mapper for how to do this)
 
-BOX_WIDTH = 24
-BOX_HEIGHT = 8
+BOX_WIDTH = 28
+BOX_HEIGHT = 6
 
+TEST_MODE = "run test"
+REVERSED_MODE = "toggle reversed"
+BROKEN_MODE = "toggle broken"
+
+def disable_controller():
+    """Disable the controller and every PID loop."""
+    control = shm.settings_control
+    control.enabled.set(0)
+    control.heading_active.set(0)
+    control.pitch_active.set(0)
+    control.roll_active.set(0)
+    control.velx_active.set(0)
+    control.vely_active.set(0)
+    control.depth_active.set(0)
 
 def build_thruster_helm():
-    thrusters = [name for name, typ in shm.motor_desires._fields]
+    thrusters = [thruster.name for thruster in all_thrusters]
 
     def highlight_shm_if(text, shm_group, shm_var):
         return StyledString.highlight_if(text, getattr(shm_group, shm_var).get())
@@ -28,18 +46,19 @@ def build_thruster_helm():
         nonlocal index
         index += 1
         thruster_index_map[name] = index
-        return str(index) + ": " + name
+        debug_name = vars(shm.debug_name_thrusters)[name].get()
+        return str(index) + ": " + debug_name
 
     def make_thruster_panel(thruster):
         return LineLambdaPanel(
             [
                 lambda: highlight_shm_if("reversed", shm.reversed_thrusters, thruster),
                 lambda: highlight_shm_if("broken", shm.broken_thrusters, thruster),
-                lambda: highlight_shm_if("spinning", shm.motor_desires, thruster),
                 lambda: ("PWM: " + str(getattr(shm.motor_desires, thruster).get())),
             ],
             title=get_index(thruster),
             width=BOX_WIDTH,
+            height=6,
         )
 
     panels = Vbox(
@@ -47,20 +66,15 @@ def build_thruster_helm():
             LineLambdaPanel(
                 [
                     lambda: (
-                        StyledString.highlight_if("SK", shm.switches.soft_kill.get())
-                        + " "
-                        + StyledString.highlight_if("HK", shm.switches.hard_kill.get())
-                        + " "
-                        + StyledString.highlight_if(
+                        StyledString.highlight_if("SK", shm.switches.soft_kill.get()) + " " + 
+                        StyledString.highlight_if("HK", shm.switches.hard_kill.get()) + " " + 
+                        StyledString.highlight_if(
                             "EN", shm.settings_control.enabled.get()
-                        )
-                        + " -- mode: "
-                        + StyledString.highlight_if("reversed", mode == "reversed")
-                        + " {r} / "
-                        + StyledString.highlight_if("broken", mode == "broken")
-                        + " {b} / "
-                        + StyledString.highlight_if("spinning", mode == "spinning")
-                        + " {s}"
+                        ) + 
+                        " -- mode: " + 
+                        StyledString.highlight_if(TEST_MODE, mode == TEST_MODE) + " {t} / " + 
+                        StyledString.highlight_if(REVERSED_MODE, mode == REVERSED_MODE) + " {r} / " + 
+                        StyledString.highlight_if(BROKEN_MODE, mode == BROKEN_MODE) + " {b}"
                     ),
                 ],
                 title=None,
@@ -80,7 +94,7 @@ def build_thruster_helm():
             LineLambdaPanel(
                 [
                     lambda: StyledString(
-                        "Press {{n}} key to toggle [{}] status for thruster {{n}}".format(
+                        "Press {{n}} key to [{}] status for thruster {{n}}".format(
                             mode
                         )
                     )
@@ -114,17 +128,35 @@ def build_thruster_helm():
     def toggle_controller():
         shm.settings_control.enabled.set(not shm.settings_control.enabled.get())
 
-    def toggle_reversed(thruster):
+    async def toggle_reversed(thruster):
         var = getattr(shm.reversed_thrusters, thruster)
         var.set(not var.get())
 
-    def toggle_broken(thruster):
+    async def toggle_broken(thruster):
         var = getattr(shm.broken_thrusters, thruster)
         var.set(not var.get())
 
-    def toggle_spinning(thruster):
-        var = getattr(shm.motor_desires, thruster)
-        var.set(0 if var.get() else 30)
+    async def run_test(thruster):
+        disable_controller()
+
+        thruster_rev = getattr(shm.reversed_thrusters, thruster)
+        thruster_pwm = getattr(shm.motor_desires, thruster)
+
+        test_pwm = 30
+
+        pwms = list(range(0, test_pwm + 1))
+        pwms += reversed(pwms)
+        sleep = 0.5 / len(pwms)
+
+        for pwm in pwms:
+            wait = asyncio.sleep(sleep)
+            if thruster_rev.get():
+                thruster_pwm.set(-pwm)
+            else:
+                thruster_pwm.set(+pwm)
+            await wait
+
+        thruster_pwm.set(0)
 
     # (Nathaniel Navarro): Writes to appropriate <vehicle>.toml file based on environment variables after
     # asking for confirmation. Based on toml reading logic from ../../conf/vehicle.py
@@ -192,43 +224,44 @@ def build_thruster_helm():
 
     # janky way to keep track of state
     # TODO: provide way to access current mode from helm_basis.py
-    mode = "reversed"
+    mode = TEST_MODE
 
     def change_mode(new_mode):
         nonlocal mode
         mode = new_mode
         return mode
 
-    # reversed
-    modal_callbacks["reversed"] = {
-        "b": lambda: change_mode("broken"),
-        "s": lambda: change_mode("spinning"),
+    # testing
+    modal_callbacks[TEST_MODE] = {
+        "r": lambda: change_mode(REVERSED_MODE),
+        "b": lambda: change_mode(BROKEN_MODE),
     }
+
     # another hacky thing
-    modal_callbacks["default"] = modal_callbacks["reversed"]
+    modal_callbacks["default"] = modal_callbacks[TEST_MODE]
+
+    # reversed
+    modal_callbacks[REVERSED_MODE] = {
+        "t": lambda: change_mode(TEST_MODE),
+        "b": lambda: change_mode(BROKEN_MODE),
+    }
 
     # broken
-    modal_callbacks["broken"] = {
-        "r": lambda: change_mode("reversed"),
-        "s": lambda: change_mode("spinning"),
-    }
-
-    # spinning
-    modal_callbacks["spinning"] = {
-        "b": lambda: change_mode("broken"),
-        "r": lambda: change_mode("reversed"),
+    modal_callbacks[BROKEN_MODE] = {
+        "t": lambda: change_mode(TEST_MODE),
+        "r": lambda: change_mode(REVERSED_MODE),
     }
 
     def add_thruster_callbacks(thruster, index):
-        modal_callbacks["default"][str(index)] = lambda: toggle_reversed(thruster)
-        modal_callbacks["broken"][str(index)] = lambda: toggle_broken(thruster)
-        modal_callbacks["spinning"][str(index)] = lambda: toggle_spinning(thruster)
+        modal_callbacks["default"][str(index)] = lambda: asyncio.run(run_test(thruster))
+        modal_callbacks[TEST_MODE][str(index)] = lambda: asyncio.run(run_test(thruster))
+        modal_callbacks[REVERSED_MODE][str(index)] = lambda: asyncio.run(toggle_reversed(thruster))
+        modal_callbacks[BROKEN_MODE][str(index)] = lambda: asyncio.run(toggle_broken(thruster))
 
     for thruster, index in thruster_index_map.items():
         add_thruster_callbacks(thruster, index)
 
     return panels, callbacks, modal_callbacks
-
 
 if __name__ == "__main__":
     start_helm(*build_thruster_helm())

@@ -3,8 +3,10 @@
 
 #include <cctype>
 #include <stdio.h>
+#include <assert.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include "SDK/Include/mip_sdk.h"
 #include "SDK/Include/byteswap_utilities.h"
@@ -16,6 +18,7 @@
 #define DEFAULT_PACKET_TIMEOUT_MS  1000 //milliseconds
 
 #define BAUD_RATE   115200
+#define MAX_BUFFER_SIZE 1024
 
 /*
  * Initializes the GX4 on the provided serial port
@@ -23,17 +26,33 @@
  * Information about the IMU is also printed
  */
 int gx4_common_init(char *serial_port, mip_interface &device_interface) {
+    // check if the file is a symlink (employed by serial under /dev/serial/by-id/...)
+    struct stat stat_status;
+
+    int code = lstat(serial_port, &stat_status);
+    assert(code == 0);
+    char buf[MAX_BUFFER_SIZE]; // file name shouldn't be longer than this
+    if (S_ISLNK(stat_status.st_mode)) {
+        // follow the symlink
+        int link_len = readlink(serial_port, buf, sizeof(buf)-1);
+        assert(link_len != -1);
+        buf[link_len] = '\0';
+        fprintf(stdout, "Followed symlink %s to %s\n", serial_port, buf);
+        serial_port = buf;
+    }
 
     // Copy the "base" path of the serial port (i.e. "/dev/ttyUSB_gemini_" to the
     // SDK interface using an extern string. This horrible hack is necessary since
     // the SDK only takes an integer to represent a serial port (windows-based code,
     // anyone?)
-    char* src = serial_port;;
+
+    char* src = serial_port;
     char* dst = serial_port_prefix;
     while (*src) {
         if (isdigit(*src)) break;
         *dst++ = *src++;
     }
+    //fprintf(stdout, "found port number: %s\n", src);
     uint32_t com_port;
     com_port = atoi(src);
 

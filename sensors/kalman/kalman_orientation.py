@@ -1,6 +1,6 @@
 import pickle
 import os
-import numpy as np
+import cupy as np
 from collections import deque
 import shm
 from settings import dt

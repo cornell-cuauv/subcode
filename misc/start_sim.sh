@@ -6,6 +6,11 @@ if [ -z ${CUAUV_SOFTWARE} ]; then
   exit 1
 fi
 
+if [ "$CUAUV_CONTEXT" != "development" ]; then
+    echo "Environment variable CUAUV_CONTEXT is not set to development (are you on the submarine?). Exiting script."
+    exit 1
+fi
+
 auv-fishbowl &
 fishbowl_pid=$!
 
@@ -25,7 +30,8 @@ sleep 1
 # Unpause the simulator.
 auv-fishbowl-unpause
 
-auv-terminal auv-control-helm -e &
+# auv-terminal auv-control-helm -e &
+
 # TODO gnome-terminal can't be killed because of how it spawns.
 # See misc/auv_terminal.sh
 helm_pid=$!

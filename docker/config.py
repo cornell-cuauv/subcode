@@ -1,6 +1,7 @@
 from pathlib import Path, PurePosixPath
 import os
 import pwd
+import platform
 
 """
 You can override these defaults: create a new file called `user.py` (in this
@@ -24,14 +25,16 @@ def get_user():
    except Exception:
       return ''
 
+machine = platform.machine()
+
 defaults = {
     "WORKSPACE_DIRECTORY": Path("~/cuauv/workspaces").expanduser(),
     "CONTAINER_WORKSPACE_DIRECTORY": PurePosixPath("/home/software/cuauv/workspaces"),
 
-    "DOCKER_REPO": "docker.cuauv.org/cuauv",
+    "DOCKER_REPO": f"docker.cuauv.org/cuauv-20-{machine}",
     "DOCKER_REPO_JETSON": "docker.cuauv.org/cuauv-jetson",
 
-    "GIT_REPO_URL": "ssh://git@gitlab.cuauv.org:2222/software/subcode.git",
+    "GIT_REPO_URL": "git@github.coecis.cornell.edu:CUAUV/subcode.git",
     "BRANCH": "master",
 
     "GROUP_ID": 9999,

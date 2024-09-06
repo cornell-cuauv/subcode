@@ -89,7 +89,8 @@ def run(mission : Coroutine[Any, Any, None], name : str):
         sys.exit(1)
 
     def release_lock():
-        os.rmdir(lock_dir)
+        if os.path.exists(lock_dir):
+            os.rmdir(lock_dir)
         # Inform control helm that the no mission is currently running.
         with open("/home/software/cuauv/workspaces/worktrees/master/control/"
                 "control_helm2/activity/mission.csv", 'w') as f:

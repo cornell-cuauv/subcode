@@ -130,3 +130,10 @@ def translate(mat, x, y):
                             [0, 1, y]])
     return cv2.warpAffine(mat, trans_mat, (mat.shape[1], mat.shape[0]))
 
+def decode_normal(mat):
+    """
+    Converts the normal map back to the original.
+    """
+    img = mat.astype(np.float32)
+    img = (img / 255.0) * 2.0 - 1.0 # reversing transformations from [0, 255] -> [-1, 1].
+    return img

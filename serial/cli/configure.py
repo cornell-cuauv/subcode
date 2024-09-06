@@ -30,6 +30,6 @@ build.build_cmd_with_static('auv-serial',
                     'main.cpp',
                 ],
                 implicit=['serial/cli/program/loader/proto/cpp/AUVFirmware.pb.h'],
-                cflags=['-Wall', '-Wextra', '-Werror', '-Iserial/libserial'],
+                cflags=['-Wall', '-Wextra', '-w', '-pthread', '-lprotobuf', '-lpthread', '-Iserial/libserial'],
                 auv_deps=['auv-serial'],
                 pkg_confs=['ncurses', 'protobuf-lite'])

@@ -16,6 +16,7 @@ DeviceList::DeviceList(const std::shared_ptr<Config> config, std::shared_ptr<Sub
 	// init devices in "ready" state
 	for (auto& dev : config->devices) {
 		m_disabledDevices.emplace(dev.first, std::make_shared<Device>(this, dev.first, dev.second, subStatus));
+		LOG(Log::info, "Disabled device added: {}"_format(dev.first)) // Josh's debugging
 	}
 
 	// init serial ports
@@ -28,7 +29,7 @@ DeviceList::DeviceList(const std::shared_ptr<Config> config, std::shared_ptr<Sub
 
 			m_ports[portName]->start(); // start communicating immediately
 
-		} catch (std::exception e) {
+		} catch (const std::exception& e) {
 			LOG(Log::error, "Could not connect to port '{}'"_format(portName));
 		}
 	}
@@ -55,6 +56,7 @@ std::shared_ptr<DeviceCallbacks> DeviceList::onPortConnect(Manager* port, std::s
 	std::lock_guard<std::recursive_mutex> lock(m_mutex);
 
 	auto devIt = m_disabledDevices.find(deviceInfo->name());
+	LOG(Log::info, "Checking for disabled device: {}"_format(deviceInfo->name())) //Josh's debugging
 	if (devIt == m_disabledDevices.end()) {
 		auto runDevIt = m_runningDevices.find(deviceInfo->name());
 		if (runDevIt != m_runningDevices.end()) {
@@ -72,7 +74,7 @@ std::shared_ptr<DeviceCallbacks> DeviceList::onPortConnect(Manager* port, std::s
 	auto dev = devIt->second;
 	try {
 		dev->start(port, deviceInfo);
-	} catch (std::runtime_error e) {
+	} catch (const std::runtime_error& e) {
 		LOG_DEV(Log::error, devName, port->portName(), "Could not start:\n{}"_format(e.what()));
 		return nullptr;
 	}

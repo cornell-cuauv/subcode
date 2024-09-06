@@ -22,8 +22,9 @@ def _convert_colorspace(conv_type):
 
 
 _conversions = [cv2.COLOR_BGR2LAB, cv2.COLOR_BGR2HSV, cv2.COLOR_BGR2HLS, cv2.COLOR_BGR2YCrCb,
-                cv2.COLOR_BGR2LUV, cv2.COLOR_BGR2GRAY, cv2.COLOR_GRAY2BGR]
-bgr_to_lab, bgr_to_hsv, bgr_to_hls, bgr_to_ycrcb, bgr_to_luv, bgr_to_gray, gray_to_bgr = [_convert_colorspace(c) for c in _conversions]
+                cv2.COLOR_BGR2LUV, cv2.COLOR_BGR2GRAY, cv2.COLOR_GRAY2BGR, cv2.COLOR_LAB2BGR,
+                cv2.COLOR_HSV2BGR]
+bgr_to_lab, bgr_to_hsv, bgr_to_hls, bgr_to_ycrcb, bgr_to_luv, bgr_to_gray, gray_to_bgr, lab_to_bgr, hsv_to_bgr = [_convert_colorspace(c) for c in _conversions]
 
 
 def color_dist(c1, c2):
@@ -278,3 +279,45 @@ def color_correct(mat, equalize_rgb=True, rgb_contrast_correct=False,
     # Convert to matrix of original shape
     mat = np.ctypeslib.as_array(data_p, (rows, cols, depth)).astype(np.uint8)
     return mat
+
+
+def white_balance_bgr(bgr_img):# Convert BGR to LAB and change data type to float32
+    lab_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2LAB).astype(np.float32)
+
+    # Split LAB image into separate channels
+    lab_l, lab_a, lab_b = cv2.split(lab_img)
+
+    # Calculate the average of the a and b channels
+    a_avg = np.mean(lab_a)
+    b_avg = np.mean(lab_b)
+
+    # Subtract the average from the a and b channels
+    lab_a -= a_avg - 128
+    lab_b -= b_avg - 128
+
+    # Merge the LAB channels back and convert LAB back to BGR
+    lab_img = cv2.merge((lab_l, lab_a, lab_b))
+    return cv2.cvtColor(lab_img.astype(np.uint8), cv2.COLOR_LAB2BGR)
+
+
+def white_balance_bgr_blur(bgr_img, kernel_size): # Convert BGR to LAB and change data type to float32
+    kernel_size //= 2
+    kernel_size = 2 * kernel_size + 1
+
+    lab_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2LAB).astype(np.float32)
+
+    # Split LAB image into separate channels
+    lab_l, lab_a, lab_b = cv2.split(lab_img)
+
+    # Gaussian blur the a and b channels
+    lab_a_avg = cv2.blur(lab_a, (kernel_size, kernel_size), 0, borderType=cv2.BORDER_REPLICATE)
+    lab_b_avg = cv2.blur(lab_b, (kernel_size, kernel_size), 0, borderType=cv2.BORDER_REPLICATE)
+
+    # Subtract the average from the a and b channels
+    lab_a -= lab_a_avg - 128
+    lab_b -= lab_b_avg - 128
+
+    # Merge the LAB channels back and convert LAB back to BGR
+    lab_img = cv2.merge((lab_l, lab_a, lab_b))
+    return cv2.cvtColor(lab_img.astype(np.uint8), cv2.COLOR_LAB2BGR)
+

@@ -54,7 +54,7 @@ class SIFT:
         of the source image and the value is the image of the source image.
         """
         for name, source in kwargs.items():
-            add_source(name, source)
+            self.add_source(name, source)
 
 
     def _ratio_test(matches, ratio=0.7):

@@ -12,6 +12,9 @@ def get_camera_command(camera, direction, camera_id, configuration, size, rotate
 
 cmds = []
 for cam, kvs in cameras.items():
+  if kvs['type'] != 'ueye':
+    continue
+
   args_dict = { "direction" : cam, "camera_id" : kvs['id'],
                 "configuration" : kvs['camera_name'],
                 "size": (kvs['width'], kvs['height']) }

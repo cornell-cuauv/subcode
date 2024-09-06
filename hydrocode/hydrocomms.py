@@ -14,13 +14,10 @@ import queue
 import sys
 from threading import Thread
 
-try:
-    import cupy as xp
-except ImportError:
-    import numpy as xp
+import numpy as np
 
 sys.path.insert(0, path.join(path.dirname(path.realpath(__file__)), 'modules'))
-from common import convert, downconv, filt, gain, hardware
+from hydrocode.modules.common import convert, downconv, filt, gain, hardware
 import common.const
 from comms import demodulate, synchronize
 import comms.const

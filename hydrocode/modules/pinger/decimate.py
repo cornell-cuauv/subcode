@@ -1,4 +1,4 @@
-from common import pack
+from hydrocode.modules.common import pack
 
 class Decimator:
     """Signal Decimator.

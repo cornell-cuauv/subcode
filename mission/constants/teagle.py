@@ -4,7 +4,7 @@ from conf.vehicle import is_mainsub
 
 HYDROPHONES_PINGER_DEPTH = 3.0
 
-NONSURFACE_MIN_DEPTH = 0.6
+NONSURFACE_MIN_DEPTH = -1
 
 # gate = Gate(
 #     depth=1.0,

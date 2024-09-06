@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from build import ninja_common
 build = ninja_common.Build('misc/killbutton')

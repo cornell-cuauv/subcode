@@ -388,7 +388,7 @@ class T100(GenericThruster):
     curve_reverse = BLUEROBOTICS_T100_REV
 
 class T200(GenericThruster):
-    max_pwm = 200
+    max_pwm = 180
     min_pwm = 1
     curve_forward = BLUEROBOTICS_T200
     curve_reverse = BLUEROBOTICS_T200_REV
@@ -421,6 +421,7 @@ for thruster in vehicle.thrusters:
     min_pos_pwm = thruster.get('min_pos_pwm', t_class.min_pwm)
     min_neg_pwm = thruster.get('min_neg_pwm', -t_class.min_pwm)
 
+    thruster_debug_name = thruster.get('debug_name', thruster.name)
     thruster_name = thruster.get('real_name', thruster['name'])
     reversed_func = vars(shm.reversed_thrusters)[thruster_name].get
     thruster = t_class(yaw=h, pitch=p, position=thruster['pos'],
@@ -430,6 +431,7 @@ for thruster in vehicle.thrusters:
 
     vars(shm.broken_thrusters)[thruster.name].set(broken)
     vars(shm.reversed_thrusters)[thruster.name].set(reversed_polarity)
+    vars(shm.debug_name_thrusters)[thruster.name].set(thruster_debug_name)
 
     all_thrusters.append(thruster)
 

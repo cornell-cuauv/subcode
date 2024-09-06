@@ -12,7 +12,7 @@ class Pool {
      * depthAxisVertical -- If depth varies along the pool's vertical axis, as
      *                      opposed to along its horizontal axis. The tool does
      *                      not currently support more complex schemes of depth
-     *                      variance, although it should (for Transdec).
+     *                      variance.
      * depthKeypoints    -- A collection of distances from the origin along the
      *                      axis of variable depth and the depths of the pool
      *                      at those distances. Given as an array of length-two

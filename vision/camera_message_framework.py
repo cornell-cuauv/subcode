@@ -218,13 +218,13 @@ class _OptionAccessor(Accessor):
         bstr = self._last_frame.tostring()
         format_bstr = bstr[:MAX_OPTION_FORMAT_STR_LENGTH]
         format_str, = struct.unpack_from(FORMAT_STR_FORMAT_STR, format_bstr)
-        value = struct.unpack_from(format_str, bstr[MAX_OPTION_FORMAT_STR_LENGTH:])
+        value = struct.unpack_from(format_str.rstrip(b'\x00'), bstr[MAX_OPTION_FORMAT_STR_LENGTH:])
         format_str = _char_arr_to_str(format_str).decode('utf8')
         return format_str, value
 
     def set_value(self, values):
         byteify_tuple = lambda v: bytes(v, 'utf8') if isinstance(v, str) else v
-        value_str = struct.pack(self._format_str, *map(byteify_tuple, values))
+        value_str = struct.pack(self._format_str.rstrip(b'\x00'), *map(byteify_tuple, values))
         narr = np.fromstring(self._format_str + value_str, dtype=np.uint8)
         self.write_frame(narr, int(time.time()*1000))
 

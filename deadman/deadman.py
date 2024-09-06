@@ -13,7 +13,7 @@ import subprocess
 IP_ADDRESS = '192.168.0.1'
 INTERVAL = 1 #seconds between pings
 # mwahahaha we r inpatient and don't want to crash
-TIMEOUT = 2 #seconds before softkill
+TIMEOUT = 5 #seconds before softkill
 
 def ping(host):
     """
@@ -42,7 +42,7 @@ def watch_voltage():
             subprocess.run(['wall'], input=msg.encode('utf-8'))
             walled_time = time.monotonic()
             # change LEDs
-            shm.leds.mode.set('pulse')
+            #shm.leds.mode.set('pulse')
 
 def deadman_trigger():
     with open('/tmp/auv-deadman', 'w') as f:

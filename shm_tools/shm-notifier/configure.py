@@ -5,4 +5,4 @@ build = ninja_common.Build("shm_tools/shm-notifier")
 
 build.build_cmd("auv-shm-notifier", [
                     "main.cpp",
-                ], auv_deps=["shm"])
+                ], auv_deps=["auvshm"])

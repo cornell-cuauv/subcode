@@ -27,14 +27,14 @@ except ImportError:
     import numpy as xp
 
 sys.path.insert(0, path.join(path.dirname(path.realpath(__file__)), 'modules'))
-from common import convert, downconv, filt, gain, hardware
+from hydrocode.modules.common import convert, downconv, filt, gain, hardware
 import common.const
-from pinger import angles, decimate, trigger
+from hydrocode.modules.pinger import angles, decimate, trigger
 import pinger.const
 try:
     import shm
 except ImportError:
-    from common import shm
+    from hydrocode.modules.common import shm
 
 if __name__ == '__main__':
     print('Pingerd starting...')

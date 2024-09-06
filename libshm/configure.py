@@ -63,7 +63,7 @@ build.generate(['c/dshm.h', 'c/dshm.c', 'scm/dshm.scm'], 'libshm/generate_dshm.p
             'generate_dshm.py',
         ])
 
-build.build_shared('shm',
+build.build_shared('auvshm',
                 [
                     'c/log.cpp',
                     'c/serialize.cpp',
@@ -78,7 +78,7 @@ build.build_shared('shm',
 
 build.build_cmd('auv-diagnose-shm',
         ['c/shm_diagnose.cpp'],
-        auv_deps=['shm'])
+        auv_deps=['auvshm'])
 
 #build.test_gtest('shm',
 #                [
@@ -94,8 +94,8 @@ build.build_cmd('auv-diagnose-shm',
 #                implicit=['libshm/c/checksum.h'])
 
 
-build.chicken_lib("cuauv-shm", [
-        "scm/shm.scm"
-    ], where="libshm/scm", auv_deps=["shm"])
+# build.chicken_lib("cuauv-shm", [
+#         "scm/shm.scm"
+#     ], where="libshm/scm", auv_deps=["auvshm"])
 
-build.rust_build('rust_shm', auv_c_deps=["shm"])
+# build.rust_build('rust_shm', auv_c_deps=["auvshm"])

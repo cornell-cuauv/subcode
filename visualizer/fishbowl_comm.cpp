@@ -179,7 +179,7 @@ std::vector<uint32_t> get_all_entities() {
     entity_ids.push_back(uint32_of_bytes(&formatted_reply->body.elisted.ids[4*i]));
   }
 
-  return std::move(entity_ids);
+  return entity_ids;
 }
 
 int get_position(uint32_t entity, double &x, double &y, double &z) {

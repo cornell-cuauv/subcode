@@ -10,7 +10,7 @@ from matplotlib import pyplot
 import numpy as np
 from scipy.interpolate import interp1d
 
-from common import const, crop, plot
+from hydrocode.modules.common import const, crop, plot
 
 class GainPlot(plot.PlotBase):
     """This plot helps debug autogain / signal strength issues.

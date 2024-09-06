@@ -63,7 +63,7 @@ def send_image(module_name, image_name, image, receivers=None):
         #print("Sending image {}(data-index={})".format(image_name, idx))
         image = vision_common.resize_keep_ratio(image, MAX_IMAGE_DIMENSION)
         _, jpeg = cv2.imencode('.jpg', image, (cv2.IMWRITE_JPEG_QUALITY, 60))
-        jpeg_bytes = base64.encodestring(jpeg.tobytes()).decode('ascii')
+        jpeg_bytes = base64.encodebytes(jpeg.tobytes()).decode('ascii')
         value_dict = {'image_name': image_name,
                       'image': jpeg_bytes,
                       'image_index': idx}

@@ -8,6 +8,7 @@
 
 // for silencing protobuf warning messages in certain tests
 #include <google/protobuf/stubs/common.h>
+#include <google/protobuf/stubs/logging.h>
 
 using namespace cuauv::serial;
 

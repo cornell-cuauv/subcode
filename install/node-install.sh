@@ -1,4 +1,5 @@
-curl -sL https://deb.nodesource.com/setup_13.x | bash -
+# curl -sL https://deb.nodesource.com/setup_13.x | bash -
+curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
 
 apt-get install -y --no-install-recommends nodejs
 

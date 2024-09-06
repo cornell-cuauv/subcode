@@ -3,8 +3,8 @@ try:
 except ImportError:
     import numpy as xp
 
-from common import crop, pack
-from pinger import pingplot, trigplot
+from hydrocode.modules.common import crop, pack
+from hydrocode.modules.pinger import pingplot, trigplot
 
 class Trigger:
     """Ping rising edge detector.

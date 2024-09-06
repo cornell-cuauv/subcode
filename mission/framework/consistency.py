@@ -46,7 +46,14 @@ class ConsistencyTracker:
     def clear(self):
         """Resets this ConsistentTracker's internal state."""
         self.results.clear()
-        self.consistnt = False
+        self.consistent = False
+
+def ConsistencyFunction(tracker: ConsistencyTracker):
+    def wrapper(func):
+        def consistent(*args, **kwargs):
+            return tracker.update(func(*args, **kwargs))
+        return consistent
+    return wrapper
 
 class SHMConsistencyTracker:
     """Proactively tracks if a condition on a SHM group is consistently met.

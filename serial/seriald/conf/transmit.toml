@@ -1,9 +1,8 @@
 [devices.transmit.vars]
-SymbolSizeWriteVar = "transmit_settings.symbol_size"
+NewDataWriteVar = "transmit_settings.new_data_write"
+WordWriteVar = "transmit_settings.word_write"
 SymbolRateWriteVar = "transmit_settings.symbol_rate"
-FreqWriteVar = "transmit_settings.freq"
 BandwidthWriteVar = "transmit_settings.bandwidth"
-
-WordWriteVar = "transmit_streaming.word"
-NewDataWriteVar = "transmit_streaming.new_data"
-AckReadVar = "transmit_streaming.ack"
+SymbolSizeWriteVar = "transmit_settings.symbol_size"
+FreqWriteVar = "transmit_settings.freq"
+AckReadVar = "transmit_settings.ack_read"

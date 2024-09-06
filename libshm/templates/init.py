@@ -4,12 +4,8 @@ __all__ = ['watchers',
     <!--(end)-->
            ]
 
-# All of these could be done in 2 lines with a for loop and __init__(), but
-# then mypy wouldn't know about them.
-<!--(for g in groups)-->
-import shm.$!g['groupname']!$
-<!--(end)-->
-import shm.watchers
+for module in __all__:
+    __import__("shm.{0}".format(module))
 
 from shm.base import auv_var_lib
 

@@ -1,3 +1,4 @@
+import itertools
 from enum import auto, Enum
 import queue
 import socket
@@ -10,14 +11,14 @@ except ImportError:
     import numpy as xp
 import numpy as np
 
-import common.const
-from common.retry import retry
+import common.const 
+from hydrocode.modules.common.retry import retry 
 import comms.const
 import pinger.const
 try:
     import shm
 except ImportError:
-    from common import shm
+    from hydrocode.modules.common import shm
 
 class HydrophonesSection(Enum):
     PINGER = auto()
@@ -108,6 +109,10 @@ class HydrophonesBoard:
 
         self._check_pkt_num(pkt_num, self._shm_status.packet_number.get())
         self._shm_status.packet_number.set(pkt_num)
+
+        # 012, 102, 021, 201, 210*, 120
+        #sig = np.array(list(itertools.permutations(sig))[12][:-1])
+        #print(list(itertools.permutations([0, 1, 2, 3]))[12][:-1])
 
         return (xp.asarray(sig), xp.asarray(gains), xp.asarray(sub_hdgs))
 

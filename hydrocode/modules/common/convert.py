@@ -1,6 +1,6 @@
 import math
 
-from common import const
+from hydrocode.modules.common import const
 
 def omega_hat(f):
     """Convert to angular frequency normalized to sampling rate.

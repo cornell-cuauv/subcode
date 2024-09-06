@@ -125,7 +125,7 @@ bool add_shm_group(const std::string &group_name,
     try {
       shm_group_new = cuauv::dshm::newGroup(group_name);
     }
-    catch (std::invalid_argument e) {
+    catch (std::invalid_argument& e) {
       fprintf(stderr, "ERROR: SHM group \"%s\" doesn't exist.\n",
               group_name.c_str());
       return false;
@@ -139,7 +139,7 @@ bool add_shm_group(const std::string &group_name,
     try {
       shm_group->var(var_str);
     }
-    catch (std::invalid_argument e) {
+    catch (std::invalid_argument& e) {
       fprintf(stderr, "ERROR: SHM group \"%s\" doesn't have required "
                       "variable \"%s\".\n",
               group_name.c_str(), var_str.c_str());

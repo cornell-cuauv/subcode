@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from build import ninja_common
 
@@ -10,5 +10,4 @@ build.build_shared("conf",
         pkg_confs=["eigen3"],
         lflags=[],
         cflags=[])
-
-build.rust_build('rust_conf')
+# build.rust_build('rust_conf')

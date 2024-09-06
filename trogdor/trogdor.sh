@@ -21,14 +21,13 @@ export PYTHONPATH=$ROOT
 
 # PORT MAPPINGS
 
-# GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Odax_2_AUV-ODAX2-if00-port0)
 VEHICLE_TYPE=$CUAUV_VEHICLE_TYPE
-if [ "$VEHICLE_TYPE" = "mainsub" ]; then
-	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_ODAX_3_ODAX3-if01-port0)
-elif [ "$VEHICLE_TYPE" = "minisub" ]; then
-	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Kraken_4_AUV-KRAKEN4-if01-port0)
+if [ "$VEHICLE_TYPE" = "minisub" ]; then
+	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Polaris_FTDI2_AUV-POLARIS2-if00-port0)
+elif [ "$VEHICLE_TYPE" = "mainsub" ]; then # TODO: NEED NEW SERIAL.
+	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Sirius_FTDI2_AUV-SIRIUS2-if00-port0)
 fi
-DVL_PORT=/dev/serial/by-id/usb-CUAUV_ODAX_1_ODAX1-if00-port0
+DVL_PORT=/dev/serial/by-id/usb-CUAUV_Sirius_FTDI4_AUV-SIRIUS4-if01-port0
 
 # CONFIGS
 
@@ -39,11 +38,11 @@ VISION_CONFIG=$ROOT/vision/configs/master.yaml
 
 if [ "$VEHICLE_TYPE" = "mainsub" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
-  cameras webgui modules uptime pingerd
+  zed cameras webgui webgui-remote modules uptime pingerd hardkill
   dvld leds deadman log redis)
 elif [ "$VEHICLE_TYPE" = "minisub" ]; then
   SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
-  cameras webgui modules uptime pingerd deadman log redis
+  cameras webgui webgui-remote modules uptime pingerd deadman log redis hardkill
   )
 else
   echo "Unsupported CUAUV_VEHICLE_TYPE! Must be set to one of { mainsub, minisub }!"
@@ -154,7 +153,7 @@ case $COMMAND in
             gx4d|gx4) fork "auv-3dmgx4d $GX_PORT" "gx4d" "grep -v '^[0-9]\+$'" ;;
             gx1d|gx1) fork "auv-3dmgd $GX_PORT" "gx1d" ;;
             dvld|dvl) fork "auv-dvld $DVL_PORT" "dvld" ;;
-            kalmand|kalman) fork "auv-kalmand" "kalmand" && sleep 0.5 && set_priority "auv-kalmand" "-19" ;;
+            kalmand|kalman) fork "auv-kalman3d" "kalmand" && sleep 0.5 && set_priority "auv-kalman3d" "-19" ;;
             navigated|navigate) fork "auv-navigated" "navigated" ;;
             controld3|controld|control) fork "auv-controld3" "controld3" && sleep 0.5 && set_priority "auv-controld3" "-19" ;;
             shmserver) fork "auv-shm server" "shmserver" ;;
@@ -164,10 +163,13 @@ case $COMMAND in
             deadman) fork "auv-deadman" "deadman" ;;
             uptime) fork "auv-uptimed" "uptime" ;;
             webgui) invoke "cd /home/software/cuauv/software/webserver" && fork "auv-webserver" "webserver" ;;
+            webgui-remote) invoke "cd /home/software/cuauv/software/webserver-remote" && fork "auv-webserver-remote" "webserver-remote" ;; 
             pinger|pingerd) fork "auv-pingerd" "pingerd" ;;
+            zed) fork "auv-zed-camera" "zed";;
             cameras) fork "auv-start-cameras" "start-cameras" ;;
             modules) fork "auv-start-modules" "start-modules" ;;
             led|leds) fork "auv-led daemon" "led" ;;
+            hardkill) fork "auv-kill" "hardkill";;
             redis) fork "redis-server" "redis" ;;
             *) log "Service \"$SERVICE\" not found; aborting." ;;
         esac
@@ -181,7 +183,7 @@ case $COMMAND in
             gx4d|gx4) pkill "auv-3dmgx4d" ;;
             gx1d|gx1) pkill "auv-3dmgd" ;;
             dvld|dvl) pkill "auv-dvld" ;;
-            kalmand|kalman) pkill "auv-kalmand" ;;
+            kalmand|kalman) pkill "auv-kalman3d" ;;
             navigated|navigate) pkill "auv-navigated" ;;
             controld3|controld|control) pkill "auv-controld3" ;;
             shmserver) pkill "auv-shm server" ;;
@@ -191,10 +193,13 @@ case $COMMAND in
             deadman) pkill "auv-deadman" ;;
             uptime) pkill "auv-uptimed" ;;
             webgui) pkill "auv-webserver" ;;
+            webgui-remote) pkill "auv-webserver-remote" ;;
             pinger|pingerd) pkill "auv-pingerd" ;;
+            zed) pkill "auv-zed-camera" ;; 
             cameras) pkill "auv-start-cameras" ;;
             modules) pkill "auv-start-modules" ;;
             led|leds) pkill "auv-led" ;;
+            hardkill) pkill "auv-kill" ;;
             redis) pkill "redis-server" ;;
             *) log "Service \"$SERVICE\" not found; aborting." ;;
         esac
@@ -210,7 +215,7 @@ case $COMMAND in
           cameras)
             trogdor stop $SERVICE
             # Wait for cameras to be released
-            sleep 15
+            sleep 5
             trogdor hidden_start $SERVICE
           ;;
           *)
@@ -228,7 +233,7 @@ case $COMMAND in
             gx4d|gx4) servicestatus "auv-3dmgx4d" "gx4d" ;;
             gx1d|gx1) servicestatus "auv-3dmgd" "gx1d" ;;
             dvld|dvl) servicestatus "auv-dvld" "dvld" ;;
-            kalmand|kalman) servicestatus "auv-kalmand" "kalmand" ;;
+            kalmand|kalman) servicestatus "auv-kalman3d" "kalmand" ;;
             navigated|navigate) servicestatus "auv-navigated" "navigated" ;;
             controld3|controld|control) servicestatus "auv-controld3" "controld3" ;;
             log|logs|logger|logging) servicestatus "auv-ld" "logging" ;;
@@ -238,10 +243,13 @@ case $COMMAND in
             deadman) servicestatus "auv-deadman" "deadman" ;;
             uptime) servicestatus "auv-uptimed" "uptime" ;;
             webgui) servicestatus "auv-webserver" "webgui" ;;
+            webgui-remote) servicestatus "auv-webserver-remote" "webgui-remote" ;;
             pinger|pingerd) servicestatus "auv-pingerd" "pingerd" ;;
+            zed) servicestatus "auv-zed-camera" "zed" ;;
             cameras) servicestatus "auv-start-cameras" "cameras" ;;
             modules) servicestatus "auv-start-modules" "modules" ;;
             led|leds) servicestatus "auv-led" "led" ;;
+            hardkill) servicestatus "auv-kill" "hardkill" ;;
             redis) servicestatus "redis-server" "redis" ;;
             *) log "Service \"$SERVICE\" not found; aborting." ;;
         esac
@@ -255,7 +263,7 @@ case $COMMAND in
             gx4d|gx4) assertservice "gx4d" "auv-3dmgx4d $GX4_PORT" ;;
             gx1d|gx1) assertservice "gx1d" "auv-3dmgd $GX1_PORT" ;;
             dvld|dvl) assertservice "dvld" "auv-dvld $DVL_PORT" ;;
-            kalmand|kalman) assertservice "kalmand" "auv-kalmand" ;;
+            kalmand|kalman) assertservice "kalmand" "auv-kalman3d" ;;
             navigated|navigate) assertservice "navigated" "auv-navigated" ;;
             controld3|controld|control) assertservice "controld3" "auv-controld3" ;;
             log|logs|logger|logging) assertservice "logging" "auv-ld" ;;
@@ -264,9 +272,12 @@ case $COMMAND in
             deadman) assertservice "deadman" "auv-deadman" ;;
             uptime) assertservice "uptime" "auv-uptimed" ;;
             webgui) assertservice "webgui" "auv-webserver" ;;
+            webgui-remote) assertservice "webgui-remote" "auv-webserver-remote" ;;
             pinger|pingerd) assertservice "pingerd" "auv-pingerd" ;;
+            zed) assertservice "zed" "auv-zed-camera" ;;
             cameras) assertservice "cameras" "auv-start-cameras" ;;
             modules) assertservice "modules" "auv-start-modules" ;;
+            hardkill) assertservice "hardkill" "auv-kill" ;;
             led|leds) fork "auv-led daemon" "led";;
             ueye)
                 if [ -z "`pids ueyeethd`" ]; then

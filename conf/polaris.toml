@@ -38,7 +38,7 @@ dvl_present = true
 use_dvl_for_depth = false
 water_depth = 4.2672
 
-gx_hpr = [0.0, 0.0, 0.0] # Note: You probably want to re-tare the GX rather than use this offset
+gx_hpr = [180.0, 0.0, 0.0] # Note: You probably want to re-tare the GX rather than use this offset
 
 
 [[thrusters]]
@@ -62,7 +62,7 @@ name = "aft_port"
 type = "T200"
 pos = [-0.2540254, -0.2537206, 0.0295402]
 heading_pitch = [0.0, 90.0]
-reversed = true
+reversed = false
 broken = false
 
 [[thrusters]]
@@ -78,7 +78,7 @@ name = "aft_starboard"
 type = "T200"
 pos = [-0.2539746, 0.2502662, 0.0295402]
 heading_pitch = [0.0, 90.0]
-reversed = true
+reversed = false
 broken = false
 
 [[thrusters]]
@@ -208,6 +208,12 @@ capture_sources = ["default"]
 
 [vision_modules.auto_calibrate]
 capture_sources = ["forward", "downward"]
+
+[vision_modules.gate_vision]
+capture_sources = ["forward"]
+
+[vision_modules.find_red]
+capture_sources = ["forward"]
 
 [actuators]
 bottom_torpedo = 8

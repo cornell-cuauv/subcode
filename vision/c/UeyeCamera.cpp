@@ -77,10 +77,13 @@ bool UeyeCamera::setup_capture_source() {
   if (is_GetCameraList(camera_list) != IS_SUCCESS) {
     std::cout << "Could not get camera list" << std::endl;
     return false;
-  }
+  } 
 
+  std::cout << num_cameras << std::endl;
   int camera_idx = -1;
+  std::cout << num_cameras << std::endl;
   for (int i = 0; i < num_cameras; i++) {
+    std::cout << "Printing: " << camera_list->uci[i].dwCameraID << std::endl;
     if (camera_list->uci[i].dwCameraID == pimpl->params->camera_id) {
       camera_idx = i;
       break;
@@ -96,8 +99,9 @@ bool UeyeCamera::setup_capture_source() {
     std::cout << "Camera in use" << std::endl;
     return false;
   }
+  
   pimpl->m_camera = (HIDS) (cam_info.dwDeviceID | IS_USE_DEVICE_ID);
-
+  
   if (is_InitCamera(&pimpl->m_camera, NULL) != IS_SUCCESS) {
     std::cout << "Could not open IDS camera" << std::endl;
     return false;
@@ -318,7 +322,7 @@ std::experimental::optional<std::pair<cv::Mat, long>> UeyeCamera::acquire_next_i
       exposure = shm->camera_calibration.g.downward_exposure;
       red_gain = shm->camera_calibration.g.downward_red_gain;
       green_gain = shm->camera_calibration.g.downward_green_gain;
-      blue_gain = shm->camera_calibration.g.forward_blue_gain;
+      blue_gain = shm->camera_calibration.g.downward_blue_gain;
       shm_unlock(camera);
   }
   if (exposure != 0) {

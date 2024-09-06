@@ -38,8 +38,8 @@ for f in "${packages[@]}";  do
 done
 
 # Upgrade pip
-#pip2 install --upgrade pip
-#pip3 install --upgrade pip
+# pip2 install --upgrade pip
+# pip3 install --upgrade pip
 
 # Allow wireshark to be run by non-root users
 echo "wireshark-common wireshark-common/install-setuid boolean true" | sudo debconf-set-selections

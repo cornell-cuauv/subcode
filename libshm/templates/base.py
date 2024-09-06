@@ -2,7 +2,7 @@ import ctypes
 from abc import ABCMeta, abstractmethod
 
 from auv_python_helpers import load_library
-auv_var_lib = load_library("libshm.so")
+auv_var_lib = load_library("libauvshm.so")
 
 class ShmVar(object):
     __metaclass__ = ABCMeta

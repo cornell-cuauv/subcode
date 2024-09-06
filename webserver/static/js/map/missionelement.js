@@ -221,4 +221,10 @@ class Sub extends MissionElement {
         line(0.3 * ppm, 0, 0.1 * ppm, -0.2 * ppm)
         line(0.3 * ppm, 0, 0.1 * ppm, 0.2 * ppm)
     }
+
+    moveIfDragging() {
+        super.moveIfDragging()
+        this.dir = -HALF_PI
+        //this.dir = Math.atan2(elements['gate'].pos.y - elements['sub'].pos.y, elements['gate'].pos.x - elements['sub'].pos.x)
+    }
 }

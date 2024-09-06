@@ -61,7 +61,7 @@ void Config::readConfig(std::string configPath, std::unordered_set<std::string> 
 			ports.insert(childConfig.ports.begin(), childConfig.ports.end());
 		}
 
-	} catch (std::runtime_error e) {
+	} catch (const std::runtime_error& e) {
 		throw(std::runtime_error("Failed to parse '{}':\n{}"_format(configPath, e.what())));
 	}
 }

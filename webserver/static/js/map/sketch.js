@@ -84,7 +84,7 @@ function establishWebSockets() {
             element.numConfigs > 1).length + 1)
     let websockets = []
     websockets.push(new SocketManager('Mainsub',
-            'ws://192.168.0.93:8080/map/ws', mainsubTopY))
+            'ws://192.168.0.213:8080/map/ws', mainsubTopY))
     websockets.push(new SocketManager('Minisub',
             'ws://192.168.0.91:8080/map/ws', mainsubTopY + 25))
     if (CUAUV_LOCALE === 'simulator') {

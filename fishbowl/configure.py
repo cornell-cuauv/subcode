@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from build import ninja_common
 
@@ -10,7 +10,7 @@ build.install("auv-fishbowl-reset", "fishbowl/reset")
 
 build.build_cmd("auv-fishbowl",
         ["main.cpp"],
-        auv_deps=["shm", "conf", "fishbowl"],
+        auv_deps=["auvshm", "conf", "fishbowl"],
         pkg_confs=["eigen3"],
         lflags=[],
         cflags=["-Ifishbowl/lib", "-pthread"])
@@ -33,7 +33,7 @@ build.build_shared("fishbowl",
             "geometry.cpp",
             "objects.cpp",
         ],
-        auv_deps=["shm", "conf"],
+        auv_deps=["auvshm", "conf"],
         pkg_confs=["eigen3"],
         lflags=[],
         cflags=["-Ifishbowl/lib", "-pthread"])

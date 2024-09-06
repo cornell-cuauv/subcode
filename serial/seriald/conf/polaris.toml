@@ -1,0 +1,12 @@
+includes = [
+    "polarisPorts.toml",
+    "polarisThruster1.toml",
+    "polarisThruster2.toml",
+    "powerDistribution.toml",
+    "sensor.toml",
+    "actuator.toml",
+    "merge.toml",
+    "led.toml",
+    "transmit.toml",
+]
+

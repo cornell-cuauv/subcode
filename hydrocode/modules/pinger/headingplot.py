@@ -6,7 +6,7 @@ import time
 import matplotlib
 from matplotlib import pyplot, transforms
 
-from common import const, plot
+from hydrocode.modules.common import const, plot
 
 class HeadingPlot(plot.PlotBase):
     """This plot shows the heading of the last ping relative to the sub.

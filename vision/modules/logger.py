@@ -10,7 +10,10 @@ log_base_path = os.path.join(os.environ['CUAUV_LOG'], "current")
 
 class VideoWriter:
     def __init__(self, direction, filename=None):
-        self.fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+        if os.getenv('CUAUV_VEHICLE') == 'polaris':
+            self.fourcc = cv2.VideoWriter_fourcc(*'H264')
+        else:
+            self.fourcc = cv2.VideoWriter_fourcc(*'MJPG')
         self.video_writer = None
         self.frame_count = 0
         self.direction = direction
@@ -41,7 +44,13 @@ class VideoWriter:
             self.video_writer = cv2.VideoWriter(self.log_path, self.fourcc, 10.,
                                                 (mat.shape[1], mat.shape[0]))
 
-        self.video_writer.write(mat)
+        if mat.shape[2] == 3:
+            self.video_writer.write(mat)
+        elif mat.shape[2] == 1:
+            mat = cv2.merge((mat, mat, mat))
+            self.video_writer.write(mat)
+        else:
+            print(f"Invalid Image Shape for {self.direction}! ({mat.shape[2]})")
 
     def close(self):
         if self.video_writer is not None:

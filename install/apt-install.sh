@@ -12,6 +12,7 @@ packages=(
     iputils-tracepath
     ipython3
     jq
+    
     #libboost-python-dev
     libeigen3-dev
     libgtest-dev
@@ -40,14 +41,16 @@ packages=(
     # serial
     libgtest-dev
     libgtkmm-3.0-dev
+    libprotobuf-dev
     libprotoc-dev
     protobuf-compiler
 
     # vision
     libavcodec-dev
     libavformat-dev
-    libdc1394-22-dev
+    libdc1394-dev
     libswscale-dev
+    libturbojpeg
     python3-yaml
     python3-gi-cairo
 
@@ -82,6 +85,9 @@ packages=(
     #slam
     libzmq3-dev
     python3-zmq
+
+    # ZED
+    
 )
 
 apt-get install -y software-properties-common # For add-apt-repository
@@ -109,4 +115,5 @@ cmake CMakeLists.txt
 make
 
 # copy or symlink libgtest.a and libgtest_main.a to your /usr/lib folder
+cd lib/
 cp *.a /usr/lib

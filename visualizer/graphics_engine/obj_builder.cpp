@@ -208,5 +208,5 @@ std::vector<std::unique_ptr<Mesh>> OBJBuilder::build() {
     }
   );
 
-  return std::move(meshes_found);
+  return meshes_found;
 }

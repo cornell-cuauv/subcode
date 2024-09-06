@@ -29,7 +29,7 @@ build.build_shared_static('auv-serial',
                        'proto/cpp/DeviceConfig.pb.cc',
                    ],
                    implicit=['serial/libserial/proto/cpp/DeviceConfig.pb.h'],
-                   cflags=['-Wall', '-Wextra', '-Werror'],
+                   cflags=['-Wall', '-Wextra', '-w', '-pthread', '-lprotobuf', '-lpthread'],
                    pkg_confs=['protobuf-lite'])
 
 build.test_gtest('libserial',

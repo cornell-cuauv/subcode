@@ -104,7 +104,7 @@ void shm_init() {
     // Connect to shared memory.
     shmid = auv_shm_open(sizeof(struct shm), IPC_CREAT|0666);
     shm = (struct shm*)shmat(shmid, 0, 0);
-    if (shm <= 0) {
+    if (shm == NULL) {
         shm_rm(shmid);
         sem_post(sem);
         puts("Failed to connect to shared memory.");

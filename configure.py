@@ -25,13 +25,16 @@ rflags = [
         ]
 cflags = [
           '-pthread',
+          '-lprotobuf',
+          '-lpthread',
           '-lrt',
           '-lm',
           '-Wall',
           '-I.',
           '-ggdb2',
           '-O3',
-          '-Werror',
+          '-w',
+          '`pkg-config --cflags --libs protobuf`'
          ]
 cppflags = [
     '-std=c++14', '-fdiagnostics-color',
@@ -48,23 +51,17 @@ dirs = [
         'auv_math/libquat',
         'auvlog',
         'conf',
-        'conf/gui',
+       #  'conf/gui',
         'control',
         'control/controlhelm',
         'control/control_helm2',
         'deadman',
-        'flamingo',
+        'hydrocode',
         'lib',
         'libshm',
-        'locator',
         'misc',
         'misc/waypoint',
-        # 'misc/3dcontrol',
         'mission',
-        'mission/opt',
-        # 'object-recognition',
-        'positiontracker3',
-        'pooltest',
         'self_test',
         'sensors',
         'sensors/3dmg/gx4',
@@ -74,26 +71,34 @@ dirs = [
         'shm_tools/shm-editor',
         'shm_tools/shm-notifier',
         'shm_tools/shmlog',
-        'slam',
         'system_check',
         'trogdor',
         'vision',
         'webserver',
        ]
 
+# The following were built at some point in the past, but have been discontinued
+# since (simply here for archival purposes).
+deprecated_dirs = [
+       'flamingo',
+       'locator',
+       'misc/3dcontrol',
+       'object-recognition',
+       'positiontracker3',
+       'slam',
+       'mission/opt',
+       'pooltest',
+]
+
 context_excludes = {
     'all': [],
 
     'development': [
-        'lcd',
         'led',
-        #'pooltest',
         'serial/cli',
         'serial/debugger',
         'serial/libserial',
         'serial/seriald',
-        'uptime',
-        'vehicle-scripts',
     ],
 
     'vehicle': [
@@ -118,8 +123,8 @@ for k, v in sorted(context_excludes.items()):
         dirs += v
 
 # Because bamboo can't build peacock and we don't want peacock on the sub
-if not args.bamboo and context != 'vehicle':
-    dirs += ['peacock']
+# if not args.bamboo and context != 'vehicle':
+#     dirs += ['peacock']
 
 #if not subprocess.getstatusoutput('which go')[0]:
 #  dirs.extend([
@@ -174,9 +179,9 @@ n.rule('generate',
        description = 'GENERATE $out',
        restat = True)
 
-n.rule('rust',
-       command = 'cargo build $rflags -p $out',
-       description = 'CARGO $out')
+# n.rule('rust',
+#        command = 'cargo build $rflags -p $out',
+#        description = 'CARGO $out')
 
 n.rule('run',
        command = '$in $args',
@@ -187,26 +192,26 @@ n.rule('configure',
        description = 'CONFIGURE $out',
        generator = True)
 
-n.rule('go-build',
-       command = 'go build -o $out $pkg',
-       description = 'GO BUILD $pkg')
+# n.rule('go-build',
+#        command = 'go build -o $out $pkg',
+#        description = 'GO BUILD $pkg')
 
-n.rule('go-install',
-       command = 'go install $pkg',
-       description = 'GO INSTALL $pkg')
+# n.rule('go-install',
+#        command = 'go install $pkg',
+#        description = 'GO INSTALL $pkg')
 
-if not args.bamboo and context != 'vehicle':
-  n.rule('chicken-exe',
-         command = 'csc $cflags $lflags $in -o $out',
-         description='CHICKEN EXE $out')
+# if not args.bamboo and context != 'vehicle':
+#   n.rule('chicken-exe',
+#          command = 'csc $cflags $lflags $in -o $out',
+#          description='CHICKEN EXE $out')
 
-  n.rule('chicken-lib',
-         command = 'build/build_chicken_lib.sh $where $fake',
-         description='CHICKEN LIB $out')
+#   n.rule('chicken-lib',
+#          command = 'build/build_chicken_lib.sh $where $fake',
+#          description='CHICKEN LIB $out')
 
-else:
-  n.rule('chicken-exe', command = 'exit 0', description = 'Do nothing!')
-  n.rule('chicken-lib', command = 'exit 0', description = 'Do nothing!')
+# else:
+#   n.rule('chicken-exe', command = 'exit 0', description = 'Do nothing!')
+#   n.rule('chicken-lib', command = 'exit 0', description = 'Do nothing!')
 
 if args.bamboo:
     # Don't run on Bamboo lol

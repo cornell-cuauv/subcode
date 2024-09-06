@@ -1,8 +1,8 @@
 class Gate extends MissionElement {
     constructor() {
         super(createVector(0.2, 3.05), 0, 2)
-        this.gmanImage = loadImage('/static/images/map/gman.png')
-        this.bootleggerImage = loadImage('/static/images/map/bootlegger.png')
+        this.counterImg = loadImage('/static/images/map/gate_counter.png')
+        this.clockwiseImg = loadImage('/static/images/map/gate_clockwise.png')
     }
 
     drawInner() {
@@ -12,76 +12,58 @@ class Gate extends MissionElement {
         fill(0)
         rect(-1.525 * ppm, -0.1 * ppm, 3.05 * ppm, 0.2 * ppm)
         if (this.config == 0) {
-            image(this.gmanImage, (-0.763 - 0.25) * ppm, 0.1 * ppm, 0.5 * ppm,
+            image(this.counterImg, (-0.763 - 0.25) * ppm, 0.1 * ppm, 0.5 * ppm,
                     0.682 * ppm)
-            image(this.bootleggerImage, (0.763 - 0.25) * ppm, 0.1 * ppm,
+            image(this.clockwiseImg, (0.763 - 0.25) * ppm, 0.1 * ppm,
                     0.5 * ppm, 0.682 * ppm)
         } else {
-            image(this.gmanImage, (0.763 - 0.25) * ppm, 0.1 * ppm, 0.5 * ppm,
+            image(this.clockwiseImg, (0.763 - 0.25) * ppm, 0.1 * ppm, 0.5 * ppm,
                     0.682 * ppm)
-            image(this.bootleggerImage, (-0.763 - 0.25) * ppm, 0.1 * ppm,
+            image(this.counterImg, (-0.763 - 0.25) * ppm, 0.1 * ppm,
                     0.5 * ppm, 0.682 * ppm)
         }
         pop()
     }
 }
 
-class Buoys extends MissionElement {
+class Buoy extends MissionElement {
     constructor() {
-        super(createVector(1.30, 1.27), 0, 2)
-        this.buoysImage = loadImage('/static/images/map/buoys.png')
+        super(createVector(0.23, 0.23), 0, 1)
     }
 
     drawInner() {
-        push()
-        rotate(HALF_PI)
-        if (this.config == 0) {
-            image(this.buoysImage, -0.635 * ppm, -0.65 * ppm, 0.635 * ppm,
-                    1.30 * ppm, 0, 0, 522, 1068)
-            image(this.buoysImage, 0, -0.65 * ppm, 0.635 * ppm, 1.30 * ppm, 522,
-                    0, 522, 1068)
-        } else {
-            image(this. buoysImage, -0.635 * ppm, -0.65 * ppm, 0.635 * ppm,
-                    1.30 * ppm, 522, 0, 522, 1068)
-            image(this.buoysImage, 0, -0.65 * ppm, 0.635 * ppm, 1.30 * ppm, 0,
-                    0, 522, 1068)
-        }
-        pop()
+        noStroke()
+        fill(255, 0, 0)
+        ellipse(0, 0, 0.23 * ppm, 0.23 * ppm)
     }
 }
 
-class Bins extends MissionElement {
+class Bin extends MissionElement {
     constructor() {
-        super(createVector(0.70, 0.66), 0, 1)
-        this.binsImage = loadImage('/static/images/map/bins.png')
+        super(createVector(0.61, 0.91), 0, 1)
     }
 
     drawInner() {
-        push()
-        rotate(HALF_PI)
-        image(this.binsImage, -0.33 * ppm, -0.35 * ppm, 0.66 * ppm, 0.70 * ppm)
-        pop()
+        noStroke()
+        fill(255)
+        rect(-0.305 * ppm, -0.455 * ppm, 0.61 * ppm, 0.91 * ppm)
+        fill(255, 0, 0)
+        rect(-0.15 * ppm, -0.61 * ppm, 0.3 * ppm, 0.61 * ppm)
+        fill(0, 0, 255)
+        rect(-0.15 * ppm, 0, 0.3 * ppm, 0.61 * ppm)
     }
 }
 
 class Torpedoes extends MissionElement {
     constructor() {
-        super(createVector(1.23, 1.27), 0, 2)
-        this.torpedoesImage = loadImage('static/images/map/torpedoes.png')
+        super(createVector(0.6, 0.6), 0, 1)
+        this.img = loadImage('/static/images/map/torpedoes.png')
     }
 
     drawInner() {
         push()
         rotate(HALF_PI)
-        if (this.config == 0) {
-            image(this.torpedoesImage, -0.635 * ppm, -0.615 * ppm, 1.27 * ppm,
-                    1.23 * ppm)
-        } else {
-            image(this.torpedoesImage, -0.635 * ppm, -0.615 * ppm, 0.635 * ppm,
-                    1.23 * ppm, 251, 0, 251, 488)
-            image(this.torpedoesImage, 0, -0.615 * ppm, 0.635 * ppm, 1.23 * ppm,
-                    0, 0, 251, 488)
-        }
+        image(this.img, -0.3 * ppm, -0.3 * ppm, 0.6 * ppm, 0.6 * ppm)
         pop()
     }
 }

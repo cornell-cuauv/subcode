@@ -12,5 +12,5 @@ build.build_cmd('auv-control-helm',
                     'display.cpp',
                     'controlhelm.cpp'
                 ],
-                auv_deps=['shm'],
+                auv_deps=['auvshm'],
                 pkg_confs=['ncurses'])

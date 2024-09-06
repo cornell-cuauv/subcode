@@ -1,278 +1,118 @@
-class Teagle extends Pool {
-    constructor() {
-        super('Teagle', 12.2, 22.8, true, [[0, 1.2], [3.9, 1.8], [7.0, 2.4],
-                [10.4, 3.1], [13.6, 3.7], [17.2, 4.3]], 0)
-    }
-
-    drawAlignmentFeatures() {
-        strokeWeight(1 / 3 * ppm)
-        stroke(0, 50)
-        strokeCap(SQUARE)
-        for (let i = 1; i < 7; i++) {
-            line(50 + this.width * i / 7 * ppm, 100 + 1 * ppm,
-                    50 + this.width * i / 7 * ppm,
-                    100 + (this.height - 1) * ppm)
-        }
-        noStroke()
-        fill(120)
-        ellipse(40, 100 + 4.5 * ppm, 5, 5)
-        ellipse(40, 100 + (this.height - 4.5) * ppm, 5, 5)
-        ellipse(50 + this.width * ppm + 10, 100 + 4.5 * ppm, 5, 5)
-        ellipse(50 + this.width * ppm + 10, 100 + (this.height - 4.5) * ppm,
-                5, 5)
-    }
-}
-
-class SemisA extends Pool {
-    constructor() {
-        super('Semis A', 11.41, 22.8, false, [[0, 4.1], [7.1, 4.1],
-                [49.4, 2.4]], 30000)
-    }
-
-    drawAlignmentFeatures() {
-        strokeWeight(1 / 3 * ppm)
-        stroke(0, 50)
-        strokeCap(SQUARE)
-        for (let x = 4.01; x < this.width; x += 2.135) {
-            line(50 + x * ppm, 100 + 1.8 * ppm, 50 + x * ppm, 100 + (this.height - 1.8) * ppm)
-        }
-        for (let y = 1.8; y < this.height; y += 2.75) {
-            line(50 + 4.01 * ppm, 100 + y * ppm, 50 + this.width * ppm, 100 + y * ppm)
-        }
-    }
-
+class Semis extends Pool {
     setDefaultPositions(elements) {
-        elements["sub"].pos = createVector(this.width / 2, 0.7)
+        elements["sub"].pos = createVector(this.width / 2, this.height - 0.8)
         elements["sub"].dir = HALF_PI
-        elements["gate_approach"].pos = createVector(this.width / 4,
-                this.height / 12)
-        elements["gate_approach"].enabled = true
-        elements["gate"].pos = createVector(this.width / 4, this.height / 6)
+        elements["gate_approach"].pos = createVector(this.width / 2, this.height - 2.5)
+        elements["gate_approach"].enabled = false
+        elements["gate"].pos = createVector(this.width / 2, this.height - 5)
         elements["gate"].dir = HALF_PI
-        elements["buoys_approach"].pos = createVector(this.width * 3 / 4,
-                this.height * 3 / 12)
-        elements["buoys_approach"].enabled = true
-        elements["buoys"].pos = createVector(this.width * 3 / 4,
-                this.height * 2 / 6)
-        elements["buoys"].dir = HALF_PI
-        elements["bins_approach"].pos = createVector(this.width / 4,
-                this.height * 5 / 12)
-        elements["bins_approach"].enabled = true
-        elements["bins"].pos = createVector(this.width / 4, this.height * 3 / 6)
-        elements["bins"].dir = HALF_PI
-        elements["torpedoes_approach"].pos = createVector(this.width / 2,
-                this.height / 2)
+        elements["buoy_approach"].pos = createVector(this.width / 2, this.height * 2 / 3)
+        elements["buoy_approach"].enabled = false
+        elements["buoy"].pos = createVector(this.width * 2 / 3, this.height * 2 / 3)
+        elements["buoy"].dir = 0
+        elements["bin_approach"].pos = createVector(this.width / 2, this.height / 2)
+        elements["bin_approach"].enable = false
+        elements["bin"].pos = createVector(this.width / 3, this.height / 2)
+        elements["bin"].dir = 0
+        elements["torpedoes_approach"].pos = createVector(this.width / 2, this.height / 3)
         elements["torpedoes_approach"].enabled = true
-        elements["torpedoes"].pos = createVector(this.width * 3 / 4,
-                this.height * 4 / 6)
+        elements["torpedoes"].pos = createVector(this.width * 2 / 3, this.height / 3)
         elements["torpedoes"].dir = HALF_PI
-        elements["octagon_approach"].pos = createVector(this.width / 4,
-                this.height * 8 / 12)
-        elements["octagon_approach"].enabled = true
-        elements["octagon"].pos = createVector(this.width / 4,
-                this.height * 5 / 6)
+        elements["octagon_approach"].pos = createVector(this.width / 2, this.width * 2 / 3)
+        elements["octagon_approach"].enabled = false
+        elements["octagon"].pos = createVector(this.width / 2, this.height / 5)
         elements["octagon"].dir = 0
     }
 }
 
-class SemisB extends Pool {
+class Finals extends Semis {
     constructor() {
-        super('Semis B', 13.47, 22.8, false, [[-12.2, 4.1], [-5.1, 4.1],
-                [37.2, 2.4]], 40000)
+        super('Finals', 26.37, 22.86, true, [[0, 2.13]], 0)
     }
-
+    
     drawAlignmentFeatures() {
-        strokeWeight(1 / 3 * ppm)
-        stroke(0, 50)
+        strokeWeight(0.33 * ppm)
         strokeCap(SQUARE)
-        for (let x = 1.00; x < this.width; x += 2.135) {
-            line(50 + x * ppm, 100 + 1.8 * ppm, 50 + x * ppm, 100 + (this.height - 1.8) * ppm)
+        stroke(0, 0, 255)
+        for(let y = 0; y < 8; y++) {
+            line(50, 100 + (1.83 + 2.74 * y) * ppm, 50 + this.width * ppm, 100 + (1.83 + 2.74 * y) * ppm)
         }
-        for (let y = 1.8; y < this.height; y += 2.75) {
-            line(50, 100 + y * ppm, 50 + this.width * ppm, 100 + y * ppm)
-        }
-    }
-
-    setDefaultPositions(elements) {
-        elements["sub"].pos = createVector(this.width / 2, this.height - 0.7)
-        elements["sub"].dir = -HALF_PI
-        elements["gate_approach"].pos = createVector(this.width * 3 / 4,
-                this.height * 11 / 12)
-        elements["gate_approach"].enabled = true
-        elements["gate"].pos = createVector(this.width * 3 / 4,
-                this.height * 5 / 6)
-        elements["gate"].dir = -HALF_PI
-        elements["buoys_approach"].pos = createVector(this.width / 4,
-                this.height * 9 / 12)
-        elements["buoys_approach"].enabled = true
-        elements["buoys"].pos = createVector(this.width / 4,
-                this.height * 4 / 6)
-        elements["buoys"].dir = -HALF_PI
-        elements["bins_approach"].pos = createVector(this.width * 3 / 4,
-                this.height * 7 / 12)
-        elements["bins_approach"].enabled = true
-        elements["bins"].pos = createVector(this.width * 3 / 4,
-                this.height * 3 / 6)
-        elements["bins"].dir = -HALF_PI
-        elements["torpedoes_approach"].pos = createVector(this.width / 2,
-                this.height / 2)
-        elements["torpedoes_approach"].enabled = true
-        elements["torpedoes"].pos = createVector(this.width / 4,
-                this.height * 2 / 6)
-        elements["torpedoes"].dir = -HALF_PI
-        elements["octagon_approach"].pos = createVector(this.width * 3 / 4,
-                this.height * 4 / 12)
-        elements["octagon_approach"].enabled = true
-        elements["octagon"].pos = createVector(this.width * 3 / 4,
-                this.height / 6)
-        elements["octagon"].dir = PI
-    }
-}
-
-class SemisC extends Pool {
-    constructor() {
-        super('Semis C', 13.53, 22.8, false, [[-25, 4.1], [-17.9, 4.1],
-                [24.4, 2.4]], 25000)
-    }
-
-    drawAlignmentFeatures() {
-        strokeWeight(1 / 3 * ppm)
-        stroke(0, 50)
-        strokeCap(SQUARE)
-        for (let x = 1.04; x < 8; x += 2.135) {
-            line(50 + x * ppm, 100 + 1.8 * ppm, 50 + x * ppm, 100 + (this.height - 1.8) * ppm)
-        }
-        for (let y = 1.8; y < this.height; y += 2.75) {
-            line(50, 100 + y * ppm, 50 + (this.width - 4.10) * ppm, 100 + y * ppm)
-        }
-    }
-
-    setDefaultPositions(elements) {
-        elements["sub"].pos = createVector(this.width / 2, 0.7)
-        elements["sub"].dir = HALF_PI
-        elements["gate_approach"].pos = createVector(this.width / 4,
-                this.height / 12)
-        elements["gate_approach"].enabled = true
-        elements["gate"].pos = createVector(this.width / 4, this.height / 6)
-        elements["gate"].dir = HALF_PI
-        elements["buoys_approach"].pos = createVector(this.width * 3 / 4,
-                this.height * 3 / 12)
-        elements["buoys_approach"].enabled = true
-        elements["buoys"].pos = createVector(this.width * 3 / 4,
-                this.height * 2 / 6)
-        elements["buoys"].dir = HALF_PI
-        elements["bins_approach"].pos = createVector(this.width / 4,
-                this.height * 5 / 12)
-        elements["bins_approach"].enabled = true
-        elements["bins"].pos = createVector(this.width / 4, this.height * 3 / 6)
-        elements["bins"].dir = HALF_PI
-        elements["torpedoes_approach"].pos = createVector(this.width / 2,
-                this.height / 2)
-        elements["torpedoes_approach"].enabled = true
-        elements["torpedoes"].pos = createVector(this.width * 3 / 4,
-                this.height * 4 / 6)
-        elements["torpedoes"].dir = HALF_PI
-        elements["octagon_approach"].pos = createVector(this.width / 4,
-                this.height * 8 / 12)
-        elements["octagon_approach"].enabled = true
-        elements["octagon"].pos = createVector(this.width / 4,
-                this.height * 5 / 6)
-        elements["octagon"].dir = 0
-    }
-}
-
-class SemisD extends Pool {
-    constructor() {
-        super('Semis D', 11.45, 22.8, false, [[-37.2, 4.1], [-30.1, 4.1],
-                [12.2, 2.4]], 35000)
-    }
-
-    drawAlignmentFeatures() {
-        strokeWeight(1 / 3 * ppm)
-        stroke(0, 50)
-        strokeCap(SQUARE)
-        for (let x = 1.04; x < 8; x += 2.135) {
-            line(50 + x * ppm, 100 + 1.8 * ppm, 50 + x * ppm, 100 + (this.height - 1.8) * ppm)
-        }
-        for (let y = 1.8; y < this.height; y += 2.75) {
-            line(50, 100 + y * ppm, 50 + (this.width - 4.10) * ppm, 100 + y * ppm)
-        }
-    }
-
-    setDefaultPositions(elements) {
-        elements["sub"].pos = createVector(this.width / 2, this.height - 0.7)
-        elements["sub"].dir = -HALF_PI
-        elements["gate_approach"].pos = createVector(this.width * 3 / 4,
-                this.height * 11 / 12)
-        elements["gate_approach"].enabled = true
-        elements["gate"].pos = createVector(this.width * 3 / 4,
-                this.height * 5 / 6)
-        elements["gate"].dir = -HALF_PI
-        elements["buoys_approach"].pos = createVector(this.width / 4,
-                this.height * 9 / 12)
-        elements["buoys_approach"].enabled = true
-        elements["buoys"].pos = createVector(this.width / 4,
-                this.height * 4 / 6)
-        elements["buoys"].dir = -HALF_PI
-        elements["bins_approach"].pos = createVector(this.width * 3 / 4,
-                this.height * 7 / 12)
-        elements["bins_approach"].enabled = true
-        elements["bins"].pos = createVector(this.width * 3 / 4,
-                this.height * 3 / 6)
-        elements["bins"].dir = -HALF_PI
-        elements["torpedoes_approach"].pos = createVector(this.width / 2,
-                this.height / 2)
-        elements["torpedoes_approach"].enabled = true
-        elements["torpedoes"].pos = createVector(this.width / 4,
-                this.height * 2 / 6)
-        elements["torpedoes"].dir = -HALF_PI
-        elements["octagon_approach"].pos = createVector(this.width * 3 / 4,
-                this.height * 4 / 12)
-        elements["octagon_approach"].enabled = true
-        elements["octagon"].pos = createVector(this.width * 3 / 4,
-                this.height / 6)
-        elements["octagon"].dir = PI
-    }
-}
-
-class FinalsAB extends Pool {
-    constructor() {
-        super('Finals A + B', 24.88, 22.8, false, [[0, 4.1], [7.1, 4.1],
-                [49.4, 2.4]], 0)
-    }
-
-    drawAlignmentFeatures() {
-        strokeWeight(1 / 3 * ppm)
-        stroke(0, 50)
-        strokeCap(SQUARE)
-        for (let x = 4.01; x < this.width; x += 2.135) {
-            line(50 + x * ppm, 100 + 1.8 * ppm, 50 + x * ppm,
-                    100 + (this.height - 1.8) * ppm)
-        }
-        for (let y = 1.8; y < this.height; y += 2.75) {
-            line(50 + 4.01 * ppm, 100 + y * ppm, 50 + this.width * ppm,
-                    100 + y * ppm)
+        stroke(0)
+        for (let x = 0; x < 9; x++) {
+            line(50 + (this.width - 3.05 - 2.74 * x) * ppm, 100 + 1.83 * ppm, 50 + (this.width - 3.05 - 2.74 * x) * ppm, 100 + (this.height - 1.83) * ppm)
         }
     }
 }
 
-class FinalsCD extends Pool {
+class SemisA extends Semis {
     constructor() {
-        super('Finals C + D', 24.98, 22.8, false, [[-25, 4.1], [-17.9, 4.1],
-                [24.4, 2.4]], 0)
+        super('A', 12.65, 22.86, true, [[0, 2.13]], 0)
     }
 
     drawAlignmentFeatures() {
-        strokeWeight(1 / 3 * ppm)
-        stroke(0, 50)
+        strokeWeight(0.33 * ppm)
         strokeCap(SQUARE)
-        for (let x = 1.79; x < 21.53; x += 2.135) {
-            line(50 + x * ppm, 100 + 1.8 * ppm, 50 + x * ppm,
-                    100 + (this.height - 1.8) * ppm)
+        stroke(0, 0, 255)
+        for(let y = 0; y < 8; y++) {
+            line(50, 100 + (1.83 + 2.74 * y) * ppm, 50 + (this.width - 2.13) * ppm, 100 + (1.83 + 2.74 * y) * ppm)
         }
-        for (let y = 1.8; y < this.height; y += 2.75) {
-            line(50, 100 + y * ppm, 50 + (this.width - 4.10) * ppm,
-                    100 + y * ppm)
+        stroke(0)
+        for (let x = 0; x < 4; x++) {
+            line(50 + (this.width - 3.05 - 2.74 * x) * ppm, 100 + 1.83 * ppm, 50 + (this.width - 3.05 - 2.74 * x) * ppm, 100 + (this.height - 1.83) * ppm)}
+    }
+}
+
+class SemisB extends Semis {
+    constructor() {
+        super('B', 13.72, 22.86, true, [[0, 2.13]], 0)
+    }
+
+    drawAlignmentFeatures() {
+        strokeWeight(0.33 * ppm)
+        strokeCap(SQUARE)
+        stroke(0, 0, 255)
+        for(let y = 0; y < 8; y++) {
+            line(50, 100 + (1.83 + 2.74 * y) * ppm, 50 + this.width * ppm, 100 + (1.83 + 2.74 * y) * ppm)
         }
+        stroke(0)
+        for (let x = 0; x < 5; x++) {
+            line(50 + (1.37 + 2.74 * x) * ppm, 100 + 1.83 * ppm, 50 + (1.37 + 2.74 * x) * ppm, 100 + (this.height - 1.83) * ppm)
+        }
+    }
+}
+
+class SemisC extends Semis {
+    constructor() {
+        super('C', 10.97, 22.86, true, [[0, 2.13]], 0)
+    }
+
+    drawAlignmentFeatures() {
+        strokeWeight(0.33 * ppm)
+        strokeCap(SQUARE)
+        stroke(0, 0, 255)
+        for(let y = 0; y < 8; y++) {
+            line(50, 100 + (1.83 + 2.74 * y) * ppm, 50 + this.width * ppm, 100 + (1.83 + 2.74 * y) * ppm)
+        }
+        stroke(0)
+        for (let x = 0; x < 4; x++) {
+            line(50 + (1.37 + 2.74 * x) * ppm, 100 + 1.83 * ppm, 50 + (1.37 + 2.74 * x) * ppm, 100 + (this.height - 1.83) * ppm)}
+    }
+}
+
+class SemisD extends Semis {
+    constructor() {
+        super('D', 12.65, 22.86, true, [[0, 2.13]], 0)
+    }
+
+    drawAlignmentFeatures() {
+        strokeWeight(0.33 * ppm)
+        strokeCap(SQUARE)
+        stroke(0, 0, 255)
+        for(let y = 0; y < 8; y++) {
+            line(50 + 2.13 * ppm, 100 + (1.83 + 2.74 * y) * ppm, 50 + this.width * ppm, 100 + (1.83 + 2.74 * y) * ppm)
+        }
+        stroke(0)
+        for (let x = 0; x < 4; x++) {
+            line(50 + (3.05 + 2.74 * x) * ppm, 100 + 1.83 * ppm, 50 + (3.05 + 2.74 * x) * ppm, 100 + (this.height - 1.83) * ppm)}
     }
 }

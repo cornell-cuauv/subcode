@@ -10,4 +10,4 @@ build.build_cmd('auv-dvld',
                     'pd5Com.cpp',
                     'dvld.cpp',
                 ],
-                auv_deps=['shm'])
+                auv_deps=['auvshm'])

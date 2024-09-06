@@ -57,7 +57,7 @@ void Device::initVarMaps(std::shared_ptr<DeviceInfo> deviceInfo) {
 
 			try {
 				m_deviceList->claimVarWriter(m_name, shmInfo.second);
-			} catch (std::runtime_error e) {
+			} catch (const std::runtime_error& e) {
 				throw std::runtime_error("Failed to claim shm variable for writing:\n{}"_format(e.what()));
 			}
 
@@ -89,7 +89,7 @@ void Device::initVarMaps(std::shared_ptr<DeviceInfo> deviceInfo) {
 			}
 		}
 
-	} catch (std::runtime_error e) {
+	} catch (const std::runtime_error& e) {
 		clearVarMaps();
 		throw;
 	}
@@ -108,7 +108,7 @@ std::pair<dshm::Var*, std::string> Device::matchWithShmVar(const Variable& seria
 	if (shmGroupIter == m_shmGroups.end()) {
 		try {
 			m_shmGroups.emplace(groupName, dshm::newGroup(groupName));
-		} catch (std::invalid_argument e) {
+		} catch (const std::invalid_argument& e) {
 			throw std::runtime_error("shm group '{}' does not exist"_format(groupName));
 		}
 	}
@@ -118,7 +118,7 @@ std::pair<dshm::Var*, std::string> Device::matchWithShmVar(const Variable& seria
 	dshm::Var* shmVar;
 	try {
 		shmVar = shmGroup->var(shmVarName);
-	} catch (std::invalid_argument e) {
+	} catch (const std::invalid_argument& e) {
 		throw std::runtime_error("shm path '{}' does not exist"_format(shmPath));
 	}
 

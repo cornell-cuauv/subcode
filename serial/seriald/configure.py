@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from build import ninja_common
 
@@ -13,8 +13,9 @@ build.build_cmd(
             'sub_status.cpp',
         ],
         deps=['nanomsg'],
-        auv_deps=['shm', 'auvlog', 'auv-serial', 'fmt'],)
+        auv_deps=['auvshm', 'auvlog', 'auv-serial', 'fmt'],)
 
+build.install('auv-find-gxdvl', f='serial/seriald/util/find_dvl_gx.sh')
 #build.test_gtest(
 #        'seriald-new',
 #        [
@@ -26,4 +27,4 @@ build.build_cmd(
 #            # 'test/device/device.cpp',
 #        ],
 #        deps=['nanomsg', 'cppformat'],
-#        auv_deps=['shm', 'auvlog', 'auv-serial'],)
+#        auv_deps=['auvshm', 'auvlog', 'auv-serial'],)

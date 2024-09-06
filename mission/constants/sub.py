@@ -9,7 +9,7 @@ class PidVal:
     PX, IX, DX  = (0.21, 0.02, 0.1) if is_mainsub else (1.4, 0.0, 0.0)
     
     # Leftward / rightward targeting.
-    PY, IY, DY  = (0.19156, 0.02, 0.1) if is_mainsub else (1.8, 0.1, 0.64)
+    PY, IY, DY  = (0.15, 0.02, 0.1) if is_mainsub else (0.8, 0.1, 0.64)
     
     # Upward / downward targeting.
     PZ, IZ, DZ  = (1.6, 0.2, 0.02) if is_mainsub else (1.7, 0.0, 0.0)

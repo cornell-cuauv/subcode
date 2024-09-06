@@ -16,7 +16,7 @@ if HAVE_GTKMM:
                     'StatusFlagWidget.cpp',
                     'VariableWidget.cpp',
                 ],
-                cflags=['-Wall', '-Wextra', '-Werror', '-Iserial/libserial'],
+                cflags=['-Wall', '-Wextra', '-w', '-pthread', '-lprotobuf', '-lpthread', '-Iserial/libserial'],
                 auv_deps=['auv-serial'],
                 pkg_confs=['gtkmm-3.0'],
                 static_extra_deps=['protobuf-lite'])

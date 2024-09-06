@@ -5,18 +5,6 @@ if [[ -z $(uname -a | grep "tegra") ]]; then
     exit 0
 fi
 
-
-# IDS uEye driver
-
-pushd /tmp
-#wget https://cuauv.org/nix-res-private/uEyeSDK-4.90.00-ARM_LINUX_IDS_AARCH64_GNU.tgz
-curl https://resources.cuauv.org/uEyeSDK-4.90.00-ARM_LINUX_IDS_AARCH64_GNU.tgz -o /tmp/uEyeSDK-4.90.00-ARM_LINUX_IDS_AARCH64_GNU.tgz
-
-
-pushd /
-tar -xvf /tmp/uEyeSDK-4.90.00-ARM_LINUX_IDS_AARCH64_GNU.tgz
-
-
 # Inspired by https://github.com/charlielito/jetsontx2-opencv-tf/blob/master/Dockerfile
 
 # COPY qemu-aarch64-static /usr/bin/
@@ -27,7 +15,7 @@ NV_DL_PREFIX="https://developer.download.nvidia.com/devzone/devcenter/mobile/jet
 NV_DEB_FILENAMES=(
     # "alias": "com.nvidia.l4t.driver4os_64_tx2", "version": "28.2.1"
     #"Tegra186_Linux_R28.2.1_aarch64.tbz2"
-    "P3310/Jetson_Linux_R32.2.1_aarch64.tbz2"
+    # "P3310/Jetson_Linux_R32.2.1_aarch64.tbz2"
 
     # "alias": "com.nvidia.cuda.l4t_64_tx2", "version": "9.0"
     #"cuda-repo-l4t-9-0-local_9.0.252-1_arm64.deb"

@@ -35,5 +35,5 @@ std::vector<std::unique_ptr<Mesh>> STLBuilder::build() {
 
   std::vector<std::unique_ptr<Mesh>> meshes;
   meshes.emplace_back(std::move(mesh));
-  return std::move(meshes);
+  return meshes; // updated
 }

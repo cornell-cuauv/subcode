@@ -206,7 +206,7 @@ class Scalar:
         modulo_error=True)
 
 (roll, roll_for_secs, relatitve_to_initial_pitch,
-        relative_to_current_pitch) = generate_setters(
+        relative_to_current_roll) = generate_setters(
         shm.navigation_desires.roll, shm.kalman.roll, Tolerance.ROLL,
         modulo_error=True)
 

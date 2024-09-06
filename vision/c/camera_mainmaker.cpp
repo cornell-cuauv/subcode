@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
   if (argc > 2) {
     try {
       params.camera_id = std::stoi(argv[2]);
-    } catch (std::invalid_argument e) {
+    } catch (std::invalid_argument& e) {
       fprintf(stderr, "Second argument must be a camera ID (integer)\n");
       return -1;
     }

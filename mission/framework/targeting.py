@@ -99,6 +99,7 @@ async def forward_target(
         hold_time   : float                 = 1,
         limits_y    : Tuple[float, float]   = (-float('inf'), float('inf')),
         limits_z    : Tuple[float, float]   = (0            , float('inf')),
+        final_zero  : bool                  = True,
         py          : float                 = PidVal.PY,
         iy          : float                 = PidVal.IY,
         dy          : float                 = PidVal.DY,    
@@ -107,7 +108,7 @@ async def forward_target(
         dz          : float                 = PidVal.DZ):
     return await _wait_for_finish(
         forward_target_scary(point, target, tolerance, hold_time, limits_y, limits_z, 
-            py, iy, dy, pz, iz, dz), visible)
+            py, iy, dy, pz, iz, dz), visible, final_zero)
 
 async def forward_target_scary(
         point       : Callable[[], Tuple[float,float]], 
@@ -145,6 +146,7 @@ async def heading_target(
         hold_time   : float                 = 1, 
         limits_h    : Tuple[float, float]   = (-float('inf'), float('inf')),
         limits_z    : Tuple[float, float]   = (0.6          , float('inf')),
+        final_zero  : bool                  = True,
         ph          : float                 = PidVal.PH,
         ih          : float                 = PidVal.IH,
         dh          : float                 = PidVal.DH,    
@@ -153,7 +155,7 @@ async def heading_target(
         dz          : float                 = PidVal.DZ):
     return await _wait_for_finish(
         heading_target_scary(point, target, tolerance, hold_time, limits_h, limits_z,
-            ph, ih, dh, pz, iz, dz), visible)
+            ph, ih, dh, pz, iz, dz), visible, final_zero)
 
 async def heading_target_scary(
         point       : Callable[[], Tuple[float,float]], 
@@ -191,6 +193,7 @@ async def downward_target(
         hold_time   : float                 = 1, 
         limits_x    : Tuple[float, float]   = (-float('inf'), float('inf')),
         limits_y    : Tuple[float, float]   = (-float('inf'), float('inf')),
+        final_zero  : bool                  = True,
         px          : float                 = PidVal.PX,
         ix          : float                 = PidVal.IX,
         dx          : float                 = PidVal.DX,    
@@ -200,7 +203,7 @@ async def downward_target(
 
     return await _wait_for_finish(
         downward_target_scary(point, target, tolerance, hold_time, limits_x, limits_y,
-            px, ix, dx, py, iy, dy), visible)
+            px, ix, dx, py, iy, dy), visible, final_zero)
 
 async def downward_target_scary(
         point       : Callable[[], Tuple[float,float]], 
@@ -238,10 +241,11 @@ async def downward_align(
         visible     : Callable[[], bool],
         tolerance   : float                 = 1,
         hold_time   : float                 = 1,
-        limits      : Tuple[float, float]   = (-float('inf'), float('inf'))
+        limits      : Tuple[float, float]   = (-float('inf'), float('inf')),
+        final_zero  : bool                  = True
     ):
     return await _wait_for_finish(downward_align_scary(angle, target, tolerance,
-            hold_time, limits), visible)
+            hold_time, limits), visible, final_zero)
 
 async def downward_align_scary(
         angle       : Callable[[], float],
@@ -269,11 +273,12 @@ async def downward_approach(
         tolerance   : float                 = 0.001,
         hold_time   : float                 = 1,
         limits      : Tuple[float, float]   = (0.6, float('inf')),
+        final_zero  : bool                  = True,
         p           : float                 = PidVal.PA,
         i           : float                 = PidVal.IA,
         d           : float                 = PidVal.DA):
     return await _wait_for_finish(downward_approach_scary(size, target, tolerance,
-            hold_time, limits, p, i, d), visible)
+            hold_time, limits, p, i, d), visible, final_zero)
 
 async def downward_approach_scary(
         size        : Callable[[], float],
@@ -331,6 +336,7 @@ async def forward_align(
         tolerance   : float                 = 0.05,
         hold_time   : float                 = 1,
         limits      : Tuple[float, float]   = (-float('inf'), float('inf')),
+        final_zero  : bool                  = True,
         p           : float                 = PidVal.PH,
         i           : float                 = PidVal.IH,
         d           : float                 = PidVal.DH):
@@ -356,7 +362,8 @@ async def forward_align_scary(
 
 
 
-async def _wait_for_finish(targetting_task: Any, visible: Callable[[], bool]):
+async def _wait_for_finish(targetting_task: Any, visible: Callable[[], bool],
+        final_zero : bool):
     future = asyncio.create_task(targetting_task)
     try:
         while not future.done():
@@ -371,6 +378,7 @@ async def _wait_for_finish(targetting_task: Any, visible: Callable[[], bool]):
         future.cancel()
         await asyncio.sleep(0)
         raise
-    await zero()
+    if final_zero:
+        await zero()
     return True
  

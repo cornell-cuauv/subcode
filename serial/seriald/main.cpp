@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
         } else {
             config = std::make_shared<Config>();
         }
-    } catch (std::runtime_error e) {
+    } catch (const std::runtime_error &e) {
         LOG(Log::error, "Could not parse config file, shutting down:\n{}"_format(e.what()));
         return 1;
     }
@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
     std::shared_ptr<SubStatus> subStatus;
     try {
         subStatus = std::make_shared<SubStatus>(config);
-    } catch (std::runtime_error e) {
+    } catch (const std::runtime_error &e) {
         LOG(Log::error, "Cannot control sub status, shutting down:\n{}"_format(e.what()));
         return 1;
     }

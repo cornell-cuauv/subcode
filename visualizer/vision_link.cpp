@@ -142,5 +142,5 @@ extern "C" auto get_vehicle_cameras() {
     cams.emplace_back(std::move(vis_cam));
   }
 
-  return std::move(cams);
+  return cams;
 }

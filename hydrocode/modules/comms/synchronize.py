@@ -3,7 +3,7 @@ try:
 except ImportError:
     import numpy as xp
 
-from common import filt, pack
+from hydrocode.modules.common import filt, pack
 from comms import const, corrplot
 
 class Synchronizer:

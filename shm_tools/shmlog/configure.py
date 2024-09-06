@@ -7,7 +7,7 @@ build.build_cmd('auv-shmlogd',
                 [
                     'logd.cpp',
                 ],
-                deps=['popt'], auv_deps=['shm'])
+                deps=['popt'], auv_deps=['auvshm'])
 
 #Install logutils
 build.install('auv-shmlog-tocsv', f='shm_tools/shmlog/util/log2csv.py')

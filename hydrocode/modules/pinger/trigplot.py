@@ -9,7 +9,7 @@ import matplotlib
 from matplotlib import pyplot
 import numpy as np
 
-from common import plot
+from hydrocode.modules.common import plot
 import common.const
 import pinger.const
 

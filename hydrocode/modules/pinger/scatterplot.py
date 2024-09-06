@@ -7,7 +7,7 @@ from matplotlib import pyplot
 from matplotlib.ticker import AutoMinorLocator
 import numpy as np
 
-from common import const, plot
+from hydrocode.modules.common import const, plot
 
 class ScatterPlot(plot.PlotBase):
     """This plot shows the tracking precision if the sub is held fixed.

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <glm/vec3.hpp>
+#include <glm/fwd.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 #include "async_manager.h"

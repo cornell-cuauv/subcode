@@ -15,7 +15,26 @@ from mission.framework.movement import (position_n as set_position_n,
         depth as set_depth)
 from mission.framework.contexts import PositionalControls
 
-async def move_xy(vector : Tuple[float, float], tolerance : float = 0.01):
+DEFAULT_TOLERANCE = 0.05
+
+async def move_xy_from_initial(initial_heading: float, initial_ne: Tuple[float, float], delta : Tuple[float, float], tolerance : float = DEFAULT_TOLERANCE):
+    """Move some distance forward and some distance right.
+
+    Requires the DVL.
+
+    Arguments:
+    vector    -- how far the sub should move in the form (foward, right)
+    tolerance -- the tolerance in the sub's final position in each direction
+    """
+    delta_north, delta_east = rotate(delta, initial_heading)
+    initial_north, initial_east = initial_ne
+
+    n_position = initial_north + delta_north 
+    e_position = initial_east + delta_east
+
+    await go_to_position(north=n_position, east=e_position, heading=initial_heading, tolerance=tolerance)
+    
+async def move_xy(vector : Tuple[float, float], tolerance : float = DEFAULT_TOLERANCE):
     """Move some distance forward and some distance right.
 
     Requires the DVL.
@@ -37,7 +56,7 @@ async def move_xy(vector : Tuple[float, float], tolerance : float = 0.01):
         await asyncio.sleep(0)
         raise
 
-async def move_x(distance : float, tolerance : float = 0.01):
+async def move_x(distance : float, tolerance : float = DEFAULT_TOLERANCE):
     """Move some distance forward (or backward).
 
     Requires the DVL.
@@ -48,7 +67,7 @@ async def move_x(distance : float, tolerance : float = 0.01):
     """
     await move_xy((distance, 0), tolerance=tolerance)
 
-async def move_y(distance : float, tolerance : float = 0.01):
+async def move_y(distance : float, tolerance : float = DEFAULT_TOLERANCE):
     """Move some distance to the right (or left).
 
     Requires the DVL.
@@ -59,7 +78,7 @@ async def move_y(distance : float, tolerance : float = 0.01):
     """
     await move_xy((0, distance), tolerance=tolerance)
 
-async def move_angle(angle : float, distance : float, tolerance : float = 0.01):
+async def move_angle(angle : float, distance : float, tolerance : float = DEFAULT_TOLERANCE):
     """Move some distance in some direction.
 
     Requires the DVL. Note that the angle is in absolute terms, not relative to
@@ -91,13 +110,13 @@ async def go_to_position(north : float, east : float, heading : float = None,
     """
     with PositionalControls():
         position_n_task = asyncio.ensure_future(set_position_n(north,
-            tolerance=tolerance))
+                tolerance=tolerance))
         position_e_task = asyncio.ensure_future(set_position_e(east,
-            tolerance=tolerance))
+                tolerance=tolerance))
         heading_task = asyncio.ensure_future(set_heading(
-            heading or kalman.heading.get(), tolerance=heading_tolerance))
+                heading or kalman.heading.get(), tolerance=heading_tolerance))
         depth_task = asyncio.ensure_future(set_depth(
-            depth or kalman.depth.get(), tolerance=tolerance))
+                depth or kalman.depth.get(), tolerance=tolerance))
         try:
             await asyncio.gather(position_n_task, position_e_task, heading_task,
                    depth_task)

@@ -26,6 +26,7 @@ import time
 
 import clize
 import docker
+from docker.errors import ContainerError, ImageNotFound, APIError, NotFound
 
 from config import get_config
 
@@ -330,7 +331,7 @@ def create_worktree(branch=BRANCH, print_help=True, *, b=False):
         )
 
 
-def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=False, ports={}):
+def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=False, ports=None):
     """
     Starts a Docker container with the proper configuration. This does not
     currently recreate a container if different configurations options are
@@ -386,13 +387,21 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=Fal
                     "bind": str(CONTAINER_WORKSPACE_DIRECTORY),
                     "mode": "rw",
                 },
+                str(Path.home() / ".ssh/id_rsa.pub"): {
+                    "bind": "/home/software/.ssh/id_rsa.pub",
+                    "mode": "ro",  # Read-only for security
+                },
+                str(Path.home() / ".ssh/id_rsa"): {
+                    "bind": "/home/software/.ssh/id_rsa",
+                    "mode": "ro",  # Read-only for security
+                },
             },
             "devices": [],
             "shm_size": "7G",
             "security_opt": ["seccomp=unconfined"], # for gdb
         }
 
-        if len(ports) > 0:
+        if ports:
             docker_args["ports"] = ports
 
         if gpu:
@@ -408,6 +417,7 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=Fal
             docker_args["device_requests"] = [docker.types.DeviceRequest(count=-1, capabilities=[['gpu']])]
 
         if vehicle:
+            
             docker_args["image"] = "{}:{}".format(DOCKER_REPO_JETSON, branch)
             docker_args["volumes"]["/dev"] = {
                 "bind": "/dev",
@@ -417,20 +427,59 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=Fal
                 "bind": "/home/software/sdcard",
                 "mode": "rw",
             }
+
+            docker_args["network_mode"] = "host"
+            docker_args["privileged"] = True
+            docker_args["hostname"] = env["CUAUV_VEHICLE"]
+        
+        # Sirius only configuration - TEMPORARY WORKAROUND
+        if vehicle and env["CUAUV_VEHICLE"] == "sirius": 
+            docker_args["command"] = ["bash", "-c", "mkdir -p /run/sshd && /sbin/sshd && sleep infinity"]
+            docker_args["volumes"][str(REPO_PATH / "misc/sshd_config")] = {
+                    "bind": "/etc/ssh/sshd_config",
+                    "mode": "rw"
+            }
+            docker_args["devices"] += ['/dev/snd', '/dev/bus/usb']
+            docker_args["runtime"] = "nvidia"
+        
+        else: # POLARIS ONLY COMMANDS
             nv_path = str(Path("~/.nv").expanduser())
             docker_args["volumes"][nv_path] = {
                 "bind": "/home/software/.nv",
                 "mode": "rw",
             }
-            docker_args["network_mode"] = "host"
-            docker_args["privileged"] = True
-            docker_args["hostname"] = env["CUAUV_VEHICLE"]
 
+            
         if env:
             docker_args["environment"].update(env)
 
-        container = client.containers.run(**docker_args)
-        time.sleep(5)
+        print("Actually starting new container")
+        try:
+            container = client.containers.run(**docker_args)
+            time.sleep(2)  # Give some time for the container to initialize
+
+            try:
+                container.reload()  # Attempt to reload the container's status
+            except NotFound:
+                print("Container was not found after starting. It may have exited or been removed.")
+                return None
+
+            # If the container is found but has exited
+            if container.status == 'exited':
+                exit_status = container.attrs['State']['ExitCode']
+                print(f"Container exited immediately with status code: {exit_status}")
+                logs = container.logs().decode('utf-8')
+                print("Container logs:\n", logs)
+                return None
+            else:
+                print("Container started successfully.")
+
+            # Your existing exec_run commands and setup...
+            # Ensure to wrap these in try-except blocks as well, logging any exceptions.
+
+        except (ContainerError, ImageNotFound, APIError) as e:
+            print(f"An error occurred: {e}")
+            return None
 
         env_parts = ["export {}={}".format(key, value) for key, value in docker_args["environment"].items()]
         envs = "bash -c 'printf \"{}\\n\" > /home/software/.env'".format("\\n".join(env_parts))
@@ -549,8 +598,8 @@ def vehicle(*, branch:"b"="master", vehicle:"v"=None):
         vehicle = socket.gethostname()
 
     vehicle_types = {
-        "polaris": "mainsub",
-        "ajax": "minisub",
+        "sirius": "mainsub",
+        "polaris": "minisub",
     }
 
     vehicle_type = vehicle_types[vehicle]
