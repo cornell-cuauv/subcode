@@ -364,7 +364,7 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=Fal
 
         docker_args = {
             "image": "{}:{}".format(DOCKER_REPO, branch),
-            "command": "/sbin/my_init",
+            "command": ["bash", "-c", "mkdir -p /run/sshd && /sbin/sshd && sleep infinity"],
             "user": "root",
             "detach": True,
             "environment": {
@@ -423,6 +423,12 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=Fal
                 "bind": "/dev",
                 "mode": "rw",
             }
+            docker_args["volumes"][str(REPO_PATH / "misc/sshd_config")] = {
+                    "bind": "/etc/ssh/sshd_config",
+                    "mode": "rw"
+            }
+            docker_args["devices"] += ['/dev/snd', '/dev/bus/usb']
+            
             docker_args["volumes"]["/home/software/sdcard"] = {
                 "bind": "/home/software/sdcard",
                 "mode": "rw",
@@ -431,23 +437,7 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=Fal
             docker_args["network_mode"] = "host"
             docker_args["privileged"] = True
             docker_args["hostname"] = env["CUAUV_VEHICLE"]
-        
-        # Sirius only configuration - TEMPORARY WORKAROUND
-        if vehicle and env["CUAUV_VEHICLE"] == "sirius": 
-            docker_args["command"] = ["bash", "-c", "mkdir -p /run/sshd && /sbin/sshd && sleep infinity"]
-            docker_args["volumes"][str(REPO_PATH / "misc/sshd_config")] = {
-                    "bind": "/etc/ssh/sshd_config",
-                    "mode": "rw"
-            }
-            docker_args["devices"] += ['/dev/snd', '/dev/bus/usb']
             docker_args["runtime"] = "nvidia"
-        
-        else: # POLARIS ONLY COMMANDS
-            nv_path = str(Path("~/.nv").expanduser())
-            docker_args["volumes"][nv_path] = {
-                "bind": "/home/software/.nv",
-                "mode": "rw",
-            }
 
             
         if env:

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # table.py by Zeth 
 
 """This module creates reStructuredText tables from a basic Python datatype.

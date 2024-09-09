@@ -2,7 +2,7 @@
 ##compdef auv-shm-cli
 
 local -a _shm_subcommands
-python -c 'import shm; print(" ".join(shm.__all__[1:]))' | read -A _shm_subcommands
+python3 -c 'import shm; print(" ".join(shm.__all__[1:]))' | read -A _shm_subcommands
 #_shm_subcommands=("${(@f)$(grep '^[a-zA-Z]' libshm/vars.conf | cut -d' ' -f1)}")
 #echo ${subcommands[@]}
 function _auv-shm-cli {
@@ -29,7 +29,7 @@ function _auv-shm-cli {
             group_vars=("${(@f)$(grep _fields\.append $CUAUV_SOFTWARE/shm/${words[2]}.py | cut -d\" -f2)}")
             _describe 'auv-shm-cli' group_vars
             ;;
-        var_val) _message -r "value=$(python -c "import shm; print(shm.$words[2].$words[3].get())")" ;;
+        var_val) _message -r "value=$(python3 -c "import shm; print(shm.$words[2].$words[3].get())")" ;;
     esac
 }
 compdef _auv-shm-cli auv-shm-cli

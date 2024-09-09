@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python2
 
 # Script that takes hydrophones_results and outputs filtered results to
 # hydrophones_filtered.
