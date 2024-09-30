@@ -13,13 +13,26 @@ from auvlog.client import log as auvlog
 
 
 class CaptureSource(object):
-    # initialize a capture source in the specified {direction}
-    # if {persistent} is True, then the capture source will poll the subclass
-    #   using the acquire_next_image method for frames to send, at a max rate
-    #   of {fps} frames per second
-    # if {persistent} is False, the subclass must take care of sending images
-    #   itself
-    def __init__(self, direction, fps=10.0, persistent=True):
+    """
+    Base case for a capture source. This should never be directly created, but
+    instead should be subclassed.
+    """
+
+    def __init__(self,
+                 direction:str,
+                 fps:float=10.0,
+                 persistent:bool=True):
+        """
+        Initializes a capture source in the specified direction.
+
+        Args:
+            direction: direction, or block name in the camera message framework.
+            fps: frames per second cap. persistent: if True, then the capture
+                source will poll the subclass using the [acquire_next_image]
+                method for frames to send, at a max rate of fps frames per
+                second. If False, the subclass must take care of sending images
+                itself.
+        """
         self._shm = None
         self.fps = fps
         self.direction = direction
@@ -79,4 +92,5 @@ class CaptureSource(object):
                 signal.signal(signal.SIGTERM, sigh)
 
             atexit.register(self._framework[direction].cleanup)
+        
         self._framework[direction].write_frame(image, acq_time)

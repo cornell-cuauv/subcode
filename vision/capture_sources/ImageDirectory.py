@@ -9,9 +9,9 @@ import sys
 import cv2
 import shm
 
-import CaptureSource
+import vision.capture_sources.capture_source as capture_source
 
-class ImageDirectory(CaptureSource.CaptureSource):
+class ImageDirectory(capture_source.CaptureSource):
     def __init__(self, direction, directory, loop=True, fps=60.0, shmlog=False):
         super().__init__(direction)
         self.directory = directory

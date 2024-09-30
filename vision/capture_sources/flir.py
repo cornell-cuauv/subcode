@@ -5,7 +5,7 @@ import signal
 import sys
 import PySpin
 import shm
-from vision.capture_sources.CaptureSource import CaptureSource
+from vision.capture_sources.capture_source import CaptureSource
 
 class FlirCaptureSource(CaptureSource):
     def __init__(self, direction: str, fps: int = 10):

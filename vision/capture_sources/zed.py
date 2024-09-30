@@ -16,7 +16,7 @@ class Zed(CaptureSource):
 
         super().__init__('dummy', persistent=False)
         config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'vision/configs/zed.conf')
-        self._init_params = sl.InitParameters(depth_mode=sl.DEPTH_MODE.ULTRA,
+        self._init_params = sl.InitParameters(depth_mode=sl.DEPTH_MODE.NEURAL,
                                               optional_settings_path=config_path,
                                               coordinate_units=sl.UNIT.METER,
                                               coordinate_system=sl.COORDINATE_SYSTEM.RIGHT_HANDED_Y_UP,

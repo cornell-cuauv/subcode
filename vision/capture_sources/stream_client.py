@@ -4,7 +4,7 @@ import cv2
 import argparse
 import numpy as np
 from nanomsg import Socket, SUB, SUB_SUBSCRIBE
-from vision.capture_sources.CaptureSource import CaptureSource
+from vision.capture_sources.capture_source import CaptureSource
 
 
 def unpack_image(msg):

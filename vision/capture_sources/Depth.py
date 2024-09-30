@@ -6,7 +6,7 @@ import cv2
 import pyzed.sl as sl
 import shm
 
-from CaptureSource import CaptureSource
+from vision.capture_sources.capture_source import CaptureSource
 
 class Depth(CaptureSource):
     def __init__(self, direction, loop=True, shmlog=False):

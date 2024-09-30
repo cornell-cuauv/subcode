@@ -1,84 +1,144 @@
 import cv2
 import math
+import numpy as np
+from typing import Tuple, List
 
 
-def draw_circle(mat, center, radius, color=(0, 0, 255), thickness=1):
+def draw_circle(mat:np.ndarray,
+                center:int,
+                radius:int,
+                color:Tuple[int, int, int]=(0, 0, 255),
+                thickness:int=1) -> None:
     """
-    Draws a circle on the input image. The input image is modified.
-    :param mat: input image
-    :param center: center of the circle
-    :param radius: radius of the circle
-    :param color: color of the circle
-    :param thickness: thickness of circle boundary; if negative, a filled circle is drawn
-    :return: None
+    Draws a circle on the input image. The input image is modified in-place.
+
+    Args:
+        mat: input image
+        center: center of the circle
+        radius: radius of the circle
+        color: color of the circle, in BGR.
+        thickness: thickness of circle boundary; if negative, a
+            filled circle is drawn
+
+    Returns:
+        None.
     """
     cv2.circle(mat, center, radius, color, thickness=thickness)
 
 
-def draw_ellipse(mat, radius_x, radius_y, angle, color=(0, 0, 255), thickness=1):
+def draw_ellipse(mat: np.ndarray,
+                 radius_x: int,
+                 radius_y: int,
+                 angle: float,
+                 color: Tuple[int, int, int] = (0, 0, 255),
+                 thickness: int = 1) -> None:
     """
-    Draws an ellipse on the input image. The input image is modified.
-    :param mat: input image
-    :param radius_x: radius in the x-axis
-    :param radius_y: radius in the y-axis
-    :param angle: rotation angle of the ellipse, in degrees
-    :param color: color of the ellipse
-    :param thickness: thickness of ellipse boundary; if negative, a filled ellipse is drawn
-    :return: None
+    Draws an ellipse on the input image. The input image is modified in-place.
+
+    Args:
+        mat: input image
+        radius_x: radius in the x-axis
+        radius_y: radius in the y-axis
+        angle: rotation angle of the ellipse, in degrees
+        color: color of the ellipse, in BGR
+        thickness: thickness of ellipse boundary; if negative, a filled
+            ellipse is drawn
+
+    Returns:
+        None.
     """
     cv2.ellipse(mat, (radius_x, radius_y), angle, 0, 0, color, thickness=thickness)
 
 
-def draw_line(mat, pt1, pt2, color=(0, 0, 255), thickness=1):
+def draw_line(mat: np.ndarray,
+              pt1: Tuple[int, int],
+              pt2: Tuple[int, int],
+              color: Tuple[int, int, int] = (0, 0, 255),
+              thickness: int = 1) -> None:
     """
-    Draws a line on the input image. The input image is modified.
-    :param mat: input image
-    :param pt1: first point on the line
-    :param pt2: second point on the line
-    :param color: color of the line
-    :param thickness: thickness of the line
-    :return: None
+    Draws a line on the input image. The input image is modified in-place.
+
+    Args:
+        mat: input image.
+        pt1: first point on the line.
+        pt2: second point on the line.
+        color: color of the line, in BGR
+        thickness: thickness of the line.
+
+    Returns:
+        None.
     """
     cv2.line(mat, pt1, pt2, color, thickness=thickness)
 
 
-def draw_arrow(mat, from_pt, to_pt, color=(0, 0, 255), thickness=1):
+def draw_arrow(mat: np.ndarray,
+               from_pt: Tuple[int, int],
+               to_pt: Tuple[int, int],
+               color: Tuple[int, int, int] = (0, 0, 255),
+               thickness: int = 1) -> None:
     """
-    Draws an arrow on the input image. The input image is modified.
-    :param mat: input image
-    :param from_pt: point at the base of the arrow
-    :param to_pt: point at the tip of the arrow
-    :param color: color of the arrow
-    :param thickness: thickness of the arrow
-    :return: None
+    Draws an arrow on the input image. The input image is modified in-place.
+
+    Args:
+        mat: input image
+        from_pt: point at the base of the arrow
+        to_pt: point at the tip of the arrow
+        color: color of the arrow, in BGR
+        thickness: thickness of the arrow
+
+    Returns:
+        None.
     """
     cv2.arrowedLine(mat, from_pt, to_pt, color, thickness=thickness)
 
 
-def draw_rect(mat, pt1, pt2, color=(0, 0, 255), thickness=1):
+def draw_rect(mat: np.ndarray,
+              pt1: Tuple[int, int],
+              pt2: Tuple[int, int],
+              color: Tuple[int, int, int] = (0, 0, 255),
+              thickness: int = 1) -> None:
     """
-    Draws a rectangle on the input image. The input image is modified.
-    :param mat: input image
-    :param pt1: vertex of the rectangle
-    :param pt2: vertex of the rectangle opposite from pt1
-    :param color: color of the rectangle
-    :param thickness: thickness of the borders of the rectangle; if negative, a filled rectangle is drawn
-    :return: None
+    Draws a rectangle on the input image. The input image is modified in-place.
+
+    Args:
+        mat: input image
+        pt1: vertex of the rectangle
+        pt2: vertex of the rectangle opposite from pt1
+        color: color of the rectangle
+        thickness: thickness of the borders of the rectangle. if negative,
+            a filled rectangle is drawn
+    
+    Returns:
+        None.
     """
     cv2.rectangle(mat, pt1, pt2, color, thickness=thickness)
 
-def draw_rot_rect(mat, center_x, center_y, width, height, angle, color=(0, 0, 255), thickness=1):
-    """
-    Draws a rotated rectangle on the input image. The input image is modified.
-    :param mat: input image
-    :param center_x: x-coordinate of the center of the rectangle
-    :param center_y: y-coordinate of the center of the rectangle
-    :param width: width of the rectangle
-    :param height: height of the rectangle
-    :param angle: rotation angle of the rectangle, in degrees
-    :return: None
-    """
 
+def draw_rot_rect(mat: np.ndarray,
+                  center_x: int,
+                  center_y: int,
+                  width: int,
+                  height: int,
+                  angle: float,
+                  color: Tuple[int, int, int] = (0, 0, 255),
+                  thickness: int = 1) -> None:
+    """
+    Draws a rotated rectangle on the input image. The input image is modified
+    in-place.
+
+    Args:
+        mat: input image
+        center_x: x-coordinate of the center of the rectangle
+        center_y: y-coordinate of the center of the rectangle
+        width: width of the rectangle
+        height: height of the rectangle
+        angle: rotation angle of the rectangle, in degrees
+        color: color of the rectangle, in BGR
+        thickness: thickness of the borders of the rectangle
+
+    Returns:
+        None.
+    """
     _angle = angle * math.pi / 180.0
     b = math.cos(_angle) * 0.5
     a = math.sin(_angle) * 0.5
@@ -94,28 +154,44 @@ def draw_rot_rect(mat, center_x, center_y, width, height, angle, color=(0, 0, 25
     cv2.line(mat, pt2, pt3, color, thickness)
     cv2.line(mat, pt3, pt0, color, thickness)
 
-def draw_text(mat, s, origin, scale, color=(0, 0, 255), thickness=1):
+def draw_text(mat: np.ndarray,
+              s: str,
+              origin: Tuple[int, int],
+              scale: float,
+              color: Tuple[int, int, int] = (0, 0, 255),
+              thickness: int = 1) -> None:
     """
-    Draws text on the input image. The input image is modified.
-    :param mat: input image
-    :param s: text to draw
-    :param origin: coordinate of bottom-left corner of text
-    :param scale: font scaling factor
-    :param color: color of font
-    :param thickness: thickness of font
-    :return: None
+    Draws text on the input image. The input image is modified in-place.
+
+    Args:
+        mat: input image
+        s: text to draw
+        origin: coordinate of bottom-left corner of text
+        scale: font scaling factor
+        color: color of font, in BGR
+        thickness: thickness of font
+
+    Returns:
+        None.
     """
     cv2.putText(mat, s, origin, cv2.FONT_HERSHEY_SIMPLEX, scale, color, thickness=thickness)
 
 
-def draw_contours(mat, contours, color=(0, 0, 255), thickness=1):
+def draw_contours(mat: np.ndarray,
+                  contours: List[np.ndarray],
+                  color: Tuple[int, int, int] = (0, 0, 255),
+                  thickness: int = 1) -> None:
     """
-    Draws contours on the input image. The input image is modified.
-    :param mat: input image
-    :param contours: contours to draw
-    :param color: color of contours
-    :param thickness: thickness of contours, filled if -1
-    :return: None
+    Draws contours on the input image. The input image is modified in-place.
+
+    Args:
+        mat: input image
+        contours: contours to draw
+        color: color of contours, in BGR
+        thickness: thickness of contours; filled if -1
+
+    Returns:
+        None.
     """
     cv2.drawContours(mat, contours, -1, color, thickness=thickness)
 

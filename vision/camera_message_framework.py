@@ -65,12 +65,16 @@ class ExistentialError(Exception):
 class StateError(Exception):
     pass
 
-# Structure that represents an accessor to a shared memory block. Creating an
-# accessor will block until the shared memory block with the specified name is
-# created
-# An accessor has all of the same priviledges as a creator in terms of reading
-# and writing frame
 class Accessor:
+    """
+    An accessor is a structure that represents an accessor to a shared memory
+    block. Creating an accessor will block until the shared memory block with
+    the specified name is created.
+
+    An accessor has all of the same privileges as a creator, in terms of reading
+    and writing frame.
+    """
+
     def __init__(self, name):
         self.name = name
         self._framework = None
@@ -98,9 +102,12 @@ class Accessor:
     def valid(self):
         return self._framework
 
-    # convenience method for setting up accessor fields
-    # these aren't in the constructor because Creator will also want to use them
+
     def _setup_accessor(self, framework_valid=True):
+        """
+        Convenience method for setting up accessor fields. These aren't in the
+        constructor because Creator will also want to use them.
+        """
         self._frame = _Frame()
         self._array = None
         self._last_frame = None
@@ -133,19 +140,26 @@ class Accessor:
         self._last_frame = self._array, frame.acq_time
         return self._last_frame
 
+
     def get_last_frame(self):
         if self._last_frame is None:
             raise StateError()
         return self._last_frame
 
+
     def has_last_frame(self):
         return self._last_frame is not None
 
-    # write a frame to the shared memory block, with a max dimension size of 3
-    # the frame must be at most this.buffer_size bytes
-    # acq_time is an int representing the time in miliseconds that the frame
-    # was acquired at
+
     def write_frame(self, frame, acq_time):
+        """
+        Write a frame to the shared memory block, with a maximum dimension size
+        of three.
+
+        The frame must be at most [this.buffer_size] bytes. acq_time is an int
+        representing the time in milliseconds that the frame was acquired at.
+        """
+
         if not self.alive:
             raise StateError('Accessor has already been cleaned up!')
 
@@ -178,9 +192,12 @@ class Accessor:
         _lib.cleanup_message_framework(self._framework)
         self._framework = None
 
-# A Creator is an accessor that first creates the framework before accessing it.
-# It will raise an ExistentialError if the specified name already exists
+
 class Creator(Accessor):
+    """
+    A creator is an accessor that first creates the framework before accessing
+    it. It will raise an ExistentialError if the specified name already exists.
+    """
     def __init__(self, name, max_size):
         self.name = name
         self._framework = _lib.create_message_framework_from_cstring(name.encode('utf8'), max_size)

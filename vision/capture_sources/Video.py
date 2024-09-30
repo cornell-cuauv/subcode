@@ -7,7 +7,7 @@ import cv2
 
 import shm
 
-from CaptureSource import CaptureSource
+from vision.capture_sources.capture_source import CaptureSource
 
 class Video(CaptureSource):
     def __init__(self, direction, filename, loop=True, shmlog=False):

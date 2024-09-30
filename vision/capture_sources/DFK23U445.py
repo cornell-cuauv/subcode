@@ -5,7 +5,7 @@ import time
 
 import cv2
 
-from CaptureSource import CaptureSource
+from vision.capture_sources.capture_source import CaptureSource
 
 class DFK23U445(CaptureSource):
     def __init__(self, direction, index=0):

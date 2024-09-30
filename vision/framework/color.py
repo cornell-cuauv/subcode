@@ -5,17 +5,20 @@ import numpy as np
 
 from auv_python_helpers import load_library
 from vision.framework.helpers import as_mat
-
+from typing import Callable, Tuple, List
 
 _lib_color_balance = load_library('libauv-color-balance.so')
 
+def _convert_colorspace(conv_type: int) -> Callable[[np.ndarray], Tuple[np.ndarray, List[np.ndarray]]]:
+    """Function generator to create colorspace conversion of an image.
+    
+    Args:
+        conv_type: The type of colorspace conversion.
 
-def _convert_colorspace(conv_type):
+    Returns:
+        A function that takes an input image and returns (converted image, target colorspace split).
     """
-    :param conv_type: the type of colorspace conversion
-    :return: a function that takes an input image and returns (converted image, target colorspace split)
-    """
-    def _inner(mat):
+    def _inner(mat: np.ndarray) -> Tuple[np.ndarray, List[np.ndarray]]:
         conv = cv2.cvtColor(mat, conv_type)
         return conv, cv2.split(conv)
     return _inner
@@ -24,39 +27,66 @@ def _convert_colorspace(conv_type):
 _conversions = [cv2.COLOR_BGR2LAB, cv2.COLOR_BGR2HSV, cv2.COLOR_BGR2HLS, cv2.COLOR_BGR2YCrCb,
                 cv2.COLOR_BGR2LUV, cv2.COLOR_BGR2GRAY, cv2.COLOR_GRAY2BGR, cv2.COLOR_LAB2BGR,
                 cv2.COLOR_HSV2BGR]
-bgr_to_lab, bgr_to_hsv, bgr_to_hls, bgr_to_ycrcb, bgr_to_luv, bgr_to_gray, gray_to_bgr, lab_to_bgr, hsv_to_bgr = [_convert_colorspace(c) for c in _conversions]
+
+bgr_to_lab, bgr_to_hsv, bgr_to_hls, \
+bgr_to_ycrcb, bgr_to_luv, bgr_to_gray, \
+gray_to_bgr, lab_to_bgr, hsv_to_bgr = [_convert_colorspace(c) for c in _conversions]
 
 
-def color_dist(c1, c2):
+def color_dist(c1: Tuple[int, int, int],
+               c2: Tuple[int, int, int]) -> float:
     """
-    :param c1: first color (3-dimensional)
-    :param c2: second color (3-dimensional)
-    :return: euclidean distance between color values
+    Calculates the Euclidean distance between two colors.
+
+    Args:
+        c1: First color (3-dimensional).
+        c2: Second color (3-dimensional).
+
+    Returns:
+        The Euclidean distance between color values.
     """
     return sqrt((c1[0] - c2[0])**2 + (c1[1] - c2[1])**2 + (c1[2] - c2[2])**2)
 
 
-def elementwise_color_dist(mat, c):
+def elementwise_color_dist(mat: np.ndarray,
+                           c: Tuple[int, int, int]) -> np.ndarray:
     """
-    Calculates the elementwise distance between the pixels in an image matrix and a given color
-    :param mat: image matrix
-    :param c: target color
-    :return: a matrix of distance values for each pixel in the image
+    Calculates the elementwise distance between the pixels in an image matrix
+    and a given color.
+
+    Args:
+        mat: Image matrix.
+        c: Target color.
+
+    Returns:
+        A matrix of distance values for each pixel in the image.
     """
     return np.linalg.norm(as_mat(mat) - c, axis=2)
 
-def thresh_color_distance(split, color, distance, auto_distance_percentile=None, ignore_channels=[], weights=(1, 1, 1)):
+
+def thresh_color_distance(split: List[np.ndarray],
+                          color: Tuple[int, int, int],
+                          distance: float, 
+                          auto_distance_percentile: float = None,
+                          ignore_channels: List[int] = [], 
+                          weights: Tuple[float, float, float] = (1, 1, 1)) -> Tuple[np.ndarray, np.ndarray]:
     """
-    thresholds the image according to the weighted distance of each pixel to the color
-    :param split: a list of monocolored images (see _convert_colorspace)
-    :param color: the target color of the threshold
-    :param distance: the target distance of the threshold.
-    :param auto_distance_percentile: the percentile used for distance
-    :param ignore_channels: specifies which color channels should be ignored
-    :param weights: the weights to calculated the weighted color distance of each channel
-    :return: A tuple of the input image with all pixel values with weighted
-             color distance to color larger than distance set to zero and all other
-             values set to 255, and a matrix of distances of the point to the specified color.
+    Thresholds the image according to the weighted distance of each pixel to the
+    color.
+
+    Args:
+        split: A list of monocolored images (see _convert_colorspace).
+        color: The target color of the threshold.
+        distance: The target distance of the threshold.
+        auto_distance_percentile: The percentile used for distance.
+        ignore_channels: Specifies which color channels should be ignored.
+        weights: The weights to calculate the weighted color distance of each channel.
+
+    Returns:
+        A tuple of the input image with all pixel values with weighted color
+        distance to color larger than distance set to zero and all other values
+        set to 255, and a matrix of distances of the point to the specified
+        color.
     """
     weights_cp = list(weights)
     for idx in ignore_channels:
@@ -73,197 +103,297 @@ def thresh_color_distance(split, color, distance, auto_distance_percentile=None,
         distance = distance**2
     return range_threshold(dists, 0, distance), np.uint8(np.sqrt(dists))
 
-def range_threshold(mat, min, max):
+def range_threshold(mat: np.ndarray,
+                    min: int,
+                    max: int) -> np.ndarray:
     """
-    :param mat: input image
-    :param min: minimum threshold for pixel value
-    :param max: maximum threshold for pixel value
-    :return: the input image with all pixel values outside of the range [min, max] set to zero and all values within the
-        range set to 255
+    Thresholds the image based on a range of values. The input image with all
+    pixel values outside of the range [min, max] are set to zero  and all values
+    within the range set to 255.
+
+    Args:
+        mat: Input image.
+        min: Minimum threshold for pixel value.
+        max: Maximum threshold for pixel value.
+
+    Returns:
+        Thresholded image.
     """
     return cv2.inRange(mat, min, max)
 
 
-def binary_threshold(mat, threshold):
+def binary_threshold(mat: np.ndarray,
+                     threshold: int) -> np.ndarray:
     """
-    :param mat: input image
-    :param threshold: threshold value
-    :return: values above the threshold are set to 255 and values less than or equal to the threshold are set to zero
+    Applies binary thresholding to the image. The values above the threshold are
+    set to 255 and values less than or equal to the threshold are set to zero.
+
+    Args:
+        mat: Input image.
+        threshold: Threshold value.
+
+    Returns:
+        Thresholded image.
     """
     return cv2.threshold(mat, threshold, 255, cv2.THRESH_BINARY)[1]
 
 
-def binary_threshold_inv(mat, threshold):
-    """
-    :param mat: input image
-    :param threshold: threshold value
-    :return: values above the threshold are set to zero and values less than or equal to the threshold are set to 255
+def binary_threshold_inv(mat: np.ndarray,
+                         threshold: int) -> np.ndarray:
+    """Applies inverse binary thresholding to the image. The values above the
+    threshold are set to zero and values less than or equal to the threshold are
+    set to 255.
+
+    Args:
+        mat: Input image.
+        threshold: Threshold value.
+
+    Returns:
+        Thresholded image.
     """
     return cv2.threshold(mat, threshold, 255, cv2.THRESH_BINARY_INV)[1]
 
 
-def max_threshold(mat, threshold):
+def max_threshold(mat: np.ndarray,
+                  threshold: float) -> np.ndarray:
     """
-    :param mat: input image
-    :param threshold: threshold value
-    :return: values above the threshold are set to threshold and all other values are unchanged
+    Applies maximum thresholding to the image. The values above the threshold
+    are set to threshold and all other values are unchanged.
+
+    Args:
+        mat: Input image. threshold:
+        Threshold value.
+
+    Returns:
+        Thresholded image.
     """
     return cv2.threshold(mat, threshold, 0, cv2.THRESH_TRUNC)[1]
 
 
-def above_threshold(mat, threshold):
+def above_threshold(mat: np.ndarray,
+                    threshold: float) -> np.ndarray:
     """
-    :param mat: input image
-    :param threshold: threshold value
-    :return: values above the threshold are unchanged, and values less than or equal to the threshold are set to zero
+    Thresholds the image, keeping values above the threshold.
+
+    Args:
+        mat: Input image.
+        threshold: Threshold value.
+
+    Returns:
+        Image where values above the threshold are unchanged, and values less
+        than or equal to the threshold are set to zero.
     """
     return cv2.threshold(mat, threshold, 0, cv2.THRESH_TOZERO)[1]
 
 
-def below_threshold(mat, threshold):
+def below_threshold(mat: np.ndarray,
+                    threshold: float) -> np.ndarray:
     """
-    :param mat: input image
-    :param threshold: threshold value
-    :return: values above the threshold are set to zero, and values less than or equal to the threshold are unchanged
+    Thresholds the image, keeping values below the threshold.
+
+    Args:
+        mat: Input image.
+        threshold: Threshold value.
+
+    Returns:
+        Image where values above the threshold are set to zero, and values less
+        than or equal to the threshold are unchanged.
     """
     return cv2.threshold(mat, threshold, 0, cv2.THRESH_TOZERO_INV)[1]
 
 
-def otsu_threshold(mat):
+def otsu_threshold(mat: np.ndarray) -> Tuple[float, np.ndarray]:
     """
-    Thresholds the image using a threshold value calculated automatically using Otsu's Binarization
-    method. The input image must be bimodal, because Otsu's Binarization method automatically
-    calculates a threshold value based on the bimodal values.
-    :param mat: input image (should be bimodal)
-    :return: (threshold value, thresholded image)
+    Applies Otsu's thresholding method to the image.
+
+    The input image must be bimodal, because Otsu's Binarization method
+    automatically calculates a threshold value based on the bimodal values.
+
+    Args:
+        mat: Input image (should be bimodal).
+
+    Returns:
+        A tuple containing the threshold value and the thresholded image.
     """
     return cv2.threshold(mat, 0, 255, cv2.THRESH_OTSU)
 
 
-def adaptive_threshold_mean(mat, neighborhood_size, bias=0):
+def adaptive_threshold_mean(mat: np.ndarray,
+                            neighborhood_size: int,
+                            bias: float = 0) -> np.ndarray:
     """
-    Applies an adaptive threshold value, calculated as the mean of neighboring values. Values above the threshold are
-    set to 255 and values less than or equal to the threshold are set to zero.
-    :param mat: input image
-    :param neighborhood_size: size of neighborhood for threshold calculation (must be odd)
-    :param bias: a constant offset to the calculated mean value
-    :return: the thresholded image
+    Applies adaptive thresholding using the mean of neighboring values.
+
+    Args:
+        mat: Input image.
+        neighborhood_size: Size of neighborhood for threshold calculation (must be odd).
+        bias: A constant offset to the calculated mean value.
+
+    Returns:
+        The thresholded image where values above the threshold are set to 255 
+        and values less than or equal to the threshold are set to zero.
     """
     return cv2.adaptiveThreshold(mat, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, neighborhood_size, bias)
 
 
-def adaptive_threshold_mean_inv(mat, neighborhood_size, bias=0):
+def adaptive_threshold_mean_inv(mat: np.ndarray,
+                                neighborhood_size: int,
+                                bias: float = 0) -> np.ndarray:
     """
-    Applies an adaptive threshold value, calculated as the mean of neighboring values. Values above the threshold are
-    set to zero and values less than or equal to the threshold are set to 255.
-    :param mat: input image
-    :param neighborhood_size: size of neighborhood for threshold calculation (must be odd)
-    :param bias: a constant offset to the calculated mean value
-    :return: the thresholded image
+    Applies inverse adaptive thresholding using the mean of neighboring
+    values.
+
+    Args:
+        mat: Input image.
+        neighborhood_size: Size of neighborhood for threshold calculation (must be odd).
+        bias: A constant offset to the calculated mean value.
+
+    Returns:
+        The thresholded image where values above the threshold are set to zero 
+        and values less than or equal to the threshold are set to 255.
     """
     return cv2.adaptiveThreshold(mat, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, neighborhood_size, bias)
 
 
-def adaptive_threshold_gaussian(mat, neighborhood_size, bias=0):
+def adaptive_threshold_gaussian(mat: np.ndarray,
+                                neighborhood_size: int,
+                                bias: float = 0) -> np.ndarray:
     """
-    Applies an adaptive threshold value, calculated as a weighted sum of neighboring values. The weights are a Gaussian
-    window. Values above the threshold are set to 255 and values less than or equal to the threshold are set to zero.
-    :param mat: input image
-    :param neighborhood_size: size of neighborhood for threshold calculation (must be odd)
-    :param bias: a constant offset to the calculated weighted mean value
-    :return: the thresholded image
+    Applies adaptive thresholding using a Gaussian-weighted sum of neighboring
+    values.
+
+    Args:
+        mat: Input image.
+        neighborhood_size: Size of neighborhood for threshold calculation (must be odd).
+        bias: A constant offset to the calculated weighted mean value.
+
+    Returns:
+        The thresholded image where values above the threshold are set to 255 
+        and values less than or equal to the threshold are set to zero.
     """
     return cv2.adaptiveThreshold(mat, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, neighborhood_size, bias)
 
 
-def adaptive_threshold_gaussian_inv(mat, neighborhood_size, bias=0):
+def adaptive_threshold_gaussian_inv(mat: np.ndarray,
+                                    neighborhood_size: int,
+                                    bias: float = 0) -> np.ndarray:
     """
-    Applies an adaptive threshold value, calculated as a weighted sum of neighboring values. The weights are a Gaussian
-    window. Values above the threshold are set to zero and values less than or equal to the threshold are set to 255.
-    :param mat: input image
-    :param neighborhood_size: size of neighborhood for threshold calculation (must be odd)
-    :param bias: a constant offset to the calculated weighted mean value
-    :return: the thresholded image
+    Applies inverse adaptive thresholding using a Gaussian-weighted sum of
+    neighboring values.
+
+    Args:
+        mat: Input image.
+        neighborhood_size: Size of neighborhood for threshold calculation (must be odd).
+        bias: A constant offset to the calculated weighted mean value.
+
+    Returns:
+        The thresholded image where values above the threshold are set to zero 
+        and values less than or equal to the threshold are set to 255.
     """
     return cv2.adaptiveThreshold(mat, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, neighborhood_size, bias)
 
 
-def kmeans(mat, num_centeroids, iterations=10, epsilon=1.0):
+def kmeans(mat: np.ndarray,
+           num_centeroids: int,
+           iterations: int = 10,
+           epsilon: float = 1.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Performs kmeans clustering on the colors in an image. It clusters the
-    colors as three dimensional points and separates them into different clusteroids.
+    Performs k-means clustering on the colors in an image.
 
-    The function returns a measure of how close the samples are to each center,
-    the best suited label for each point on the image, and the centeroids of
-    each label.
+    It clusters the colors as three-dimensional points and separates them into
+    different clusteroids.
 
-    :param mat: The image to be clustered
-    :param num_centeroids: The number of clusters/centeroids to be used when
-                           running the algorithm
-    :param iterations: The number of iterations to run the kmeans algorithm
-    :param epsilon: The epsilon to terminate the algorithm when it is reached
+    Args:
+        mat: The image to be clustered.
+        num_centeroids: The number of clusters/centeroids to be used when
+            running the algorithm.
+        iterations: The number of iterations to run the kmeans algorithm.
+        epsilon: The epsilon to terminate the algorithm when it is reached.
+
+    Returns:
+        A tuple containing: A measure of how close the samples are to each
+        center, the best suited label for each point on the image, and the
+        centeroids of each label.
     """
     array = mat.reshape((-1, 2))
     array = np.float32(array)
     criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 10, 1.0)
-    compactness, labels, centers = cv2.kmeans(array, num_centeroids, None, criteria, KMEANS_ITER, cv2.KMEANS_RANDOM_CENTERS)
+    compactness, labels, centers = cv2.kmeans(array, num_centeroids, None, criteria, cv2.KMEANS_ITER, cv2.KMEANS_RANDOM_CENTERS)
     compactness =  np.reshape((mat.shape[0], mat.shape[1]))
     labels = np.reshape((mat.shape[0], mat.shape[1]))
     return compactness, labels, centers
 
 
-def mask_from_labels(labels, centers):
-    """
-    Generates masks from labels generated from kmeans.
+def mask_from_labels(labels: np.ndarray,
+                     centers: np.ndarray) -> List[np.ndarray]:
+    """Generates masks from labels generated from k-means.
 
-    Generates one mask from each centeroid in centers. Basically, all points in
-    the same label is set to 255, while all other points are set to 0.
-    :param labels: The labels generated by kmeans.
-    :param centers: The centeroids generated by kmeans.
+    Args:
+        labels: The labels generated by k-means.
+        centers: The centeroids generated by k-means.
+
+    Returns:
+        A list of masks, one for each centeroid in centers. For each mask, 
+        all points in the same label are set to 255, while all other points are
+        set to 0.
     """
     acc = []
     for i, c in enumerate(centers):
         mask = np.zeros(labels.shape, dtype=np.uint8)
-        mask[labels==target_label] = 255
+        mask[labels==i] = 255
         acc.append(mask)
     return acc
 
-def mask_from_labels_target_color(labels, centers, target_color, distance_func=color_dist):
-    """
-    Generates masks from labels generated from kmeans.
 
-    Generates one mask based on the label closest to target_color. Basically,
-    all points in the same label is set to 255, while all other points are set
-    to 0.  Generates one mask from each centeroid in centers.
-    :param labels: The labels generated by kmeans.
-    :param centers: The centeroids generated by kmeans.
-    :param target_color: The target color used to choose the label generating the masks
-    :param distance_func: The function that takes in two 3-channel colors to
-                          calculate the color distance of the colors. (ie, you can specify a custom
-                          function to ignore channels, weight different channels, etc.)
+def mask_from_labels_target_color(labels: np.ndarray,
+                                  centers: np.ndarray,
+                                  target_color: Tuple[int, int, int], 
+                                  distance_func: Callable = color_dist) -> np.ndarray:
+    """Generates a mask from labels generated from k-means based on the closest
+    label to a target color.
+
+    Args:
+        labels: The labels generated by k-means.
+        centers: The centeroids generated by k-means.
+        target_color: The target color used to choose the label generating the masks.
+        distance_func: The function that takes in two 3-channel colors to calculate 
+                       the color distance of the colors.
+
+    Returns:
+        A mask where all points in the label closest to the target color are set
+        to 255, while all other points are set to 0.
     """
-    target_label = min(enumerate(centers), key= lambda x: distance_fun(x, target_color))
-    ret = np.zeros(lables.shape, dtype=np.uint8)
+    target_label = min(enumerate(centers), key= lambda x: distance_func(x, target_color))
+    ret = np.zeros(labels.shape, dtype=np.uint8)
     ret[labels==target_label] = 255
     return ret
 
 
-def color_correct(mat, equalize_rgb=True, rgb_contrast_correct=False,
-                  hsv_contrast_correct=True, hsi_contrast_correct=False,
-                  rgb_extrema_clipping=True, adaptive_cast_correction=False,
-                  horizontal_blocks=1, vertical_blocks=1):
-    """
-    Applies color correction (color cast correction and contrast correction)
-    :param mat: input image
-    :param equalize_rgb: whether to apply color cast correction
-    :param rgb_contrast_correct: whether to apply RGB-based contrast correction
-    :param hsv_contrast_correct: whether to apply HSV-based contrast correction
-    :param hsi_contrast_correct: whether to apply HSI-based contrast correction
-    :param rgb_extrema_clipping: whether to clip outliers in terms of RGB values
-    :param adaptive_cast_correction: whether to adaptively calculate gains for color cast correction
-    :param horizontal_blocks: number of horizontal blocks used for color cast correction
-    :param vertical_blocks: number of vertical blocks used for color cast correction
-    :return:
+def color_correct(mat: np.ndarray,
+                  equalize_rgb: bool = True,
+                  rgb_contrast_correct: bool = False,
+                  hsv_contrast_correct: bool = True,
+                  hsi_contrast_correct: bool = False,
+                  rgb_extrema_clipping: bool = True,
+                  adaptive_cast_correction: bool = False,
+                  horizontal_blocks: int = 1,
+                  vertical_blocks: int = 1) -> np.ndarray:
+    """Applies color correction (color cast correction and contrast correction).
+
+    Args:
+        mat: Input image.
+        equalize_rgb: Whether to apply color cast correction.
+        rgb_contrast_correct: Whether to apply RGB-based contrast correction.
+        hsv_contrast_correct: Whether to apply HSV-based contrast correction.
+        hsi_contrast_correct: Whether to apply HSI-based contrast correction.
+        rgb_extrema_clipping: Whether to clip outliers in terms of RGB values.
+        adaptive_cast_correction: Whether to adaptively calculate gains for
+            color cast correction.
+        horizontal_blocks: Number of horizontal blocks used for color cast correction.
+        vertical_blocks: Number of vertical blocks used for color cast correction.
+
+    Returns:
+        The color-corrected image.
     """
     rows = mat.shape[0]
     cols = mat.shape[1]
@@ -281,43 +411,26 @@ def color_correct(mat, equalize_rgb=True, rgb_contrast_correct=False,
     return mat
 
 
-def white_balance_bgr(bgr_img):# Convert BGR to LAB and change data type to float32
+def white_balance_bgr(bgr_img):
     lab_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2LAB).astype(np.float32)
-
-    # Split LAB image into separate channels
     lab_l, lab_a, lab_b = cv2.split(lab_img)
-
-    # Calculate the average of the a and b channels
     a_avg = np.mean(lab_a)
     b_avg = np.mean(lab_b)
-
-    # Subtract the average from the a and b channels
     lab_a -= a_avg - 128
     lab_b -= b_avg - 128
-
-    # Merge the LAB channels back and convert LAB back to BGR
     lab_img = cv2.merge((lab_l, lab_a, lab_b))
     return cv2.cvtColor(lab_img.astype(np.uint8), cv2.COLOR_LAB2BGR)
 
 
-def white_balance_bgr_blur(bgr_img, kernel_size): # Convert BGR to LAB and change data type to float32
+def white_balance_bgr_blur(bgr_img, kernel_size):
     kernel_size //= 2
     kernel_size = 2 * kernel_size + 1
-
     lab_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2LAB).astype(np.float32)
-
-    # Split LAB image into separate channels
     lab_l, lab_a, lab_b = cv2.split(lab_img)
-
-    # Gaussian blur the a and b channels
     lab_a_avg = cv2.blur(lab_a, (kernel_size, kernel_size), 0, borderType=cv2.BORDER_REPLICATE)
     lab_b_avg = cv2.blur(lab_b, (kernel_size, kernel_size), 0, borderType=cv2.BORDER_REPLICATE)
-
-    # Subtract the average from the a and b channels
     lab_a -= lab_a_avg - 128
     lab_b -= lab_b_avg - 128
-
-    # Merge the LAB channels back and convert LAB back to BGR
     lab_img = cv2.merge((lab_l, lab_a, lab_b))
     return cv2.cvtColor(lab_img.astype(np.uint8), cv2.COLOR_LAB2BGR)
 

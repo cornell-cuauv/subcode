@@ -18,6 +18,8 @@ from vision import camera_message_framework
 from vision.modules.preprocessor import Preprocessor
 from vision.framework.helpers import from_umat
 
+from typing import Tuple
+
 logger = auvlog.vision
 
 class UndefinedModuleOption(Exception):
@@ -76,11 +78,11 @@ class ModuleBase:
 
     def fill_single_camera_direction(self, shm_group):
         """
-            Used to indicate what direction this (single-camera) module is
-            getting images from. Most modules will want to use this.
+        Used to indicate what direction this (single-camera) module is
+        getting images from. Most modules will want to use this.
 
-            This assumes the passed in shm group has a "camera" field
-            and uses some shm internals to check its length.
+        This assumes the passed in shm group has a "camera" field
+        and uses some shm internals to check its length.
         """
         var_type = [f[1] for f in shm_group._fields_ if f[0] == 'camera'][0]
         max_length = ctypes.sizeof(var_type)
@@ -151,11 +153,20 @@ class ModuleBase:
 
         self.module_framework.register_option_observer(update_option_watcher, False)
 
-    # Converts coord to normalized coordinates
-    # Coord can be either a single number or a tuple
-    # If a single number is passed, specify axis
-    # axis=0 for x-axis, axis=1 for y-axis
-    def normalized(self, coord, axis=None, mat=None):
+    def normalized(self,
+                   coord: int | Tuple[int, int],
+                   axis: int = None,
+                   mat: np.ndarray = None) -> int | Tuple[int, int]:
+        """
+        Converts exact coordinates to normalized coordinates.
+
+        Args:
+            coord: original coordinate. If it is an integer, uses the axis
+                argument to normalize.
+            axis: if coord is an integer, then axis specifes which axis to
+                normalize on (axis=0 for x-axis, axis=1 for y-axis).
+            mat: the reference image to normalize on.
+        """
         if mat is None:
             mat = self._next_images[0]
 
@@ -167,11 +178,21 @@ class ModuleBase:
         else:
             return norm(coord, axis)
 
-    # Converts coord to exact coordinates
-    # Coord can be either a single number or a tuple
-    # If a single number is passed, specify axis
-    # axis=0 for x-axis, axis=1 for y-axis
-    def denormalized(self, coord, axis=None, mat=None, round=False):
+    def denormalized(self,
+                     coord,
+                     axis=None,
+                     mat=None,
+                     round=False) -> int | Tuple[int, int]:
+        """
+        Converts normalized coordinates to exact coordinates.
+
+        Args:
+            coord: original coordinate. If it is an integer, uses the axis
+                argument to normalize.
+            axis: if coord is an integer, then axis specifes which axis to
+                normalize on (axis=0 for x-axis, axis=1 for y-axis).
+            mat: the reference image to normalize on.
+        """
         if mat is None:
             mat = self._next_images[0]
 
@@ -221,8 +242,6 @@ class ModuleBase:
             mat = self._next_images[0]
         if not isOdd:
             return int(initVal * mat.shape[1])
-            if size <= 1 and overOne:
-            	return 2
         else:
             size = int(initVal * mat.shape[1] / 2) * 2 + 1
             if size <= 1 and overOne:
@@ -232,10 +251,8 @@ class ModuleBase:
     # Scales option size to the current camera size
     # based on initial value and image width.
     def option_size(self, initVal, mat=None):
-        if mat is None:
-        	mat = self._next_images[0]
+        mat = self._next_images[0] if mat is None else mat 
         return initVal * mat.shape[1]
-
 
     def __call__(self, reload_on_enable=True, reload_on_change=True):
         m_logger = getattr(logger.module, self.module_name)
