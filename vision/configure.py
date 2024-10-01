@@ -30,6 +30,8 @@ build.install('auv-camera-stream-client',
               f='vision/capture_sources/stream_client.py')
 build.install('auv-zed-camera', f='vision/capture_sources/zed.py')
 
+build.install('auv-yolo-shm', f='vision/utils/edit_shm.py')
+
 camera_apis = {
                 "ueye.h": ("ueye", "UeyeCamera.cpp", "ueye_api"),
             #    "m3api/xiApi.h": ("ximea", "XimeaCamera.cpp", "m3api")
