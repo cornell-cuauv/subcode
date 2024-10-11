@@ -6,7 +6,7 @@ import time
 import numpy as np
 import cv2
 import pyzed.sl as sl
-from vision.capture_sources.CaptureSource import CaptureSource
+from vision.capture_sources.capture_source import CaptureSource
 
 VIDEO_SETTINGS = sl.VIDEO_SETTINGS
 

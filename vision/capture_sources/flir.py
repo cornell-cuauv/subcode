@@ -55,7 +55,7 @@ class FlirCaptureSource(CaptureSource):
         image_converted = self.processor.Convert(image, PySpin.PixelFormat_BGR8)
         image.Release()
         image_raw = image_converted.GetData()
-        image_final = image_raw.reshape((1080, 1440, 3))
+        image_final = image_raw.reshape((540, 960, 3))
         #print("processed image")
         return image_final
     

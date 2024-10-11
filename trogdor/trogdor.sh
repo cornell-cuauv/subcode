@@ -25,9 +25,9 @@ VEHICLE_TYPE=$CUAUV_VEHICLE_TYPE
 if [ "$VEHICLE_TYPE" = "minisub" ]; then
 	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Polaris_FTDI2_AUV-POLARIS2-if00-port0)
 elif [ "$VEHICLE_TYPE" = "mainsub" ]; then # TODO: NEED NEW SERIAL.
-	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Sirius_FTDI2_AUV-SIRIUS2-if00-port0)
+	GX_PORT=$(readlink -f /dev/serial/by-id/usb-CUAUV_Sirius_FTDI3_AUV-SIRIUS3-if00-port0)
 fi
-DVL_PORT=/dev/serial/by-id/usb-CUAUV_Sirius_FTDI4_AUV-SIRIUS4-if01-port0
+DVL_PORT=/dev/serial/by-id/usb-CUAUV_Sirius_FTDI1_AUV-SIRIUS1-if01-port0
 
 # CONFIGS
 

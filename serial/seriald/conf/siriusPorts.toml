@@ -1,13 +1,13 @@
 ports = [
-    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI3_AUV-SIRIUS3-if01-port0", # merge
-    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI3_AUV-SIRIUS3-if03-port0", # led
-    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI1_AUV-SIRIUS1-if00-port0", # sensor
-    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI1_AUV-SIRIUS1-if01-port0", # actuators
-    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI1_AUV-SIRIUS1-if02-port0", # pd
-    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI2_AUV-SIRIUS2-if02-port0", # thruster 1
-    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI2_AUV-SIRIUS2-if01-port0", # thruster 2
-    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI4_AUV-SIRIUS4-if00-port0", # transmit
+    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI2_AUV-SIRIUS2-if01-port0", # merge
+    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI2_AUV-SIRIUS2-if03-port0", # led
+    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI4_AUV-SIRIUS4-if00-port0", # sensor
+    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI4_AUV-SIRIUS4-if01-port0", # actuators
+    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI4_AUV-SIRIUS4-if02-port0", # pd
+    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI3_AUV-SIRIUS3-if02-port0", # thruster 1
+    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI3_AUV-SIRIUS3-if01-port0", # thruster 2
+    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI1_AUV-SIRIUS1-if00-port0", # transmit
     
-    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI3_AUV-SIRIUS3-if00-port0", # BMB Pod A
-    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI4_AUV-SIRIUS4-if02-port0", # BMB Pod B
+    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI2_AUV-SIRIUS2-if00-port0", # BMB Pod A
+    "/dev/serial/by-id/usb-CUAUV_Sirius_FTDI1_AUV-SIRIUS1-if02-port0", # BMB Pod B
 ]

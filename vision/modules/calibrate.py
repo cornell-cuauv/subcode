@@ -36,8 +36,8 @@ def build_opts():
             options.IntOption('zed_gamma'        ,   4, 0, 8),
             options.IntOption('zed_sharpness'    ,   4, 0, 8),
             options.IntOption('zed_white_balance',5000, 2800, 6500),
-            options.IntOption('zed_exposure'     ,  1, 0, 100),
-            options.IntOption('zed_gain'         ,  1, 0, 100)
+            options.IntOption('zed_exposure'     ,  80, 0, 100),
+            options.IntOption('zed_gain'         ,  100, 0, 100)
         ]
 
     else:

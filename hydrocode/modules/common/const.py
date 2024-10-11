@@ -6,7 +6,7 @@ import os
 import numpy as np
 
 BIT_DEPTH = 16384 # number of quantization levels for the hydrophones ADC
-BOARD_ADDR = '192.168.135.200' # IP address for hydrophones board
+BOARD_ADDR = '192.168.0.200' # IP address for hydrophones board
 CLIP_THRESH = 8000 # highest tolerable signal amplitude
 GAIN_VALUES = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128] # PGA gains
 GUI_UPDATE_TIME = 0.1 # update time for plot GUIs (s)

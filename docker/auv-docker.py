@@ -433,6 +433,10 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=Fal
                 "bind": "/home/software/sdcard",
                 "mode": "rw",
             }
+            docker_args["volumes"]["/home/software/mounts/local/zed/resources"] = {
+                "bind": "/usr/local/zed/resources",
+                "mode": "rw",
+            }
 
             docker_args["network_mode"] = "host"
             docker_args["privileged"] = True

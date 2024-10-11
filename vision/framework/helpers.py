@@ -28,7 +28,7 @@ def to_odd(n:int) -> int:
     return n if n % 2 == 1 else n + 1
 
 
-def to_umat(mat:cv2.typing.MatLike) -> cv2.UMat:
+def to_umat(mat:cv2.Mat) -> cv2.UMat:
     """
     Converts an image matrix to a unified matrix in the Transparent API for transparent access to
     both CPU/OpenCL-accelerated codepaths.
@@ -42,7 +42,7 @@ def to_umat(mat:cv2.typing.MatLike) -> cv2.UMat:
     return cv2.UMat(mat)
 
  
-def from_umat(umat: cv2.UMat) -> cv2.typing.MatLike:
+def from_umat(umat: cv2.UMat) -> cv2.Mat:
     """
     Converts a unified image matrix to a standard image matrix.
     
@@ -55,7 +55,7 @@ def from_umat(umat: cv2.UMat) -> cv2.typing.MatLike:
     return cv2.UMat.get(umat)
 
 
-def as_mat(mat: cv2.UMat | cv2.typing.MatLike) -> cv2.typing.MatLike:
+def as_mat(mat: cv2.UMat | cv2.Mat) -> cv2.Mat:
     """
     Converts an image matrix (either in standard form or unified form) to a standard image matrix
     

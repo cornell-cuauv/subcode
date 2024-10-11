@@ -21,7 +21,7 @@ build.build_cmd('auv-firewire-daemon', ['c/firewire_camera.cpp'], deps=[
 build.install('auv-start-cameras', f='vision/camera_manager.py')
 
 build.install('auv-webcam-camera',
-              f='vision/capture_sources/GenericVideoCapture.py')
+              f='vision/capture_sources/generic_video_capture.py')
 build.install('auv-video-camera', f='vision/capture_sources/Video.py')
 # build.install('auv-dfk-camera', f='vision/capture_sources/DFK23U445.py')
 build.install('auv-camera-stream-server',
