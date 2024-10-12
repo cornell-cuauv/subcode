@@ -5,11 +5,11 @@ import cv2
 
 from conf.vehicle import cameras, is_mainsub
 
-from vision.modules.base import ModuleBase
-from vision.options import IntOption, BoolOption, DoubleOption
-from vision.framework.draw import draw_rect, draw_text
+from vision.core.base import ModuleBase
+from vision.core.options import IntOption, BoolOption, DoubleOption
+from vision.utils.draw import draw_rect, draw_text
 
-from vision.framework.color import bgr_to_lab, lab_to_bgr
+from vision.utils.color import bgr_to_lab, lab_to_bgr
 
 def get_module_options(direction):
     brightness = {

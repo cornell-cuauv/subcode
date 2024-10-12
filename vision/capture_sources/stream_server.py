@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import cv2
-from vision import camera_message_framework
+from vision.core.bindings import camera_message_framework
 from nanomsg import Socket, PUB
 import argparse
 

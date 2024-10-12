@@ -10,7 +10,10 @@ from tornado.web import HTTPError
 from tornado.ioloop import PeriodicCallback
 
 from webserver import BaseHandler
-from vision import camera_message_framework, vision_common, options
+
+from vision import vision_common
+from vision.core import options
+from vision.core.bindings import camera_message_framework
 import shm
 
 module_frameworks = {}

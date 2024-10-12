@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from vision.modules.logger import VideoWriter
-from vision.modules.base import ModuleBase
+from vision.core.base import ModuleBase
 
 import os
 import shm

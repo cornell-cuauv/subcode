@@ -3,7 +3,7 @@ import time
 import numpy
 
 from misc.log import with_logging
-from vision import camera_message_framework as cmf
+from vision.core.bindings import camera_message_framework as cmf
 import shm
 
 #Maps CAVE representation of cameras to the strings

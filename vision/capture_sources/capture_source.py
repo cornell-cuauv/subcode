@@ -4,7 +4,7 @@ import sys
 import time
 import threading
 
-from vision import camera_message_framework
+from vision.core.bindings import camera_message_framework
 
 from auvlog.client import log as auvlog
 

@@ -10,7 +10,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "conf/vehicle.hpp"
-#include "vision/c/camera_message_framework.hpp"
+#include "vision/include/camera_message_framework.hpp"
 #define MAX_FPS 15
 
 class VisionLinkImp : public VisionLink {

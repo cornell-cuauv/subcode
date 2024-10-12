@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from vision.modules.base import ModuleBase
-from vision import options
-from vision.framework.transform import decode_normal
-from vision.framework.draw import draw_circle
+from vision.core.base import ModuleBase
+from vision.core import options
+from vision.utils.transform import decode_normal
+from vision.utils.draw import draw_circle
 import cv2
 import math
 

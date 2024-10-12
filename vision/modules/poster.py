@@ -2,7 +2,7 @@
 import time
 import shm
 
-from vision.modules.base import ModuleBase
+from vision.core.base import ModuleBase
 
 class Poster(ModuleBase):
     def __init__(self, *args, **kwargs):

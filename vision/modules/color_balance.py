@@ -6,8 +6,8 @@ import numpy
 import time
 import ctypes
 from auv_python_helpers import load_library
-from vision.modules.base import ModuleBase
-from vision import options
+from vision.core.base import ModuleBase
+from vision.core import options
 
 options = [ options.BoolOption('verbose', False) ]
 _lib_color_balance = load_library('libauv-color-balance.so')

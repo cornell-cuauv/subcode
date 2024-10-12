@@ -1,9 +1,6 @@
 import os
-
 import shm
-
 import cv2
-
 from datetime import datetime
 
 log_base_path = os.path.join(os.environ['CUAUV_LOG'], "current")
