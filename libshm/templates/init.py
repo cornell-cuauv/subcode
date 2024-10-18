@@ -4,10 +4,15 @@ __all__ = ['watchers',
     <!--(end)-->
            ]
 
-for module in __all__:
-    __import__("shm.{0}".format(module))
+<!--(for g in groups)-->
+import shm.$!g['groupname']!$ as $!g['groupname']!$ 
+<!--(end)-->
+
+# for module in __all__:
+#     __import__("shm.{0}".format(module))
 
 from shm.base import auv_var_lib
+import shm.watchers as watchers
 
 _init = auv_var_lib.shm_init
 _init.argtypes = []

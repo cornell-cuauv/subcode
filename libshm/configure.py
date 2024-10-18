@@ -80,22 +80,5 @@ build.build_cmd('auv-diagnose-shm',
         ['c/shm_diagnose.cpp'],
         auv_deps=['auvshm'])
 
-#build.test_gtest('shm',
-#                [
-#                    'c/log.cpp',
-#                    'c/serialize.cpp',
-#                    'c/shm.c',
-#                    'c/vars.c',
-#                    'c/watcher.c',
-#                    'c/dshm.c',
-#                    'c/dynamic.cpp',
-#                    'test/dynamic.cpp',
-#                ],
-#                implicit=['libshm/c/checksum.h'])
-
-
-# build.chicken_lib("cuauv-shm", [
-#         "scm/shm.scm"
-#     ], where="libshm/scm", auv_deps=["auvshm"])
-
-# build.rust_build('rust_shm', auv_c_deps=["auvshm"])
+build.install('auv-test-python-shm', 'libshm/test/bindings_test.py', is_test=True)
+build.run_test('auv-test-python-shm')
