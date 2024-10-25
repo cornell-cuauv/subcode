@@ -10,7 +10,7 @@ import shm
 from mission.combinator_framework.primitive import Zero
 import subprocess
 
-IP_ADDRESS = '192.168.0.254'
+IP_ADDRESS = '192.168.0.1'
 INTERVAL = 1 #seconds between pings
 # mwahahaha we r inpatient and don't want to crash
 TIMEOUT = 5 #seconds before softkill
