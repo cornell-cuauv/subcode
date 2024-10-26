@@ -71,7 +71,7 @@ debug_name = "Depth Aft Star"
 type = "T200"
 pos = [-0.1524, 0.3175, 0.053086]
 heading_pitch = [0.0, 90.0]
-reversed = true
+reversed = false
 broken = false
 
 [[thrusters]]
@@ -80,7 +80,7 @@ debug_name = "Depth Aft Port"
 type = "T200"
 pos = [-0.1524, -0.309118, 0.053086]
 heading_pitch = [0.0, 90.0]
-reversed = false
+reversed = true
 broken = false
 
 [[thrusters]]
