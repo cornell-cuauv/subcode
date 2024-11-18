@@ -32,7 +32,7 @@ def angular_distance(P, rays):
 import asyncio
 import math
 import shm
-from mission.framework.base import AsyncBase
+from mission.core.base import AsyncBase
 from mission.framework.position import move_x, move_y, go_to_position
 from mission.framework.movement import velocity_x_for_secs, velocity_y_for_secs
 

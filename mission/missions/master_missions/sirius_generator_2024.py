@@ -2,7 +2,7 @@ import shm
 import time
 
 # pre-coded enums
-from mission.framework.base import AsyncBase
+from mission.core.base import AsyncBase
 from mission.missions.master_missions.common import *
 from mission.framework.movement import *
 from mission.framework.position import *
@@ -21,8 +21,8 @@ from mission.framework.dead_reckoning import (
     heading_from_element_to_element)
 
 
-from mission.framework.logger import mission_logger
-from mission.framework.master_common import MASTER_LOGGER
+from mission.utils.logger import mission_logger
+from mission.core.master_common import MASTER_LOGGER
 
 SIRIUS_LOGGER = getattr(mission_logger, ":::: Sirius 2024 ::::")
 

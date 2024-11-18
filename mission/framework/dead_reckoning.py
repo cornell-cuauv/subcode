@@ -4,9 +4,11 @@ import math
 import shm
 from conf.vehicle import dvl_scaling_factor, dvl_present
 from auv_math import math_utils
-from mission.framework.movement import heading, velocity_x_for_secs
+from mission.framework.movement import heading
+from mission.framework.velocity import velocity_x_for_secs
 from mission.framework.position import move_x, go_to_position
 from mission.constants.sub import Tolerance
+from typing import Tuple
 
 # The list of elements tracked by the dead reckoning system, deduced from the
 # variables present in the dead_reckoning_virtual SHM group.
@@ -18,7 +20,8 @@ for var in vars(shm.dead_reckoning_virtual).keys():
         elements.append(var[:-8])
 
 def transform_coords_to_real_space(initial_real_heading : float = None):
-    """Transform coordinates from the virtual to the real reference frame.
+    """
+    Transform coordinates from the virtual to the real reference frame.
 
     The webgui mapper tool uses coordinates in a pool-aligned reference frame,
     wherease the DVL and GX use a far more arbitrary reference frame. This
@@ -126,11 +129,12 @@ def transform_coords_to_real_space(initial_real_heading : float = None):
 
     shm.dead_reckoning_real.set(real)
 
-def check_element_validity(element: str):
-    """Verify that an element exists and is in the pool.
+def check_element_validity(element: str) -> bool:
+    """
+    Verify that an element exists and is in the pool.
 
-    Arguments:
-    element -- the name of the element
+    Args:
+        element:    the name of the element.
     """
     if element not in elements:
         print("Error: '" + element + "' is not the name of a known element."
@@ -143,7 +147,9 @@ def check_element_validity(element: str):
     return True
 
 def get_element_position(element: str):
-    """Return the position (north, east) of an element in the pool."""
+    """
+    Return the position (north, east) of an element in the pool.
+    """
     if not check_element_validity(element):
         return None
     dead_reckoning = shm.dead_reckoning_real.get()
@@ -152,7 +158,9 @@ def get_element_position(element: str):
     return element_north, element_east
 
 def heading_to_element(target: str):
-    """Return the heading from the sub to an element."""
+    """
+    Return the heading from the sub to an element.
+    """
     if not check_element_validity(target):
         return None
     kalman = shm.kalman.get()
@@ -161,7 +169,9 @@ def heading_to_element(target: str):
         target_north - kalman.north / dvl_scaling_factor) * 180 / math.pi)
 
 def heading_from_element_to_element(current: str, target: str):
-    """Return the heading from one element to another element."""
+    """
+    Return the heading from one element to another element.
+    """
     if not (check_element_validity(current) and check_element_validity(target)):
         return None
     current_north, current_east = get_element_position(current)
@@ -170,7 +180,9 @@ def heading_from_element_to_element(current: str, target: str):
             * 180 / math.pi)
 
 def distance_to_element(target: str):
-    """Return the distance from the sub to an element."""
+    """
+    Return the distance from the sub to an element.
+    """
     if not check_element_validity(target):
         return None
     kalman = shm.kalman.get()
@@ -179,16 +191,20 @@ def distance_to_element(target: str):
             kalman.east / dvl_scaling_factor), target_position)
 
 def distance_from_element_to_element(current: str, target: str):
-    """Return the distance from one element to another element."""
+    """
+    Return the distance from one element to another element.
+    """
     if not (check_element_validity(current) and check_element_validity(target)):
         return None
     current_position = get_element_position(current)
     target_position = get_element_position(target)
     return math.dist(current_position, target_position)
 
-async def go_to_element(target: str, stop_dist: float = 0,
-        tolerance=Tolerance.POSITION):
-    """Send mainsub toward an element.
+async def go_to_element(target: str,
+                        stop_dist: float = 0,
+                        tolerance=Tolerance.POSITION):
+    """
+    Send mainsub toward an element.
 
     Requires the DVL and thus should only be used on mainsub.
 
@@ -243,7 +259,8 @@ def heading_of_element(element: str):
     return getattr(shm.dead_reckoning_real, element + "_heading").get()
 
 def depth_at_element(element: str):
-    """Return the depth of the pool at an element's location.
+    """
+    Return the depth of the pool at an element's location.
 
     Careful: This is not the depth of the element itself, but the depth of the
     bottom of the pool below the surface of the pool at the element's

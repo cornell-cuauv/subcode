@@ -22,7 +22,7 @@ import conf.vehicle as vehicle_conf
 import mission.framework.dead_reckoning as dead_reckoning
 from mission.missions.master_missions.dummy_generator import generator as dummy
 
-from mission.framework.master_common import MasterMission
+from mission.core.master_common import MasterMission
 
 def initialize_dead_reckoning():
     """"When on Mainsub, transform the coordinates of mission elements from the coordinate space

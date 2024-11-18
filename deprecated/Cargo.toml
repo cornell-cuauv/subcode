@@ -1,7 +1,0 @@
-[workspace]
-members = [
-    "libshm/rust_shm",
-    "conf/rust_conf",
-    "misc/ampman",
-]
-

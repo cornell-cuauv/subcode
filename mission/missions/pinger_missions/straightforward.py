@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-from mission.framework.base import AsyncBase
+from mission.core.base import AsyncBase
 from mission.framework.movement import *
 
 from mission.framework.primitive import *
-from mission.framework.contexts import *
+from mission.core.contexts import *
 
 from math import exp, cos, sin, tan, pi, radians
 
@@ -15,7 +15,7 @@ BIG_SWINGS_NEEDED = 3
 import asyncio
 import shm
 from hydrocode.modules.pinger.angles import wrap_angle
-from mission.framework.abstract_drive_towards import *
+from mission.utils.abstract_drive_towards import *
 from math import *
 
 PINGER_OFFSET = -55.1

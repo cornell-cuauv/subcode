@@ -13,7 +13,6 @@ from typing import Coroutine, Any
 import shm
 from auvlog.client import log
 from misc.utils import register_exit_signals
-from mission.combinator_framework.task import Task
 from mission.framework.primitive import zero
 
 has_caught_sigint = False
@@ -145,7 +144,7 @@ def run(mission : Coroutine[Any, Any, None], name : str):
     finally:
         cleanup()
 
-async def run_task(task : Task):
+async def run_task(task : Coroutine):
     while not task.has_ever_finished:
         start_time = time.time()
         task()

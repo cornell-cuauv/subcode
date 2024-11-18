@@ -12,15 +12,18 @@ from mission.framework.primitive import zero
 from mission.constants.sub import Tolerance
 from conf.vehicle import dvl_present
 
-async def search(visible : Callable[[], bool], pattern: Any):
-    """Move in a given pattern until finding something.
+async def search(visible : Callable[[], bool],
+                 pattern: Any):
+    """
+    Move in a given pattern until finding something.
 
-    Arguments:
-    visible -- a function that returns true if the object has been found
-    pattern -- a coroutine that will move the sub along the desired pattern
+    Args:
+        visible:    a function that returns true if the object has been found
+        pattern:    a coroutine that will move the sub along the desired pattern
 
-    Returns True if the object has been found and False if the search pattern
-    terminated prematurely (generally because of a timeout)
+    Returns:
+        True if the object has been found and False if the search pattern
+        terminated prematurely (generally because of a timeout)
     """
     search = asyncio.create_task(pattern)
     try:
@@ -35,16 +38,20 @@ async def search(visible : Callable[[], bool], pattern: Any):
         await zero()
     
 
-async def spin_pattern(interval_size : float, clockwise : bool,
-        timeout_degrees : float):
-    """Rotate continuously.
-
-    Note that this function will never terminate naturally besides by timeout.
-
-    Arguments:
-    interval_size   -- how many degrees the sub should rotate at a time
-    clockwise       -- if the sub should spin clockwise
-    timeout_degrees -- how many degrees the sub should rotate before giving up
+async def spin_pattern(interval_size : float,
+                       clockwise : bool,
+                        timeout_degrees : float):
+    """
+    Rotate continuously. Note that this function will never terminate naturally
+    besides by timeout.
+    
+    Args:
+        interval_size:      how many degrees the sub should rotate at a time
+        clockwise:          if the sub should spin clockwise
+        timeout_degrees:    how many degrees the sub should rotate before giving up
+    
+    Returns:
+        None.
     """
     direction = 1 if clockwise else -1
     total_degrees = 0
@@ -54,52 +61,68 @@ async def spin_pattern(interval_size : float, clockwise : bool,
         if total_degrees >= timeout_degrees:
             return
 
-async def spin_search(visible : Callable[[], bool], interval_size : float = 20,
-        clockwise : bool = True, timeout_degrees : float = float('inf')):
+async def spin_search(visible : Callable[[], bool],
+                      interval_size : float = 20,
+                      clockwise : bool = True,
+                      timeout_degrees : float = float('inf')):
     """Rotate continuously until finding something.
 
-    Arguments:
-    visible -- a function that returns True if the object has been found
-    ...     -- same as spin_pattern
+    Args:
+        visible:   a function that returns True if the object has been found
+        ...:       same as spin_pattern
 
-    Returns True if the object is found and False if the the sub spins
-    [timeout_degrees] degrees without finding it
+    Returns:
+        True if the object is found and False if the the sub spins
+        [timeout_degrees] degrees without finding it
     """
     return await search(visible, spin_pattern(interval_size, clockwise,
             timeout_degrees))
 
-async def heading_rotation(direction, amplitude, splits):
+async def heading_rotation(direction : int,
+                           amplitude : float,
+                           splits : int):
     """Rotate a little bit at a time one way and then back.
 
-    Arguments:
-    direction -- -1 to start counterclockwise, 1 to start clockwise
-    amplitude -- the number of degrees to rotate in total in each direction
-    splits    -- the number of small rotations which make up the whole
+    Args:
+        direction:   -1 to start counterclockwise, 1 to start clockwise
+        amplitude:   the number of degrees to rotate in total in each direction
+        splits:      the number of small rotations which make up the whole
+    
+    Returns:
+        None.
     """
     for i in range(splits):
         await relative_to_initial_heading(direction * amplitude / splits)
     for i in range(splits):
         await relative_to_initial_heading(-direction * amplitude / splits)
 
-async def sway_pattern(width : float, stride : float, tolerance : float,
-        right_first : bool, heading_search : bool, heading_amplitude : float,
-        splits: int, timeout_distance : float):
-    """Sway left and right intermittently while generally moving forward.
-
-    Requires the DVL. Note that this function will never terminate naturally
+async def sway_pattern(width : float,
+                       stride : float,
+                       tolerance : float,
+                       right_first : bool,
+                       heading_search : bool,
+                       heading_amplitude : float,
+                       splits: int,
+                       timeout_distance : float):
+    """
+    Sway left and right intermittently while generally moving forward. Requires
+    the DVL. Note that this function will never terminate naturally
     besides by timeout.
 
-    Arguments:
-    width             -- the width of the sub's sways
-    stride            -- the distance the sub moves forward between sways
-    tolerance         -- the tolerance in each movement's length
-    right_first       -- the sub can start by swaying either left of right
-    heading_search    -- if the sub should perform a heading search at the end
-                         of each stride
-    heading_amplitude -- the angle of rotation of the heading search
-    splits            -- the number of splits on each heading rotation,
-                         increase for slower rotation
-    timeout_distance  -- how far forward the sub should travel before giving up
+    Args:
+        width:              the width of the sub's sways
+        stride:             the distance the sub moves forward between sways
+        tolerance:          the tolerance in each movement's length
+        right_first:        the sub can start by swaying either left of right
+        heading_search:     if the sub should perform a heading search at the end
+                            of each stride
+        heading_amplitude:  the angle of rotation of the heading search
+        splits:             the number of splits on each heading rotation,
+                            increase for slower rotation
+        timeout_distance:   how far forward the sub should travel before giving up
+    
+    Returns:
+        None.
     """
     if not dvl_present:
         print("Error: sway_pattern requires the DVL. Skipping task. Use"
@@ -123,16 +146,16 @@ async def sway_search(visible : Callable[[], bool], width : float = 2,
         right_first : bool = True, heading_search : bool = False,
         heading_amplitude : float = 45.0, splits : int = 1,
         timeout_distance : float = float('inf')):
-    """Move in a forward sway pattern until finding something.
+    """
+    Move in a forward sway pattern until finding something. Requires the DVL.
 
-    Requires the DVL.
+    Args:
+        visible:   a function that returns true if the object has been  found
+        ...:       same as sway_pattern
 
-    Arguments:
-    visible -- a function that returns true if the object has been found
-    ...     -- same as sway_pattern
-
-    Returns True if the object is found and False if the sub travels
-    [timeout_distance] meters forward without finding it
+    Returns:
+        True if the object is found and False if the sub travels
+        [timeout_distance] meters forward without finding it
     """
     if not dvl_present:
         print("Error: sway_search requires the DVL. Skipping task. Use"
@@ -144,22 +167,26 @@ async def sway_search(visible : Callable[[], bool], width : float = 2,
 async def velocity_sway_pattern(width : float, stride : float, speed : float,
         right_first : bool, heading_search : bool, heading_amplitude : float,
         splits : int, timeout_distance : float):
-    """Sway left and right intermittently while generally moving forward.
+    """
+    Sway left and right intermittently while generally moving forward.
 
     Designed for minisub. Note that this function will never terminate
     naturally besides by timeout.
 
-    Arguments:
-    width             -- the width of the sub's sways
-    stride            -- the distance the sub moves forward between sways
-    speed             -- how fast the sub moves in each direction
-    right_first       -- the sub can start by swaying either left or right
-    heading_search    -- if the sub should perform a heading search at the end
-                         of each stride
-    heading_amplitude -- the angle of rotation of the heading search
-    splits            -- the number of splits on each heading rotation,
-                         increase for slower rotation
-    timeout_distance  -- how far forward the sub should travel before giving up
+    Args:
+        width:               the width of the sub's sways
+        stride:              the distance the sub moves forward between sways
+        speed:               how fast the sub moves in each direction
+        right_first:         the sub can start by swaying either left or right
+        heading_search:      if the sub should perform a heading search at the end
+                             of each stride
+        heading_amplitude:   the angle of rotation of the heading search
+        splits:              the number of splits on each heading rotation,
+                             increase for slower rotation
+        timeout_distance:    how far forward the sub should travel before giving up
+    
+    Returns:
+        None.
     """
     if dvl_present:
         print("Warning: sway_pattern is preferable to velocity_sway_pattern"
@@ -185,12 +212,13 @@ async def velocity_sway_search(visible : Callable[[], bool], width : float = 2,
     
     Designed for minisub.
 
-    Arguments:
-    visible -- a function that returns true if the object has been found
-    ...     -- same as velocity_sway_pattern
+    Args:
+        visible:   a function that returns true if the object has been  found
+        ...:       same as velocity_sway_pattern
 
-    Returns True if the object is found and False if the sub travels
-    timeout_distance forward without finding it
+    Returns:
+        True if the object is found and False if the sub travels
+        timeout_distance forward without finding it
     """
     if dvl_present:
         print("Warning: sway_search is preferable to velocity_sway_search when"
@@ -207,13 +235,16 @@ async def square_pattern(first_dist : float, dist_increase : float,
     besides by timeout. It will only time out after traversing a multiple of 4
     sides.
 
-    Arguments:
-    first_dist       -- the length of the first two sides of the first square
-    dist_increase    -- the increase in sidelength of the squares
-    tolerance        -- the tolerance in the sidelength of the squares
-    constant_heading -- if the sub should maintain a constant heading
-    timeout_radius   -- how far from its origin the sub should travel before
-                        giving up
+    Args:
+        first_dist:         the length of the first two sides of the first square
+        dist_increase:      the increase in sidelength of the squares
+        tolerance:          the tolerance in the sidelength of the squares
+        constant_heading:   if the sub should maintain a constant heading
+        timeout_radius:     how far from its origin the sub should travel before
+                            giving up
+    
+    Returns:
+        None.
     """
     if not dvl_present:
         print("Error: square_pattern requires the DVL. Skipping task. Use"
@@ -247,12 +278,16 @@ async def square_search(visible: Callable[[], bool], first_dist : float = 0.5,
     Requires the DVL. This function will only time out after traversing a
     multiple of 4 sides.
 
-    Arguments:
-    visible -- a function that returns true if the object has been found
-    ...     -- same as square_pattern
+    Args:
+        visible:   a function that returns true if the object has been  found
+        ...:       same as square_pattern
 
-    Returns True if the object is found and False if the sub travels
-    [timeout_radius] meters from its starting point without finding it
+    Returns:
+        True if the object is found and False if the sub travels
+        [timeout_radius] meters from its starting point without finding it
+
+    Returns:
+        None.
     """
     if not dvl_present:
         print("Error: square_search requires the DVL. Skipping task. Use"
@@ -270,13 +305,16 @@ async def velocity_square_pattern(first_dist : float,
     naturally besides by timeout. It will only time out after traversing a
     multiple of 4 sides.
 
-    Arguments:
-    first_dist       -- the length of the first two sides of the first square
-    dist_increase    -- the increase in side length of the squares
-    speed            -- how fast the sub moves in each direction
-    constant_heading -- if the sub should maintain a constant heading
-    timeout_radius   -- how far from its origin the sub should travel before
-                        giving up
+    Args:
+        first_dist:         the length of the first two sides of the first square
+        dist_increase:      the increase in side length of the squares
+        speed:              how fast the sub moves in each direction
+        constant_heading:   if the sub should maintain a constant heading
+        timeout_radius:     how far from its origin the sub should travel before
+                            giving up
+    
+    Returns:
+        None.
     """
     if dvl_present:
         print("Warning: square_pattern is preferable to velocity_square_pattern"
@@ -309,12 +347,13 @@ async def velocity_square_search(visible : Callable[[], bool],
     Designed for minisub. This function will only time out after traversing a
     multiple of 4 sides.
 
-    Arguments:
-    visible -- a function that returns true if the thing has been found
-    ...     -- same as velocity_square_pattern
+    Args:
+        visible:  a function that returns true if the thing has been found
+        ...:      same as velocity_square_pattern
 
-    Returns True if the object is found and False if the sub travels
-    [timeout_radius] meters from its starting point without finding it
+    Returns:
+        True if the object is found and False if the sub travels
+        [timeout_radius] meters from its starting point without finding it
     """
     if dvl_present:
         print("Warning: square_search is preferable to velocity_square_search"

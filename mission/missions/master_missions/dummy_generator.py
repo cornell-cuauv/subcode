@@ -1,6 +1,6 @@
 import shm
 
-from mission.framework.base import AsyncBase
+from mission.core.base import AsyncBase
 from mission.framework.movement import velocity_x_for_secs
 
 # Example AsyncBase Mission

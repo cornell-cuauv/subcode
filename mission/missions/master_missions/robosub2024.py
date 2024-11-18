@@ -8,11 +8,10 @@ import time
 import conf.vehicle as vehicle_conf
 import mission.framework.dead_reckoning as dead
 
-from mission.missions.master_missions.polaris_generator import generator as polaris
 #from mission.missions.master_missions.leviathan_generator import generator as leviathan
 from mission.missions.master_missions.sirius_generator_2024 import generator as sirius
 
-from mission.framework.master_common import MasterMission
+from mission.core.master_common import MasterMission
 import asyncio
 
 
@@ -83,7 +82,7 @@ if __name__ == '__main__':
 
     mission = MasterMission(
         prerun_check = lambda: initialize_mission_dummy(is_mainsub),
-        generator = sirius if is_mainsub else polaris, 
+        generator = sirius,
         submerge_depth = 1
     )
 

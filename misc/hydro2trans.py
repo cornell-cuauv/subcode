@@ -10,7 +10,7 @@ import shm
 from scipy.optimize import minimize
 
 from misc.utils import watch_thread_wrapper
-from mission.framework.helpers import get_sub_position, get_sub_quaternion
+from mission.utils.helpers import get_sub_position, get_sub_quaternion
 from mission.framework.primitive import NoOp
 
 from conf.vehicle import is_mainsub
