@@ -1,8 +1,12 @@
+if [[ $(uname -a | grep "tegra") ]]; then
+    exit 0;
+fi
+
 packages=(
     cmake
     libavcodec-dev
     libavformat-dev
-    libavresample-dev
+    # libavresample-dev
     libavutil-dev
     libgflags-dev
     libgoogle-glog-dev
@@ -25,16 +29,20 @@ packages=(
 
 packages_no_recommends=(
     ffmpeg
-    # libboost-all-dev # also depends on python2
 )
 
 apt-get install -y ${packages[@]}
-apt-get install -y --no-install-recommends ${packages_no_recommends[@]}
+
+apt-get install -y ${packages_no_recommends[@]}
+
+# I know this is very bad, but we need numpy before we build opencv
+# or else it will not be installed
+pip3 install --ignore-installed --no-deps numpy==1.26.4
 
 mkdir -p /build_tmp_opencv
 pushd /build_tmp_opencv
 
-OPENCV_VERSION="4.1.1"
+OPENCV_VERSION="4.10.0"
 
 curl -L https://github.com/opencv/opencv/archive/$OPENCV_VERSION.tar.gz -o opencv.tar.gz
 curl -L https://github.com/opencv/opencv_contrib/archive/$OPENCV_VERSION.tar.gz -o opencv_contrib.tar.gz
@@ -57,15 +65,6 @@ CMAKE_FLAGS+=(-DBUILD_opencv_python2=OFF -DBUILD_opencv_python3=ON)
 
 # build perf flags
 CMAKE_FLAGS+=(-DBUILD_EXAMPLES=OFF -DBUILD_opencv_apps=OFF -DBUILD_DOCS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF)
-
-
-
-if [[ $(uname -a | grep "tegra") ]]; then
-    # CUDA
-    # Pascal is the version we need for the Jetson TX2
-    CMAKE_FLAGS+=(-DWITH_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-10.0 -DCUDA_GENERATION=Pascal)
-fi
-
 
 # Ensure FFMPEG
 CMAKE_FLAGS+=(-DWITH_FFMPEG=ON)

@@ -11,18 +11,11 @@ packages=(
     build-essential
     cmake
     curl
-    # cython
     gcc
     git
     ninja-build
-    # python
-    # python-matplotlib
-    # python-pip
-    # python3
-    # python3-dev
-    # python3-numpy
-    # python3-pip
-    # python3-scipy
+    python3-dev
+    python3-pip
     screen
     sudo
     unzip
@@ -30,6 +23,7 @@ packages=(
     wget
     xorg
     x11-apps
+    python-is-python3
 )
 
 for f in "${packages[@]}";  do

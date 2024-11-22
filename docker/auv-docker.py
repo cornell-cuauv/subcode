@@ -401,7 +401,9 @@ def start(*, branch:"b"=BRANCH, gpu=True, env=None, vehicle=False, mount_gpu=Fal
             "security_opt": ["seccomp=unconfined"], # for gdb
         }
 
-        if ports:
+
+        # no need to set ports if network_mode is host
+        if ports and not vehicle:
             docker_args["ports"] = ports
 
         if gpu:
@@ -500,7 +502,8 @@ def cdw(branch=BRANCH):
     branch: Branch workspace to enter (and possibly create/start).
     """
 
-    container = start(branch=branch)
+    # forward 8080 so we can access webgui
+    container = start(branch=branch, ports={8080:8080})
     ip = client.api.inspect_container(container.id)["NetworkSettings"]["Networks"]["bridge"]["IPAddress"]
 
     subprocess.run(

@@ -10,7 +10,6 @@ packages=(
     iotop
     iputils-ping
     iputils-tracepath
-    ipython3
     jq
     
     #libboost-python-dev
@@ -51,12 +50,9 @@ packages=(
     libdc1394-dev
     libswscale-dev
     libturbojpeg
-    python3-yaml
-    python3-gi-cairo
 
     # trogdor
     expect-dev
-    python3-dbus
 
     # visualizer
     libconfig++
@@ -68,26 +64,28 @@ packages=(
 
     # auvlog
     libnanomsg-dev
-    python3-redis
     redis-server
 
     # syscheck
     sysstat
-
-    # other
-    #python-wxgtk3.0 # (for auv-shm-editor)
-    python3-paramiko # (for uptime)
-    python3-tabulate
 
     # aslam
     liblzma-dev
 
     #slam
     libzmq3-dev
-    python3-zmq
 
-    # ZED
-    
+    # Migrated from pip-install
+    libffi-dev
+    openssl
+    libssl-dev
+    libgirepository1.0-dev
+
+    # Migrated from python-latest-pip-install
+    libblas-dev
+    liblapack-dev
+    libatlas-base-dev
+    gfortran
 )
 
 apt-get install -y software-properties-common # For add-apt-repository

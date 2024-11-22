@@ -1,7 +1,7 @@
 cd /usr/local/zed
 yes | python3 get_python_api.py
-yes | python3 -m pip uninstall numpy
-pip install -y numpy==1.26.4
+#yes | python3 -m pip uninstall numpy
+#pip install -y numpy==1.26.4
 
 # This script will setup USB rules to open the ZED cameras without root access
 # This can also be useful to access the cameras from a docker container without root (this script needs to be run on the host)

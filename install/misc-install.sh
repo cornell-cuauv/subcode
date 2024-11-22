@@ -109,6 +109,10 @@ curl -fsSL https://code-server.dev/install.sh | sh
 
 # *************** ZED *********************
 
-cd /usr/local/zed/resources/
-curl -O https://resources.cuauv.org/neural_depth_3.6.model
-curl -O https://resources.cuauv.org/.neural_depth_3.6.model_optimized-fbcbl-1-87-12020-8904-8602-8-128-4096-48-164-512-8-1-0e53-512
+if [[ $(uname -a | grep "tegra") ]]; then
+    cd /usr/local/zed/resources/
+    curl -O https://resources.cuauv.org/neural_depth_3.6.model
+    curl -O https://resources.cuauv.org/.neural_depth_3.6.model_optimized-fbcbl-1-87-12020-8904-8602-8-128-4096-48-164-512-8-1-0e53-512
+fi
+
+
