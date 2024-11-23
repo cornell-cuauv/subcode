@@ -56,23 +56,35 @@ def build_control_helm(expert=False):
         nonlocal BATTERY_LOW, BATTERY_EMPTY
 
         status = shm.merge_status.get()
-        if status.total_current == 0 and status.total_voltage == 0:
-            return ('   Not on vehicle.', ' Monitoring disabled.')
-        else:
-            voltage_line = '        {:5.2f}V'.format(status.total_voltage)
-            if status.total_voltage < BATTERY_EMPTY:
+
+        # we do not fall back to pod_b because we only read from a single 
+        # board at at time.
+        pod_voltage = shm.pod_a.tos_voltage_v.get()
+
+        def render_battery(total_voltage):
+            voltage_line = '        {:5.2f}V'.format(total_voltage)
+            if total_voltage < BATTERY_EMPTY:
                 # manual blinking; we can use ncurses blinking, but it doesn't
                 # blink the background
                 status_line = \
                     StyledString('$<white,{}>   REPLACE BATTERIES  $'
                                  .format('red' if (time.time() * 10) % 1 < 0.5 \
                                          else 'black'))
-            elif status.total_voltage < BATTERY_LOW:
+            elif total_voltage < BATTERY_LOW:
                 status_line = \
                         StyledString('$<black,yellow>     Low voltages.    $')
             else:
                 status_line = '  Voltages nominal.'
+
             return (voltage_line, status_line)
+
+        if pod_voltage != 0:
+            return render_battery(pod_voltage)
+        elif status.total_current != 0 or status.total_voltage != 0:
+            # use merge as a fallback
+            return render_battery(status.total_voltage)
+        else:
+            return ('   Not on vehicle.', ' Monitoring disabled.')
 
     drive_panels = Hbox(
         Vbox(
