@@ -37,12 +37,11 @@ VISION_CONFIG=$ROOT/vision/configs/master.yaml
 
 
 if [ "$VEHICLE_TYPE" = "mainsub" ]; then
-  SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
-  zed cameras webgui webgui-remote modules uptime pingerd hardkill
-  dvld leds deadman log redis)
+  SERVICES=(seriald gx4d kalmand navigated controld3 shmserver
+  zed webgui modules pingerd dvld deadman log redis)
 elif [ "$VEHICLE_TYPE" = "minisub" ]; then
-  SERVICES=(seriald gx4d kalmand navigated controld3 shmserver ueye
-  cameras webgui webgui-remote modules uptime pingerd deadman log redis hardkill
+  SERVICES=(seriald gx4d kalmand navigated controld3 shmserver
+  webgui modules pingerd deadman log redis
   )
 else
   echo "Unsupported CUAUV_VEHICLE_TYPE! Must be set to one of { mainsub, minisub }!"
@@ -124,6 +123,12 @@ assertservice () {
 COMMAND=$1
 SERVICE=$2
 
+# for auto complete
+if [ "$COMMAND" == "list" ]; then
+    printf "%s\n" "${SERVICES[@]}"
+    exit 0
+fi
+
 if [ -z "$COMMAND" ]; then
     COMMAND="status"
 fi
@@ -135,13 +140,6 @@ if [ -z "$SERVICE" ]; then
         trogdor $COMMAND $SERVICE
     done
     exit 0
-fi
-
-ueyeCmd=""
-if [[ -n "$NIXOS" ]]; then
-	ueyeCmd="ueyeethdrc"
-else
-	ueyeCmd="/etc/init.d/ueyeethdrc"
 fi
 
 case $COMMAND in
@@ -158,15 +156,12 @@ case $COMMAND in
             controld3|controld|control) fork "auv-controld3" "controld3" && sleep 0.5 && set_priority "auv-controld3" "-19" ;;
             shmserver) fork "auv-shm server" "shmserver" ;;
             log|logs|logger|logging) fork "auv-ld" "auv-ld" ;;
-            ueye) invoke "sudo $ueyeCmd start" ;;
             led) fork "auv-led daemon" "led" ;;
             deadman) fork "auv-deadman" "deadman" ;;
-            uptime) fork "auv-uptimed" "uptime" ;;
             webgui) invoke "cd /home/software/cuauv/software/webserver" && fork "auv-webserver" "webserver" ;;
-            webgui-remote) invoke "cd /home/software/cuauv/software/webserver-remote" && fork "auv-webserver-remote" "webserver-remote" ;; 
+            # webgui-remote) invoke "cd /home/software/cuauv/software/webserver-remote" && fork "auv-webserver-remote" "webserver-remote" ;; 
             pinger|pingerd) fork "auv-pingerd" "pingerd" ;;
             zed) fork "auv-zed-camera" "zed";;
-            cameras) fork "auv-start-cameras" "start-cameras" ;;
             modules) fork "auv-start-modules" "start-modules" ;;
             led|leds) fork "auv-led daemon" "led" ;;
             hardkill) fork "auv-kill" "hardkill";;
@@ -188,15 +183,12 @@ case $COMMAND in
             controld3|controld|control) pkill "auv-controld3" ;;
             shmserver) pkill "auv-shm server" ;;
             log|logs|logger|logging) pkill "auv-ld" ;;
-            ueye) invoke "sudo $ueyeCmd stop" ;;
             led) pkill "/home/software/misc/led.py" ;;
             deadman) pkill "auv-deadman" ;;
-            uptime) pkill "auv-uptimed" ;;
             webgui) pkill "auv-webserver" ;;
-            webgui-remote) pkill "auv-webserver-remote" ;;
+            # webgui-remote) pkill "auv-webserver-remote" ;;
             pinger|pingerd) pkill "auv-pingerd" ;;
             zed) pkill "auv-zed-camera" ;; 
-            cameras) pkill "auv-start-cameras" ;;
             modules) pkill "auv-start-modules" ;;
             led|leds) pkill "auv-led" ;;
             hardkill) pkill "auv-kill" ;;
@@ -210,12 +202,6 @@ case $COMMAND in
           seriald|serial)
             trogdor stop $SERVICE
             sleep 3
-            trogdor hidden_start $SERVICE
-          ;;
-          cameras)
-            trogdor stop $SERVICE
-            # Wait for cameras to be released
-            sleep 5
             trogdor hidden_start $SERVICE
           ;;
           *)
@@ -237,18 +223,15 @@ case $COMMAND in
             navigated|navigate) servicestatus "auv-navigated" "navigated" ;;
             controld3|controld|control) servicestatus "auv-controld3" "controld3" ;;
             log|logs|logger|logging) servicestatus "auv-ld" "logging" ;;
-            ueye) servicestatus "ueyeethd" "ueye" ;;
             shmserver) servicestatus "auv-shm server" "shmserver" ;;
-            led) servicestatus "/home/software/trunk/misc/hydro_reset.py" "led" ;;
+            # led) servicestatus "/home/software/trunk/misc/hydro_reset.py" "led" ;;
             deadman) servicestatus "auv-deadman" "deadman" ;;
-            uptime) servicestatus "auv-uptimed" "uptime" ;;
             webgui) servicestatus "auv-webserver" "webgui" ;;
-            webgui-remote) servicestatus "auv-webserver-remote" "webgui-remote" ;;
+            # webgui-remote) servicestatus "auv-webserver-remote" "webgui-remote" ;;
             pinger|pingerd) servicestatus "auv-pingerd" "pingerd" ;;
             zed) servicestatus "auv-zed-camera" "zed" ;;
-            cameras) servicestatus "auv-start-cameras" "cameras" ;;
             modules) servicestatus "auv-start-modules" "modules" ;;
-            led|leds) servicestatus "auv-led" "led" ;;
+            # led|leds) servicestatus "auv-led" "led" ;;
             hardkill) servicestatus "auv-kill" "hardkill" ;;
             redis) servicestatus "redis-server" "redis" ;;
             *) log "Service \"$SERVICE\" not found; aborting." ;;
@@ -268,25 +251,15 @@ case $COMMAND in
             controld3|controld|control) assertservice "controld3" "auv-controld3" ;;
             log|logs|logger|logging) assertservice "logging" "auv-ld" ;;
             shmserver) assertservice "shmserver" "auv-shm server" ;;
-            led) assertservice "led" "auv-led daemon" ;;
+            # led) assertservice "led" "auv-led daemon" ;;
             deadman) assertservice "deadman" "auv-deadman" ;;
-            uptime) assertservice "uptime" "auv-uptimed" ;;
             webgui) assertservice "webgui" "auv-webserver" ;;
-            webgui-remote) assertservice "webgui-remote" "auv-webserver-remote" ;;
+            # webgui-remote) assertservice "webgui-remote" "auv-webserver-remote" ;;
             pinger|pingerd) assertservice "pingerd" "auv-pingerd" ;;
             zed) assertservice "zed" "auv-zed-camera" ;;
-            cameras) assertservice "cameras" "auv-start-cameras" ;;
             modules) assertservice "modules" "auv-start-modules" ;;
             hardkill) assertservice "hardkill" "auv-kill" ;;
             led|leds) fork "auv-led daemon" "led";;
-            ueye)
-                if [ -z "`pids ueyeethd`" ]; then
-                    trogdor stop ueye
-                    trogdor hidden_start ueye
-                else
-                    log "ueye seems to be ""$GREEN""UP""$ENDCOLOR""."
-                fi
-            ;;
             redis) assertservice "redis" "redis-server" ;;
             *) log "Service \"$SERVICE\" not found; aborting." ;;
         esac

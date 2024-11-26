@@ -31,19 +31,3 @@ build.install('auv-camera-stream-client',
 build.install('auv-zed-camera', f='vision/capture_sources/zed.py')
 
 build.install('auv-yolo-shm', f='vision/misc/yolo_shm.py')
-
-camera_apis = {
-                "ueye.h": ("ueye", "UeyeCamera.cpp", "ueye_api"),
-               }
-for incl, (name, src, lib) in camera_apis.items():
-    include_full_path = os.path.join("/usr/include", incl)
-    if 'NIXOS' in os.environ or os.path.isfile(include_full_path):
-        build.build_cmd("auv-%s-camera" % name,
-                        ["capture_sources/camera_mainmaker.cpp", "capture_sources/%s" % src],
-                        deps=[lib], pkg_confs=['opencv4'],
-                        auv_deps=['utils', 'auv-camera-message-framework',
-                                  'auv-camera-filters', 'auvshm'],
-                                  cflags=['-Ivision/'])
-    else:
-        print("Could not build capture source for \"%s\" camera because you are missing \"%s\"." % (
-            name, include_full_path))

@@ -4,10 +4,11 @@
 import time
 import os, platform
 import shm
+import asyncio
 
 from auvlog.client import log
 import shm
-from mission.combinator_framework.primitive import Zero
+from mission.framework.primitive import zero
 import subprocess
 
 IP_ADDRESS = '192.168.0.1'
@@ -48,10 +49,8 @@ def deadman_trigger():
     with open('/tmp/auv-deadman', 'w') as f:
         print('Timeout at {}'.format(time.time()), file=f)
 
-    os.system('killall auv-mission-runner')
-    Zero()()
+    asyncio.run(zero())
     time.sleep(1)
-    
     shm.switches.soft_kill.set(True)
 
 if __name__ == '__main__':
