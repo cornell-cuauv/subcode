@@ -75,6 +75,9 @@ packages=(
     #slam
     libzmq3-dev
 
+    # cave
+    python3-gi-cairo
+
     # Migrated from pip-install
     libffi-dev
     openssl
