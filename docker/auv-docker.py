@@ -120,7 +120,6 @@ def init(*, on_vehicle=False, set_permissions=False):
         GUARD_DIRECTORY.mkdir(exist_ok=True)
         WORKTREES_DIRECTORY.mkdir(exist_ok=True)
         LOGS_DIRECTORY.mkdir(exist_ok=True)
-        VIDEOS_DIRECTORY.mkdir(exist_ok=True)
         CONFIGS_DIRECTORY.mkdir(exist_ok=True)
         STORAGE_DIRECTORY.mkdir(exist_ok=True)
 
@@ -229,6 +228,23 @@ def init(*, on_vehicle=False, set_permissions=False):
         "clone_repo",
         clone_repo,
         "Cloning repo"
+    )
+
+    def clone_videos_repo():
+        if VIDEOS_DIRECTORY.exists():
+            print(f"Removing existing {VIDEOS_DIRECTORY} directory...")
+            subprocess.run(["rm", "-rf", str(VIDEOS_DIRECTORY)], check=True)
+        
+        print(f"Cloning videos repository into {VIDEOS_DIRECTORY}...")
+        subprocess.run(
+            ["git", "clone", "git@github.coecis.cornell.edu:CUAUV/videos.git", str(VIDEOS_DIRECTORY)],
+            check=True
+        )
+    
+    guarded_call(
+        "clone_videos_repo",
+        clone_videos_repo,
+        "Cloning videos repository"
     )
 
     def set_git_configs():
