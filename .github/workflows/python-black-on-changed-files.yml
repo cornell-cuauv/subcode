@@ -22,13 +22,9 @@ jobs:
       - name: Setup Python env
         uses: actions/setup-python@v3
 
-      - name: Install black and reorder-python-imports
-        run: pip install black reorder-python-imports
+      - name: Install black
+        run: pip install black
 
       - name: Black
         run: |
-          black ${{ steps.changed-files.outputs.all_changed_files }}
-
-      - name: Reorder Module Imports
-        run: |
-          reorder-python-imports ${{ steps.changed-files.outputs.all_changed_files }}
+          black --verbose ${{ steps.changed-files.outputs.all_changed_files }}
