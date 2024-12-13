@@ -5,7 +5,7 @@ on:
     branches: [ master ]
 
 jobs:
-  black-format:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
@@ -14,19 +14,20 @@ jobs:
           fetch-depth: 0
 
       - name: Get changed files
-        run: |
-          CHANGED_PY_FILES=$(git diff --diff-filter=d --name-only $(git merge-base HEAD origin/master) HEAD | grep .py)
-          echo "CHANGED_PY_FILES=$CHANGED_PY_FILES" >> $GITHUB_ENV
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        types: |
+          added
+          modified
         with:
-          python-version: "3.12"
+          files: **/*.py
+
+      - name: Setup Python env
+        uses: actions/setup-python@v3
 
       - name: Install black and reorder-python-imports
         run: pip install black reorder-python-imports
 
-      - name: Run Black on changed files
-        if: env.CHANGED_PY_FILES != ''
-        run: black --check reorder-python-imports $CHANGED_PY_FILES
-
+      - name: Black and Sort changed files
+        run: |
+          black --check reorder-python-imports ${{ steps.changed-files.outputs.all_changed_files }}
