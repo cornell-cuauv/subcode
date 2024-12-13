@@ -27,12 +27,13 @@ jobs:
 
       - name: Black
         continue-on-error: true
-        if: ${{ steps.changed-files.outputs.all_changed_files }} != ""
+        # only true if files matching the above pattern have changed (ACMR)
+        if: ${{ steps.changed-files.outputs.only_changed }}
         run: |
-          black --verbose ${{ steps.changed-files.outputs.all_changed_files }}
+          black --verbose "${{ steps.changed-files.outputs.all_changed_files }}"
 
       - name: Ruff
-        if: ${{ steps.changed-files.outputs.all_changed_files }} != ""
+        if: ${{ steps.changed-files.outputs.only_changeed }}
         run: |
-          ruff check ${{ steps.changed-files.outputs.all_changed_files }}
+          ruff check "${{ steps.changed-files.outputs.all_changed_files }}"
 
