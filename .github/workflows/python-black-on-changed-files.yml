@@ -1,4 +1,4 @@
-name: Black on changed files
+name: Black (python)
 
 on:
   pull_request:
@@ -8,28 +8,25 @@ jobs:
   black-format:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout branch
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v35
+        with:
+          files: **/*.py
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.12"
 
       - name: Install black
-        run: pip install black==23.9.1
+        run: pip install black reorder-python-imports
 
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Fetch master branch
-        run: git fetch origin master
-
-      - name: Determine changed Python files
-        id: changed_files
+      - name: Black and Sort changed files
         run: |
-          # Compare master to the pull request base branch to find changed .py files
-          CHANGED_PY_FILES=$(git diff --no-commit-id --name-only -r origin/master} -- '*.py')
-          echo "CHANGED_PY_FILES=$CHANGED_PY_FILES" >> $GITHUB_ENV
-
-      - name: Run Black on changed files
-        if: env.CHANGED_PY_FILES != ''
-        run: black $CHANGED_PY_FILES
-
+          black --check reorder-python-imports ${{ steps.changed-files.outputs.all_changed_files }}
