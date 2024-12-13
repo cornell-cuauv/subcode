@@ -26,7 +26,7 @@ jobs:
         run: pip install black ruff
 
       - name: Black and ruff
-        if: "${{ steps.changed-files.outputs.all_changed_files }}" != ""
+        if: ${{ steps.changed-files.outputs.all_changed_files }} != ""
         run: |
           black --check --diff "${{ steps.changed-files.outputs.all_changed_files }}"
           ruff check "${{ steps.changed-files.outputs.all_changed_files }}"
