@@ -27,8 +27,8 @@ jobs:
 
       - name: Black
         run: |
-          black --check ${{ steps.changed-files.outputs.all_changed_files }})
+          black --check ${{ steps.changed-files.outputs.all_changed_files }}
 
       - name: Reorder Module Imports
         run: |
-          reorder-python-imports ${{ steps.changed-files.outputs.all_changed_files }})
+          reorder-python-imports ${{ steps.changed-files.outputs.all_changed_files }}
