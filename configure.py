@@ -21,7 +21,7 @@ if args.bamboo:
 
 rflags = [
     '--quiet',
-    '--release',
+        '--release',
     '--offline',
 ]
 cflags = [
