@@ -31,8 +31,7 @@ jobs:
           black --check --diff "${{ steps.changed-files.outputs.all_changed_files }}"
 
       - name: Ruff
-        if: ${{ always() }}
-        if: ${{ steps.changed-files.outputs.all_changed_files }}
+        if: ${{ always() }} && ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           ruff check "${{ steps.changed-files.outputs.all_changed_files }}"
 
