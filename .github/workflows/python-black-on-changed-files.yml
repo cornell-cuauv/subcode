@@ -27,4 +27,4 @@ jobs:
 
       - name: Black
         run: |
-          black --verbose ${{ steps.changed-files.outputs.all_changed_files }}
+          black --diff --check ${{ steps.changed-files.outputs.all_changed_files }}
