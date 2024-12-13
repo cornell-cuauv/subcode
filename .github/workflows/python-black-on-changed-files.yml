@@ -1,0 +1,35 @@
+name: Black on changed files
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  black-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install black
+        run: pip install black==23.9.1
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Fetch master branch
+        run: git fetch origin master
+
+      - name: Determine changed Python files
+        id: changed_files
+        run: |
+          # Compare master to the pull request base branch to find changed .py files
+          CHANGED_PY_FILES=$(git diff-tree --no-commit-id --name-only --diff-filter=ACMRT -r ${{ github.sha }} -- '*.py')
+          echo "CHANGED_PY_FILES=$CHANGED_PY_FILES" >> $GITHUB_ENV
+
+      - name: Run Black on changed files
+        if: env.CHANGED_PY_FILES != ''
+        run: black $CHANGED_PY_FILES
+
