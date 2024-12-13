@@ -26,7 +26,7 @@ jobs:
         id: changed_files
         run: |
           # Compare master to the pull request base branch to find changed .py files
-          CHANGED_PY_FILES=$(git diff-tree --no-commit-id --name-only --diff-filter=ACMRT -r ${{ github.sha }} -- '*.py')
+          CHANGED_PY_FILES=$(git diff --no-commit-id --name-only -r origin/master} -- '*.py')
           echo "CHANGED_PY_FILES=$CHANGED_PY_FILES" >> $GITHUB_ENV
 
       - name: Run Black on changed files
