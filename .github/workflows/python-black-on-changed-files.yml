@@ -33,7 +33,7 @@ jobs:
           black --verbose "${{ steps.changed-files.outputs.all_changed_files }}"
 
       - name: Ruff
-        if: ${{ steps.changed-files.outputs.only_changeed }}
+        if: ${{ steps.changed-files.outputs.only_changed }}
         run: |
           ruff check "${{ steps.changed-files.outputs.all_changed_files }}"
 
