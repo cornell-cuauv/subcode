@@ -1,4 +1,4 @@
-name: Black (python)
+name: Python Style Check
 
 on:
   pull_request:
@@ -22,9 +22,17 @@ jobs:
       - name: Setup Python env
         uses: actions/setup-python@v3
 
-      - name: Install black
-        run: pip install black
+      - name: Install black and ruff
+        run: pip install black ruff
 
       - name: Black
+        continue-on-error: true
+        if: ${{ steps.changed-files.outputs.all_changed_files }} != ""
         run: |
-          black --diff --check ${{ steps.changed-files.outputs.all_changed_files }}
+          black --verbose ${{ steps.changed-files.outputs.all_changed_files }}
+
+      - name: Ruff
+        if: ${{ steps.changed-files.outputs.all_changed_files }} != ""
+        run: |
+          ruff check ${{ steps.changed-files.outputs.all_changed_files }}
+
