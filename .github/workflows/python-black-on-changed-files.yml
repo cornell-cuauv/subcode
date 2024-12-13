@@ -5,7 +5,7 @@ on:
     branches: [ master ]
 
 jobs:
-  lint:
+  python-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
@@ -25,15 +25,15 @@ jobs:
       - name: Install black and ruff
         run: pip install black ruff
 
-      - name: Black
+      - name: Black and ruff
         continue-on-error: true
-        # only true if files matching the above pattern have changed (ACMR)
-        if: ${{ steps.changed-files.outputs.only_changed }}
+        if: "${{ steps.changed-files.outputs.all_changed_files }}" != ""
         run: |
-          black --verbose "${{ steps.changed-files.outputs.all_changed_files }}"
+          black --check --diff "${{ steps.changed-files.outputs.all_changed_files }}"
 
       - name: Ruff
-        if: ${{ steps.changed-files.outputs.only_changed }}
+        if: always()
+        if: "${{ steps.changed-files.outputs.all_changed_files }}" != ""
         run: |
           ruff check "${{ steps.changed-files.outputs.all_changed_files }}"
 
