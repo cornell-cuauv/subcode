@@ -25,6 +25,10 @@ jobs:
       - name: Install black and reorder-python-imports
         run: pip install black reorder-python-imports
 
-      - name: Black and Sort changed files
+      - name: Black
         run: |
-          black --check $(reorder-python-imports ${{ steps.changed-files.outputs.all_changed_files }})
+          black --check ${{ steps.changed-files.outputs.all_changed_files }})
+
+      - name: Reorder Module Imports
+        run: |
+          reorder-python-imports ${{ steps.changed-files.outputs.all_changed_files }})
