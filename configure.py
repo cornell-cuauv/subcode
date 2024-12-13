@@ -21,8 +21,8 @@ if args.bamboo:
 
 rflags = [
     '--quiet',
-        '--release',
-'--offline',
+    '--release',
+    '--offline',
 ]
 cflags = [
     '-pthread',
