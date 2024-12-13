@@ -43,6 +43,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <auvlog/logger.h>
 
 #include <GLFW/glfw3.h>
 #if (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR < 2)
@@ -557,6 +558,8 @@ void error_callback(int error, const char *description) {
 }
 
 int main(int argc, char **argv) {
+  auvlog_init(AUV_DEBUG);
+
   // Read configuraiton file.
   std::string model_filename = getBinDir() + BIN2CONFIG + DEFAULT_CONFIG;
   if (argc >= 2 && std::string(argv[1])[0] != '-') {

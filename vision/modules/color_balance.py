@@ -7,9 +7,8 @@ import time
 import ctypes
 from auv_python_helpers import load_library
 from vision.core.base import ModuleBase
-from vision.core import options
+from vision.core import tuners
 
-options = [ options.BoolOption('verbose', False) ]
 _lib_color_balance = load_library('libauv-color-balance.so')
 
 """
@@ -111,7 +110,9 @@ def balance(mat, equalize_rgb=True, rgb_contrast_correct=False,
     return mat
 
 class ColorBalance(ModuleBase):
-    def process(self, mat):
+    def process(self, *mat):
+        mat = mat[0]
+
         start_time = time.time()
         self.post('orig', mat)
 
@@ -313,4 +314,4 @@ class ColorBalance(ModuleBase):
         print("Elapsed time: " + str(end_time - start_time))
 
 if __name__ == '__main__':
-    ColorBalance('forward', options)()
+    ColorBalance(['forward'], [tuners.BoolTuner('verbose', False)])()

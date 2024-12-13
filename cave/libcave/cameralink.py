@@ -29,7 +29,12 @@ class CameraLink:
         self.currentFrame = 0
 
         #Init shared memory
-        self.framework = cmf.Creator(self.name, self.dataSize)
+        self.framework = cmf.BlockAccessor(self.name, self.dataSize)
+
+        # this is very jank, but cave was written before the cmf overhaul
+        # this functionally has the same safety guarantees as before,
+        # but using context manager gives MORE safety guarantees.
+        self.framework.__enter__() 
 
         # Set camera dimensions in SHM
         try:
@@ -40,8 +45,7 @@ class CameraLink:
             pass
 
     def send_image(self, frame):
-        if self.framework.valid():
-            self.framework.write_frame(frame, int(time.time() * 1000))
+        self.framework.write_frame(int(time.time() * 1000), frame)
 
     def cleanup(self):
-        self.framework.cleanup()
+        self.framework.__exit__(None, None, None)

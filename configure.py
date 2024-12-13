@@ -2,43 +2,44 @@
 
 """ Generate ninja files for build by ninja. """
 
-import os, argparse
+from build import ninja_syntax
+import os
+import argparse
 import getpass
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-  '--bamboo',
-  help='Build for Bamboo',
-  action='store_true')
+    '--bamboo',
+    help='Build for Bamboo',
+    action='store_true')
 
 args = parser.parse_args()
 
 if args.bamboo:
-  print('Configuring for Bamboo...')
+    print('Configuring for Bamboo...')
 
-from build import ninja_syntax
 
 rflags = [
-        '--quiet',
-        '--release',
-        '--offline',
-        ]
+    '--quiet',
+    '--release',
+    '--offline',
+]
 cflags = [
-          '-pthread',
-          '-lprotobuf',
-          '-lpthread',
-          '-lrt',
-          '-lm',
-          '-Wall',
-          '-I.',
-          '-ggdb2',
-          '-O3',
-          '-w',
-          '`pkg-config --cflags --libs protobuf`'
-         ]
+    '-pthread',
+    '-lprotobuf',
+    '-lpthread',
+    '-lrt',
+    '-lm',
+    '-Wall',
+    '-I.',
+    '-ggdb2',
+    '-O3',
+    '-w',
+    '`pkg-config --cflags --libs protobuf`'
+]
 cppflags = [
-    '-std=c++14', '-fdiagnostics-color',
-    '-Wno-int-in-bool-context', # Needed for eigen on gcc7+
+    '-std=c++17', '-fdiagnostics-color',
+    '-Wno-int-in-bool-context',  # Needed for eigen on gcc7+
 ]
 
 # CUAUV libraries are found at run time using rpath, an absolute path
@@ -47,47 +48,47 @@ rpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "link-stage")
 ldflags = cflags + ['-Llink-stage', '-Wl,-rpath %s' % rpath]
 
 dirs = [
-        'auv_math',
-        'auv_math/libquat',
-        'auvlog',
-        'conf',
-       #  'conf/gui',
-        'control',
-        'control/controlhelm',
-        'control/control_helm2',
-        'deadman',
-        'hydrocode',
-        'lib',
-        'libshm',
-        'misc',
-        'misc/waypoint',
-        'mission',
-        'self_test',
-        'sensors',
-        'sensors/3dmg/gx4',
-        'sensors/dvld',
-        'shm_tools',
-        'shm_tools/shm-cli',
-        'shm_tools/shm-editor',
-        'shm_tools/shm-notifier',
-        'shm_tools/shmlog',
-        'system_check',
-        'trogdor',
-        'vision',
-        'webserver',
-       ]
+    'auv_math',
+    'auv_math/libquat',
+    'auvlog',
+    'conf',
+    #  'conf/gui',
+    'control',
+    'control/controlhelm',
+    'control/control_helm2',
+    'deadman',
+    'hydrocode',
+    'lib',
+    'libshm',
+    'misc',
+    'misc/waypoint',
+    'mission',
+    'self_test',
+    'sensors',
+    'sensors/3dmg/gx4',
+    'sensors/dvld',
+    'shm_tools',
+    'shm_tools/shm-cli',
+    'shm_tools/shm-editor',
+    'shm_tools/shm-notifier',
+    'shm_tools/shmlog',
+    'system_check',
+    'trogdor',
+    'vision',
+    'webserver',
+]
 
 # The following were built at some point in the past, but have been discontinued
 # since (simply here for archival purposes).
 deprecated_dirs = [
-       'flamingo',
-       'locator',
-       'misc/3dcontrol',
-       'object-recognition',
-       'positiontracker3',
-       'slam',
-       'mission/opt',
-       'pooltest',
+    'flamingo',
+    'locator',
+    'misc/3dcontrol',
+    'object-recognition',
+    'positiontracker3',
+    'slam',
+    'mission/opt',
+    'pooltest',
 ]
 
 context_excludes = {
@@ -106,7 +107,7 @@ context_excludes = {
         'fishbowl',
         'fishbowl/body-frame-calc',
         'fishbowl/cw-he-calc',
-        'visualizer',
+        'visualizer'
     ],
 }
 
@@ -126,7 +127,7 @@ for k, v in sorted(context_excludes.items()):
 # if not args.bamboo and context != 'vehicle':
 #     dirs += ['peacock']
 
-#if not subprocess.getstatusoutput('which go')[0]:
+# if not subprocess.getstatusoutput('which go')[0]:
 #  dirs.extend([
 #    'gocode/src/cuauv.org/shm',
 #    'gocode/src/cuauv.org/shm/cli'
@@ -150,13 +151,13 @@ n.variable('rflags', ' '.join(rflags))
 n.newline()
 
 n.rule('cxx',
-       command = '$cxx -MMD -MF $out.d $cflags $cppflags -c $in -o $out',
-       description = 'CXX $out',
-       depfile = '$out.d')
+       command='$cxx -MMD -MF $out.d $cflags $cppflags -c $in -o $out',
+       description='CXX $out',
+       depfile='$out.d')
 
 n.rule('cc',
-       command = '$cc -MMD -MF $out.d -std=gnu99 $cflags -c $in -o $out',
-       description = 'CC $out', depfile = '$out.d')
+       command='$cc -MMD -MF $out.d -std=gnu99 $cflags -c $in -o $out',
+       description='CC $out', depfile='$out.d')
 
 n.rule('link_shared',
        command='$cxx -shared -o $out $in $libs $ldflags',
@@ -171,26 +172,26 @@ n.rule('link',
        description='LINK $out')
 
 n.rule('install',
-       command = 'ln -sf $absdir/$in $out',
+       command='ln -sf $absdir/$in $out',
        description='INSTALL $out')
 
 n.rule('generate',
-       command = './$in $args',
-       description = 'GENERATE $out',
-       restat = True)
+       command='./$in $args',
+       description='GENERATE $out',
+       restat=True)
 
 # n.rule('rust',
 #        command = 'cargo build $rflags -p $out',
 #        description = 'CARGO $out')
 
 n.rule('run',
-       command = '$in $args',
-       description = 'RUN $out')
+       command='$in $args',
+       description='RUN $out')
 
 n.rule('configure',
-       command = './$in',
-       description = 'CONFIGURE $out',
-       generator = True)
+       command='./$in',
+       description='CONFIGURE $out',
+       generator=True)
 
 # n.rule('go-build',
 #        command = 'go build -o $out $pkg',
@@ -219,25 +220,26 @@ if args.bamboo:
 else:
     stack_home_prefix = ""
 
-STACK_COMMAND = '{}HOME=/home/{} stack --verbosity 0 --stack-yaml $config install --local-bin-path $bin'.format(stack_home_prefix, getpass.getuser())
+STACK_COMMAND = '{}HOME=/home/{} stack --verbosity 0 --stack-yaml $config install --local-bin-path $bin'.format(
+    stack_home_prefix, getpass.getuser())
 n.rule('stack',
-  command = STACK_COMMAND,
-  description = 'Haskell Stack ( `{}` )'.format(STACK_COMMAND),
-  restat = True)
+       command=STACK_COMMAND,
+       description='Haskell Stack ( `{}` )'.format(STACK_COMMAND),
+       restat=True)
 
 n.rule('webpack',
-  command = 'webpack --color --config $config',
-  description = 'webpack $out',
-  restat = True)
+       command='webpack --color --config $config',
+       description='webpack $out',
+       restat=True)
 
 n.rule('general',
-       command = './$in $args',
-       description = '$name $out',
-       restat = True)
+       command='./$in $args',
+       description='$name $out',
+       restat=True)
 
 n.rule('npm-install',
-  command = 'npm install --prefix $config_path && touch $out',
-  description = 'NPM INSTALL --prefix $config_path')
+       command='npm install --prefix $config_path && touch $out',
+       description='NPM INSTALL --prefix $config_path')
 
 n.newline()
 
@@ -245,7 +247,7 @@ n.newline()
 n.build('build.ninja',
         'configure',
         'configure.py',
-        implicit = ['build/ninja_common.py'] + ['%s/build.ninja' % d for d in dirs])
+        implicit=['build/ninja_common.py'] + ['%s/build.ninja' % d for d in dirs])
 n.newline()
 
 # Arrays to keep track of subdirectory build targets
@@ -256,10 +258,11 @@ check_targets = []
 # Run each config script to build each subninja that does not exist.
 # Subninja each new file and add targets to rebuild them.
 for d in dirs:
-    n.build('%s/build.ninja' % d, 'configure', '%s/configure.py' % d, implicit=['build/ninja_common.py'])
+    n.build('%s/build.ninja' % d, 'configure', '%s/configure.py' %
+            d, implicit=['build/ninja_common.py'])
     if os.system('%s/configure.py' % d) != 0:
         raise AssertionError('Failed to configure %s!\n' % d +
-            'Please run %s/configure.py for more info.' % d)
+                             'Please run %s/configure.py for more info.' % d)
     n.subninja('%s/build.ninja' % d)
     code_targets.append('code-%s' % d)
     test_targets.append('tests-%s' % d)

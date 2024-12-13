@@ -1,387 +1,699 @@
-import ctypes
-import sys
-import threading
 import time
-import traceback
-from collections import OrderedDict
-
-import cv2
+import signal
+import glob
+import argparse
+import threading
+import contextlib
 import numpy as np
 
-import auv_python_helpers.misc as aph
-import shm
+from cv2 import UMat as cv2Mat  # type: ignore
+from abc import ABC, abstractmethod
+from typing import (
+    List,
+    Dict,
+    OrderedDict as TOrderedDict,
+    Union,
+    Tuple,
+    Callable,
+    Any,
+    Optional,
+    Deque,
+)
+from vision.core.bindings.camera_message_framework import (
+    BlockAccessor,
+    BLOCK_STUB,
+    ReadStatus,
+)
+from vision.core.tuners import TunerBase, IntTuner, DoubleTuner, BoolTuner
+from vision.utils.helpers import from_umat
+from collections import OrderedDict, deque
+from dataclasses import dataclass
 
 from auvlog.client import log as auvlog
-from misc.utils import register_exit_signals
-from vision.core.bindings import camera_message_framework
+from auvlog.client import Logger
 
-from vision.modules.preprocessor import Preprocessor
-from vision.utils.helpers import from_umat
 
-from typing import Tuple
+@dataclass
+class VideoSource:
+    """data class representing how we should decode the messages from the vision buffer.
+    Note: Arbitrarily long strings can be encoded with a byte array (not tested with UTF-8,
+    but it is theoretically possible).
+    """
 
-logger = auvlog.vision
+    name: str
 
-class UndefinedModuleOption(Exception):
-    pass
+    byte_type: type = np.uint8
+    """data type to treat 1 byte wide messages"""
 
-class CameraDirectionTooLong(Exception):
-    pass
+    short_type: type = np.float32
+    """data type to treat 4 byte wide messages"""
 
-class _PsuedoOptionsDict:
-    def __init__(self, options_dict):
-        self._options_dict = options_dict
+    long_type: type = np.float64
+    """data type to treat 8 byte wide messages"""
 
-    def __getattr__(self, name):
-        return self.__getitem__(name)
+    @classmethod
+    def create(cls, source_str: Union[str, "VideoSource"]) -> "VideoSource":
+        """create a video source object from a correctly formatted string
+        the format should be the name, followed by ":" delimitated data types
+        like u8, i8, u32, i32, f32, u64, i64, f64. Example: "forward:f32" means
+        to decode 4 byte wide datatypes from forward as f32."""
+        if isinstance(source_str, VideoSource):
+            return source_str
+
+        if ":" not in source_str:
+            name = source_str
+            return VideoSource(name)
+
+        name, types = source_str.split(":", maxsplit=1)
+
+        if "u8" in types:
+            b_type = np.uint8
+        elif "i8" in types:
+            b_type = np.int8
+        else:
+            b_type = np.uint8
+
+        if "u32" in types:
+            s_type = np.uint32
+        elif "i32" in types:
+            s_type = np.int32
+        elif "f32" in types:
+            s_type = np.float32
+        else:
+            s_type = np.float32
+
+        if "u64" in types:
+            l_type = np.uint64
+        elif "i64" in types:
+            l_type = np.int64
+        elif "f64" in types:
+            l_type = np.float64
+        else:
+            l_type = np.float64
+
+        return VideoSource(name, b_type, s_type, l_type)
+
+    @classmethod
+    def into_accessor(cls, instn: "VideoSource"):
+        """Transform an accessor object into a BlockAccessor object in read mode."""
+        return BlockAccessor(
+            instn.name,
+            byte_type=instn.byte_type,
+            short_type=instn.short_type,
+            long_type=instn.long_type,
+        )
+
+
+class ModuleManager:
+    """Utility class used by vision modules to read from video sources, post output frames, and send tuner updates."""
+
+    def __init__(
+        self,
+        module_name: str,
+        video_sources: List[VideoSource],
+        tuner_sources: List[TunerBase],
+    ):
+        """Create a module that can interface with a "ModuleReader"
+
+        Args:
+            module_name (str): Name of the module
+            video_sources (List[VideoSource]): video inputs into the module, the class will try and create a "BlockAccessor" in read mode for each source
+            tuner_sources (List[TunerBase]): tuner inputs into the module, the class will try and create a "BlockAccessor" in write mode for each source
+
+        Raises:
+            RuntimeError: If there are duplicate video source names (ill defined because forward:f32 and forward:f64 contradict each other)
+            RuntimeError: If there are duplicate tuner names of the same type (ill defined because it's difficult to differentiate as the programmer)
+        """
+
+        # modules share the /dev/shm/ directory with capture sources, so we need a way to different between the two types of message buffers
+        # solution is to have every "module" message buffer be prefixed with the "module" keyword
+
+        self._module_name = "module_" + module_name
+        self._post_name = self._module_name + "_post"
+        self._tune_name = self._module_name + "_tune"
+        self._first = True
+
+        self._video_sources: Dict[str, VideoSource] = {
+            vs.name: vs for vs in video_sources
+        }
+
+        self._tuner_sources: Dict[str, TunerBase] = {
+            ts.name: ts for ts in tuner_sources
+        }
+
+        self._video_accessor: Dict[str, BlockAccessor] = {
+            vs.name: VideoSource.into_accessor(vs) for vs in video_sources
+        }
+
+        # encode an index into the tuner name so that the webgui knows how to order the 
+        # tuners
+        self._tuner_accessor: Dict[str, BlockAccessor] = {
+            ts.name: BlockAccessor(
+                f"{self._tune_name}%{idx}%{str(ts)}",
+                max_entry_size_bytes=ts.byte_size(),
+            )
+            for idx, ts in enumerate(tuner_sources)
+        }
+
+        # initially empty, but expected to grow
+        self._post_accessor: Dict[str, BlockAccessor] = {}
+
+        if len(self._video_sources) != len(video_sources):
+            raise RuntimeError("cannot have multiple video sources of the same name")
+
+        if len(self._tuner_sources) != len(tuner_sources):
+            raise RuntimeError("cannot have multiple tuner types of the same name")
+
+        self._post_accessor: Dict[str, BlockAccessor] = {}
+        self._exit_stack = contextlib.ExitStack()
+        self._inside_ctx = False
+
+    def post(self, name: str, idx: int, acquisition_time: int, data: np.ndarray):
+        if not self._inside_ctx:
+            raise RuntimeError(
+                f"attempted to access ModuleManager while not in a context manager"
+            )
+
+        if name in self._post_accessor:
+            self._post_accessor[name].write_frame(acquisition_time, data)
+        else:
+            accessor = BlockAccessor(f"{self._post_name}%{idx}%{name}", data.nbytes)
+            self._exit_stack.enter_context(accessor)
+            self._post_accessor[name] = accessor
+            self._post_accessor[name].write_frame(acquisition_time, data)
+
+    def read_messages(self) -> List[Tuple[str, Tuple[ReadStatus, np.ndarray, int]]]:
+        if not self._inside_ctx:
+            raise RuntimeError(
+                f"attempted to access ModuleManager while not in a context manager"
+            )
+
+        # deserialize tuners
+        for name, ta in self._tuner_accessor.items():
+            result, frame, _ = ta.read_frame()
+
+            if result == ReadStatus.FRAMEWORK_DELETED:
+                raise RuntimeError("Unexpected deleted Tuner")
+
+            if frame is not None:
+                self._tuner_sources[name].deserialize(frame.tobytes("C"))
+
+        # deserialize frame information
+        ret = []
+        for accessor in self._video_accessor.values():
+            read_result, data, acquisition_time = accessor.read_frame()
+
+            if read_result == ReadStatus.FRAMEWORK_DELETED:
+                raise RuntimeError(f"{accessor.direction} was marked for deletion")
+
+            if data is not None:
+                ret.append((accessor.direction, (read_result, data, acquisition_time)))
+
+        return ret
+
+    def __getitem__(self, key: str) -> Any:
+        return self._tuner_sources[key].value
+
+    def __str__(self) -> str:
+        return f"ModuleManager(name={self._module_name}, video_sources={self._video_sources}, tuner_sources={self._tuner_sources})"
+
+    def __enter__(self):
+        if self._inside_ctx:
+            raise RuntimeError(f"double dipped in context manager for ModuleManager")
+
+        self._inside_ctx = True
+
+        self._exit_stack.__enter__()
+
+        try:
+            for va in self._video_accessor.values():
+                self._exit_stack.enter_context(va)
+
+            for ta in self._tuner_accessor.values():
+                self._exit_stack.enter_context(ta)
+
+            # write tuner to accessors
+            if self._first:
+                self._first = False;
+                for name, ts in self._tuner_sources.items():
+                    data = np.frombuffer(ts.serialize(), dtype=np.uint8)
+
+                    ta = self._tuner_accessor[ts.name]
+                    ta.write_frame(int(time.monotonic() * 1000), data)
+
+        except KeyboardInterrupt or Exception as e:
+            # clean up
+            for _, va in self._video_accessor.items():
+                va.__exit__(None, None, None)
+
+            for _, ta in self._tuner_accessor.items():
+                ta.__exit__(None, None, None)
+
+            raise e
+
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self._exit_stack.__exit__(type, value, traceback)
+        self._post_accessor.clear()
+        self._inside_ctx = False
+
+
+class ModuleReader:
+    """Utility class used to read frames and tuner information from "ModuleManager", and communicate tuner updates
+    with the corresponding Module."""
+
+    def __init__(self, module_name: str):
+
+        if module_name not in ModuleReader.get_active_modules():
+            raise RuntimeError("Module name is not active")
+
+        self._base_module_name = module_name
+        self._module_name = f"module_{module_name}"
+        self._post_name = f"{self._module_name}_post%"
+        self._tune_name = f"{self._module_name}_tune%"
+        self._quit_flag = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+
+        self._post_udls: List[Callable[[str, str, int, np.ndarray], None]] = []
+        self._tuner_udls: List[Callable[[str, str, int, TunerBase], None]] = []
+
+        # in the format name, (idx, accessor)
+        self._all_posts: Dict[str, Tuple[int, BlockAccessor]] = {}
+
+        # in the format name, (idx, accessor, tuner)
+        self._all_tuners: Dict[str, Tuple[int, BlockAccessor, TunerBase]] = {}
+        self._tuner_guard = False
+        self._framework_deleted = False
+
+        # populate the tuners and posters
+        for active_post in self.active_posts:
+            idx, name = self.parse_post_name(active_post)
+            self._all_posts[name] = (idx, BlockAccessor(active_post))
+
+        for active_tuner in self.active_tuners:
+            idx, tuner_type, name = self.parse_tune_name(active_tuner)
+            self._all_tuners[name] = (idx, BlockAccessor(active_tuner), tuner_type)
+
+    @classmethod
+    def get_active_modules(cls):
+        return list(
+            set(map(lambda x: x.split("_")[3], glob.glob(f"{BLOCK_STUB}module_*")))
+        )
+
+    @property
+    def active_posts(self) -> List[str]:
+        prefix = BLOCK_STUB + self._post_name
+        glob_rule = prefix + "*"
+        return [file[len(BLOCK_STUB) :] for file in glob.glob(glob_rule)]
+
+    @property
+    def active_tuners(self):
+        prefix = BLOCK_STUB + self._tune_name
+        glob_rule = prefix + "*"
+        return [file[len(BLOCK_STUB) :] for file in glob.glob(glob_rule)]
     
-    def __contains__(self, item):
-        return item in self._options_dict
+    @property
+    def framework_deleted(self):
+        return self._framework_deleted
 
-    def __getitem__(self, name):
-        if name not in self._options_dict:
-            raise UndefinedModuleOption(name)
+    def parse_post_name(self, s: str) -> Tuple[int, str]:
+        _, idx, post_name = s.split("%")
+        return (int(idx), post_name)
 
-        return self._options_dict[name].value
+    def parse_tune_name(self, s: str) -> Tuple[int, TunerBase, str]:
+        _, idx, tuner_str = s.split("%")
+        tuner_type, tuner_name = tuner_str.split("_", maxsplit=1)
 
-    def __setitem__(self, name, value):
-        self._options_dict[name].update(value)
-
-class ModuleBase:
-    def __init__(self, default_directions=None, options=None, order_post_by_time=True):
-        self.acq_time = -1
-        self.order_post_by_time = order_post_by_time
-        self.posted_images = []
-        self.module_name = self.__class__.__name__
-        self.options_dict = OrderedDict()
-        self.preprocessor = Preprocessor(self)
-
-        if len(sys.argv) > 1 and not (len(sys.argv) == 2 and sys.argv[1] == 'default'):
-            self.directions = sys.argv[1:]
-        elif default_directions is None:
-            print('No camera directions specified')
-            sys.exit(1)
-        elif isinstance(default_directions, str):
-            self.directions = [default_directions]
+        if tuner_type == "IntTuner":
+            tuner_type = IntTuner(tuner_name, 0)
+        elif tuner_type == "DoubleTuner":
+            tuner_type = DoubleTuner(tuner_name, 0)
         else:
-            self.directions = default_directions
+            tuner_type = BoolTuner(tuner_name, False)
 
-        if options is None:
-            options = []
+        return (int(idx), tuner_type, tuner_name)
 
-        self.running = True
+    def register_post_udl(self, udl: Callable[[str, str, int, np.ndarray], None]):
+        self._post_udls.append(udl)
 
-        for option in options:
-            self.options_dict[option.name] = option
-        self._psuedo_options = _PsuedoOptionsDict(self.options_dict)
-        self.module_framework = None
+    def register_tuner_udl(self, udl: Callable[[str, str, int, TunerBase], None]):
+        self._tuner_udls.append(udl)
 
-    def fill_single_camera_direction(self, shm_group):
-        """
-        Used to indicate what direction this (single-camera) module is
-        getting images from. Most modules will want to use this.
+    def run_forever(self, fps: int = 60):
+        if self._thread is not None:
+            raise RuntimeError("cannot run already running module reader")
 
-        This assumes the passed in shm group has a "camera" field
-        and uses some shm internals to check its length.
-        """
-        var_type = [f[1] for f in shm_group._fields_ if f[0] == 'camera'][0]
-        max_length = ctypes.sizeof(var_type)
-        if len(self.directions[0]) > max_length:
-            raise CameraDirectionTooLong("%s (maxlength is %d" % \
-                                         (self.directions[0], max_length))
+        self._quit_flag = threading.Event()
+        self._thread = threading.Thread(target=self._loop, args=(fps,))
+        self._thread.start()
 
-        shm_group.camera = bytes(self.directions[0], encoding='utf-8')
+    def allow_resend_tuners_once(self):
+        self._tuner_guard = True
 
-    def post(self, tag, orig_image):
-        if type(orig_image) is cv2.UMat:
-            image = from_umat(orig_image)
-        else:
-            image = np.array(orig_image, None, copy=True, order='C', ndmin=1)
-        if image.dtype != np.uint8:
-            image = np.uint8(image)
+    def update_tuner_value(self, name: str, value: Any):
+        _, accessor, tuner = self._all_tuners[name]
+        tuner._current_value = value
 
-        if self.order_post_by_time:
-            self.posted_images.append((tag, image))
-        else:
-            i = 0
-            while i < len(self.posted_images) and self.posted_images[i][0] < tag:
-                i += 1
-            self.posted_images.insert(i, (tag, image))
+        data = np.frombuffer(tuner.serialize(), dtype=np.uint8)
+        accessor.write_frame(int(time.monotonic() * 1000), data)
 
-    def __getattr__(self, item):
-        if item in self.__dict__:
-            return self.__dict__[item]
-        elif item == 'options':
-            return self._psuedo_options
-        else:
-            raise AttributeError()
+    def _loop(self, fps: int):
+        with contextlib.ExitStack() as exit_stack:
+            for _, accessor in self._all_posts.values():
+                exit_stack.enter_context(accessor)
 
-    def update_CMFs(self):
-        self.capture_source_frameworks = [camera_message_framework.Accessor(d) for d in self.directions]
-        if self.running:
-            self.buffer_size = [f.buffer_size for f in self.capture_source_frameworks]
-            self.max_buffer_size = max(self.buffer_size)
+            for _, accessor, _ in self._all_tuners.values():
+                exit_stack.enter_context(accessor)
 
-        if self.module_framework is not None:
-            self.module_framework.cleanup()
-        self.make_module_framework()
+            WAIT_TIME = 1.0 / fps
+            while not self._quit_flag.is_set():
+                time_now = time.monotonic()
 
-        self.posted_images_set = set()
+                for name, (idx, accessor) in self._all_posts.items():
+                    result = accessor.read_frame()
 
-    def make_module_framework(self):
-        # create the module framework
-        suffix = "_on_" + '_'.join(self.directions)
-        self.module_framework = camera_message_framework.ModuleFrameworkCreator(self.module_name + suffix)
+                    if result is None:
+                        continue
 
-        #initialize default module values
-        for option_name in self.options_dict:
-            option = self.options_dict[option_name]
-            self.module_framework.create_option(option.name, option.format_str)
-            self.module_framework.write_option(option.name, option.get_pack_values())
+                    read_result, read_data, _ = result
+                    if read_result == ReadStatus.SUCCESS and read_data is not None:
+                        for cbck in self._post_udls:
+                            cbck(self._base_module_name, name, idx, read_data)
+                    elif read_result == ReadStatus.FRAMEWORK_DELETED:
+                        print(f"ModuleReader: {self._base_module_name} framework deleted")
+                        self._framework_deleted = True
+                        self._quit_flag.set()
 
-        self.option_lock = threading.Lock()
-        # watcher to reflect option updates in the module framework
-        def update_option_watcher(option_name, option_value):
-            _, option_value = option_value
-            option_value = option_value[0]
-            with self.option_lock:
-                try:
-                    self.options_dict[option_name].update(option_value)
-                except ValueError:
-                    # will notify self, but shouldn't loop
-                    self.module_framework.write_option(option_name, option.get_pack_values())
+                flag = False
+                for name, (idx, accessor, tuner) in self._all_tuners.items():
+                    result = accessor.read_frame()
 
-        self.module_framework.register_option_observer(update_option_watcher, False)
+                    if result is None:
+                        continue
 
-    def normalized(self,
-                   coord: int | Tuple[int, int],
-                   axis: int = None,
-                   mat: np.ndarray = None) -> int | Tuple[int, int]:
-        """
-        Converts exact coordinates to normalized coordinates.
+                    read_result, read_data, _ = result
+                    if (
+                        self._tuner_guard or read_result == ReadStatus.SUCCESS
+                    ) and read_data is not None:
+                        flag = flag or self._tuner_guard
+                        tuner.deserialize(read_data.tobytes("C"))
+                        for cbck in self._tuner_udls:
+                            cbck(self._base_module_name, name, idx, tuner)
+                    elif read_result == ReadStatus.FRAMEWORK_DELETED:
+                        print(f"ModuleReader: {self._base_module_name} framework deleted")
+                        self._framework_deleted = True
+                        self._quit_flag.set()
+
+                if flag:
+                    self._tuner_guard = False
+
+                time_end = time.monotonic()
+                time_elapsed = time_end - time_now
+                time.sleep(max(0, WAIT_TIME - time_elapsed))
+
+    def unblock(self):
+        if self._thread is None:
+            print(f"[WARNING]: {self._module_name} was already terminated")
+            return
+
+        self._quit_flag.set()
+        self._thread.join()
+        self._thread = None
+
+    def __del__(self):
+        if self._thread is not None:
+            print(
+                "[WARNING]: object garbage collected without freeing underlying resources"
+            )
+
+            self._quit_flag.set()
+            self._thread.join()
+
+
+VideoOrdDict_T = TOrderedDict[str, BlockAccessor]
+TunerOrdDict_T = TOrderedDict[str, Tuple[TunerBase, BlockAccessor]]
+
+
+@dataclass
+class VideoSourceMetadata:
+    _frames_read: int = 0
+    _shape: Tuple[int, int] = (1, 1)
+    _acquisition_times: Deque[int] = deque(maxlen=30)
+    _dead_counter = 0
+
+    def update(self, mat: np.ndarray, acquisition_time: int):
+        """update the metadata with the new frame"""
+        self._acquisition_times.append(int(time.monotonic() * 1000 - acquisition_time))
+        self._shape = (mat.shape[0], mat.shape[1])
+        self._frames_read += 1
+        self._dead_counter = max(0, self._dead_counter - 1)
+
+    def mark_as_dead(self):
+        """marks the vision module as dead and returns if the vision was stable before"""
+        alive = self._dead_counter == 0
+        self._dead_counter = 3
+        return alive
+
+    def get_latency(self) -> int:
+        """returns the running average latency of this video source in ms of the last 10 frames"""
+        average = sum(self._acquisition_times) / len(self._acquisition_times)
+        return int(average)
+
+    def normalize_axis(self, coord: float, axis: int) -> float:
+        """Converts exact coordinates to normalized coordinates.
 
         Args:
-            coord: original coordinate. If it is an integer, uses the axis
-                argument to normalize.
-            axis: if coord is an integer, then axis specifes which axis to
-                normalize on (axis=0 for x-axis, axis=1 for y-axis).
-            mat: the reference image to normalize on.
+            coord (float): original coordinate
+            axis (int): 0 for x-axis, 1 for y-axis
+
+        Returns:
+            (float): normalized coordinates
         """
-        if mat is None:
-            mat = self._next_images[0]
+        return (coord - self._shape[1 - axis] / 2) / self._shape[1]
 
-        def norm(compon, axis):
-            return (compon - mat.shape[1-axis]/2)/mat.shape[1]
-
-        if isinstance(coord, tuple):
-            return norm(coord[0],0), norm(coord[1],1)
-        else:
-            return norm(coord, axis)
-
-    def denormalized(self,
-                     coord,
-                     axis=None,
-                     mat=None,
-                     round=False) -> int | Tuple[int, int]:
-        """
-        Converts normalized coordinates to exact coordinates.
+    def normalize_coord(self, coord: Tuple[float, float]) -> Tuple[float, float]:
+        """Convert exact coordinates to normalized coordinates
 
         Args:
-            coord: original coordinate. If it is an integer, uses the axis
-                argument to normalize.
-            axis: if coord is an integer, then axis specifes which axis to
-                normalize on (axis=0 for x-axis, axis=1 for y-axis).
-            mat: the reference image to normalize on.
+            coord (Tuple[float, float]): should in the format (row, height), or (y, x)
+
+        Returns:
+            Tuple[float, float]: normalized coordinates in the format (y, x)
         """
-        if mat is None:
-            mat = self._next_images[0]
+        return self.normalize_axis(coord[0], 1), self.normalize_axis(coord[1], 0)
 
-        def denorm(compon, axis):
-            denormed = compon * mat.shape[1] + mat.shape[1-axis]/2
-            if round:
-                denormed = int(denormed)
-            return denormed
 
-        if isinstance(coord, tuple):
-            return denorm(coord[0],0), denorm(coord[1],1)
+class ModuleBase(ABC):
+    """_summary_
+
+    Args:
+        ABC (_type_): _description_
+    """
+
+    def __init__(
+        self,
+        video_sources: List[Union[VideoSource, str]] = [],
+        tuners: List[TunerBase] = [],
+        fps: int = 10,
+    ):
+        """_summary_
+
+        Args:
+            video_sources (List[VideoSource], optional): _description_. Defaults to [].
+            tuners (List[TunerBase], optional): _description_. Defaults to [].
+            fps (int, optional): _description_. Defaults to 10.
+        """
+        # parse arguments
+        parser = argparse.ArgumentParser(
+            f"{__file__}",
+            description="CLI to run this particular vision module",
+            formatter_class=argparse.RawTextHelpFormatter,
+        )
+        parser.add_argument(
+            "-f",
+            "--fps",
+            type=int,
+            default=fps,
+            help="maximum fps to run (capped at speed of video sources) (recommended to specify a value <= 10)",
+        )
+        parser.add_argument(
+            "--verbose", action="store_true", help="display debug messages"
+        )
+        parser.add_argument(
+            "--enable-performance",
+            action="store_true",
+            help="disable posting to help with performance during competition runs",
+        )
+
+        parser.add_argument(
+            "sources",
+            nargs="*",
+            type=str,
+            help=(
+                "Specifies video sources. If left empty, default sources will be used.\n"
+                "Provide sources in the following format: {name}:<type>, where:\n"
+                "\t- {name}: A unique identifier for the source (e.g., 'camera1').\n"
+                "\t- <type1>: Specifies the data type for the first field (choose from 'u8', 'i8')\n"
+                "\t- <type2>: Specifies the data type for the second field (choose from 'u32', 'i32', or 'f32').\n"
+                "\t- <type3>: Specifies the data type for the third field (choose from 'u64', 'i64', or 'f64').\n\n"
+                "Example: 'forward:f64' interprets 8 byte wide as f64 and uses 1 and 4 byte wide defaults\n"
+                "Example: 'forward:i8:f32' uses 8 byte wide defaults"
+            ),
+        )
+        args = parser.parse_args()
+
+        if "_" in self.__class__.__name__:
+            raise RuntimeError(
+                f"Class name '{self.__class__.__name__}'cannot have an underscore"
+            )
+        arg_sources: List[str] = args.sources
+
+        src = arg_sources if len(arg_sources) > 0 else video_sources
+        src = list(map(VideoSource.create, src))
+
+        self._name = (
+            self.__class__.__name__ + "-on-" + "-".join(map(lambda x: x.name, src))
+        )
+
+        # initialize fields
+        self._fps: int = args.fps if args.fps else fps
+        self._verbose: bool = args.verbose
+        self._module_manager = ModuleManager(self._name, src, tuners)
+        self._post_queue: TOrderedDict[str, np.ndarray] = OrderedDict()
+        self._performance_enabled = args.enable_performance
+        self._retry = True
+
+        self._video_metadata = {s.name: VideoSourceMetadata() for s in src}
+        self._current_direction = ""
+
+    @property
+    def tuners(self):
+        return self._module_manager
+
+    def __call__(self):
+        logger = auvlog.__getattr__(self._name)
+        logger(f"Running {self._name}", True)
+
+        if self._performance_enabled:
+            logger(f"Module running in performance mode", True)
+
+        original_sigint_handler = signal.getsignal(signal.SIGINT)
+        quit_flag = threading.Event()
+
+        def quit():
+            quit_flag.set()
+
+        def sigh(*args):
+            logger(
+                f"Caught signal: {args[0]}. It may take up to 2 seconds to clean up.",
+                self._verbose,
+            )
+            quit()
+
+        logger(f"Target FPS = {self._fps}", self._verbose)
+
+        while self._retry:
+            self._retry = False
+            quit_flag.clear()
+            with self._module_manager:
+                signal.signal(signal.SIGINT, sigh)
+                logger(f"Registered SIGINT handler", self._verbose)
+                logger(f"Initialized module manager {self._module_manager}", self._verbose)
+                args = quit_flag, logger
+                main_thread = threading.Thread(target=self._loop, args=args)
+                main_thread.start()
+                main_thread.join()
+            
+            if self._retry:
+                signal.signal(signal.SIGINT, original_sigint_handler)
+                logger(f"Unregistered SIGINT handler", self._verbose)
+
+        logger(f"Cleaning {self.__class__.__name__}", True)
+
+    def _loop(self, quit_flag: threading.Event, logger: Logger):
+        while not quit_flag.is_set():
+            start = time.monotonic()
+
+            try:
+                video_messages = self._module_manager.read_messages()
+            except RuntimeError as e:
+                logger(f"Error: {e}", True)
+                quit_flag.set()
+                self._retry = True
+                break
+
+            for source_name, (read_status, image, acq_time) in video_messages:
+                if read_status == ReadStatus.SUCCESS:
+                    self._video_metadata[source_name].update(image, acq_time)
+                    self._current_direction = source_name
+                    self.process(source_name, image)
+                elif read_status == ReadStatus.NO_NEW_FRAME:
+                    if self._video_metadata[source_name].mark_as_dead():
+                        logger(
+                            f"{source_name} appears to be slow or dead!", self._verbose
+                        )
+
+            for idx, (name, data) in enumerate(self._post_queue.items()):
+                self._module_manager.post(name, idx, int(time.monotonic() * 1000), data)
+            self._post_queue.clear()
+
+            time.sleep(max((1 / self._fps) - (time.monotonic() - start), 0))
+
+    def post(self, name: str, image: Union[np.ndarray, cv2Mat]):
+        """Send a message to the WebGui. Note that the image is copied,
+        so post is disabled if performance mode is on.
+
+        Args:
+            name (str): name to display
+            image (Union[np.ndarray, cv2Mat]): image data
+        """
+        if self._performance_enabled:
+            return
+
+        if "%" in name:
+            raise RuntimeError("Cannot have % in name")
+        if type(image) is cv2Mat:
+            image = from_umat(image).astype(np.uint8)
         else:
-            return denorm(coord, axis)
+            image = np.array(image, np.uint8, copy=True, order="C", ndmin=1)
 
-    def normalized_size(self, size, mat=None):
-        if mat is None:
-            mat = self._next_images[0]
+        self._post_queue[name] = image
 
-        def norm(sz): return sz / (mat.shape[1] * mat.shape[0])
-        try:
-            size = iter(size)
-            return tuple(norm(sz) for sz in size)
-        except TypeError:
-            return norm(size)
+    def get_latency(self) -> int:
+        """return the latency in ms for the current direction"""
+        return self._video_metadata[self._current_direction].get_latency()
 
-    def denormalized_size(self, size, mat=None, round=False):
-        if mat is None:
-            mat = self._next_images[0]
+    def normalize(self, coordinate: Tuple[float, float]) -> Tuple[float, float]:
+        """Convert exact coordinates to normalized coordinates for the current direction
 
-        def denorm(sz):
-            denormed = sz * (mat.shape[1] * mat.shape[0])
-            if round:
-                denormed = int(denormed)
-            return denormed
-        try:
-            size = iter(size)
-            return tuple(denorm(sz) for sz in size)
-        except TypeError:
-            return denorm(size)
+        Args:
+            coord (Tuple[float, float]): should in the format (row, height), or (y, x)
 
-    # Scales integer option size to the current camera size
-    # based on initial value and image width.
-    # If isOdd == True, returns an odd integer.
-    # If overOne == True, returns an integer greater than one.
-    def option_size_int(self, initVal, isOdd=False, overOne=False, mat=None):
-        if mat is None:
-            mat = self._next_images[0]
-        if not isOdd:
-            return int(initVal * mat.shape[1])
-        else:
-            size = int(initVal * mat.shape[1] / 2) * 2 + 1
-            if size <= 1 and overOne:
-                return 3
-        return size
+        Returns:
+            Tuple[float, float]: normalized coordinates in the format (y, x)
+        """
+        return self._video_metadata[self._current_direction].normalize_coord(coordinate)
 
-    # Scales option size to the current camera size
-    # based on initial value and image width.
-    def option_size(self, initVal, mat=None):
-        mat = self._next_images[0] if mat is None else mat 
-        return initVal * mat.shape[1]
+    def normalize_axis(self, coordinate: float, axis: int) -> float:
+        """Converts exact coordinates to normalized coordinates for the current direction.
 
-    def __call__(self, reload_on_enable=True, reload_on_change=True):
-        m_logger = getattr(logger.module, self.module_name)
-        m_logger("Running: " + str(self.module_name), True)
+        Args:
+            coord (float): original coordinate
+            axis (int): 0 for x-axis, 1 for y-axis
 
-        # create the accessor for the capture source framework
-        self.update_CMFs()
+        Returns:
+            (float): normalized coordinates
+        """
+        return self._video_metadata[self._current_direction].normalize_axis(
+            coordinate, axis
+        )
 
-        quit = threading.Event()
-        watcher = shm.watchers.watcher()
-        watcher.watch(shm.vision_modules)
+    @abstractmethod
+    def process(self, direction: str, image: np.ndarray):
+        """Method every user should override
 
-        def unblock():
-            quit.set()
-            watcher.disable()
-            [csf.unblock() for csf in self.capture_source_frameworks]
-
-            # This is only to unblock update_CMFs for a second time...
-            self.running = False
-            camera_message_framework.running = False
-
-        def cleanup():
-            main_thread.join(2)
-
-            if main_thread.is_alive():
-                m_logger("Failed to kill module thread!", True)
-                # How to kill the thread nicely here?
-
-            self.module_framework.cleanup()
-            m_logger("All cleaned up.", True)
-
-        def sigh(sig, frame):
-            unblock()
-            cleanup()
-            sys.exit(0)
-
-        def reload_callback():
-            self.should_reload = True
-            unblock()
-
-        if reload_on_change:
-            aph.detect_changes_to_self(reload_callback)
-
-        if hasattr(shm.vision_modules, self.module_name):
-            m_logger("Module has shm variable! Now controlled by "
-                     "shm.vision_modules.%s" % self.module_name, True)
-            module_shm = getattr(shm.vision_modules, self.module_name)
-        else:
-            module_shm = None
-
-        def func():
-            has_been_disabled = False
-            while not quit.is_set():
-                if module_shm is not None and not module_shm.get():
-                    has_been_disabled = True
-                    watcher.wait(new_update=False)
-                    continue
-
-                if has_been_disabled and reload_on_enable:
-                    self.should_reload = True
-                    break
-
-                self.posted_images = []
-
-                # Grab images from all capture sources.
-                next_images = []
-                acq_times = []
-                reset = False
-                for f in self.capture_source_frameworks:
-                    res = f.get_next_frame()
-                    if res == camera_message_framework.FRAMEWORK_QUIT:
-                        return
-                    elif res == camera_message_framework.FRAMEWORK_DELETED:
-                        self.update_CMFs()
-                        reset = True
-                        break
-
-                    next_images.append(res[0])
-                    acq_times.append(res[1])
-
-                if reset:
-                    continue
-
-                # Feed images to the module.
-                with self.option_lock:
-                    try:
-                        original_options = {option_name: self.options_dict[option_name].value for option_name in self.options_dict}
-                        curr_time = time.time()*1000
-                        avg_latency = sum(map(lambda t: curr_time - t, acq_times)) / len(acq_times)
-                        m_logger.log('{} image latency to {}: {}ms'.format(self.directions, self.module_name, avg_latency))
-
-                        self.acq_time = acq_times
-                        self._next_images = self.preprocessor.process(*next_images)
-                        self.process(*self._next_images)
-
-                    except Exception as e:
-                        sys.stderr.write('{}\n'.format(e))
-                        traceback.print_exc(file=sys.stderr)
-                        break
-
-                    if quit.is_set():
-                        break
-
-                    # if the option value has changed, notify the watchers
-                    for option_name in original_options:
-                        option = self.options_dict[option_name]
-                        original_value = original_options[option_name]
-                        if original_value != option.value:
-                            self.module_framework.write_option(option.name,
-                                                               option.get_pack_values())
-
-                # Deal with any posted images.
-                for (tag, image) in self.posted_images:
-                    if tag not in self.posted_images_set:
-                        self.module_framework.create_image(tag, self.max_buffer_size)
-                        img_ordering = {tag: i for (i, (tag, _)) in enumerate(self.posted_images)}
-                        self.module_framework.set_image_ordering(lambda x: img_ordering[x])
-                        self.posted_images_set.add(tag)
-                    self.module_framework.write_image(tag, image, min(acq_times))
-
-        self.should_reload = False
-        main_thread = threading.Thread(target=func)
-
-        register_exit_signals(sigh)
-
-        main_thread.start()
-        main_thread.join()
-
-        cleanup()
-
-        if self.should_reload:
-            aph.reload_self()
+        Raises:
+            NotImplementedError: raised if method not overridden
+        """
+        raise NotImplementedError("ModuleBase.process")

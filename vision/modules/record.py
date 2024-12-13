@@ -21,13 +21,13 @@ class Record(ModuleBase):
             self.recording = True
             log_dir = auv_log_dir if not active_mission.log_path else active_mission.log_path.decode('utf-8')
             make_filename = lambda d: "%s/%s_%s.avi" % (log_dir, d, str(datetime.now().today()))
-            for d in self.directions:
+            for d in self._directions:
                 print(make_filename(d))
             self.writers = \
-                [VideoWriter(d, filename=make_filename(d)) for d in self.directions]
+                [VideoWriter(d, filename=make_filename(d)) for d in self._directions]
             self.frame_num = 0
             self.frame_num_vars = \
-                [getattr(shm.camera, "frame_num_%s" % d) for d in self.directions]
+                [getattr(shm.camera, "frame_num_%s" % d) for d in self._directions]
 
         elif self.recording and not active_mission.active:
             self.recording = False

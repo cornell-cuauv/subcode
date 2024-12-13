@@ -1,5 +1,0 @@
-capture_sources:
-    downward:
-        type: SimCamera
-modules:
-    [Egomotion]

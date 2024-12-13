@@ -29,7 +29,7 @@ pkg_confs=['gl'], cflags=['-DGL_GLEXT_PROTOTYPES', '-Wno-misleading-indentation'
 # We compile this separately and link at RUNTIME to avoid
 # requiring OpenCV and Eigen for visualizer use.
 build.build_shared('vision_link', ['vision_link.cpp'],
-auv_deps=['auv-camera-message-framework', 'conf'], pkg_confs=['opencv4', 'eigen3'],
+auv_deps=['camera_message_framework', 'conf'], pkg_confs=['opencv4', 'eigen3'],
 cflags=[]
 )
 
@@ -43,7 +43,7 @@ build.build_cmd('auv-visualizer-nodisplay',
                 ['visualizer.cpp', 'keyboard.cpp', 'point_manager.cpp',
                 'fishbowl_manager.cpp', 'async_manager.cpp'],
                 auv_deps=['auvshm', 'utils', 'vis',
-                        'fishbowl_comm', 'math', 'quat', 'aslam_comm'],
+                        'fishbowl_comm', 'math', 'quat', 'aslam_comm', 'auvlog'],
                 pkg_confs=['gl', 'libconfig++', 'glfw3'], lflags=['-ldl'])
 
 build.install('auv-visualizer', f='visualizer/visualizer.sh')

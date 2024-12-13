@@ -1,46 +1,165 @@
+// If there is a problem, contact Jeffrey Qian on Slack. Requires [Jeffrey Qian]
+// still exists.
 #pragma once
 
-#define FRAMEWORK_NAME_MAX 255
-
-#include <cstddef>
 #include <string>
-#include <memory>
-#include <stdint.h>
 
-// Return values of read_frame.
-#define FRAMEWORK_QUIT 1
-#define FRAMEWORK_DELETED 2
+namespace cmf {
+/// @brief number of frames to store in each buffer
+inline constexpr std::size_t BUFFER_CNT = 3;
 
-extern "C" {
-  typedef struct message_framework message_framework;
-  typedef message_framework* message_framework_p;
+/// @brief read success
+inline constexpr int SUCCESS = 0;
 
-  struct frame {
-    unsigned char* data;
-    uint32_t last_frame;
-    size_t width;
-    size_t height;
-    size_t depth;
-    uint64_t acq_time;
-  };
+/// @brief no new frame to read
+inline constexpr int NO_NEW_FRAME = 1;
 
-  /**
-   * Create a message framework in the given direction.
-   * Returns: NULL if the message framework could not be created (i.e. if the
-   *  name was already in use, or if there was some other failure), or a pointer
-   *  to the message framework.
+/// @brief buffer is marked for deletion and should not be read from
+inline constexpr int FRAMEWORK_DELETED = 2;
+
+/// @brief File stub for page mappings
+inline const std::string BLOCK_STUB{ "/dev/shm/auv_visiond_" };
+
+/// @brief Lock file
+inline const std::string GLOBAL_LOCK{ "/dev/shm/auv_visiond.lock" };
+
+struct Buffer;
+struct FrameMetadata;
+
+/**
+ * @struct Frame
+ * @brief Represents an image with metadata like dimensions, type, and
+ * acquisition time.
+ */
+struct Frame {
+	/// @brief Width of the frame.
+	std::size_t width = 0;
+
+	/// @brief Height of the frame.
+	std::size_t height = 0;
+
+	/// @brief Depth of the frame.
+	std::size_t depth = 0;
+
+	/// @brief Size of each element type in bytes.
+	std::size_t type_size = 0;
+
+	/// @brief Timestamp representing the acquisition time of the frame.
+	std::uint64_t acquisition_time = 0;
+
+	/// @brief Unique identifier for the frame, like a version number.
+	std::uint64_t uid = 0;
+
+	/// @brief Pointer to the raw data of the frame.
+	void* data = nullptr;
+
+	Frame() noexcept;
+	~Frame() noexcept;
+
+	/// @brief Calculates the total size of the frame's data.
+	inline std::size_t size() const {
+		return width * height * depth * type_size;
+	}
+};
+
+/**
+ * @class Block
+ * @brief A volatile memory-backed object capable of being shared between
+ * multiple processes.
+ */
+class Block {
+public:
+	/// @brief  A block accessing nothing is ill-defined
+	Block() = delete;
+
+	/**
+   * @brief Construct a new Block object and reserves the volatile-memory
+   *
+   * @param direction the buffer name that should be created
+   * @param max_entry_size_bytes the number of bytes reserved for a single entry
+   * in the buffer. If the buffer name already exists, `max_entry_size` should
+   * be the same as the value found in the buffer.
    */
-  message_framework_p create_message_framework(std::string direction,
-                                               size_t max_size);
-  message_framework_p create_message_framework_from_cstring(const char* direction,
-                                                            size_t max_size);
-  message_framework_p access_message_framework(std::string direction);
-  message_framework_p access_message_framework_from_cstring(const char* direction);
-  bool write_frame(message_framework_p framework, unsigned char* data,
-                   unsigned long acquisition_time_in_ms, size_t width,
-                   size_t height, size_t depth);
-  int read_frame(struct frame* frame, message_framework_p framework);
-  void kill_message_framework(message_framework_p framework);
-  void cleanup_message_framework(message_framework_p framework);
-  size_t get_buffer_size(message_framework_p framework);
-}
+	Block(const std::string& direction, const std::size_t max_entry_size_bytes);
+
+	/**
+   * @brief Open a block object if it exists. Else, throws a `filesystem_error`
+   *
+   * @param direction buffer name to open
+   */
+	Block(const std::string& direction);
+
+	/// @brief copying makes it difficult to safely reason about behavior
+	Block(const Block&) = delete;
+
+	/// @brief copying makes it difficult to safely reason about behavior
+	Block& operator=(const Block&) = delete;
+
+	/// @brief move constructor that takes an R value
+	Block(Block&& other) noexcept;
+
+	/// @brief move assignment that takes an R value
+	Block& operator=(Block&& other);
+
+	~Block();
+
+	/**
+   * @brief write data in a raw pointer to the block
+   *
+   * @param acquisition_time time when frame was acquired in milliseconds
+   * @param width width of image
+   * @param height height of image
+   * @param depth depth of image
+   * @param type_size datatype width of image
+   * @param data pointer to the image that is width*height*depth*type_size bytes
+   * long.
+   */
+	int write_frame(std::uint64_t acquisition_time,
+					std::size_t width,
+					std::size_t height,
+					std::size_t depth,
+					std::size_t type_size,
+					const void* data) const noexcept;
+
+	/**
+   * @brief read frame from block, using the previous frame to determine if
+   * there is a newer frame
+   *
+   * @param frame contains the previous frame to overwrite
+   * @param block_thread if true, read_frame blocks for a few seconds to grab a
+   * new frame as soon as it's ready
+   * @return int read return code
+   */
+	int read_frame(Frame& frame, bool block_thread);
+
+	/// @brief get the underlying file that backs the buffer
+	inline const std::string& filename() const noexcept {
+		return _filename;
+	}
+
+	/// @brief get direction name
+	inline const std::string& direction() const noexcept {
+		return _direction;
+	}
+
+	/// @brief get the size in bytes of the buffer
+	const std::size_t shm_size() const noexcept;
+
+	/// @brief get the maximum buffer size
+	const std::size_t max_buffer_size() const noexcept;
+
+	inline bool is_valid() {
+		return _buffer != nullptr;
+	}
+
+private:
+	void close_block();
+
+private:
+	std::string _filename = "";
+	std::string _direction = "";
+	bool _creator;
+	Buffer* _buffer;
+};
+
+} // namespace cmf

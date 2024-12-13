@@ -1,9 +1,0 @@
-capture_sources:
-    forward:
-        type: Video
-        filename: buoy_argo.avi
-        loop: true 
-    downward:
-        type: UEyeCamera
-modules:
-    [RedBuoy, Pipes]

@@ -1,211 +1,208 @@
-import os
 import json
-import time
-import collections
 import traceback
 import base64
 import cv2
+import signal
 import tornado.websocket
+
+import numpy as np
+
+from typing import List, Dict, DefaultDict as TDefaultDict, Set, Any
 from tornado.web import HTTPError
 from tornado.ioloop import PeriodicCallback
+from collections import deque, defaultdict
 
 from webserver import BaseHandler
 
 from vision import vision_common
-from vision.core import options
-from vision.core.bindings import camera_message_framework
+from vision.core.base import ModuleReader
+from vision.core.tuners import TunerBase, IntTuner, DoubleTuner, BoolTuner
+
 import shm
 
-module_frameworks = {}
-all_vision_modules = vision_common.all_vision_modules()
-
-MAX_IMAGE_DIMENSION = 510
-module_listeners = collections.defaultdict(int)
-
-SEND_BUFFER_FLUSH_PERIOD = 50 # Empty send buffer every 50 ms
-websocket_listeners = collections.defaultdict(list)
-message_send_buffer = {}
+websocket_t = tornado.websocket.WebSocketHandler
 
 
-def get_active_modules():
-    prefix = "auv_visiond-module-"
-    return [block[len(prefix):] for block in os.listdir('/dev/shm') if block.startswith(prefix)]
+class GlobalState:
+    open_cmfs: Dict[str, ModuleReader] = {}
+    websocket_listeners: TDefaultDict[str, Set[websocket_t]] = defaultdict(set)
+    message_buffer: TDefaultDict[websocket_t,
+                                 List[Dict[str, Any]]] = defaultdict(list)
 
+    def __init__(self):
+        pass
 
-def add_websocket_listener(module_name, websocket_listener):
-    websocket_listeners[module_name].append(websocket_listener)
-    message_send_buffer[websocket_listener] = []
+    def add_socket_listener(self, module_name: str, listener: websocket_t):
+        self.websocket_listeners[module_name].add(listener)
+        self.message_buffer[listener] = []
 
+    def remove_socket_listener(self, module_name: str, listener: websocket_t):
+        self.websocket_listeners[module_name].remove(listener)
+        self.message_buffer[listener] = []
 
-def remove_websocket_listener(module_name, websocket_listener):
-    websocket_listeners[module_name].remove(websocket_listener)
-    del message_send_buffer[websocket_listener]
+    def refresh_module(self, module_name: str):
+        if module_name in self.open_cmfs:
+            self.open_cmfs[module_name].unblock()
 
+        mr =  ModuleReader(module_name)
+        mr.register_post_udl(self._queue_post_message)
+        mr.register_tuner_udl(self._queue_tuner_message)
+        mr.run_forever()
 
-def send_message(websocket_listener, message):
-    message_send_buffer[websocket_listener].append(message)
+        self.open_cmfs[module_name] = mr
+        print(f'{module_name} active posts:', mr.active_posts)
+        print(f'{module_name} active tuners:', mr.active_tuners)
+        
+    def refresh_deleted_framework(self):
+        active_modules = ModuleReader.get_active_modules() 
+        for name, mr in self.open_cmfs.items():
+            if mr.framework_deleted and name in active_modules:
+                self.refresh_module(name)
 
-
-def flush_send_buffer():
-    for websocket_listener in message_send_buffer:
-        buffer = message_send_buffer[websocket_listener]
-        for message in buffer:
-            websocket_listener.write_message(message)
-        message_send_buffer[websocket_listener] = []
-
-
-def send_image(module_name, image_name, image, receivers=None):
-    if receivers is None:
-        receivers = websocket_listeners[module_name]
-    try:
-        if module_name not in module_frameworks:
-            return
-        else:
-            idx = module_frameworks[module_name].ordered_image_names.index(image_name)
-
-        #print("Sending image {}(data-index={})".format(image_name, idx))
-        image = vision_common.resize_keep_ratio(image, MAX_IMAGE_DIMENSION)
-        _, jpeg = cv2.imencode('.jpg', image, (cv2.IMWRITE_JPEG_QUALITY, 60))
+    def _queue_post_message(self, module_name: str, name: str, idx: int, data: np.ndarray):
+        image = vision_common.resize_keep_ratio(data, 510)
+        _, jpeg = cv2.imencode(  # type: ignore
+            '.jpg', image, (cv2.IMWRITE_JPEG_QUALITY, 60))  # type: ignore
         jpeg_bytes = base64.encodebytes(jpeg.tobytes()).decode('ascii')
-        value_dict = {'image_name': image_name,
+
+        value_dict = {'image_name': name,
                       'image': jpeg_bytes,
                       'image_index': idx}
+
+        receivers = self.websocket_listeners[module_name]
         for websocket_listener in receivers:
-            send_message(websocket_listener, value_dict)
-    except Exception as e:
-        print(e)
+            self.message_buffer[websocket_listener].append(value_dict)
 
+    def _queue_tuner_message(self, module_name: str, name: str, idx: int, tuner: TunerBase):
+        if isinstance(tuner, IntTuner):
+            msg = {
+                'option_name': name,
+                'option_index': idx,
+                'type': 'int',
+                'min_value': tuner._min_value,
+                'max_value': tuner._max_value,
+                'value': tuner.value
+            }
 
-def send_option(module_name, option_name, value, receivers=None):
-    if receivers is None:
-        receivers = websocket_listeners[module_name]
-    try:
-        if module_name not in module_frameworks:
-            return
+        elif isinstance(tuner, DoubleTuner):
+            msg = {
+                'option_name': name,
+                'option_index': idx,
+                'type': 'double',
+                'min_value': tuner._min_value,
+                'max_value': tuner._max_value,
+                'value': tuner.value
+            }
         else:
-            idx = module_frameworks[module_name].ordered_option_names.index(option_name)
+            assert isinstance(tuner, BoolTuner)
+            msg = {
+                'option_name': name,
+                'option_index': idx,
+                'type': 'bool',
+                'value': tuner.value
+            }
 
-        format_str, value = value
-        option = options.option_from_value(option_name, format_str, value)
-        value_dict = {'option_name': option_name, 'option_index': idx}
-        option.populate_value_dict(value_dict)
-        #print("Sending option: " + str(value_dict))
-        for websocket_listener in receivers:
-            send_message(websocket_listener, value_dict)
-    except Exception as e:
-        print(e)
+        receivers = self.websocket_listeners[module_name]
+        for listener in receivers:
+            self.message_buffer[listener].append(msg)
+        
+    def flush_buffer(self):
+        for ws, messages in self.message_buffer.items():
+            for message in messages:
+                ws.write_message(message)
+            self.message_buffer[ws].clear()
 
+GLOBAL_STATE = GlobalState()
+
+def sigh(*_):
+    for cmf in GLOBAL_STATE.open_cmfs.values():
+        cmf.unblock()
+    
+    raise KeyboardInterrupt
+
+signal.signal(signal.SIGINT, sigh)
 
 class VisionSocketHandler(tornado.websocket.WebSocketHandler):
+    periodic_flush = PeriodicCallback(GLOBAL_STATE.flush_buffer, 50)
+    periodic_refresh = PeriodicCallback(GLOBAL_STATE.refresh_deleted_framework, 2000)
+
     def __init__(self, *args, **kwargs):
         super(VisionSocketHandler, self).__init__(*args, **kwargs)
-        self.module_name = None
+        self.module_name: str = ""
 
-    def open(self, module_name):
-        print("Received connection to vision gui")
-        self.module_name = module_name
-        module_listeners[module_name] += 1
+    def open(self, module_name: str, *args, **kwargs):
+        print(f"Module '{module_name}' connected to vision gui ")
 
-        if module_name not in module_frameworks:
+        # need for auv-webserver.py to have the module name
+        # open, so we can register ourselves as a listener
+        if module_name not in GLOBAL_STATE.open_cmfs:
             self.close(code=404)
 
-        add_websocket_listener(module_name, self)
+        GLOBAL_STATE.add_socket_listener(module_name, self)
+        self.module_name = module_name
 
-        all_option_values = module_frameworks[module_name].get_option_values()
-        for option_name, option_value in all_option_values.items():
-            send_option(module_name, option_name, option_value, receivers=[self])
-        images = module_frameworks[module_name].get_images()
-        for image_name, image in images.items():
-            send_image(module_name, image_name, image, receivers=[self])
+        if not self.periodic_flush.is_running():
+            print("STARTING PERIODIC FLUSH")
+            self.periodic_flush.start()
+        
+        if not self.periodic_refresh.is_running():
+            print("STARTING PERIODIC REFRESH")
+            self.periodic_refresh.start()
+
+    
+        GLOBAL_STATE.open_cmfs[module_name].allow_resend_tuners_once()
+
 
     def on_message(self, message):
         data = json.loads(message)
-
-        # Handle update to module options
-        module = data['module'].strip('/')
-        if module not in module_frameworks:
-            return
-
-        # Handle option updates
-        if 'option' in data:
-            option_name = data['option']
-            new_value = data['value']
-            #print("Received option update: " + str((option_name, new_value)))
-            value_list = list(module_frameworks[module].get_option_values()[option_name][1])
-            value_list[0] = new_value
-            module_frameworks[module].write_option(option_name, value_list)
-        elif 'toggle' in data:
-            self.toggle_module(module)
+        name = data['option']
+        value = data['value']
+        GLOBAL_STATE.open_cmfs[self.module_name].update_tuner_value(name, value)
 
     def on_close(self):
         print("Connection to vision gui closed")
-        remove_websocket_listener(self.module_name, self)
-        module_listeners[self.module_name] -= 1
+        if self.module_name != "":
+            GLOBAL_STATE.remove_socket_listener(self.module_name, self)
+            
 
-    def toggle_module(self, module_name):
-        module = module_name.split("_")[0]
-        print("Toggling module {}".format(module))
-        module_var = shm._eval("vision_modules.{}".format(module))
-        module_var.set(not module_var.get())
+# #     def toggle_module(self, module_name):
+# #         module = module_name.split("_")[0]
+# #         print("Toggling module {}".format(module))
+# #         module_var = shm._eval("vision_modules.{}".format(module))
+# #         module_var.set(not module_var.get())
+
+
+class VisionActiveModulesHandler(BaseHandler):
+    """ resource with endpoint hosted at /vision/modules/active
+    """
+
+    def get(self):
+        """ returns user vision modules in JSON list format
+        """
+        self.write(json.dumps(ModuleReader.get_active_modules()))
 
 
 class VisionIndexHandler(BaseHandler):
+    """ resource with endpoint hosted at /vision
+    """
 
     def get(self):
+        """ returns vision template that renders all active modules"""
         self.write(self.render_template("vision_index.html"))
 
 
 class VisionModuleHandler(BaseHandler):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        PeriodicCallback(flush_send_buffer, SEND_BUFFER_FLUSH_PERIOD).start()
 
-    def get_image_observer(self, module_name):
-        def observe(name, value):
-            if module_listeners[module_name] == 0:
-                return
+    def initialize_module(self, module_name: str):
+        GLOBAL_STATE.refresh_module(module_name)
+        print("DONE INIT")
 
-            image, acq_time = value
+    def get(self, module_name: str):
+        print(f'Entering {module_name}')
 
-            if time.time() - acq_time / 1000 > 0.5:
-                print('internal lag: {}'.format(time.time() - acq_time / 1000))
-
-            send_image(module_name, name, image)
-
-        return observe
-
-    def get_option_observer(self, module_name):
-        def observe(name, value):
-            if module_listeners[module_name] == 0:
-                return
-            send_option(module_name, name, value)
-
-        return observe
-
-    def initialize_module(self, module_name):
-        if module_name in module_frameworks:
-            # Shutdown the previous framework!
-            module_frameworks[module_name].unblock()
-
-        accessor = camera_message_framework.ModuleFrameworkAccessor(module_name)
-
-        # Register the posted images sender.
-        image_observer = self.get_image_observer(module_name)
-        accessor.register_image_observer(image_observer)
-
-        # Register the options sender.
-        option_observer = self.get_option_observer(module_name)
-        accessor.register_option_observer(option_observer)
-
-        accessor.register_cmf_deletion_callback(
-            lambda module_name=module_name: self.initialize_module(module_name)
-        )
-
-        module_frameworks[module_name] = accessor
-
-    def get(self, module_name):
-        if module_name not in get_active_modules():
+        if module_name not in ModuleReader.get_active_modules():
             raise HTTPError(404)
 
         if hasattr(shm.vision_modules, module_name):
@@ -234,9 +231,3 @@ class VisionModuleHandler(BaseHandler):
                         " i.e. It's controlled by a shm variable and that variable is 0")
         else:
             super(VisionModuleHandler, self).write_error(status_code, **kwargs)
-
-
-class VisionActiveModulesHandler(BaseHandler):
-    def get(self):
-        return self.write(json.dumps(get_active_modules()))
-

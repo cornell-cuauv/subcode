@@ -3,6 +3,7 @@ python3 -m pip install --upgrade pip
 set -xeuo pipefail
 
 dependencies=(
+    cffi=1.17.1
     Cython==3.0.11
     eventlet==0.33.1
     fire==0.4.0

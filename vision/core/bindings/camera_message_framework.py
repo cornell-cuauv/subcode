@@ -1,558 +1,305 @@
-import struct
-import threading
+from auv_python_helpers import get_library_path
+import sys
+import cffi
 import time
-
+import enum
 import numpy as np
 
-from collections import namedtuple, OrderedDict
-from ctypes import POINTER, c_ubyte, c_uint32, c_uint64, c_char_p, c_voidp, c_ssize_t, c_bool, c_int32, addressof, Structure, create_string_buffer
-from functools import reduce
-import operator
+from typing import (
+    Any,
+    Tuple,
+    Optional,
+)
 
-from auv_python_helpers import load_library
-# Return values of _lib.read_frame
-FRAMEWORK_QUIT = 1
-FRAMEWORK_DELETED = 2
+ffi = cffi.FFI()
 
-class _Frame(Structure):
-    _fields_ = [('data', POINTER(c_ubyte)),
-                ('last_frame', c_uint32),
-                ('width', c_ssize_t),
-                ('height', c_ssize_t),
-                ('depth', c_ssize_t),
-                ('acq_time', c_uint64)]
-
-_lib_nothread = load_library('libauv-camera-message-framework.so')
-
-_lib_nothread.create_message_framework_from_cstring.argtypes = (c_char_p, c_ssize_t)
-_lib_nothread.create_message_framework_from_cstring.restype = c_voidp
-
-_lib_nothread.access_message_framework_from_cstring.argtypes = (c_char_p,)
-_lib_nothread.access_message_framework_from_cstring.restype = c_voidp
-
-_lib_nothread.cleanup_message_framework.argtypes = (c_voidp,)
-_lib_nothread.cleanup_message_framework.restype = None
-
-_lib_nothread.kill_message_framework.argtypes = (c_voidp,)
-_lib_nothread.kill_message_framework.restype = None
-
-_lib_nothread.read_frame.argtypes = (c_voidp, c_voidp)
-_lib_nothread.read_frame.restype = c_int32
-
-_lib_nothread.write_frame.argtypes = (c_voidp, c_voidp, c_uint64,
-                                      c_ssize_t, c_ssize_t, c_ssize_t)
-_lib_nothread.write_frame.restype = c_bool
-
-_lib_nothread.get_buffer_size.argtypes = (c_voidp,)
-_lib_nothread.get_buffer_size.restype = c_ssize_t
-
-running = True
-
-# if we're currently running in an eventlet context (i.e. from the GUI)
-#   use a proxy for lib. this makes lib calls run in a thread pool, instead
-#   of entirely blocking the eventlet cooperative threads
-is_patched = 'eventlet' in threading.current_thread.__module__
-if is_patched:
-    from vision import resizable_eventlet_tpool as tpool
-    tpool.setup()
-    _lib = tpool.Proxy(_lib_nothread)
-else:
-    _lib = _lib_nothread
-
-class ExistentialError(Exception):
-    pass
-
-class StateError(Exception):
-    pass
-
-class Accessor:
+ffi.cdef(
     """
-    An accessor is a structure that represents an accessor to a shared memory
-    block. Creating an accessor will block until the shared memory block with
-    the specified name is created.
+extern const char* BLOCK_STUB_CSTR;
+extern int SUCCESS;
+extern int NO_NEW_FRAME;
+extern int FRAMEWORK_DELETED;
 
-    An accessor has all of the same privileges as a creator, in terms of reading
-    and writing frame.
+typedef struct Block Block;
+typedef struct Frame {
+    size_t width;        
+    size_t height;        
+    size_t depth;        
+    size_t type_size;        
+    uint64_t acquisition_time;
+    uint64_t uid;        
+    void* data;
+} Frame;
+Block* create_block(const char* direction, const size_t max_entry_size_bytes);
+Block* open_block(const char* direction);
+void delete_block(Block* block);
+int write_frame(Block* block,
+				 uint64_t acquisition_time,
+				 size_t width,
+				 size_t height,
+				 size_t depth,
+				 size_t type_size,
+				 const unsigned char* data);
+int read_frame(Block* block, Frame* frame, bool block_thread);
+Frame* create_frame();
+void delete_frame(Frame* frame);
+uint64_t frame_size(Frame* frame);
+"""
+)
+
+_dllib: Any = ffi.dlopen(get_library_path("libcamera_message_framework.so"))
+
+
+class ReadStatus(enum.Enum):
+    """Enum wrapper for vision buffer read status"""
+    SUCCESS = _dllib.SUCCESS  # type: ignore
+    NO_NEW_FRAME = _dllib.NO_NEW_FRAME  # type: ignore
+    FRAMEWORK_DELETED = _dllib.FRAMEWORK_DELETED  # type: ignore
+
+class WriteStatus(enum.Enum):
+    """Enum wrapper for vision buffer write status"""
+    SUCCESS = _dllib.SUCCESS  # type: ignore
+    FRAMEWORK_DELETED = _dllib.FRAMEWORK_DELETED  # type: ignore
+
+
+BLOCK_STUB = ffi.string(_dllib.BLOCK_STUB_CSTR).decode()  # type: ignore
+
+
+def encode_str(s: str):
+    """
+    Encodes a string into a numpy array of bytes (uint8).
+
+    Parameters:
+        s (str): The input string to be encoded.
+
+    Returns:
+        np.ndarray: A numpy array containing the encoded byte values of the string.
+    """
+    return np.frombuffer(s.encode("utf-8"), dtype=np.uint8)
+
+
+def decode_str(arr: np.ndarray):
+    """
+    Decodes a numpy array of bytes (uint8) into a string.
+
+    Parameters:
+        arr (np.ndarray): The input numpy array containing byte values to be decoded.
+
+    Returns:
+        str: The decoded string from the byte array.
+    """
+    return arr.tobytes().decode("utf-8")
+
+
+class BlockAccessor:
+    """A volatile memory-backed object (mmap-ed object) capable of being shared
+    between multiple processes. Supports writes of numpy arrays up to 3-dimensions
+    with underlying data type sizes that are 1, 4, or 8 bytes wide.
     """
 
-    def __init__(self, name):
-        self.name = name
-        self._framework = None
+    def __init__(
+        self,
+        direction: str,
+        max_entry_size_bytes: Optional[int] = None,
+        byte_type: type = np.uint8,
+        short_type: type = np.float32,
+        long_type: type = np.float64,
+        block_thread: bool = False,
+    ):
+        """Initializes a BlockAccessor that will create/access the volatile-memory
+        backed object within a context manager. The behavior of the accessor depends
+        on the arguments passed into this initializer.
 
-        retrying = False
+        Args:
+            direction (str): the name given to the mmap object.
+            max_entry_size_bytes (Optional[int], optional): bytes to allocate for a frame in the mmap-ed object; if left as None, the system will not allocate any memory, and will wait for the object to be created
 
-        # loop until the framework actually exists
-        while running:
-            self._framework = _lib.access_message_framework_from_cstring(name.encode('utf8'))
-            if self._framework:
-                break
-
-            if not retrying:
-                print("Block with name {} does not exist! Waiting and retrying...".format(name))
-                retrying = True
-
-            time.sleep(0.5)
-
-        if retrying:
-            print("Found {}!".format(name))
-
-        if running:
-            self._setup_accessor()
-
-    def valid(self):
-        return self._framework
-
-
-    def _setup_accessor(self, framework_valid=True):
-        """
-        Convenience method for setting up accessor fields. These aren't in the
-        constructor because Creator will also want to use them.
-        """
-        self._frame = _Frame()
-        self._array = None
-        self._last_frame = None
-        if framework_valid:
-            self.buffer_size = _lib.get_buffer_size(self._framework)
-        self.alive = True
-
-    def get_next_frame(self):
-        if not self.alive:
-            raise StateError('Accessor has already been cleaned up!')
-
-        frame = self._frame
-        ret = _lib.read_frame(addressof(frame), self._framework)
-        if ret != 0:
-            return ret
-            #self.cleanup()
-            #raise StateError('Accessor has already been cleaned up!')
-        shape = frame.height, frame.width, frame.depth
-
-        # don't recreate the array if we can avoid it, to mitigate numpy memory leak bug
-        if (self._array is None or
-            self._array.__array_interface__['data'][0] != addressof(frame.data.contents)):
-            self._array = np.ctypeslib.as_array(frame.data, shape)
-        elif (self._array.shape != shape and
-              reduce(operator.mul, self._array.shape) == reduce(operator.mul, shape)):
-            self._array = self._array.reshape(shape)
-        elif self._array.shape != shape:
-            self._array = np.ctypeslib.as_array(frame.data, shape)
-
-        self._last_frame = self._array, frame.acq_time
-        return self._last_frame
-
-
-    def get_last_frame(self):
-        if self._last_frame is None:
-            raise StateError()
-        return self._last_frame
-
-
-    def has_last_frame(self):
-        return self._last_frame is not None
-
-
-    def write_frame(self, frame, acq_time):
-        """
-        Write a frame to the shared memory block, with a maximum dimension size
-        of three.
-
-        The frame must be at most [this.buffer_size] bytes. acq_time is an int
-        representing the time in milliseconds that the frame was acquired at.
+            byte_type (type, optional): 1-byte wide data format from this block. Defaults to np.uint8.
+            short_type (type, optional): 4-byte wide data format from this block. Defaults to np.float32.
+            long_type (type, optional): 8-byte wide data format from this block. Defaults to np.float64.
         """
 
-        if not self.alive:
-            raise StateError('Accessor has already been cleaned up!')
+        assert (max_entry_size_bytes is None) or (
+            max_entry_size_bytes > 0
+        ), "max_entry_size_bytes, when specified, should be a positive integer"
+        assert np.dtype(byte_type).itemsize == 1, "byte type must be 1 byte wide"
+        assert np.dtype(short_type).itemsize == 4, "short type must be 4 bytes wide"
+        assert np.dtype(long_type).itemsize == 8, "long type must be 8 bytes wide"
 
-        if len(frame.shape) == 1:
-            width, = frame.shape
-            depth = height = 1
-        elif len(frame.shape) == 2:
-            height, width = frame.shape
-            depth = 1
+        self._direction = direction
+        self._max_entry_size_bytes = max_entry_size_bytes
+        self._type_lookup = [byte_type, short_type, long_type]
+
+        self._inside_ctx_manager = False
+        self._block_ptr = ffi.NULL
+        self._frame_ptr = ffi.NULL
+        self._frame_data: Optional[np.ndarray] = None
+        self._block_thread: bool = block_thread
+
+    @property
+    def direction(self) -> str:
+        """Get name of the mmap-ed object"""
+        return self._direction
+
+    def block_thread(self) -> "BlockAccessor":
+        """Implements the builder pattern. Allows read_frame to block the current thread
+        when there is no new frame
+        """
+        self._block_thread = True
+        return self
+
+    def unblock_thread(self) -> "BlockAccessor":
+        """Implements the builder pattern. Allows read_frame to return immediately if
+        there is no new frame.
+        """
+        self._block_thread = False
+        return self
+
+    def write_frame(self, acquisition_time_ms: int, frame: np.ndarray):
+        """Write numpy frame to data segment in the mmap-ed object
+
+        Args:
+            acquisition_time_ms (int): Time in milliseconds when the frame was acquired
+            frame (np.ndarray): Numpy array containing the frame data
+
+        Raises:
+            RuntimeError: Thrown when this function is not accessed in a context manager
+            RuntimeError: Thrown when the dtype of the frame object is not 1,4, or 8 bytes wide
+            RuntimeError: Thrown when the frame object does not have the supported dimensions (1-3)
+        """
+
+        if not self._inside_ctx_manager:
+            raise RuntimeError(
+                f"Attempted to access block while not in a context manager: {__file__}:{sys._getframe(1).f_lineno}"
+            )
+
+        if frame.itemsize != 1 and frame.itemsize != 4 and frame.itemsize != 8:
+            raise RuntimeError(
+                f"np.ndarray dtype size is {frame.itemsize} bytes and not 1, 4, or 8 bytes"
+            )
+
+        if len(frame.shape) > 3 or len(frame.shape) == 0:
+            raise RuntimeError(
+                f"np.ndarray has {len(frame.shape)} dimensions, which does not fall between 1-3 dimensions"
+            )
+
+        shape = frame.shape
+        height = shape[0]
+        width = shape[1] if len(shape) > 1 else 1
+        depth = shape[2] if len(shape) > 2 else 1
+
+        write_status = WriteStatus(_dllib.write_frame(  # type: ignore
+            self._block_ptr,
+            ffi.cast("uint64_t", acquisition_time_ms),
+            ffi.cast("size_t", width),
+            ffi.cast("size_t", height),
+            ffi.cast("size_t", depth),
+            ffi.cast("size_t", frame.itemsize),
+            ffi.cast("unsigned char*", ffi.from_buffer(frame)),  # type: ignore
+        ))
+
+        return write_status
+
+    def read_frame(self) -> Tuple[ReadStatus, Optional[np.ndarray], int]:
+        """Read the latest frame, if any, from the data segment in the mmap-ed object.
+        If the block_thread property was set to true, this function may register itself as a
+        watcher with a few second timeout to try and catch the latest frame.
+
+        Raises:
+            RuntimeError: Thrown when this function is not accessed in a context manager
+
+        Returns:
+            Tuple[ReadStatus, Optional[np.ndarray], int]: ReadStatus, most recent frame (could be stale, or no frame at all), acquisition time
+        """
+        if not self._inside_ctx_manager:
+            file = __file__
+            frame = sys._getframe(1).f_lineno
+            raise RuntimeError(
+                f"Attempted to access block while not in a context manager: {file}:{frame}"
+            )
+
+        read_status = ReadStatus(
+            _dllib.read_frame(self._block_ptr, self._frame_ptr, self._block_thread)
+        )
+
+        if read_status == ReadStatus.SUCCESS:
+            width = self._frame_ptr.width  # type: ignore
+            height = self._frame_ptr.height  # type: ignore
+            depth = self._frame_ptr.depth  # type: ignore
+            itemsize = self._frame_ptr.type_size  # type: ignore
+            data = self._frame_ptr.data  # type: ignore
+            acquisition_time: int = self._frame_ptr.acquisition_time  # type: ignore
+
+            total_bytes = width * height * depth * itemsize
+
+            frame_buffer = ffi.buffer(data, total_bytes)
+            interpret_type = self._type_lookup[itemsize // 4]
+
+            self._acquisition_time = acquisition_time
+            self._frame_data = np.frombuffer(
+                frame_buffer, dtype=interpret_type  # type: ignore
+            ).reshape(height, width, depth)
+
+        return read_status, self._frame_data, self._acquisition_time
+
+    def __str__(
+        self,
+    ) -> str:
+        type_str = [t.__name__ for t in self._type_lookup]
+        return f"Accessor(direction={self._direction}, datatypes={':'.join(type_str)})"
+
+    def __enter__(self):
+        """Use with context manager """
+
+        if self._inside_ctx_manager:
+            raise RuntimeError(
+                f"Double dip in context manager: {__file__}: {sys._getframe(1).f_lineno}"
+            )
+
+        cstr = ffi.new("char[]", self._direction.encode("utf8"))
+        cstr_ptr = ffi.string(cstr)
+
+        if self._max_entry_size_bytes is None:
+            retried = False
+            retry_count = 0
+            self._block_ptr = _dllib.open_block(cstr_ptr)  # type: ignore
+            while self._block_ptr == ffi.NULL:
+                retry_count += 1
+
+                print(
+                    f"trying again to access {self._direction} in 1s, retry count={retry_count:<2}",
+                    end="\r",
+                    flush=True,
+                )
+                retried = True
+                time.sleep(1)
+                self._block_ptr = _dllib.open_block(cstr_ptr)  # type: ignore
+
+            if retried:
+                print(f"\nfound {self._direction}!!!", flush=True)
+
         else:
-            height, width, depth = frame.shape
+            self._block_ptr = _dllib.create_block(  # type: ignore
+                cstr_ptr, ffi.cast("size_t", self._max_entry_size_bytes)
+            )
 
-        is_live = _lib_nothread.write_frame(self._framework, frame.ctypes.data, acq_time, width, height, depth)
-        #if not is_live:
-        #    self.cleanup()
-        #    raise StateError('Accessor has already been cleaned up!')
+            if self._block_ptr == ffi.NULL:
+                raise RuntimeError(f"Failed to access {self._direction}")
 
-    def unblock(self):
-        if self._framework is None:
-            return
-        _lib.kill_message_framework(self._framework)
+        self._frame_ptr = _dllib.create_frame()  # type: ignore
+        self._acquisition_time = 0
+        self._frame_data = None
+        self._inside_ctx_manager = True
+        return self
 
-    def cleanup(self, kill=True):
-        if not self.alive:
-            return
-        self.alive = False
-        if self._framework is None:
-            return
-        _lib.kill_message_framework(self._framework)
-        _lib.cleanup_message_framework(self._framework)
-        self._framework = None
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._block_ptr != ffi.NULL:
+            _dllib.delete_block(self._block_ptr)  # type: ignore
 
+        if self._frame_ptr != ffi.NULL:
+            _dllib.delete_frame(self._frame_ptr)  # type: ignore
 
-class Creator(Accessor):
-    """
-    A creator is an accessor that first creates the framework before accessing
-    it. It will raise an ExistentialError if the specified name already exists.
-    """
-    def __init__(self, name, max_size):
-        self.name = name
-        self._framework = _lib.create_message_framework_from_cstring(name.encode('utf8'), max_size)
-        self._setup_accessor(self._framework)
-
-MAX_NAME_LENGTH = 100
-MAX_OPTION_FORMAT_STR_LENGTH = 64
-FORMAT_STR_FORMAT_STR = '{}s'.format(MAX_OPTION_FORMAT_STR_LENGTH)
-
-class _OptionAccessor(Accessor):
-    def __init__(self, full_name):
-        super().__init__(full_name)
-        format_str, _ = self.get_next_frame()
-        self._setup_option_accessor(format_str)
-
-    def _setup_option_accessor(self, format_str):
-        num_zeros = MAX_OPTION_FORMAT_STR_LENGTH - len(format_str)
-        # append zeroes to the format string, so that it can be packed
-        if num_zeros > 0:
-            format_str = bytes(format_str + num_zeros*'\0', 'utf8')
-        self._format_str = format_str
-
-    def get_next_frame(self):
-        res = super().get_next_frame()
-        if isinstance(res, int):
-            return res
-
-        frame, _ = res
-        self._last_frame = frame
-        return self.get_last_frame()
-
-    def get_last_frame(self):
-        if not self.has_last_frame():
-            raise StateError()
-        bstr = self._last_frame.tostring()
-        format_bstr = bstr[:MAX_OPTION_FORMAT_STR_LENGTH]
-        format_str, = struct.unpack_from(FORMAT_STR_FORMAT_STR, format_bstr)
-        value = struct.unpack_from(format_str.rstrip(b'\x00'), bstr[MAX_OPTION_FORMAT_STR_LENGTH:])
-        format_str = _char_arr_to_str(format_str).decode('utf8')
-        return format_str, value
-
-    def set_value(self, values):
-        byteify_tuple = lambda v: bytes(v, 'utf8') if isinstance(v, str) else v
-        value_str = struct.pack(self._format_str.rstrip(b'\x00'), *map(byteify_tuple, values))
-        narr = np.fromstring(self._format_str + value_str, dtype=np.uint8)
-        self.write_frame(narr, int(time.time()*1000))
-
-class _OptionCreator(_OptionAccessor, Creator):
-    def __init__(self, full_name, format_str):
-        Creator.__init__(self, full_name, MAX_OPTION_FORMAT_STR_LENGTH + struct.calcsize(format_str))
-        self._setup_option_accessor(format_str)
-
-MAX_NUM_POSTED_IMAGES = 256
-MAX_NUM_OPTIONS = 256
-# Gui struct format:
-# Number of images (ubyte)
-# Number of options (ubyte)
-# Location of images (MAX_NAME_LENGTH*MAX_NUM_POSTED_IMAGES bytes)
-# Location of options (MAX_NAME_LENGTH*MAX_NUM_OPTIONS bytes)
-_gui_struct = struct.Struct('BB{}s{}s'.format(MAX_NAME_LENGTH*MAX_NUM_POSTED_IMAGES,
-                                              MAX_NAME_LENGTH*MAX_NUM_OPTIONS))
-
-# convenience method to remove null characters from the end of a string
-def _char_arr_to_str(arr):
-    try:
-        first_null = arr.index(b'\0')
-        return arr[:first_null]
-    except Exception as e:
-        return arr
-
-# convenience method to unpack {num} names from {arr}
-def _unpack_names(arr, num):
-    lst = []
-    pos = 0
-    for _ in range(num):
-        string = _char_arr_to_str(arr[pos:pos+MAX_NAME_LENGTH])
-        lst.append(string)
-        pos += MAX_NAME_LENGTH
-    return lst
-
-# convenience method to turn a string representing a gui_struct into a tuple
-# consisting of (image_names, option_names)
-def _gui_struct_to_gui_tuple(s):
-    num_images, num_options, im_arr, options_arr = _gui_struct.unpack(s)
-    utf8_lambda = lambda s: s.decode('utf8')
-    bytes_list_to_str_list = lambda l: list(map(utf8_lambda, l))
-    image_names = _unpack_names(im_arr, num_images)
-    option_names = _unpack_names(options_arr, num_options)
-    return bytes_list_to_str_list(image_names), bytes_list_to_str_list(option_names)
-
-def _construct_gui_shm_name(module_name, value_name, is_option):
-    name = '{}_{}'.format(module_name, value_name)
-    if is_option:
-        name += '_option'
-    return name
-
-# Accessor representing a module, containing utility functions for posted
-# images, options, etc
-class ModuleFrameworkAccessor(Accessor):
-    def __init__(self, module_name):
-        Accessor.__init__(self, 'module-' + module_name)
-        self.cmf_deletion_callback = None
-        self._setup_module_framework(module_name)
-
-
-    def _setup_module_framework(self, module_name):
-        self._lock = threading.RLock()
-        self._option_accessors = OrderedDict()
-        self._image_accessors = {}
-        self._image_observers = []
-        self._option_observers = []
-        self.ordered_image_names = []
-        self.ordered_option_names = []
-        self._module_name = module_name
-
-        self.threads = []
-
-        t = threading.Thread(target=self._observe_forever)
-        t.start()
-        self.threads.append(t)
-
-    def _watch_option(self, option_name, option):
-        # since an option consumes one of its own frames when it initializes
-        #   itself, we need to notify all watchers of the first frame manually
-        if option.has_last_frame():
-            first_option_value = option.get_last_frame()
-            with self._lock:
-                for observer in self._option_observers:
-                    observer(option_name, first_option_value)
-
-        while running and option_name in self._option_accessors:
-            try:
-                prev_value = option.get_last_frame()
-            except:
-                prev_value = None
-
-            next_value = option.get_next_frame()
-            if isinstance(next_value, int):
-                break
-
-            if prev_value == next_value:
-                continue
-            if option_name not in self._option_accessors:
-                break
-            time.sleep(0)
-            with self._lock:
-                for observer in self._option_observers:
-                    observer(option_name, next_value)
-            time.sleep(0)
-
-    def _watch_image(self, image_name, image):
-        while running and image_name in self._image_accessors:
-            res = image.get_next_frame()
-            if isinstance(res, int):
-                break
-
-            next_value, acq_time = res
-
-            if image_name not in self._image_accessors:
-                break
-            time.sleep(0)
-            with self._lock:
-                for observer in self._image_observers:
-                    observer(image_name, (next_value, acq_time))
-            time.sleep(0)
-
-    def _observe_forever(self):
-        while running:
-            res = self.get_next_frame()
-            if isinstance(res, int):
-                if res == FRAMEWORK_DELETED and self.cmf_deletion_callback is not None:
-                    self.cmf_deletion_callback()
-
-                break
-
-            frame, _ = res
-
-            bstr = frame.tostring()
-            image_names, option_names = _gui_struct_to_gui_tuple(bstr)
-            self.ordered_image_names = image_names
-            self.ordered_option_names = option_names
-            # TODO store image and option indices with Accessor
-            def update_watchers(names, accessor_dict, accessor_constructor,
-                                is_option):
-                # dict_cp tracks the names we have _not_ seen, to be removed
-                #   after we add new names
-                dict_cp = accessor_dict.copy()
-                for name in names:
-                    if not name:
-                        continue
-                    if name not in accessor_dict:
-                        accessor_name = _construct_gui_shm_name(self._module_name,
-                                                                name, is_option)
-                        accessor = accessor_constructor(accessor_name)
-                        accessor_dict[name] = accessor
-
-                        if is_option:
-                            target=self._watch_option
-                        else:
-                            target=self._watch_image
-
-                        t = threading.Thread(target=target, args=(name, accessor))
-                        t.start()
-                    else:
-                        del dict_cp[name]
-                for name_to_del in dict_cp:
-                    # this is plagues by timing issues with creators - e.g. the
-                    #   creator will create two options, but this read will only
-                    #   pick up the first, deleting the second from the dict.
-                    #   This might be fixable with better usage of locks (how?),
-                    #   but for now I'm commenting out the deletion, which would
-                    #   not give us any notable performance increase anyway
-                    #del accessor_dict[name_to_del]
-                    pass
-
-            time.sleep(0)
-            with self._lock:
-                update_watchers(image_names, self._image_accessors, Accessor,
-                                False)
-                update_watchers(option_names, self._option_accessors,
-                                _OptionAccessor, True)
-            time.sleep(0)
-
-    def _register_observer(self, observer, observer_list, accessors_dict,
-                           notify_with_current_values):
-        time.sleep(0)
-        with self._lock:
-            observer_list.append(observer)
-            if notify_with_current_values:
-                for name in accessors_dict:
-                    accessor = accessors_dict[name]
-                    if not accessor.has_last_frame():
-                        continue
-                    last_accessor_value = accessor.get_last_frame()
-                    observer(name, last_accessor_value)
-
-    def register_image_observer(self, image_observer,
-                                notify_with_current_values=True):
-        self._register_observer(image_observer, self._image_observers,
-                                self._image_accessors, notify_with_current_values)
-
-    def register_option_observer(self, option_observer,
-                                 notify_with_current_values=True):
-        self._register_observer(option_observer, self._option_observers,
-                                self._option_accessors, notify_with_current_values)
-
-    def write_image(self, image_name, image, acq_time):
-        self._image_accessors[image_name].write_frame(image, acq_time)
-
-    def write_option(self, option_name, value):
-        self._option_accessors[option_name].set_value(value)
-
-    def get_option_values(self):
-        option_values = {}
-        for option_name in self._option_accessors:
-            #try:
-            option_values[option_name] = self._option_accessors[option_name].get_last_frame()
-            #except:
-            #    continue
-        return option_values
-
-    def get_images(self):
-        images = {}
-        for image_name, accessor in self._image_accessors.items():
-            #try:
-            images[image_name] = accessor.get_last_frame()[0]
-            #except:
-            #    continue
-        return images
-
-    def _get_all_CMFs(self):
-        return list(self._option_accessors.values()) + \
-               list(self._image_accessors.values())
-
-    def unblock(self):
-        for CMF in self._get_all_CMFs():
-            CMF.unblock()
-
-        super().unblock()
-
-    def register_cmf_deletion_callback(self, f):
-        self.cmf_deletion_callback = f
-
-def _safe_key_wrapper(k):
-    def get(x):
-        try:
-            return k(x)
-        except:
-            return -1
-    return get
-
-class ModuleFrameworkCreator(ModuleFrameworkAccessor, Creator):
-    def __init__(self, module_name):
-        Creator.__init__(self, 'module-' + module_name, _gui_struct.size)
-        self._setup_module_framework(module_name)
-        self._image_ordering = lambda x: x
-        self._option_ordering = lambda x: 0
-
-    def _update(self):
-        name_struct_gen = lambda name: '{{:\0<{}}}'.format(MAX_NAME_LENGTH).format(name)
-
-        image_keys = sorted(self._image_accessors.keys(), key=self._image_ordering)
-        image_names = map(name_struct_gen, image_keys)
-        option_keys = sorted(self._option_accessors.keys(), key=self._option_ordering)
-        option_names = map(name_struct_gen, option_keys)
-
-        image_name_str = ''.join(image_names)
-        image_name_str += '\0'*(MAX_NAME_LENGTH*MAX_NUM_POSTED_IMAGES - len(image_name_str))
-        option_name_str = ''.join(option_names)
-        option_name_str += '\0'*(MAX_NAME_LENGTH*MAX_NUM_OPTIONS - len(option_name_str))
-        frame = _gui_struct.pack(len(self._image_accessors),
-                                 len(self._option_accessors),
-                                 image_name_str.encode('utf8'),
-                                 option_name_str.encode('utf8'))
-        self.write_frame(np.fromstring(frame, dtype=np.uint8), int(time.time() * 1000))
-
-    def create_option(self, option_name, format_str):
-        if option_name not in self._option_accessors:
-            with self._lock:
-                name = _construct_gui_shm_name(self._module_name, option_name, True)
-                writer = _OptionCreator(name, format_str)
-                self._option_accessors[option_name] = writer
-                self._update()
-                t = threading.Thread(target=self._watch_option,
-                                     args=(option_name, writer))
-                t.start()
-                self.threads.append(t)
-
-    def create_image(self, image_name, image_buffer_size):
-        if image_name not in self._image_accessors:
-            with self._lock:
-                name = _construct_gui_shm_name(self._module_name, image_name, False)
-                writer = Creator(name, image_buffer_size)
-                self._image_accessors[image_name] = writer
-                self._update()
-                t = threading.Thread(target=self._watch_image,
-                                     args=(image_name, writer))
-                t.start()
-                self.threads.append(t)
-
-    def cleanup(self):
-        self.unblock()
-
-        for thread in self.threads:
-            thread.join()
-
-        for CMF in self._get_all_CMFs():
-            CMF.cleanup()
-
-        super().cleanup()
-
-    def set_image_ordering(self, key_function):
-        self._image_ordering = _safe_key_wrapper(key_function)
-        self._update()
-
-    def set_option_ordering(self, key_function):
-        self._option_ordering = _safe_key_wrapper(key_function)
-        self._update()
+        self._block_ptr = ffi.NULL;
+        self._frame_ptr = ffi.NULL;
+        self._inside_ctx_manager = False
+    

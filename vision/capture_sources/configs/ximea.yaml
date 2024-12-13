@@ -1,5 +1,0 @@
-capture_sources:
-    forward:
-        type: XimeaCamera
-modules:
-    [Forward]

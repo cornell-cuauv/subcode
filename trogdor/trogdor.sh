@@ -95,6 +95,16 @@ pkill () {
   fi
 }
 
+ckill () {
+  log "Killing \"$1\"."
+  PIDS=`pids $1`
+  if [ -z "$PIDS" ]; then
+      log "No PIDs found for \"$1\"."
+  else
+      invoke "kill -SIGINT $PIDS"
+  fi
+}
+
 pids () {
   pgrep -fl "$*" | grep -v "grep" | grep -v "vim" | grep -v "emacs" | cut -d' ' -f1
 }
@@ -185,7 +195,7 @@ case $COMMAND in
             log|logs|logger|logging) pkill "auv-ld" ;;
             led) pkill "/home/software/misc/led.py" ;;
             deadman) pkill "auv-deadman" ;;
-            webgui) pkill "auv-webserver" ;;
+            webgui) ckill "auv-webserver" ;;
             # webgui-remote) pkill "auv-webserver-remote" ;;
             pinger|pingerd) pkill "auv-pingerd" ;;
             zed) pkill "auv-zed-camera" ;; 

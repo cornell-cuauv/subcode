@@ -16,7 +16,7 @@ from handlers.shm import SHMHandler, SHMSocketHandler
 from handlers.status import StatusHandler
 from handlers.deadman import DeadmanHandler
 from handlers.admin import AdminHandler, KillHandler
-from handlers.vision import VisionIndexHandler, VisionModuleHandler, VisionSocketHandler, VisionActiveModulesHandler
+from handlers.vision import VisionIndexHandler, VisionActiveModulesHandler, VisionModuleHandler, VisionSocketHandler
 from handlers.map import MapHandler, MapSocketHandler
 
 DEFAULT_PORT = 8080

@@ -1,45 +1,46 @@
-from vision.core import options
+from vision.core import tuners
 import numpy
 import cv2
+
 
 class Preprocessor:
     def __init__(self, module):
         self.module = module
         self.options = [
-            options.BoolOption('PPX_grayscale', False),
-            options.BoolOption('PPX_lab', False),
-            options.BoolOption('PPX_rgb_split', False),
-            options.BoolOption('PPX_lab_split', False),
-            options.BoolOption('PPX_hsv_split', False),
-            options.BoolOption('PPX_hls_split', False),
-            options.BoolOption('PPX_ycrcb_split', False),
-            options.BoolOption('PPX_luv_split', False),
-            options.BoolOption('PPX_color_correction', False),
-            options.IntOption('PPX_r_bias', 0, -255, 255),
-            options.IntOption('PPX_g_bias', 0, -255, 255),
-            options.IntOption('PPX_b_bias', 0, -255, 255),
-            options.DoubleOption('PPX_contrast', 1, 0, 5),
-            options.IntOption('PPX_brightness', 0, -255, 255),
-            options.BoolOption('PPX_gaussian_blur', False),
-            options.IntOption('PPX_gaussian_blur_kernel', 1, 1, 100),
-            options.IntOption('PPX_gaussian_noise', 0, 0, 255),
-            options.BoolOption('PPX_erode', False),
-            options.IntOption('PPX_erode_kernel', 1, 1, 50),
-            options.BoolOption('PPX_dilate', False),
-            options.IntOption('PPX_dilate_kernel', 1, 1, 50),
-            options.IntOption('PPX_rotate', 0, 0, 359),
-            options.BoolOption('PPX_resize', False),
-            options.IntOption('PPX_resize_width', 512, 1, 2048, lambda x:
-                x * self.options_dict['PPX_resize_height'].value * 3 <=
-                self.module.max_buffer_size),
-            options.IntOption('PPX_resize_height', 512, 1, 2048, lambda x:
-                x * self.options_dict['PPX_resize_width'].value * 3 <=
-                self.module.max_buffer_size),
-            options.DoubleOption('PPX_resize_ratio', 1, 0.01, 1),
-            options.IntOption('PPX_translate_x', 0, -2048, 2048),
-            options.IntOption('PPX_translate_y', 0, -2048, 2048),
+            tuners.BoolTuner('PPX_grayscale', False),
+            tuners.BoolTuner('PPX_lab', False),
+            tuners.BoolTuner('PPX_rgb_split', False),
+            tuners.BoolTuner('PPX_lab_split', False),
+            tuners.BoolTuner('PPX_hsv_split', False),
+            tuners.BoolTuner('PPX_hls_split', False),
+            tuners.BoolTuner('PPX_ycrcb_split', False),
+            tuners.BoolTuner('PPX_luv_split', False),
+            tuners.BoolTuner('PPX_color_correction', False),
+            tuners.IntTuner('PPX_r_bias', 0, -255, 255),
+            tuners.IntTuner('PPX_g_bias', 0, -255, 255),
+            tuners.IntTuner('PPX_b_bias', 0, -255, 255),
+            tuners.DoubleTuner('PPX_contrast', 1, 0, 5),
+            tuners.IntTuner('PPX_brightness', 0, -255, 255),
+            tuners.BoolTuner('PPX_gaussian_blur', False),
+            tuners.IntTuner('PPX_gaussian_blur_kernel', 1, 1, 100),
+            tuners.IntTuner('PPX_gaussian_noise', 0, 0, 255),
+            tuners.BoolTuner('PPX_erode', False),
+            tuners.IntTuner('PPX_erode_kernel', 1, 1, 50),
+            tuners.BoolTuner('PPX_dilate', False),
+            tuners.IntTuner('PPX_dilate_kernel', 1, 1, 50),
+            tuners.IntTuner('PPX_rotate', 0, 0, 359),
+            tuners.BoolTuner('PPX_resize', False),
+            tuners.IntTuner('PPX_resize_width', 512, 1, 2048, lambda x:
+                            x * self.options_dict['PPX_resize_height'].value * 3 <=
+                            self.module.max_buffer_size),
+            tuners.IntTuner('PPX_resize_height', 512, 1, 2048, lambda x:
+                            x * self.options_dict['PPX_resize_width'].value * 3 <=
+                            self.module.max_buffer_size),
+            tuners.DoubleTuner('PPX_resize_ratio', 1, 0.01, 1),
+            tuners.IntTuner('PPX_translate_x', 0, -2048, 2048),
+            tuners.IntTuner('PPX_translate_y', 0, -2048, 2048),
         ]
-        self.options_dict = {option.name : option for option in self.options}
+        self.options_dict = {option.name: option for option in self.options}
         for option in self.options:
             self.module.options_dict[option.name] = option
 
@@ -87,15 +88,18 @@ class Preprocessor:
                 mat = balance(mat)
             if self.options_dict['PPX_r_bias'].value != 0:
                 bgr_split = cv2.split(mat)
-                bgr_split[2] = cv2.add(self.options_dict['PPX_r_bias'].value, bgr_split[2])
+                bgr_split[2] = cv2.add(
+                    self.options_dict['PPX_r_bias'].value, bgr_split[2])
                 mat = cv2.merge(bgr_split)
             if self.options_dict['PPX_g_bias'].value != 0:
                 bgr_split = cv2.split(mat)
-                bgr_split[1] = cv2.add(self.options_dict['PPX_g_bias'].value, bgr_split[1])
+                bgr_split[1] = cv2.add(
+                    self.options_dict['PPX_g_bias'].value, bgr_split[1])
                 mat = cv2.merge(bgr_split)
             if self.options_dict['PPX_b_bias'].value != 0:
                 bgr_split = cv2.split(mat)
-                bgr_split[0] = cv2.add(self.options_dict['PPX_b_bias'].value, bgr_split[0])
+                bgr_split[0] = cv2.add(
+                    self.options_dict['PPX_b_bias'].value, bgr_split[0])
                 mat = cv2.merge(bgr_split)
             if self.options_dict['PPX_contrast'].value != 1:
                 temp = mat * self.options_dict['PPX_contrast'].value
@@ -105,42 +109,43 @@ class Preprocessor:
                 mat = numpy.clip(temp, 0., 255.).astype(numpy.uint8)
             if self.options_dict['PPX_gaussian_blur'].value:
                 mat = cv2.GaussianBlur(mat,
-                        (self.options_dict['PPX_gaussian_blur_kernel'].value * 2 + 1,
-                         self.options_dict['PPX_gaussian_blur_kernel'].value * 2 + 1),
-                        0)
+                                       (self.options_dict['PPX_gaussian_blur_kernel'].value * 2 + 1,
+                                        self.options_dict['PPX_gaussian_blur_kernel'].value * 2 + 1),
+                                       0)
             if self.options_dict['PPX_gaussian_noise'].value != 0:
-                noise = numpy.random.randn(*mat.shape) * self.options_dict['PPX_gaussian_noise'].value
+                noise = numpy.random.randn(
+                    *mat.shape) * self.options_dict['PPX_gaussian_noise'].value
                 mat = mat + noise
                 mat = numpy.clip(mat, 0., 255.).astype(numpy.uint8)
             if self.options_dict['PPX_erode'].value:
                 mat = cv2.erode(mat,
-                        cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
-                            (self.options_dict['PPX_erode_kernel'].value * 2 + 1,
-                             self.options_dict['PPX_erode_kernel'].value * 2 + 1)))
+                                cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
+                                                          (self.options_dict['PPX_erode_kernel'].value * 2 + 1,
+                                                           self.options_dict['PPX_erode_kernel'].value * 2 + 1)))
             if self.options_dict['PPX_dilate'].value:
                 mat = cv2.dilate(mat,
-                        cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
-                            (self.options_dict['PPX_dilate_kernel'].value * 2 + 1,
-                             self.options_dict['PPX_dilate_kernel'].value * 2 + 1)))
+                                 cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
+                                                           (self.options_dict['PPX_dilate_kernel'].value * 2 + 1,
+                                                            self.options_dict['PPX_dilate_kernel'].value * 2 + 1)))
             if self.options_dict['PPX_rotate'].value != 0:
                 rot_mat = cv2.getRotationMatrix2D(
-                        (mat.shape[1] / 2, mat.shape[0] / 2),
-                        self.options_dict['PPX_rotate'].value, 1)
+                    (mat.shape[1] / 2, mat.shape[0] / 2),
+                    self.options_dict['PPX_rotate'].value, 1)
                 mat = cv2.warpAffine(mat, rot_mat, (mat.shape[1], mat.shape[0]),
-                        borderMode=cv2.BORDER_REPLICATE)
+                                     borderMode=cv2.BORDER_REPLICATE)
             if self.options_dict['PPX_resize'].value:
                 mat = cv2.resize(mat,
-                        (self.options_dict['PPX_resize_width'].value,
-                         self.options_dict['PPX_resize_height'].value))
+                                 (self.options_dict['PPX_resize_width'].value,
+                                  self.options_dict['PPX_resize_height'].value))
             if self.options_dict['PPX_resize_ratio'].value != 1:
                 mat = cv2.resize(mat,
-                        (int(mat.shape[1] * self.options_dict['PPX_resize_ratio'].value),
-                         int(mat.shape[0] * self.options_dict['PPX_resize_ratio'].value)))
+                                 (int(mat.shape[1] * self.options_dict['PPX_resize_ratio'].value),
+                                  int(mat.shape[0] * self.options_dict['PPX_resize_ratio'].value)))
             if self.options_dict['PPX_translate_x'].value != 0 or \
                self.options_dict['PPX_translate_y'].value != 0:
                 trans_mat = numpy.float32([[1, 0, self.options_dict['PPX_translate_x'].value],
                                            [0, 1, self.options_dict['PPX_translate_y'].value]])
-                mat = cv2.warpAffine(mat, trans_mat, (mat.shape[1], mat.shape[0]))
+                mat = cv2.warpAffine(
+                    mat, trans_mat, (mat.shape[1], mat.shape[0]))
             preprocessed_images.append(mat)
         return preprocessed_images
-

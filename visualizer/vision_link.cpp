@@ -23,7 +23,7 @@ class VisionLinkImp : public VisionLink {
   private:
     void worker();
 
-    message_framework_p framework;
+    std::unique_ptr<cmf::Block> framework;
     cv::Mat input_image;
     cv::Mat output_image;
 
@@ -37,11 +37,10 @@ class VisionLinkImp : public VisionLink {
 };
 
 VisionLinkImp::~VisionLinkImp() {
-  if (framework != NULL) {
+  if (framework->is_valid()) {
     std::unique_lock<std::mutex> lck(mtx);
     ending = 1;
 	cv.notify_all();
-    cleanup_message_framework(framework);
   }
 }
 
@@ -49,14 +48,7 @@ int VisionLinkImp::init(const std::string &cam_name,
                      unsigned int width, unsigned int height) {
   input_image.create(height, width, CV_8UC4);
   output_image.create(height, width, CV_8UC3);
-  framework = create_message_framework(cam_name, width * height *3);
-  if (framework == NULL) {
-    fprintf(stderr, "ERROR: Failed to create camera message framework for %s ca"
-                    "mera.\n",
-            cam_name.c_str());
-    return -1;
-  }
-
+  framework = std::make_unique<cmf::Block>(cam_name, width * height * 3);
   std::thread(&VisionLinkImp::worker, this).detach();
 
   return 0;
@@ -92,9 +84,12 @@ void VisionLinkImp::worker() {
 
     cv::cvtColor(input_image, output_image, cv::COLOR_BGRA2BGR);
     cv::flip(output_image, output_image, 0);
-    write_frame(framework, output_image.ptr(),
-                acq_time->tv_sec * 1000 + acq_time->tv_nsec / 1000000,
-                output_image.cols, output_image.rows, output_image.channels());
+    framework->write_frame(
+      acq_time->tv_sec * 1000 + acq_time->tv_nsec / 1000000, 
+      output_image.cols, output_image.rows, 
+      output_image.channels(), 1, 
+      output_image.ptr()
+    );
     job = 0;
   }
 }

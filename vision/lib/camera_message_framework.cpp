@@ -1,311 +1,369 @@
 #include "include/camera_message_framework.hpp"
+#include "include/filelock.hpp"
 
-#include <cstdlib>
-#include <cstddef>
-#include <cstdio>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <string>
-#include <sstream>
 #include <atomic>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <string.h>
-#include <signal.h>
-#include <stdlib.h>
+#include <auvlog/logger.h>
+#include <cstring>
+#include <fcntl.h>
+#include <filesystem>
+#include <fmt/format.h>
 #include <iostream>
-#include <stdint.h>
-#include <semaphore.h>
+#include <stdexcept>
+#include <sys/mman.h>
 #include <sys/time.h>
+#include <unistd.h>
 
-#include "misc/utils.h"
+namespace cmf {
 
-#define FILE_ADDRESS_BASE "/dev/shm/auv_visiond-"
-#define BUFFER_COUNT 3
-
-struct image_metadata {
-  size_t width;
-  size_t height;
-  size_t depth;
-  uint64_t acquisition_time;
-  pthread_rwlock_t rwlock;
+struct FrameMetadata {
+	std::atomic<uint64_t> v_a, v_b;
+	std::uint64_t acquisition_time, width, height, depth, type_size;
 };
 
-struct message_framework_internal {
-  uint32_t frame;
-  pthread_cond_t cond;
-  pthread_mutex_t cond_mutex;
-  struct image_metadata metadata[BUFFER_COUNT];
-  size_t image_buffer_size;
-  pid_t owner;
-  unsigned char images[]; // this _must_ be last
-} typedef message_framework_internal;
+struct Buffer {
+public:
+	Buffer() = delete;
 
-struct message_framework {
-  bool live;
-  std::atomic_uint_least32_t num_accessors;
-  std::string filename;
-  message_framework_internal *framework;
+public:
+	std::atomic<uint64_t> arc, uid;
+	std::size_t max_entry_size_bytes;
+
+	bool deleted;
+	FrameMetadata metadata[BUFFER_CNT];
+
+	pthread_cond_t cond;
+	pthread_mutex_t cond_mutex;
+
+	alignas(64) unsigned char data[];
 };
 
-size_t calculate_map_size(size_t max_image_size) {
-  return sizeof(message_framework_internal) + max_image_size*BUFFER_COUNT;
+///////////////////////////////////////////////////////////////////////////////
+/// Helpers
+///
+///////////////////////////////////////////////////////////////////////////////
+
+std::string filename_from_direction(const std::string& direction) {
+	// Check if "/"  exists in direction. Note that "/" is the ONLY forbidden 8
+	// bit character in Linux filenames
+	if(direction.find('/') != std::string::npos)
+		throw std::invalid_argument("Block name contains '/' which is forbidden."); // TODO
+	return BLOCK_STUB + direction;
 }
 
-bool write_frame(message_framework_p framework_w, unsigned char* data,
-                 uint64_t acquisition_time, size_t width, size_t height,
-                 size_t depth) {
-  if (!framework_w->live) {
-    return false;
-  }
-
-  message_framework_internal *framework = framework_w->framework;
-
-  uint32_t buffer_to_write_to = (framework->frame + 1) % BUFFER_COUNT;
-  struct image_metadata *metadata = &framework->metadata[buffer_to_write_to];
-
-  // grab the write lock
-  pthread_rwlock_wrlock(&metadata->rwlock);
-  // write the image and corresponding metadata
-  memcpy(&framework->images[framework->image_buffer_size*buffer_to_write_to], data,
-         width * height * depth);
-  metadata->width = width;
-  metadata->height = height;
-  metadata->depth = depth;
-  metadata->acquisition_time = acquisition_time;
-  // release the write lock
-  pthread_rwlock_unlock(&metadata->rwlock);
-
-  framework->frame++;
-  // notify all watchers that a new image has been posted
-  pthread_cond_broadcast(&framework->cond);
-
-  return true;
+inline const std::size_t shm_size(const Buffer* buffer) noexcept {
+	return sizeof(Buffer) + buffer->max_entry_size_bytes * BUFFER_CNT;
 }
 
-int read_frame(struct frame* frame, message_framework_p framework_w) {
-  if (!framework_w->live) {
-    return FRAMEWORK_QUIT;
-  }
+///////////////////////////////////////////////////////////////////////////////
+/// Buffer
+///////////////////////////////////////////////////////////////////////////////
+Buffer* create_block(int fd, std::size_t max_entry_size, const Block& b) {
+	const std::size_t required_bytes = sizeof(Buffer) + max_entry_size * BUFFER_CNT;
 
-  message_framework_internal *framework = framework_w->framework;
-  frame->data = (unsigned char*) realloc(frame->data, framework->image_buffer_size);
-  pthread_mutex_t *mutex = &framework->cond_mutex;
-  pthread_cond_t *cond = &framework->cond;
+	if(ftruncate(fd, required_bytes) == -1) {
+		return nullptr;
+	}
 
-  pthread_mutex_lock(mutex);
-  struct timespec timeToWait;
-  struct timeval now;
-  while (framework->frame == frame->last_frame) {
-    // wait 100ms at most for each wait. this lets us avoid any esoteric
-    // timing/thread related bugs at a small cost. if we prove all of our
-    // synchronization code here to be correct, this won't be necessary.
-    // until then, it's best to keep this in
-    gettimeofday(&now,NULL);
-    timeToWait.tv_sec = now.tv_sec;
-    timeToWait.tv_nsec = (now.tv_usec+1000UL*100)*1000UL;
-    if (timeToWait.tv_nsec >= 1000000000L) {
-      timeToWait.tv_sec += 1;
-      timeToWait.tv_nsec -= 1000000000L;
-    }
+	const int prot_flags = PROT_READ | PROT_WRITE;
+	void* raw_memory = mmap(NULL, lseek(fd, 0, SEEK_END), prot_flags, MAP_SHARED, fd, 0);
 
-    pthread_cond_timedwait(cond, mutex, &timeToWait);
+	if(raw_memory == (void*)(-1)) {
+		return nullptr;
+	}
 
-    // if we should no longer be running, cleanly exit
-    if (!framework_w->live) {
-      pthread_mutex_unlock(mutex);
-      return FRAMEWORK_QUIT;
-    }
+	Buffer* buffer = (Buffer*)raw_memory;
 
-    if (!framework->owner) {
-      pthread_mutex_unlock(mutex);
-      std::cout << "Framework is abandoned!" << std::endl;
-      return FRAMEWORK_DELETED;
-    }
-  }
+	for(std::size_t i = 0; i < BUFFER_CNT; i++) {
+		buffer->metadata[i].v_a = 0;
+		buffer->metadata[i].v_b = 0;
 
-  pthread_mutex_unlock(mutex);
+		buffer->metadata[i].acquisition_time = 0;
+		buffer->metadata[i].width = 0;
+		buffer->metadata[i].height = 0;
+		buffer->metadata[i].depth = 0;
+		buffer->metadata[i].type_size = 0;
+	}
 
-  // read from the newly written frame
-  uint32_t buffer_to_read_from = framework->frame % BUFFER_COUNT;
-  struct image_metadata *metadata = &framework->metadata[buffer_to_read_from];
-  pthread_rwlock_rdlock(&metadata->rwlock);
-  frame->last_frame = framework->frame;
-  frame->acq_time = metadata->acquisition_time;
-  size_t width = metadata->width;
-  size_t height = metadata->height;
-  size_t depth = metadata->depth;
-  frame->width = width;
-  frame->height = height;
-  frame->depth = depth;
+	buffer->max_entry_size_bytes = max_entry_size;
+	buffer->arc = 0;
+	buffer->uid = 0;
+	buffer->deleted = false;
 
-  memcpy(frame->data, &framework->images[framework->image_buffer_size*buffer_to_read_from], width * height * depth);
-  pthread_rwlock_unlock(&metadata->rwlock);
-  return 0;
+	pthread_condattr_t attrcond;
+	pthread_condattr_init(&attrcond);
+	pthread_condattr_setpshared(&attrcond, PTHREAD_PROCESS_SHARED);
+	pthread_cond_init(&buffer->cond, &attrcond);
+
+	pthread_mutexattr_t attrmutex;
+	pthread_mutexattr_init(&attrmutex);
+	pthread_mutexattr_setpshared(&attrmutex, PTHREAD_PROCESS_SHARED);
+	pthread_mutexattr_setrobust(&attrmutex, PTHREAD_MUTEX_ROBUST);
+	pthread_mutex_init(&buffer->cond_mutex, &attrmutex);
+
+	auvlog_info(
+		fmt::format("Created block at '{}' with size {} bytes", b.filename(), shm_size(buffer)));
+	return buffer;
 }
 
-message_framework_p initialize_message_framework(message_framework_internal *framework) {
-  // TODO Use a smart pointer here.
-  message_framework_p framework_w = new message_framework;
-  framework_w->framework = framework;
-  framework_w->live = true;
-  framework_w->num_accessors = 1;
-  return framework_w;
+// Global lock guarantees buffer is not being destoryed
+Buffer* open_block(int fd, const Block& b) {
+	const int prot_flags = PROT_READ | PROT_WRITE;
+	void* raw_memory = mmap(NULL, lseek(fd, 0, SEEK_END), prot_flags, MAP_SHARED, fd, 0);
+	if(raw_memory == (void*)-1) {
+		return nullptr;
+	}
+
+	Buffer* buffer = (Buffer*)raw_memory;
+
+	auvlog_info(
+		fmt::format("Opened block at '{}' with size {} bytes", b.filename(), shm_size(buffer)));
+
+	return buffer;
 }
 
-message_framework_p create_message_framework_from_cstring(const char *direction,
-                                                         size_t max_image_size) {
-  return create_message_framework(std::string(direction), max_image_size);
+Block::Block(const std::string& direction, const size_t max_entry_size) {
+	filelock::Filelock master_lock(GLOBAL_LOCK);
+	std::string filename = filename_from_direction(direction);
+
+	bool file_exists = access(filename.c_str(), F_OK) == 0;
+	int fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRWXU);
+
+	if(fd == -1) {
+		throw std::system_error(errno, std::generic_category(), filename);
+	}
+
+	_creator = true;
+	_direction = direction;
+	_filename = filename;
+	_buffer = file_exists ? open_block(fd, *this) : create_block(fd, max_entry_size, *this);
+
+	if(close(fd) == -1) {
+		throw std::system_error(errno, std::generic_category(), filename);
+	}
+
+	auto cleanup_file = [&]() {
+		if(_buffer->arc == 0) {
+			remove(filename.c_str());
+		}
+	};
+
+	if(_buffer == nullptr) {
+		cleanup_file();
+		throw std::system_error(errno, std::generic_category(), filename);
+	}
+
+	if(_buffer->max_entry_size_bytes != max_entry_size) {
+		cleanup_file();
+		throw std::invalid_argument(
+			fmt::format("Opened existing block named '{}' and got size mismatch: {} != {} bytes",
+						_filename,
+						max_entry_size,
+						_buffer->max_entry_size_bytes));
+	}
+
+	// destructor is only called after the object is fully constructed, thus we only want to increment
+	// the atomic reference counter after all checks have passed
+	_buffer->arc += 1;
 }
 
-message_framework_p create_message_framework(std::string direction,
-                                            size_t max_image_size) {
-  // Apparently, "/" is the ONLY forbidden 8 bit character forbidden
-  // in Linux filenames!
-  if (direction.find('/') != std::string::npos) {
-    std::cerr << "Framework name " << direction << " contains a \"/\", which is disallowed!" << std::endl;
-    return NULL;
-  }
+Block::Block(const std::string& direction) {
+	filelock::Filelock master_lock(GLOBAL_LOCK);
 
-  std::string file_address_s;
-  file_address_s = FILE_ADDRESS_BASE + direction;
-  char* file_address = (char*) file_address_s.c_str();
+	std::string filename = filename_from_direction(direction);
+	if(!std::filesystem::exists(filename)) {
+		throw std::filesystem::filesystem_error(
+			"Block does not exist",
+			filename,
+			std::make_error_code(std::errc::no_such_file_or_directory));
+	}
 
-  if (access(file_address, F_OK) != -1) {
-    //this line must come before the file is accessed
-    bool in_use_by_any = file_opened(file_address);
+	int fd = open(filename.c_str(), O_RDWR, S_IRWXU);
 
-    message_framework_p extant_framework = access_message_framework(direction);
-    if (extant_framework != NULL && extant_framework->framework!=NULL) {
-      pid_t prev_owner = extant_framework->framework->owner;
+	if(fd == -1) {
+		throw std::system_error(errno, std::generic_category(), filename);
+	}
 
-      // this line checks if the prev owner is still alive.
-      // "On success (at least one signal was sent), zero is returned. On error, -1 is returned"
-      // it will not actually kill the previous owner, since the signal is 0
-      bool owned = !kill(prev_owner, 0);
+	_creator = false;
+	_direction = direction;
+	_filename = filename;
+	_buffer = open_block(fd, *this);
+	close(fd);
 
-      bool legal_size = extant_framework->framework->image_buffer_size == max_image_size;
-      if (!owned && legal_size) {
-        // reuse the old framework, so that nothing has to be recreated or relinked
-        // TODO: this is a race condition (what if two message frameworks are created simultaneously)
-        extant_framework->framework->owner = getpid();
-        return extant_framework;
-      } else if (in_use_by_any) {
-        std::cout << "Could not create buffer " << direction << " for writing: ";
-        if (owned)
-          std::cout << direction << " is currently owned by some other process. "
-                    << "Make sure that no other capture source is trying to access this file"
-                    << std::endl;
-        else if (!legal_size)
-          std::cout << direction << " is currently being used by another process with an incompatible size. "
-                    << "Please close all other processes that may be using it."
-                    << std::endl;
-        else
-          std::cout << "unknown error occurred (illegal state of message framework)." << std::endl;
-        return NULL;
-      }
-      else {
-        // if not in use, unlink and fall through
-        unlink(file_address);
-      }
-    } else {
-      std::cout << "unknown error occurred (file exists but couldn't be accessed)." << std::endl;
-      return NULL;
-    }
-  }
-
-  int framework_file = open(file_address, O_RDWR | O_CREAT, S_IRWXU);
-  if (framework_file == -1) {
-    std::cout << "Failed to open " << file_address << ": " << errno << std::endl;
-    return NULL;
-  }
-  size_t desired_size = calculate_map_size(max_image_size);
-
-  if (ftruncate(framework_file, desired_size) == -1) {
-    std::cout << "Failed to truncate the file to the desired length: "
-              << errno << std::endl;
-    return NULL;
-  }
-
-  // initialize shared memory framework
-
-  message_framework_internal* framework = (message_framework_internal*) mmap(NULL, desired_size, PROT_READ | PROT_WRITE, MAP_SHARED, framework_file, 0);
-  close(framework_file);
-
-  framework->image_buffer_size = max_image_size;
-  framework->frame = 0;
-  framework->owner = getpid();
-
-  pthread_condattr_t attrcond;
-  pthread_condattr_init(&attrcond);
-  pthread_condattr_setpshared(&attrcond, PTHREAD_PROCESS_SHARED);
-  pthread_cond_init(&framework->cond, &attrcond);
-
-  pthread_mutexattr_t attrmutex;
-  pthread_mutexattr_init(&attrmutex);
-  pthread_mutexattr_setpshared(&attrmutex, PTHREAD_PROCESS_SHARED);
-  pthread_mutex_init(&framework->cond_mutex, &attrmutex);
-
-  pthread_rwlockattr_t attrrwlock;
-  pthread_rwlockattr_init(&attrrwlock);
-  pthread_rwlockattr_setpshared(&attrrwlock, PTHREAD_PROCESS_SHARED);
-
-  for (int i = 0; i < BUFFER_COUNT; i++)
-    pthread_rwlock_init(&framework->metadata[i].rwlock, &attrrwlock);
-
-  message_framework_p final_fmwk = initialize_message_framework(framework);
-  final_fmwk->filename = file_address_s;
-  return final_fmwk;
+	// destructor is only called after the object is fully constructed, thus we only want to increment
+	// the atomic reference counter after all checks have passed
+	_buffer->arc += 1;
 }
 
-message_framework_p access_message_framework_from_cstring(const char *direction) {
-  return access_message_framework(std::string(direction));
+Block::Block(Block&& other) noexcept {
+	_filename = std::move(other._filename);
+	_direction = std::move(other._direction);
+	_buffer = other._buffer;
+	_creator = other._creator;
+	other._buffer = nullptr;
 }
 
-message_framework_p access_message_framework(std::string direction) {
-  std::string file_address_s;
-  file_address_s = FILE_ADDRESS_BASE + direction;
-  char* file_address = (char*) file_address_s.c_str();
+Block& Block::operator=(Block&& other) {
+	if(this != &other) {
+		_filename = std::move(other._filename);
+		_direction = std::move(other._direction);
+		_buffer = other._buffer;
+		_creator = other._creator;
+		other._buffer = nullptr;
+	}
 
-  int framework_file;
-  if (access(file_address, F_OK) == -1)
-    return NULL;
-
-  framework_file = open(file_address, O_RDWR, S_IRWXU);
-
-  size_t desired_size = lseek(framework_file, 0, SEEK_END);
-
-  message_framework_internal *framework = (message_framework_internal*) mmap(NULL, desired_size, PROT_READ | PROT_WRITE, MAP_SHARED, framework_file, 0);
-  close(framework_file);
-
-  //std::cout << "Initializing" << std::endl;
-
-  message_framework_p final_fwmk = initialize_message_framework(framework);
-  final_fwmk->filename = file_address_s;
-  return final_fwmk;
+	return *this;
 }
 
-size_t get_buffer_size(message_framework_p framework_w) {
-  if (!framework_w->live)
-    return -1;
+Block::~Block() {
+	if(_buffer == nullptr) {
+		// null if from move constructor
+		return;
+	}
+	if(_creator) {
+		_buffer->deleted = true;
+	}
 
-  return framework_w->framework->image_buffer_size;
+	if(--_buffer->arc == 0) {
+		remove(_filename.c_str());
+		auvlog_info(
+			fmt::format("Destroyed block at '{}' and freed {} bytes", _filename, shm_size()));
+	}
+
+	munmap(_buffer, shm_size());
 }
 
-void kill_message_framework(message_framework_p framework_w) {
-  framework_w->live = false;
-  pthread_cond_broadcast(&framework_w->framework->cond);
+int Block::write_frame(std::uint64_t acquisition_time,
+					   std::size_t width,
+					   std::size_t height,
+					   std::size_t depth,
+					   std::size_t type_size,
+					   const void* bytes) const noexcept {
+	if(_buffer->deleted) [[unlikely]] {
+		return FRAMEWORK_DELETED;
+	}
+
+	std::size_t entry_size = (width * height * depth * type_size);
+
+	if(_buffer->max_entry_size_bytes < entry_size) [[unlikely]] {
+		throw std::runtime_error(
+			fmt::format("cannot write {} bytes to buffer with maximum size of {} bytes",
+						entry_size,
+						_buffer->max_entry_size_bytes));
+	}
+
+	std::size_t idx = (_buffer->uid + 1) % BUFFER_CNT;
+	std::uint64_t x = _buffer->metadata[idx].v_a + 1;
+
+	// BEGIN CRTITICAL SECTION ========
+	_buffer->metadata[idx].v_a = x;
+	_buffer->metadata[idx].acquisition_time = acquisition_time;
+	_buffer->metadata[idx].width = width;
+	_buffer->metadata[idx].height = height;
+	_buffer->metadata[idx].depth = depth;
+	_buffer->metadata[idx].type_size = type_size;
+
+	std::memcpy(_buffer->data + (idx * _buffer->max_entry_size_bytes),
+				const_cast<void*>(bytes),
+				entry_size);
+
+	_buffer->metadata[idx].v_b = x;
+
+	// END CRITICAL SECTION =========
+
+	// allow read frame to read;
+	_buffer->uid.fetch_add(1);
+	pthread_cond_broadcast(&_buffer->cond);
+
+	return SUCCESS;
 }
 
-void cleanup_message_framework(message_framework_p framework_w) {
-  message_framework_internal *framework = framework_w->framework;
-  framework_w->num_accessors--;
+int Block::read_frame(Frame& frame, bool block_thread) {
+	if(_buffer->deleted) {
+		return FRAMEWORK_DELETED;
+	}
 
-  if (framework_w->num_accessors == 0) {
-    framework->owner = 0;
-    munmap(framework, calculate_map_size(framework->image_buffer_size));
-    remove(framework_w->filename.c_str());
-    delete framework_w;
-  }
+	int mutex_errno = pthread_mutex_lock(&_buffer->cond_mutex);
+	if(mutex_errno == EOWNERDEAD) {
+		pthread_mutex_consistent(&_buffer->cond_mutex);
+		mutex_errno = pthread_mutex_lock(&_buffer->cond_mutex);
+
+		if(mutex_errno != 0) {
+			_buffer->deleted = true;
+			throw std::runtime_error("Failed to lock mutex: " + std::string(strerror(mutex_errno)));
+		}
+	}
+
+	if(block_thread && frame.uid >= _buffer->uid) {
+		std::cout << "sleep now" << std::endl;
+		struct timespec time_to_wait;
+		struct timeval now;
+		gettimeofday(&now, NULL);
+
+		time_to_wait.tv_sec = now.tv_sec + 1;
+		time_to_wait.tv_nsec = (now.tv_usec) * 1000UL;
+
+		if(time_to_wait.tv_nsec >= 1000000000) {
+			time_to_wait.tv_sec += 1;
+			time_to_wait.tv_nsec -= 1000000000;
+		}
+
+		pthread_cond_timedwait(&_buffer->cond, &_buffer->cond_mutex, &time_to_wait);
+	}
+	pthread_mutex_unlock(&_buffer->cond_mutex);
+
+	if(frame.uid >= _buffer->uid.load()) {
+		return NO_NEW_FRAME;
+	}
+
+	if(frame.size() < _buffer->max_entry_size_bytes) {
+		frame.data = std::realloc(frame.data, _buffer->max_entry_size_bytes);
+	}
+
+	std::uint64_t v_a, v_b;
+	do {
+		std::size_t idx = _buffer->uid % BUFFER_CNT;
+		v_b = _buffer->metadata[idx].v_b.load();
+		frame.width = _buffer->metadata[idx].width;
+		frame.height = _buffer->metadata[idx].height;
+		frame.depth = _buffer->metadata[idx].depth;
+		frame.type_size = _buffer->metadata[idx].type_size;
+		frame.acquisition_time = _buffer->metadata[idx].acquisition_time;
+		frame.uid = _buffer->uid.load();
+
+		std::memcpy(
+			frame.data, _buffer->data + (idx * _buffer->max_entry_size_bytes), frame.size());
+		v_a = _buffer->metadata[idx].v_a.load();
+		// std::cout << "repeat" << std::endl;
+	} while(v_a != v_b);
+
+	return SUCCESS;
 }
+
+const std::size_t Block::shm_size() const noexcept {
+	return sizeof(Buffer) + _buffer->max_entry_size_bytes * BUFFER_CNT;
+}
+
+const std::size_t Block::max_buffer_size() const noexcept {
+	return _buffer->max_entry_size_bytes;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Buffer
+///////////////////////////////////////////////////////////////////////////////
+Frame::Frame() noexcept
+	: width(64)
+	, height(1)
+	, depth(1)
+	, type_size(1)
+	, acquisition_time(0)
+	, uid(0) {
+	data = std::malloc(64);
+}
+
+Frame::~Frame() noexcept {
+	if(data != nullptr) {
+		free(data);
+	}
+}
+
+} // namespace cmf

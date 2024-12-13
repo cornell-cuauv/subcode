@@ -92,7 +92,7 @@ class ImageContainer extends React.Component {
             this.setState({
                 data: nextProps.image.image,
                 lastFrameTime: currTime,
-                fps: Math.trunc(1000 / Math.max(100, currTime - this.state.lastFrameTime)),
+                fps: Math.trunc(1000 / Math.max(20, currTime - this.state.lastFrameTime)),
             });
         }
     }
