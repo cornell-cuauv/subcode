@@ -24,7 +24,7 @@ rflags = [
 cflags = [
     "-pthread",
     "-lprotobuf",
-    "-lpthread",
+        "-lpthread",
     "-lrt",
     "-lm",
     "-Wall",
